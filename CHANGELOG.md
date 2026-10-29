@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.27.0
+
+**STARCOURT**, the third expansion: a bank of its own under EXPANSIONS (SC01 to SC15), named by you. Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor chords, detuned saws and squares, chorused polysynth pads, simple haunting leads, cassette and VHS wobble, big '80s drums. Our own sounds; no title, characters or music from the series.
+
+- Leads: **Arcade Hero** (a bright square lead with its pulse width slowly sweeping), **Static Wail** (a gliding saw-and-sine lead into tape echo and a worn cassette), **Phantom Sync** (a thin, eerie sync lead whose sync drifts).
+- Pads: **Basement Glow** (a warm, chorused '80s polysynth pad), **Other Side** (a dark pad whose second layer sinks out of tune over each chord, into a reverb that swells in backwards), **Cassette Choir** (a vowel pad on wobbling tape).
+- Basses: **Night Drive Sub** (a round analog-style bass with its sub), **Pulse Runner** (a plucky bass for eighth-note lines), **Gated Octave** (a bass and its octave chopped into sixteenths, in time with your song).
+- Keys: **VHS Piano** (an FM electric piano on worn video tape), **Lab Chimes** (cold, glassy FM chimes with ping-pong echoes), **Brass '84** (a punchy polysynth brass for chord stabs).
+- Arps: **Dark Ostinato** (a minor chord climbing in steady eighths while the filter opens over four bars), **Gated Sequence** (whole chords in a chopped sixteenth rhythm: our imitation of a gated '80s reverb), **Midnight Run** (a sixteenth-note bass line with an '80s beat from the drum sequencer under it: hold chords above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT (or BARK, METAL), **2 SPACE** on every preset, 3 its character: WOBBLE (more tape: LO-FI and MOD), CHORUS, DRIFT, HOLLOW, HAUNT, GROWL, SNAP, SMOOTH, BITE, RESONANCE, SHIMMER, DRIVE. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
 ## 0.26.0
 
 **HELLFORGE**, the second expansion: a bank of its own under EXPANSIONS (HF01 to HF15). Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through heavy distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds; no game, composer or music from the scores.
