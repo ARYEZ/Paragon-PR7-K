@@ -29,12 +29,13 @@ namespace
     struct Song final : juce::AudioPlayHead
     {
         double bpm = 85.0, ppq = 0.0;
+        bool playing = true;
         juce::Optional<PositionInfo> getPosition() const override
         {
             PositionInfo info;
             info.setBpm (bpm);
             info.setPpqPosition (ppq);
-            info.setIsPlaying (true);
+            info.setIsPlaying (playing);
             info.setTimeSignature (juce::AudioPlayHead::TimeSignature { 4, 4 });
             return info;
         }
@@ -66,6 +67,7 @@ namespace
             processor.prepareToPlay (rate, block);   // fresh: no tails from the last one
             processor.seedRandomForTest (1);
             song.ppq = 0.0;
+            song.playing = true;
         }
         // Plays `seconds` with MIDI events (seconds, message) into `out` (left, right), the song running.
         void play (double seconds, std::vector<std::pair<double, juce::MidiMessage>> events, std::vector<float>* left = nullptr,
@@ -252,6 +254,7 @@ TEST_CASE ("Every expansion preset plays in time with a song: it sounds, stays c
         p.play (5.0, e, nullptr, nullptr, &loudest, &finite);
         const auto seconds = std::chrono::duration<double> (std::chrono::steady_clock::now() - started).count();
         std::vector<float> left, right;
+        p.song.playing = false;   // the song stopped too: a drum sequence plays for as long as the song does
         p.play (14.0, {}, &left, &right, nullptr, &finite);
 
         CHECK (finite);
@@ -284,7 +287,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         p.load (rig.name);
         // NEON RAIN at 85 BPM in A minor; HELLFORGE at 140 in D, heavier and rhythmic.
         const auto hell = rig.bank == Rig::numBanks + 1;
-        p.song.bpm = hell ? 140.0 : 85.0;
+        const auto star = rig.bank == Rig::numBanks + 2;   // STARCOURT: 100 BPM in C minor
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -317,7 +321,65 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             for (const auto& n : notes)
                 chord (e, at (n.on), at (n.on + n.len), { n.note }, velocity);
         };
-        if (hell && type == "Lead")
+        if (star && type == "Lead")
+        {
+            line ({ { 0, 1, 60 }, { 1, 1, 63 }, { 2, 2, 67 }, { 4, 1, 65 }, { 5, 1, 63 }, { 6, 2, 62 }, { 8, 1, 60 }, { 9, 1, 63 },
+                    { 10, 1, 67 }, { 11, 1, 70 }, { 12, 4, 72 } }, 100);
+            length = 19.0 * beat;
+        }
+        else if (star && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 48, 55, 60, 63 }, 90);   // C minor
+            chord (e, at (8), at (15.8), { 44, 56, 60, 63 }, 90);  // A flat
+            length = 22.0 * beat;
+        }
+        else if (star && type == "Bass")
+        {
+            if (rig.name == "Pulse Runner")
+            {
+                const int notes[] = { 36, 36, 48, 36, 36, 46, 36, 43 };
+                for (int bar = 0; bar < 4; ++bar)
+                    for (int k = 0; k < 8; ++k)
+                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { notes[k] - (bar == 2 ? 4 : 0) }, k % 2 == 0 ? 110 : 90);
+            }
+            else if (rig.name == "Gated Octave")
+            {
+                chord (e, at (0), at (7.9), { 36 }, 100);
+                chord (e, at (8), at (15.9), { 32 }, 100);
+            }
+            else
+                line ({ { 0, 2, 36 }, { 2, 2, 39 }, { 4, 3, 32 }, { 7, 1, 34 }, { 8, 2, 36 }, { 10, 2, 43 }, { 12, 4, 36 } }, 100);
+            length = 18.0 * beat;
+        }
+        else if (star && type == "Keys")
+        {
+            if (rig.name == "Lab Chimes")
+                line ({ { 0, 1, 72 }, { 1.5, 1, 75 }, { 3, 1, 79 }, { 4.5, 1, 77 }, { 6, 1, 75 }, { 7.5, 1, 74 }, { 9, 2, 72 } }, 85);
+            else
+            {
+                const std::initializer_list<int> chords[] = { { 60, 63, 67 }, { 56, 60, 63 }, { 55, 58, 63 }, { 58, 62, 65 } };
+                int c = 0;
+                for (const auto& notes : chords)
+                {
+                    if (rig.name == "Brass '84")
+                        for (const auto offset : { 0.0, 1.5, 2.5 })
+                            chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.6), notes, offset == 0.0 ? 115 : 95);
+                    else
+                        chord (e, at (c * 4), at (c * 4 + 3.8), notes, 95);
+                    ++c;
+                }
+            }
+            length = 19.0 * beat;
+        }
+        else if (star)
+        {
+            if (rig.name == "Midnight Run")
+                chord (e, at (0), at (15.9), { 48, 51, 55 }, 105);
+            else
+                chord (e, at (0), at (15.9), { 60, 63, 67 }, 100);
+            length = 19.0 * beat;
+        }
+        else if (hell && type == "Lead")
         {
             line ({ { 0, 0.5, 50 }, { 0.5, 0.5, 50 }, { 1, 0.5, 53 }, { 1.5, 0.25, 55 }, { 1.75, 0.25, 56 }, { 2, 1.5, 57 },
                     { 3.5, 0.5, 56 }, { 4, 1, 55 }, { 5, 1, 53 }, { 6, 2, 50 }, { 8, 0.5, 62 }, { 8.5, 0.5, 60 }, { 9, 0.5, 58 },

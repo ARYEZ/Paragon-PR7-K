@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 2> list
+    inline constexpr std::array<Expansion, 3> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -23,5 +23,8 @@ namespace expansions
         { "HELLFORGE", "HF",
           "Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through brutal "
           "distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds." },
+        { "STARCOURT", "SC",
+          "Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor "
+          "chords, chorused polysynth pads, haunting leads, cassette wobble and big '80s drums. Our own sounds." },
     }};
 }
