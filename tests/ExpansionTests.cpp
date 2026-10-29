@@ -290,8 +290,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto hell = rig.bank == Rig::numBanks + 1;
         const auto star = rig.bank == Rig::numBanks + 2;   // STARCOURT: 100 BPM in C minor
         const auto sand = rig.bank == Rig::numBanks + 3;   // SANDSEA: 90 BPM in D, Phrygian dominant
-        const auto data = rig.bank == Rig::numBanks + 4;   // DATASTREAM: 120 BPM in E minor
-        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : 85.0;
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -324,67 +323,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             for (const auto& n : notes)
                 chord (e, at (n.on), at (n.on + n.len), { n.note }, velocity);
         };
-        if (data && type == "Lead")
-        {
-            line ({ { 0, 1, 64 }, { 1, 0.5, 67 }, { 1.5, 0.5, 69 }, { 2, 2, 71 }, { 4, 1, 74 }, { 5, 1, 71 }, { 6, 2, 69 },
-                    { 8, 1, 67 }, { 9, 1, 69 }, { 10, 1, 71 }, { 11, 1, 74 }, { 12, 4, 76 } }, 100);
-            length = 19.0 * beat;
-        }
-        else if (data && type == "Pad")
-        {
-            chord (e, at (0), at (7.8), { 52, 59, 64, 67 }, 95);   // E minor
-            chord (e, at (8), at (15.8), { 48, 55, 60, 64 }, 95);  // C
-            length = 22.0 * beat;
-        }
-        else if (data && type == "Bass")
-        {
-            if (rig.name == "Pulse Engine")
-            {
-                chord (e, at (0), at (7.9), { 28 }, 105);
-                chord (e, at (8), at (15.9), { 24 }, 105);
-            }
-            else if (rig.name == "Bitfall Bass")
-            {
-                const int notes[] = { 28, 28, 40, 28, 31, 28, 33, 31 };
-                for (int bar = 0; bar < 4; ++bar)
-                    for (int k = 0; k < 8; ++k)
-                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { notes[k] }, k % 2 == 0 ? 110 : 90);
-                wheel (8.0, 15.0, 120);
-            }
-            else
-                line ({ { 0, 4, 28 }, { 4, 4, 24 }, { 8, 4, 26 }, { 12, 4, 23 } }, 105);
-            length = 18.0 * beat;
-        }
-        else if (data && type == "Keys")
-        {
-            if (rig.name == "Bit Chimes")
-                line ({ { 0, 0.5, 76 }, { 0.75, 0.5, 79 }, { 1.5, 0.5, 83 }, { 3, 0.5, 81 }, { 4, 0.5, 79 }, { 4.75, 0.5, 76 },
-                        { 5.5, 0.5, 74 }, { 7, 1, 76 } }, 90);
-            else
-            {
-                const std::initializer_list<int> chords[] = { { 64, 67, 71 }, { 60, 64, 67 }, { 59, 62, 67 }, { 62, 66, 69 } };
-                int c = 0;
-                for (const auto& notes : chords)
-                {
-                    if (rig.name == "Brass Protocol")
-                        for (const auto offset : { 0.0, 1.5, 2.5 })
-                            chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.7), notes, offset == 0.0 ? 115 : 95);
-                    else
-                        chord (e, at (c * 4), at (c * 4 + 3.8), notes, 95);
-                    ++c;
-                }
-            }
-            length = 19.0 * beat;
-        }
-        else if (data)
-        {
-            if (rig.name == "Circuit Run")
-                chord (e, at (0), at (15.9), { 64 }, 100);
-            else
-                chord (e, at (0), at (15.9), { 64, 67, 71 }, 100);
-            length = 19.0 * beat;
-        }
-        else if (sand && type == "Lead")
+        if (sand && type == "Lead")
         {
             // D Phrygian dominant: D Eb F# G A Bb C.
             line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
