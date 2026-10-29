@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.28.0
+
+**SANDSEA**, the fourth expansion: a bank of its own under EXPANSIONS (SS01 to SS15), named by you. Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices with wide ornamented vibrato, enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Our own sounds; no title, characters, places or music from the film.
+
+- Leads: **Desert Voice** (a keening vowel voice, scooping into each note; the MOD WHEEL widens its vibrato), **Sand Horn** (an enormous, gritty horn blast scooping up into pitch), **Bone Flute** (a breathy flute falling into each note like a grace note).
+- Pads: **Deep Desert** (a vast low drone with a wind of noise gusting through it), **Throat Chant** (a low chant whose vowel sweeps slowly, so its overtones sing), **Mirage** (a shimmering, trembling pad swelling in through a backwards reverb).
+- Basses: **Worm Sign** (a clean sub and a groaning saw rising out of the depths), **Quake Pulse** (a deep, dropping hit with a rumble), **Iron Ritual** (a distorted, metallic ostinato bass).
+- Keys: **Copper Bells** (dark, harsh metal bells), **Stone Harp** (a plucked, oud-like string), **Ritual Gong** (a deep, clanging gong: play low).
+- Arps: **War Drums** (tribal toms from the drum sequencer under a low pulse: hold notes above C3, the kit is on C2 to B2), **Sand Ripple** (fast random runs in the desert scale: hold one key), **Caravan** (a held chord walked in triplets, swaying left and right).
+- Macros: 1 BRIGHT (or METAL, CLANG), **2 SPACE** on every preset, 3 its character: VOWEL, GRIT, BREATH, WIND, GROWL, SHIMMER, GROAN, DESTROY, TWANG, PULSE, SPARKLE, WARMTH. Each preset's notes say what they do.
+- **The arp's randomizer has two new scales:** Phrygian Dominant and Double Harmonic (the desert scales: a flat second and a wide step up to the third). Your presets keep their scales.
+- NEON RAIN's **Rain Cathedral** and **Ion Mist** sound exactly as before; only their descriptions are corrected. Their vowel and comb sweeps follow your song's beat (they move within each quarter note), not the slow seconds-long sweeps the notes described.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
 ## 0.27.0
 
 **STARCOURT**, the third expansion: a bank of its own under EXPANSIONS (SC01 to SC15), named by you. Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor chords, detuned saws and squares, chorused polysynth pads, simple haunting leads, cassette and VHS wobble, big '80s drums. Our own sounds; no title, characters or music from the series.

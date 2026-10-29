@@ -188,14 +188,14 @@ namespace
 
         // ---- PADS --------------------------------------------------------------------------------------------
         auto choir = x.make ("Rain Cathedral", 4, { "Pad", "Choir", "Wavetable", "Travel" },
-            "A wordless choir: the Vowels table in unison, opening from \"oo\" to \"oh\" over the first four seconds "
-            "of each note (TRAVEL), with a slow LFO keeping the vowel breathing, a darker saw an octave down under it, "
+            "A wordless choir: the Vowels table in unison, opening quickly from \"oo\" to \"oh\" as each chord "
+            "starts (TRAVEL, over a quarter note of your song), with a slow LFO keeping the vowel breathing, a darker saw an octave down under it, "
             "a wide ensemble and a long cathedral. MACROS: BRIGHT, SPACE (more cathedral), VOWEL (towards \"ee\"). MOD "
             "WHEEL: drift (the unison detune).");
         choir.osc (0, "Wave", wavetable).osc (0, "Table", table ("Vowels")).osc (0, "WtIndex", 1.0f)
              .osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.7f).osc (0, "UniDetune", 0.2f).osc (0, "UniSpread", 0.9f)
              .osc (0, "Volume", 0.55f)
-             .osc (0, "TrOn", 1.0f).osc (0, "TrMode", (float) synth::travel::Mode::oneShot).osc (0, "TrRate", 0.25f)
+             .osc (0, "TrOn", 1.0f).osc (0, "TrMode", (float) synth::travel::Mode::oneShot).osc (0, "TrRate", 0.25f)   // RATE unused: TRAVEL follows the song (a quarter note), as the owner approved by ear
              .osc (0, "TrStrength", -0.25f).osc (0, "TrSmooth", 0.2f)
              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.18f)
              .osc (1, "UniVoices", 3.0f).osc (1, "UniMix", 0.6f).osc (1, "UniDetune", 0.18f).osc (1, "UniSpread", 0.7f)
@@ -216,8 +216,8 @@ namespace
         x.add (choir);
 
         auto mist = x.make ("Ion Mist", 5, { "Pad", "Drone", "Travel", "Inserts", "Noise" },
-            "A dark, slowly turning drone: the Comb Sweep table drifting back and forth (TRAVEL, ping pong, about 14 "
-            "seconds a sweep) with a sub under it, and rain on top: oscillator 2 plays only filtered noise, through "
+            "A dark, slowly turning drone: the Comb Sweep table rocking back and forth on every beat (TRAVEL, ping "
+            "pong, in time with your song) with a sub under it, and rain on top: oscillator 2 plays only filtered noise, through "
             "insert bus A's worn cassette and a slow auto-pan, so the hiss crackles and moves and stops with the note. "
             "A very slow LFO breathes the filter. MACROS: BRIGHT, SPACE (more cathedral), RAIN (the noise). MOD WHEEL: "
             "motion (how far the sweep travels).");
