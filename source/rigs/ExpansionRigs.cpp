@@ -874,26 +874,34 @@ namespace
         bells.set (ParamIDs::patchLevel, -7.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (bells);
 
-        auto ember = x.make ("Ember Keys", 12, { "Keys", "Clav", "Drive", "Inserts" },
-            "A gritty, percussive stab like a distorted clavinet: a thin pulse and a saw a few cents off, plucked by a "
-            "resonant filter that snaps harder the harder you play, through insert bus A's SKYLINE and a phaser. "
-            "MACROS: BRIGHT, SPACE, DESTROY.");
-        ember.osc (0, "Wave", pulse).osc (0, "Width", 0.2f).osc (0, "Volume", 0.6f).osc (0, "Insert", 1.0f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 8.0f).osc (1, "Volume", 0.35f).osc (1, "Insert", 1.0f)
+        auto riff2 = x.make ("Iron Riff", 12, { "Keys", "Chords", "Drive", "Inserts" },
+            "Gatling Pulse played by hand: every key gives a whole power chord (the oscillator's chorder adds the fifth "
+            "and the octave) with a clean sine sub an octave under it, through insert bus A's RABID, so one finger plays "
+            "a down-tuned rhythm-guitar chord. Short notes snap like a palm mute; held ones ring. CONSTRICTOR (FET) "
+            "slams it, ECHELON scoops the mids. MACROS: BRIGHT, SPACE, DESTROY.");
+        riff2.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.4f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.5f)
+             .osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f).osc (0, "Insert", 1.0f)
+             .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 7.0f).osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 12.0f)
+             .osc (0, "Ch2Vol", 0.7f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f)
+             .osc (1, "PhaseRand", 0.0f).osc (1, "Filter", 0.0f).osc (1, "SendDelay", 0.0f).osc (1, "SendReverb", 0.0f)
              .shaper (0, synth::ShaperModel::tube, 0.1f)
-             .filter (FilterType::lp24, 1200.0f, 0.35f, 0.55f).filterEnvelope (0.0f, 180.0f, 0.1f, 120.0f)
-             .set (ParamIDs::fltVel, 0.5f)
-             .ampEnvelope (1.0f, 600.0f, 0.3f, 150.0f);
-        drive (ember, 0, DM::skyline, 6.0f, 6.0f, 4.0f, 0.2f, 0.3f);
-        chorus (ember, ParamIDs::insModIds (0), MT::phaser, 0.5f, 0.4f, 0.5f);
-        route (ember, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (ember, "macro3", ParamIDs::shp (0, "Drive"), 0.6f);
-        macros (ember, "BRIGHT", "SPACE", "DESTROY");
-        delay (ember, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
-        reverb (ember, RT::plate, 0.4f, 0.15f);
-        space (ember);
-        ember.set (ParamIDs::patchLevel, 0.7f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (ember);
+             .filter (FilterType::lp24, 1500.0f, 0.15f, 0.4f).filterEnvelope (0.0f, 150.0f, 0.35f, 120.0f)
+             .set (ParamIDs::fltVel, 0.4f)
+             .ampEnvelope (1.0f, 300.0f, 0.6f, 150.0f);
+        drive (riff2, 0, DM::rabid, 6.0f, 5.0f, 0.0f, 0.1f, 0.2f);
+        compressor (riff2, fet, -18.0f, 4.0f, 2.0f);
+        riff2.set (ParamIDs::compAttack, 1.0f);
+        eqBand (riff2, 0, eq::Shape::lowCut, 30.0f, 0.0f);
+        eqBand (riff2, 1, eq::Shape::bell, 450.0f, -2.5f, 1.0f);
+        route (riff2, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (riff2, "macro3", ParamIDs::shp (0, "Drive"), 0.6f);
+        macros (riff2, "BRIGHT", "SPACE", "DESTROY");
+        delay (riff2, "1/8 dotted", 0.2f, 0.08f, true, 4.0f);
+        reverb (riff2, RT::room, 0.3f, 0.1f);
+        space (riff2);
+        riff2.set (ParamIDs::patchLevel, 5.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (riff2);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
         auto gatling = x.make ("Gatling Pulse", 13, { "Arp", "Chords", "Drive", "Chug" },

@@ -365,17 +365,27 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         {
             if (rig.name == "Ritual Bells")
                 line ({ { 0, 1, 62 }, { 1.5, 1, 61 }, { 3, 1, 57 }, { 4.5, 1, 58 }, { 6, 1, 62 }, { 7.5, 1, 65 }, { 9, 1, 64 }, { 10.5, 2, 61 } }, 90);
+            else if (rig.name == "Iron Riff")
+            {
+                // One finger: palm-muted chugs on low D, then power chords let ring.
+                for (int bar = 0; bar < 4; ++bar)
+                {
+                    const auto b0 = bar * 4.0;
+                    for (const auto k : { 0.0, 0.25, 0.5, 1.0, 1.25 })
+                        chord (e, at (b0 + k), at (b0 + k + 0.18), { 38 }, k == 0.0 ? 120 : 95);
+                    const int ring[] = { 41, 43, 39, 36 };
+                    chord (e, at (b0 + 1.5), at (b0 + 2.9), { ring[bar] }, 115);
+                    for (const auto k : { 3.0, 3.25, 3.5 })
+                        chord (e, at (b0 + k), at (b0 + k + 0.18), { 38 }, 95);
+                }
+            }
             else
             {
                 const std::initializer_list<int> chords[] = { { 50, 53, 57 }, { 46, 50, 53 }, { 48, 52, 55 }, { 45, 49, 52 } };
                 int c = 0;
                 for (const auto& notes : chords)
                 {
-                    if (rig.name == "Ember Keys")
-                        for (const auto offset : { 0.0, 0.75, 1.5, 2.5, 3.0 })
-                            chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.3), notes, offset == 0.0 ? 115 : 90);
-                    else
-                        chord (e, at (c * 4), at (c * 4 + 3.8), notes, 100);
+                    chord (e, at (c * 4), at (c * 4 + 3.8), notes, 100);
                     ++c;
                 }
             }
