@@ -65,6 +65,12 @@ namespace synth
             insertBaseRight = right;
         }
 
+        // A source as the whole synth has it now (at the end of the last `process`), for what follows the whole
+        // synth rather than a note (the effects' amounts): the macros and buttons, the wheels, channel aftertouch,
+        // breath, expression, the sustain pedal, LFOs and envelopes not set to VOICE. NaN for a source each note has
+        // its own of (velocity, keytrack, random, a VOICE LFO or envelope, the pitch envelope, the step sequencer).
+        float wholeSynthValue (mod::Source, const Settings&) const noexcept;
+
         // Notes sounding now (including releasing ones), for the display and tests.
         int getNumActiveVoices() const noexcept;
 
@@ -288,6 +294,8 @@ namespace synth
         std::array<std::array<float, maxIntervals>, mod::numLfos> globalLfoValues {};
         std::array<mod::EnvelopeState, mod::numEnvelopes> globalEnvelopes {};   // FIRST NOTE and LAST NOTE envelopes
         std::array<std::array<float, maxIntervals>, mod::numEnvelopes> globalEnvelopeValues {};
+        std::array<float, mod::numLfos> lastGlobalLfo {};             // the newest of each (wholeSynthValue)
+        std::array<float, mod::numEnvelopes> lastGlobalEnvelope {};
         void releaseGlobalEnvelopesIfNoneHeld() noexcept;
         // The pitch wheel smoothed by BEND LAG, for each interval of the render under way.
         float smoothedBend = 0.0f;

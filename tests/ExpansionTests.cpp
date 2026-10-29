@@ -185,6 +185,10 @@ TEST_CASE ("Every expansion preset's settings, routes and macros are real ones",
             CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
             CHECK (ModDestinations::find (r.destination) != nullptr);
         }
+        // MACRO 2 is SPACE (0.25.0): it moves REVERB's MIX.
+        CHECK (rig.modulation.macroNames[1] == "SPACE");
+        CHECK (std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(),
+                            [] (const ModRouteData& r) { return r.source == "macro2" && r.destination == ParamIDs::reverbMix; }));
         for (int m = 0; m < 3; ++m)
         {
             CHECK (rig.modulation.macroNames[(size_t) m].isNotEmpty());

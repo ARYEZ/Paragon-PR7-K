@@ -90,6 +90,10 @@ namespace effects
         TailWatch tail;
         juce::AudioBuffer<float> wet;
         juce::Random random;
+    public:
+        // For tests (PR7-K): the tape's drift and hiss the same on every run.
+        void seedRandom (juce::int64 seed) noexcept { random.setSeed (seed); }
+    private:
 
         // Analog, tape and mod: the drifting read position.
         float wowPhase = 0.0f, flutterPhase = 0.0f, drift = 0.0f, driftTarget = 0.0f;

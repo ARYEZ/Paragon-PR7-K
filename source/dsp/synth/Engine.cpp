@@ -994,7 +994,7 @@ namespace synth
                     smoothedBend += (bend - smoothedBend) * (1.0f - std::exp (-(float) n / (settings.pitch.bendLagMs * 0.001f * (float) sampleRate)));
                 bendValues[(size_t) i] = smoothedBend;
             }
-            if (modulation.numRoutes > 0)
+            if (modulation.numRoutes > 0 || modulation.effectSources != 0)
             {
                 // The LFOs running once for the whole synth: their value for each interval.
                 const auto secondsPerSample = 1.0 / sampleRate;
@@ -1016,6 +1016,7 @@ namespace synth
                             state.phase = position - std::floor (position);
                         }
                         globalLfoValues[(size_t) k][(size_t) i] = state.next (lfo, cycles, n * secondsPerSample, random, modulation.lfoShapes);
+                        lastGlobalLfo[(size_t) k] = globalLfoValues[(size_t) k][(size_t) i];
                     }
                 }
                 // ...and the envelopes set to FIRST NOTE or LAST NOTE.
@@ -1026,9 +1027,12 @@ namespace synth
                         || ! modulation.uses ((mod::Source) ((int) mod::Source::env1 + k)))
                         continue;
                     for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
                         globalEnvelopeValues[(size_t) k][(size_t) i] = globalEnvelopes[(size_t) k].next (modulation.envelopeShapes[k], envelope,
                                                                                                              juce::jmin (controlInterval, length - at) * secondsPerSample,
                                                                                                              modulation.bpm);
+                        lastGlobalEnvelope[(size_t) k] = globalEnvelopeValues[(size_t) k][(size_t) i];
+                    }
                 }
             }
             // The STEP SEQUENCER (unless each note runs its own): its value at each sample.
@@ -1077,6 +1081,44 @@ namespace synth
         voice.randomValue = random.nextFloat();
         voice.pressure = 0.0f;
         voice.lagFresh = true;
+    }
+
+    float Engine::wholeSynthValue (mod::Source source, const Settings& settings) const noexcept
+    {
+        using S = mod::Source;
+        const auto& modulation = settings.modulation;
+        if (source >= S::lfo1 && source <= S::lfo4)
+        {
+            const auto k = (size_t) source - (size_t) S::lfo1;
+            return modulation.lfos[k].trigger == mod::LfoTrigger::voice ? std::numeric_limits<float>::quiet_NaN() : lastGlobalLfo[k];
+        }
+        if (source >= S::env1 && source <= S::env8)
+        {
+            const auto k = (size_t) source - (size_t) S::env1;
+            return modulation.envelopes[k].trigger == mod::EnvelopeTrigger::voice ? std::numeric_limits<float>::quiet_NaN() : lastGlobalEnvelope[k];
+        }
+        switch (source)
+        {
+            case S::macro1: case S::macro2: case S::macro3: return modulation.macros[(size_t) source - (size_t) S::macro1];
+            case S::button1: return modulation.buttons[0] ? 1.0f : 0.0f;
+            case S::button2: return modulation.buttons[1] ? 1.0f : 0.0f;
+            case S::modWheel:
+            {
+                auto wheel = modWheel;
+                const auto& toWheel = modulation.toModWheel;
+                if (toWheel[0]) wheel = juce::jmax (wheel, breath);
+                if (toWheel[1]) wheel = juce::jmax (wheel, expression);
+                if (toWheel[2]) wheel = juce::jmax (wheel, channelPressure);
+                if (toWheel[3] && pedalDown) wheel = 1.0f;
+                return wheel;
+            }
+            case S::pitchBend: return bend;
+            case S::aftertouch: return channelPressure;
+            case S::breath: return breath;
+            case S::expression: return expression;
+            case S::sustain: return pedalDown ? 1.0f : 0.0f;
+            default: return std::numeric_limits<float>::quiet_NaN();   // each note has its own
+        }
     }
 
     const Settings& Engine::modulate (Voice& voice, int n, const Settings& settings, int interval) noexcept

@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "LevelMeterSource.h"
+#include "ModDestinations.h"
 #include "Parameters.h"
 #include "Rack.h"
 #include "dsp/synth/Engine.h"
@@ -197,6 +198,9 @@ public:
     {
         engine.seedRandom (seed);
         rack->loFi.seedRandom (seed);
+        rack->delay.seedRandom (seed);
+        for (auto& bus : rack->buses)
+            bus.loFi.seedRandom (seed);
         drumKit.seedRandom ((std::uint32_t) seed);
     }
 
@@ -490,9 +494,20 @@ private:
         float amount, lagMs, curve;
         bool percent;
     };
+    // 0.25.0: a route to an effect's amount (ModDestinations::effectIds), from a whole-synth source.
+    struct EffectRoute
+    {
+        synth::mod::Source source;
+        int effect;
+        juce::RangedAudioParameter* parameter;
+        float amount, lagMs, curve;
+        bool percent;
+    };
     struct CompiledMatrix
     {
         std::vector<CompiledRoute> routes;
+        std::vector<EffectRoute> effectRoutes;   // sorted by effect
+        std::uint32_t effectSources = 0;
         std::array<synth::mod::Shape, synth::mod::numEnvelopes> envelopes {};
         std::array<synth::mod::Shape, synth::mod::numLfoShapes> lfoShapes {};
         synth::mod::Shape pitchEnvelope {};
@@ -510,6 +525,12 @@ private:
     std::vector<std::pair<std::shared_ptr<const CompiledMatrix>, double>> retiredMatrices;
     std::array<synth::mod::Route, synth::mod::maxRoutes> routeBuffer {};   // audio thread
     void compileMatrix();
+    // The effects' amounts as the matrix moves them (0.25.0): each a knob position, 0 to 1, smoothed; NaN where no
+    // route moves it (the knob itself). Written by the audio thread once per piece, read by the effects' settings.
+    std::array<std::atomic<float>, ModDestinations::numEffects> effectPositions;
+    std::array<float, ModDestinations::numEffects> effectSmoothed {};   // audio thread
+    void updateEffectModulation (const synth::Settings&, int numSamples) noexcept;
+    float effectParam (int effect, const char* id) const;   // param (id), or where the matrix has moved it
 
     LevelMeterSource outputMeter;
     void processRack (juce::dsp::AudioBlock<float> block);   // the rack's effects before OUTPUT

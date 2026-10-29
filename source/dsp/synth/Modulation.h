@@ -252,6 +252,9 @@ namespace synth
             // Which sources any route uses (bit per Source): the others aren't worked out.
             std::uint32_t usedSources = 0xffffffffu;
             bool uses (Source source) const noexcept { return (usedSources >> (int) source) & 1u; }
+            // 0.25.0: routes to the effects' amounts follow the whole synth (Engine::wholeSynthValue); their sources,
+            // so the whole-synth LFOs and envelopes run even with no route to a note's settings.
+            std::uint32_t effectSources = 0;
             double bpm = 120.0;
             double ppq = -1.0;                // the song position at the block's start, in beats (-1: stopped)
             // CONTROLLER TO MOD WHEEL (stage 4f): breath, expression, aftertouch, sustain also drive the mod wheel

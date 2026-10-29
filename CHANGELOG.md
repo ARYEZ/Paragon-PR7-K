@@ -2,6 +2,27 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.25.0
+
+Expansions, and effects in the mod matrix.
+
+- **Expansions: themed preset banks.** The preset browser has a new **EXPANSIONS** section under Bank E. Each expansion is a bank of its own with 15 presets: 3 leads, 3 pads, 3 basses, 3 keys and 3 arps. Their slots are named by two letters (NR01 to NR15).
+  - You can't save into an expansion's bank: a copy you save goes into Bank A, so the built-in sounds stay as shipped.
+  - < > step on from your banks into the expansions, and round.
+- **NEON RAIN**, the first expansion: inspired by the 1982 neo-noir sci-fi film score. Polysynth brass, rain-soaked pads, smoky leads, glassy keys and slow neon pulses. Our own sounds; no names or music from the film.
+  - Leads: Brass Requiem, Smoke And Reeds, Wire Ribbon. Pads: Rain Cathedral, Ion Mist, Memory Strings. Basses: Undercity Pulse, Distant Thunder, Velvet Noir. Keys: Electric Rain Piano, Glass Chimes, Night Shift Keys. Arps: Neon Grid, Raindrop Machine, Skyline Sequence.
+  - Each uses a different mix of the synth: TRAVEL, FM from another oscillator, the PITCH envelope, shapers, aftertouch and mod-wheel routes, the arpeggiator (randomizer, chords), the step sequencer, insert buses, sends and the rack.
+  - Every preset's three macros: 1 brightness, **2 SPACE** (more reverb, and more and longer echoes where the preset has them), 3 its character. Each preset's notes say what its macros and mod wheel do.
+  - Levels are balanced by measurement (about the same loudness, peaks under -3 dBFS). They were made without listening here: your ears decide.
+- **The mod matrix can now move the effects.** New destinations, under FX in the destination menu: DELAY's MIX, FEEDBACK, TONE and TO REVERB; REVERB's MIX, SIZE, TONE and PRE-DELAY; MOD's and MOD 2's MIX, DEPTH and RATE; LO-FI's MIX and AMOUNT. On the FX page's DELAY, REVERB, MOD and LO-FI pages their knobs show the ring of how far the matrix moves them, and take a source dragged onto them, as the synth's knobs do.
+  - The effects are shared by every note, so the whole synth's sources move them: the macros and buttons, the mod wheel, pitch bend, aftertouch, breath, expression, the sustain pedal, and LFOs and envelopes not set to VOICE.
+  - A note's own source (velocity, keytrack, random, the pitch envelope, the step sequencer) can't, and a route from one is greyed out in the matrix.
+  - The moves are smoothed (30 ms, or the route's LAG if longer), so turning a macro doesn't step or click. Loading a preset sets them at once.
+  - An effect that's off stays off: switch it on (with its MIX at 0 if you want the macro to bring it in).
+  - Not yet: the insert buses' and the rack's settings.
+- **Arpeggiator fix:** with the song playing, a chord written exactly on the beat waited for the next step, so the arp lost its first note. A key on a step, or up to 30 ms late (a quarter of a step if that's shorter), now plays that step.
+- The browser's "n oscillators" line now counts oscillator 1 (it read one short for every preset).
+
 ## 0.24.0
 
 **This release also brings everything in 0.23.0** (the sample editor: drawn envelopes, GAIN, MONO / POLY, DELAY with the anchor, LP / HP; preset A42 Tight Kit; and MIDI export on whole ticks). 0.23.0 was never published: its build passed every test, but GitHub's Linux plugin check (pluginval) crashed twice in a row while shutting down after its last test. It passed 12 out of 12 runs here under a debugger, and the crash is in pluginval's own Linux host, so it was released as part of this one instead. Its notes are below.

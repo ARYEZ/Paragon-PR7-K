@@ -57,6 +57,16 @@ namespace ModDestinations
             d.push_back ({ ParamIDs::seqVolMix, "Step Seq", "Vol Mix", { Field::stepSeqVolMix, 0 } });
             d.push_back ({ ParamIDs::ampVolume, "Amp", "Volume", { Field::ampVolume, 0 } });
             d.push_back ({ ParamIDs::ampPan, "Amp", "Pan", { Field::ampPan, 0 } });
+
+            // 0.25.0: the effects (whole-synth sources only).
+            const std::pair<const char*, const char*> effects[] = {
+                { "FX Delay", "Mix" }, { "FX Delay", "Feedback" }, { "FX Delay", "Tone" }, { "FX Delay", "To Reverb" },
+                { "FX Reverb", "Mix" }, { "FX Reverb", "Size" }, { "FX Reverb", "Tone" }, { "FX Reverb", "Pre-Delay" },
+                { "FX Mod", "Mix" }, { "FX Mod", "Depth" }, { "FX Mod", "Rate" }, { "FX Mod 2", "Mix" }, { "FX Mod 2", "Depth" },
+                { "FX Mod 2", "Rate" }, { "FX Lo-Fi", "Mix" }, { "FX Lo-Fi", "Amount" } };
+            static_assert (std::size (effects) == (size_t) numEffects);
+            for (int k = 0; k < numEffects; ++k)
+                d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });
             return d;
         }();
         return list;

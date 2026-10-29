@@ -667,6 +667,16 @@ void MatrixPanel::Row::show (const ModRouteData& r)
     const auto s = (int) synth::mod::sourceFromId (r.source);
     source.setSelectedId (s >= 1 ? s + 1 : 0, juce::dontSendNotification);
     destination.setButtonText (destinationText (r.destination));
+    // An effect follows the whole synth: a note's own source can't move it (0.25.0).
+    const auto* d = ModDestinations::find (r.destination);
+    const auto noteOnly = d != nullptr && d->effect >= 0 && ModDestinations::isNoteOnly ((synth::mod::Source) s);
+    destination.setColour (juce::TextButton::textColourOffId, noteOnly ? ParagonColours::textDim : ParagonColours::text);
+    destination.setTooltip (noteOnly ? "Does nothing: the effects are shared by every note, so a source each note has its own of "
+                                       "(velocity, keytrack, random, the pitch envelope, the step sequencer) can't move them. "
+                                       "Use a macro, a wheel, aftertouch or an LFO not set to VOICE."
+                                     : (d != nullptr && d->effect >= 0 ? "An effect's amount: moved by the whole synth's sources (macros, wheels, "
+                                                                         "aftertouch, breath, expression, sustain, LFOs and envelopes not set to VOICE)."
+                                                                       : juce::String()));
     mode.setButtonText (r.percent ? "%" : "+");
     amount.setValue (r.amount, juce::dontSendNotification);
     lag.setValue (r.lagMs, juce::dontSendNotification);
