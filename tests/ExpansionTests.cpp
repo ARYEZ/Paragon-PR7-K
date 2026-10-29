@@ -365,6 +365,16 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         {
             if (rig.name == "Ritual Bells")
                 line ({ { 0, 1, 62 }, { 1.5, 1, 61 }, { 3, 1, 57 }, { 4.5, 1, 58 }, { 6, 1, 62 }, { 7.5, 1, 65 }, { 9, 1, 64 }, { 10.5, 2, 61 } }, 90);
+            else if (rig.name == "Iron Riff" && juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {}) == "eighths")
+            {
+                // PARAGON_RENDER_STYLE=eighths: straight eighth notes, one finger, the power chords changing each half bar.
+                const int bars[4][8] = { { 38, 38, 38, 38, 38, 38, 38, 38 }, { 38, 38, 38, 38, 41, 41, 43, 43 },
+                                         { 39, 39, 39, 39, 39, 39, 39, 39 }, { 38, 38, 38, 38, 36, 36, 38, 38 } };
+                for (int bar = 0; bar < 4; ++bar)
+                    for (int k = 0; k < 8; ++k)
+                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { bars[bar][k] }, k % 2 == 0 ? 115 : 100);
+                chord (e, at (16), at (18), { 38 }, 120);   // the last chord let ring
+            }
             else if (rig.name == "Iron Riff")
             {
                 // One finger: palm-muted chugs on low D, then power chords let ring.
