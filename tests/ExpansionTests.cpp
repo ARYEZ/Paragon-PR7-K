@@ -273,7 +273,6 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
     const auto folder = juce::File (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", "/tmp/paragon-render"));
     folder.createDirectory();
     Plugin p;
-    const auto beat = 60.0 / p.song.bpm;
     // PARAGON_RENDER_ONLY: just the presets whose names contain it; PARAGON_RENDER_PARAMS: "id=value,..." set after
     // loading (to hear what a setting does).
     const auto only = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_ONLY", {});
@@ -283,6 +282,10 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         if (only.isNotEmpty() && ! rig.name.containsIgnoreCase (only))
             continue;
         p.load (rig.name);
+        // NEON RAIN at 85 BPM in A minor; HELLFORGE at 140 in D, heavier and rhythmic.
+        const auto hell = rig.bank == Rig::numBanks + 1;
+        p.song.bpm = hell ? 140.0 : 85.0;
+        const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
                 parameter->setValueNotifyingHost (parameter->convertTo0to1 (item.fromFirstOccurrenceOf ("=", false, false).getFloatValue()));
@@ -308,13 +311,92 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             }
         };
 
-        if (type == "Lead")
+        struct N { double on, len; int note; };
+        const auto line = [&] (std::initializer_list<N> notes, int velocity = 100)
+        {
+            for (const auto& n : notes)
+                chord (e, at (n.on), at (n.on + n.len), { n.note }, velocity);
+        };
+        if (hell && type == "Lead")
+        {
+            line ({ { 0, 0.5, 50 }, { 0.5, 0.5, 50 }, { 1, 0.5, 53 }, { 1.5, 0.25, 55 }, { 1.75, 0.25, 56 }, { 2, 1.5, 57 },
+                    { 3.5, 0.5, 56 }, { 4, 1, 55 }, { 5, 1, 53 }, { 6, 2, 50 }, { 8, 0.5, 62 }, { 8.5, 0.5, 60 }, { 9, 0.5, 58 },
+                    { 9.5, 0.5, 57 }, { 10, 2, 56 }, { 12, 4, 57 } }, 110);
+            if (rig.name == "Molten Riff")
+                for (int k = 0; k <= 16; ++k)   // a whammy dive on the last note
+                    e.push_back ({ at (13.5 + k * 0.1), juce::MidiMessage::pitchWheel (1, juce::jlimit (0, 16383, 8192 - k * 512)) });
+            else
+                wheel (8.0, 12.0, 110);
+            e.push_back ({ at (16.5), juce::MidiMessage::pitchWheel (1, 8192) });
+            length = 19.0 * beat;
+        }
+        else if (hell && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 38, 45, 50, 53 }, 100);   // D minor, low
+            chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 100);  // E flat: the dark half-step up
+            length = 22.0 * beat;
+        }
+        else if (hell && type == "Bass")
+        {
+            if (rig.name == "Tectonic Drop")
+            {
+                chord (e, at (0), at (3), { 26 }, 120);
+                chord (e, at (8), at (11), { 21 }, 120);
+                length = 18.0 * beat;
+            }
+            else if (rig.name == "Gut Chug")
+            {
+                // A syncopated sixteenth-note chug on low D, a half-step up and the octave for accents.
+                const int bar[16] = { 26, 26, 26, 0, 26, 26, 0, 27, 26, 26, 26, 0, 26, 0, 38, 38 };
+                for (int b = 0; b < 4; ++b)
+                    for (int k = 0; k < 16; ++k)
+                        if (bar[k] != 0 && ! (b == 3 && k >= 12))
+                            chord (e, at (b * 4 + k * 0.25), at (b * 4 + k * 0.25 + 0.2), { bar[k] }, k % 4 == 0 ? 120 : 95);
+                chord (e, at (15), at (16), { 26 }, 120);
+                length = 18.0 * beat;
+            }
+            else
+            {
+                line ({ { 0, 4, 26 }, { 4, 2, 29 }, { 6, 2, 27 }, { 8, 4, 26 }, { 12, 2, 31 }, { 14, 2, 29 } }, 110);
+                length = 18.0 * beat;
+            }
+        }
+        else if (hell && type == "Keys")
+        {
+            if (rig.name == "Ritual Bells")
+                line ({ { 0, 1, 62 }, { 1.5, 1, 61 }, { 3, 1, 57 }, { 4.5, 1, 58 }, { 6, 1, 62 }, { 7.5, 1, 65 }, { 9, 1, 64 }, { 10.5, 2, 61 } }, 90);
+            else
+            {
+                const std::initializer_list<int> chords[] = { { 50, 53, 57 }, { 46, 50, 53 }, { 48, 52, 55 }, { 45, 49, 52 } };
+                int c = 0;
+                for (const auto& notes : chords)
+                {
+                    if (rig.name == "Ember Keys")
+                        for (const auto offset : { 0.0, 0.75, 1.5, 2.5, 3.0 })
+                            chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.3), notes, offset == 0.0 ? 115 : 90);
+                    else
+                        chord (e, at (c * 4), at (c * 4 + 3.8), notes, 100);
+                    ++c;
+                }
+            }
+            length = 19.0 * beat;
+        }
+        else if (hell)
+        {
+            if (rig.name == "Gatling Pulse")
+                chord (e, at (0), at (15.9), { 38 }, 110);
+            else if (rig.name == "War Machine")
+                chord (e, at (0), at (15.9), { 50 }, 110);
+            else
+                chord (e, at (0), at (15.9), { 50, 53, 57 }, 100);
+            length = 19.0 * beat;
+        }
+        else if (type == "Lead")
         {
             // A slow, rising-and-falling line in A minor, the long notes overlapping a little (legato, glide).
-            struct N { double on, len; int note; };
-            const N line[] = { { 0, 3.1, 64 }, { 3, 1.1, 67 }, { 4, 2.1, 69 }, { 6, 2.1, 67 }, { 8, 3.1, 72 }, { 11, 1.1, 71 },
+            const N leadLine[] = { { 0, 3.1, 64 }, { 3, 1.1, 67 }, { 4, 2.1, 69 }, { 6, 2.1, 67 }, { 8, 3.1, 72 }, { 11, 1.1, 71 },
                                { 12, 4.0, 69 } };
-            for (const auto& n : line)
+            for (const auto& n : leadLine)
                 chord (e, at (n.on), at (n.on + n.len), { n.note }, 96);
             if (rig.name == "Smoke And Reeds")
                 wheel (8.0, 12.0, 110);
@@ -339,11 +421,10 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             }
             else
             {
-                struct N { double on, len; int note; };
-                const N line[] = { { 0, 1.5, 33 }, { 1.5, 0.5, 33 }, { 2, 1.0, 45 }, { 3, 1.0, 43 }, { 4, 1.5, 41 },
+                const N bassLine[] = { { 0, 1.5, 33 }, { 1.5, 0.5, 33 }, { 2, 1.0, 45 }, { 3, 1.0, 43 }, { 4, 1.5, 41 },
                                    { 5.5, 0.5, 41 }, { 6, 1.0, 40 }, { 7, 1.0, 38 }, { 8, 1.5, 33 }, { 9.5, 0.5, 36 },
                                    { 10, 1.05, 40 }, { 11, 1.0, 43 }, { 12, 3.5, 33 } };
-                for (const auto& n : line)
+                for (const auto& n : bassLine)
                     chord (e, at (n.on), at (n.on + n.len), { n.note }, 100);
                 length = 18.0 * beat;
             }
@@ -383,10 +464,10 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto file = folder.getChildFile (rig.getSlotName() + " " + rig.name + ".wav");
         file.deleteFile();
         juce::WavAudioFormat wav;
-        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
-        std::unique_ptr<juce::AudioFormatWriter> writer (wav.createWriterFor (stream.get(), rate, 2, 32, {}, 0));
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream());
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions{}.withSampleRate (rate).withNumChannels (2).withBitsPerSample (32)
+                                                       .withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint));
         REQUIRE (writer != nullptr);
-        stream.release();
         writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples());
     }
 }

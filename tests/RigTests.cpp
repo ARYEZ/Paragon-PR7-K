@@ -379,7 +379,7 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
     CHECK (r.processor.getCurrentRig().name == "Brass Requiem");
     r.processor.loadRig (r.entryNamed ("Init"));
     r.processor.stepRig (-1);   // and from the first back round to the last
-    CHECK (r.processor.getCurrentRig().name == "Skyline Sequence");
+    CHECK (r.processor.getCurrentRig().name == r.processor.getRigLibrary().getEntries().back().rig.name);   // the last expansion's last
 }
 
 TEST_CASE ("Deleting the loaded preset keeps the sound, now unsaved", "[rigs]")
