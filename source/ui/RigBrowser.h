@@ -6,7 +6,7 @@
 
 // The PRESETS page: browse, load, file and organise rigs.
 //
-//   left:   filters (all / favourites / mine / factory) and banks A-D
+//   left:   filters (all / favourites / mine / factory), banks A-E and the expansions (a bank each)
 //   middle: search box and the list of rigs (double-click to load)
 //   right:  the selected rig's details: name, favourite, bank, number,
 //           tags, what it uses, and the buttons to act on it
@@ -23,7 +23,7 @@ public:
     void promptSaveAs();
 
     // Shows only some rigs: `filter` 0 all, 1 favourites, 2 mine, 3 factory;
-    // `bank` -1 for every bank or 0-3 for A-D. (The dock's RIG BROWSER uses this.)
+    // `bank` -1 for every bank, 0-4 for A-E, then the expansions. (The dock's RIG BROWSER uses this.)
     void showFilter (int filter, int bank);
 
     void paint (juce::Graphics&) override;

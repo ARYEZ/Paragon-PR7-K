@@ -2134,7 +2134,7 @@ bool ParagonX1AudioProcessor::saveCurrentRigAs (const juce::String& name)
     // File it next to the preset it came from, in the first free slot.
     if (const auto* entry = findCurrentRigEntry())
     {
-        rig.bank = entry->rig.bank;
+        rig.bank = Rig::isExpansionBank (entry->rig.bank) ? 0 : entry->rig.bank;   // a copy of an expansion's goes in A
         rig.tags = entry->rig.tags;
         rig.notes = entry->rig.notes;
     }
@@ -2166,7 +2166,7 @@ bool ParagonX1AudioProcessor::updateRigDetails (const RigLibrary::Entry& entry, 
 
     auto rig = entry.rig;
     rig.name = newDetails.name.trim().isEmpty() ? rig.name : newDetails.name.trim();
-    rig.bank = newDetails.bank;
+    rig.bank = juce::jlimit (0, Rig::numBanks - 1, newDetails.bank);
     rig.number = newDetails.number;
     rig.tags = newDetails.tags;
 

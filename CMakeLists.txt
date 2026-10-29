@@ -80,6 +80,7 @@ target_sources(ParagonX1
         source/dsp/eq/EqMatchSession.cpp
         source/rigs/Rig.cpp
         source/rigs/FactoryRigs.cpp
+        source/rigs/ExpansionRigs.cpp
         source/rigs/CompPresets.cpp
         source/rigs/DominionPresets.cpp
         source/rigs/RigLibrary.cpp

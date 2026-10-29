@@ -258,7 +258,7 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
 
     Rig late;
     late.name = "Late";
-    late.bank = Rig::numBanks - 1;   // the last bank, after every factory rig
+    late.bank = Rig::numBanks - 1;   // the last user bank: after every factory rig in A, before the expansions
     late.number = 50;
     library.saveAsNew (late);
 
@@ -266,7 +266,10 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
     for (size_t i = 1; i < entries.size(); ++i)
         CHECK (entries[i - 1].rig.bank * 100 + entries[i - 1].rig.number <= entries[i].rig.bank * 100 + entries[i].rig.number);
 
-    CHECK (entries.back().rig.name == "Late");
+    // Late is the last of the user's banks; only the expansions' banks come after it.
+    const auto lateEntry = std::find_if (entries.begin(), entries.end(), [] (const RigLibrary::Entry& e) { return e.rig.name == "Late"; });
+    REQUIRE (lateEntry != entries.end());
+    CHECK (std::all_of (lateEntry + 1, entries.end(), [] (const RigLibrary::Entry& e) { return e.isFactory && Rig::isExpansionBank (e.rig.bank); }));
     CHECK (library.step (&entries.back(), 1) == &entries.front());
     CHECK (library.step (&entries.front(), -1) == &entries.back());
     CHECK (library.step (nullptr, 1) == &entries.front());
@@ -372,10 +375,11 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
     CHECK (r.processor.getCurrentRig().name == "Second");
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Third");
-    r.processor.stepRig (1);   // wraps round to the first
-    CHECK (r.processor.getCurrentRig().name == "Init");
-    r.processor.stepRig (-1);   // and back to the last
-    CHECK (r.processor.getCurrentRig().name == "Third");
+    r.processor.stepRig (1);   // on into the expansions' banks (NEON RAIN first)
+    CHECK (r.processor.getCurrentRig().name == "Brass Requiem");
+    r.processor.loadRig (r.entryNamed ("Init"));
+    r.processor.stepRig (-1);   // and from the first back round to the last
+    CHECK (r.processor.getCurrentRig().name == "Skyline Sequence");
 }
 
 TEST_CASE ("Deleting the loaded preset keeps the sound, now unsaved", "[rigs]")

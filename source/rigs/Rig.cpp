@@ -1,5 +1,7 @@
 #include "Rig.h"
 
+#include "Expansions.h"
+
 namespace
 {
     // Bump when the file layout changes in a way older code can't read.
@@ -19,14 +21,25 @@ namespace
     const juce::Identifier drumSampleTag { "DrumSample" };
 }
 
+int Rig::numBanksWithExpansions()
+{
+    return numBanks + (int) expansions::list.size();
+}
+
 juce::String Rig::bankName (int bankIndex)
 {
+    if (isExpansionBank (bankIndex))
+        return expansions::list[(size_t) juce::jmin (bankIndex - numBanks, (int) expansions::list.size() - 1)].name;
     return juce::String::charToString ((juce::juce_wchar) ('A' + juce::jlimit (0, numBanks - 1, bankIndex)));
 }
 
 juce::String Rig::getSlotName() const
 {
-    return bankName (bank) + juce::String (number).paddedLeft ('0', 2);
+    // An expansion's slots by its two letters ("NR01"), so they fit where "A01" does.
+    const auto prefix = isExpansionBank (bank)
+                      ? juce::String (expansions::list[(size_t) juce::jmin (bank - numBanks, (int) expansions::list.size() - 1)].code)
+                      : bankName (bank);
+    return prefix + juce::String (number).paddedLeft ('0', 2);
 }
 
 std::unique_ptr<juce::XmlElement> Rig::toXml() const
@@ -35,7 +48,7 @@ std::unique_ptr<juce::XmlElement> Rig::toXml() const
     xml->setAttribute ("version", fileVersion);
     xml->setAttribute ("parameterVersion", parameterVersion);
     xml->setAttribute ("name", name);
-    xml->setAttribute ("bank", bankName (bank));
+    xml->setAttribute ("bank", bankName (juce::jmin (bank, numBanks - 1)));   // files hold A-E only
     xml->setAttribute ("number", number);
     xml->setAttribute ("favourite", favourite);
     xml->setAttribute ("tags", tags.joinIntoString (","));

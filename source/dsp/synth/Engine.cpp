@@ -1411,13 +1411,20 @@ namespace synth
             st.lastVelocity = velocity;
             if (! wasEmpty)
                 continue;
-            // The first key: it starts. In step with a playing song, it waits for the next step;
+            // The first key: it starts. In step with a playing song, it waits for the next step, unless it came
+            // on a step or just after it (up to 30 ms, or a quarter of a step if that's shorter: a chord written on
+            // the beat in the DAW, or played a hair late), when it plays that step now;
             // otherwise it starts now, from the first step.
             st.firstVelocity = velocity;
             st.running = true;
             st.noteCounter = 0;
             if (arpFollowsSong (a, settings))
-                st.lastStep = arpStepAt (a, sampleClock, settings);
+            {
+                const auto step = arpStepAt (a, sampleClock, settings);
+                const auto late = (double) (sampleClock - arpStepTime (a, step, settings));
+                const auto samplesPerStep = settings.arps[(size_t) a].beatsPerStep() * 60.0 / juce::jmax (1.0, settings.modulation.bpm) * sampleRate;
+                st.lastStep = step >= 0 && late <= juce::jmin (0.03 * sampleRate, 0.25 * samplesPerStep) ? step - 1 : step;
+            }
             else if (settings.arpsTogether && numKeysDown > 1)
             {
                 // ARPS TOGETHER: on the clock the first key started; in at its next step.

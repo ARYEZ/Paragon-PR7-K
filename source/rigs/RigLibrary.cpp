@@ -42,7 +42,10 @@ void RigLibrary::rescan()
     entries.clear();
     loadFactoryFavourites();
 
-    for (auto& rig : makeFactoryRigs())
+    auto factory = makeFactoryRigs();
+    for (auto& rig : makeExpansionRigs())
+        factory.push_back (std::move (rig));
+    for (auto& rig : factory)
     {
         rig.favourite = factoryFavourites.contains (rig.name);
         entries.push_back ({ std::move (rig), {}, true });

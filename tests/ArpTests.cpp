@@ -271,6 +271,33 @@ TEST_CASE ("ARP SONG: in step with the song's beats while it plays", "[arp]")
     CHECK (rms (out, 3100, 5800) > 0.05);   // 64.6 to 121 ms: the step from 62.5 ms (half of it, GATE 50%)
 }
 
+TEST_CASE ("ARP SONG: a key on the beat (or a hair late) plays that step, not the next", "[arp]")
+{
+    // A chord written on the beat in the DAW comes in on the step's very sample: the step plays then. So does a key
+    // 20 ms late (within 30 ms); one 40 ms late waits for the next step (125 ms apart at 1/16, 120 BPM).
+    for (const auto [lateMs, plays] : { std::pair { 0.0, true }, std::pair { 20.0, true }, std::pair { 40.0, false } })
+    {
+        INFO (lateMs << " ms late");
+        ArpPlayer p;
+        p.arp().gate = 0.5f;
+        p.settings.modulation.bpm = 120.0;
+        const auto beats = lateMs / 1000.0 * 2.0;
+        p.settings.modulation.ppq = beats;
+        p.on (60);
+        std::vector<float> out;
+        std::array<float, blockSize> left {}, right {};
+        const juce::MidiBuffer none;
+        for (int block = 0; block < 10; ++block)
+        {
+            p.settings.modulation.ppq = beats + block * blockSize / sampleRate * 2.0;
+            p.engine.process (left.data(), right.data(), blockSize, none, 0, p.settings);
+            out.insert (out.end(), left.begin(), left.end());
+        }
+        // The first 10 ms after the key: sounding if it played the step it came in on.
+        CHECK ((rms (out, 50, 480) > 0.05) == plays);
+    }
+}
+
 TEST_CASE ("ARP in the plugin: settings reach the engine, it plays from a fresh start, its patterns are kept", "[arp][processor]")
 {
     ParagonX1AudioProcessor processor;

@@ -26,14 +26,15 @@ namespace
     // One line describing a preset: how many oscillators it uses, and whether the filter's on.
     juce::String describeBlocks (const Rig& rig)
     {
-        const auto isOn = [&rig] (const juce::String& id)
+        // A setting the preset doesn't hold is at its default (oscillator 1 alone is on by default).
+        const auto isOn = [&rig] (const juce::String& id, bool byDefault = false)
         {
             const auto found = rig.parameters.find (id);
-            return found != rig.parameters.end() && found->second > 0.5f;
+            return found != rig.parameters.end() ? found->second > 0.5f : byDefault;
         };
         int oscillators = 0;
         for (int i = 0; i < ParamIDs::numOscillators; ++i)
-            oscillators += isOn (ParamIDs::osc (i, "On")) ? 1 : 0;
+            oscillators += isOn (ParamIDs::osc (i, "On"), i == 0) ? 1 : 0;
         return juce::String (oscillators) + (oscillators == 1 ? " oscillator" : " oscillators")
              + (isOn (ParamIDs::fltOn) ? ", filter" : "");
     }
@@ -59,6 +60,9 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
     addRadio (bankButtons, "All Banks", 2, [this] { bankFilter = -1; refreshList(); });
     for (int bank = 0; bank < Rig::numBanks; ++bank)
         addRadio (bankButtons, "Bank " + Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
+    // The built-in expansions, a bank each, under their own heading.
+    for (int bank = Rig::numBanks; bank < Rig::numBanksWithExpansions(); ++bank)
+        addRadio (bankButtons, Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
     filterButtons[0]->setToggleState (true, juce::dontSendNotification);
     bankButtons[0]->setToggleState (true, juce::dontSendNotification);
 
@@ -91,8 +95,10 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
     addAndMakeVisible (nameEditor);
     addAndMakeVisible (tagsEditor);
 
-    for (int bank = 0; bank < Rig::numBanks; ++bank)
+    for (int bank = 0; bank < Rig::numBanksWithExpansions(); ++bank)
         bankBox.addItem (Rig::bankName (bank), bank + 1);
+    for (int bank = Rig::numBanks; bank < Rig::numBanksWithExpansions(); ++bank)
+        bankBox.setItemEnabled (bank + 1, false);   // shown for an expansion's presets; nothing can be filed there
     for (int number = 1; number <= Rig::maxNumber; ++number)
         numberBox.addItem (juce::String (number).paddedLeft ('0', 3), number);
     for (auto* box : { &bankBox, &numberBox })
@@ -397,6 +403,8 @@ void RigBrowser::paint (juce::Graphics& g)
     g.drawText ("PRESET BROWSER", sidebarArea.reduced (12, 8).withHeight (16), juce::Justification::centredLeft, false);
     if (bankButtons.size() > 0)
         g.drawText ("BANKS", bankButtons[0]->getBounds().translated (0, -22).withHeight (16), juce::Justification::centredLeft, false);
+    if (bankButtons.size() > Rig::numBanks + 1)
+        g.drawText ("EXPANSIONS", bankButtons[Rig::numBanks + 1]->getBounds().translated (0, -22).withHeight (16), juce::Justification::centredLeft, false);
 }
 
 void RigBrowser::resized()
@@ -411,9 +419,11 @@ void RigBrowser::resized()
         sidebar.removeFromTop (4);
     }
     sidebar.removeFromTop (28);
-    for (auto* button : bankButtons)
+    for (int index = 0; index < bankButtons.size(); ++index)
     {
-        button->setBounds (sidebar.removeFromTop (28));
+        if (index == Rig::numBanks + 1)
+            sidebar.removeFromTop (24);   // room for EXPANSIONS
+        bankButtons[index]->setBounds (sidebar.removeFromTop (28));
         sidebar.removeFromTop (4);
     }
 

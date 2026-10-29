@@ -19,7 +19,9 @@
 // them alone. Each preset has its own LEVEL for balancing presets instead.
 struct Rig
 {
-    static constexpr int numBanks = 5;          // A to E
+    static constexpr int numBanks = 5;          // A to E: the user's (and the first factory presets')
+    static int numBanksWithExpansions();        // A to E, then one bank per built-in expansion (Expansions.h)
+    static bool isExpansionBank (int bankIndex) { return bankIndex >= numBanks; }
     static constexpr int maxNumber = 99;
 
     juce::String name { "New Rig" };

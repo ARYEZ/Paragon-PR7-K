@@ -7,6 +7,7 @@
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Reverb.h"
 #include "ui/ParagonLookAndFeel.h"
+#include "ui/RigBrowser.h"
 
 // Hidden test (the "[.]" tag): renders the editor to a PNG for reviewing the
 // UI without a DAW. Run with:
@@ -14,6 +15,7 @@
 // Options (environment variables):
 //   PARAGON_SNAPSHOT_WIDTH=n         the window's width (default 1600; 2560 for a sharp 2x look)
 //   PARAGON_SNAPSHOT_PAGE=presets    the preset browser (with two example user presets), or =settings
+//   PARAGON_SNAPSHOT_BANK=n          with PAGE=presets: showing bank n (5: the first expansion), its first preset loaded
 //   PARAGON_SNAPSHOT_PRESET=name     that factory preset loaded
 //   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
 //   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
@@ -44,6 +46,13 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         processor.loadRig (*processor.getRigLibrary().findFactory ("Warm Pad"));
         processor.saveCurrentRigAs ("My Pad");
         processor.saveCurrentRigAs ("Night Drive Lead");
+        if (const auto bank = env ("PARAGON_SNAPSHOT_BANK"); bank.isNotEmpty())
+            for (const auto& entry : processor.getRigLibrary().getEntries())
+                if (entry.rig.bank == bank.getIntValue())
+                {
+                    processor.loadRig (entry);
+                    break;
+                }
     }
 
     if (const auto name = env ("PARAGON_SNAPSHOT_PRESET"); name.isNotEmpty())
@@ -496,7 +505,25 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         }
     }
     if (page == "presets")
+    {
         view->showPage (MainView::Page::presets);
+        // BANK=n: the browser showing bank n (5 is the first expansion, NEON RAIN), its first preset loaded.
+        if (const auto bank = env ("PARAGON_SNAPSHOT_BANK"); bank.isNotEmpty())
+        {
+            std::function<RigBrowser* (juce::Component&)> findBrowser = [&] (juce::Component& c) -> RigBrowser*
+            {
+                if (auto* b = dynamic_cast<RigBrowser*> (&c))
+                    return b;
+                for (auto* child : c.getChildren())
+                    if (auto* found = findBrowser (*child))
+                        return found;
+                return nullptr;
+            };
+            auto* browser = findBrowser (*view);
+            REQUIRE (browser != nullptr);
+            browser->showFilter (0, bank.getIntValue());
+        }
+    }
     else if (page == "settings")
         view->showPage (MainView::Page::settings);
 

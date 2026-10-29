@@ -31,6 +31,7 @@ add_executable(ParagonX1Tests
     ParameterIdTests.cpp
     ProcessorTests.cpp
     RigTests.cpp
+    ExpansionTests.cpp
     UiTests.cpp
     UndoTests.cpp
     EffectTests.cpp
