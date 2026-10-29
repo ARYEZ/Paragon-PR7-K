@@ -220,9 +220,11 @@ namespace synth
         // relative to the key played (a pattern made in a major scale plays in D
         // major on a D), kept to the SCALE (other notes get no chance).
         inline const juce::StringArray scaleNames { "Chromatic", "Major", "Minor", "Harmonic Minor", "Melodic Minor", "Dorian", "Phrygian",
-                                                    "Lydian", "Mixolydian", "Locrian", "Major Pentatonic", "Minor Pentatonic", "Blues", "Whole Tone" };
-        inline constexpr std::array<int, 14> scaleMasks {   // bit per semitone above the root
-            0xfff, 0xab5, 0x5ad, 0x9ad, 0xaad, 0x6ad, 0x5ab, 0xad5, 0x6b5, 0x56b, 0x295, 0x4a9, 0x4e9, 0x555 };
+                                                    "Lydian", "Mixolydian", "Locrian", "Major Pentatonic", "Minor Pentatonic", "Blues", "Whole Tone",
+                                                    "Phrygian Dominant", "Double Harmonic" };   // 0.28.0: appended (SANDSEA)
+        inline constexpr std::array<int, 16> scaleMasks {   // bit per semitone above the root
+            0xfff, 0xab5, 0x5ad, 0x9ad, 0xaad, 0x6ad, 0x5ab, 0xad5, 0x6b5, 0x56b, 0x295, 0x4a9, 0x4e9, 0x555,
+            0x5b3, 0x9b3 };   // Phrygian dominant 0 1 4 5 7 8 10, double harmonic 0 1 4 5 7 8 11
         inline bool inScale (int scale, int semitone) noexcept
         {
             return (scaleMasks[(size_t) juce::jlimit (0, (int) scaleMasks.size() - 1, scale)] >> (((semitone % 12) + 12) % 12)) & 1;

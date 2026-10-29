@@ -9,6 +9,7 @@
 #include "PluginProcessor.h"
 #include "rigs/Expansions.h"
 #include "rigs/FactoryRigs.h"
+#include "dsp/synth/Arpeggiator.h"
 
 #include <chrono>
 
@@ -288,7 +289,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         // NEON RAIN at 85 BPM in A minor; HELLFORGE at 140 in D, heavier and rhythmic.
         const auto hell = rig.bank == Rig::numBanks + 1;
         const auto star = rig.bank == Rig::numBanks + 2;   // STARCOURT: 100 BPM in C minor
-        p.song.bpm = hell ? 140.0 : star ? 100.0 : 85.0;
+        const auto sand = rig.bank == Rig::numBanks + 3;   // SANDSEA: 90 BPM in D, Phrygian dominant
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -321,7 +323,62 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             for (const auto& n : notes)
                 chord (e, at (n.on), at (n.on + n.len), { n.note }, velocity);
         };
-        if (star && type == "Lead")
+        if (sand && type == "Lead")
+        {
+            // D Phrygian dominant: D Eb F# G A Bb C.
+            line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
+                    { 8, 1, 69 }, { 9, 1, 67 }, { 10, 1, 66 }, { 11, 1, 63 }, { 12, 4, 62 } }, 100);
+            if (rig.name == "Desert Voice")
+                wheel (6.0, 11.0, 110);
+            length = 19.0 * beat;
+        }
+        else if (sand && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 38, 45, 50, 54 }, 95);   // D, a low fifth and the major third
+            chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 95);  // E flat: the flat second
+            length = 22.0 * beat;
+        }
+        else if (sand && type == "Bass")
+        {
+            if (rig.name == "Quake Pulse")
+            {
+                chord (e, at (0), at (3), { 26 }, 120);
+                chord (e, at (8), at (11), { 27 }, 115);
+            }
+            else if (rig.name == "Iron Ritual")
+            {
+                const int notes[] = { 38, 38, 39, 38, 42, 38, 39, 38 };
+                for (int bar = 0; bar < 4; ++bar)
+                    for (int k = 0; k < 8; ++k)
+                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.35), { notes[k] }, k % 2 == 0 ? 110 : 90);
+            }
+            else
+                line ({ { 0, 6, 26 }, { 6, 2, 27 }, { 8, 6, 26 }, { 14, 2, 30 } }, 105);
+            length = 18.0 * beat;
+        }
+        else if (sand && type == "Keys")
+        {
+            if (rig.name == "Ritual Gong")
+            {
+                chord (e, at (0), at (3), { 38 }, 115);
+                chord (e, at (8), at (11), { 33 }, 110);
+            }
+            else
+                line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 66 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 0.5, 70 }, { 4.5, 0.5, 69 },
+                        { 5, 1, 67 }, { 6, 2, 66 }, { 8, 1, 63 }, { 9, 1, 62 }, { 10, 3, 62 } }, rig.name == "Copper Bells" ? 85 : 100);
+            length = 19.0 * beat;
+        }
+        else if (sand)
+        {
+            if (rig.name == "Sand Ripple")
+                chord (e, at (0), at (15.9), { 62 }, 100);
+            else if (rig.name == "War Drums")
+                chord (e, at (0), at (15.9), { 50, 57 }, 105);
+            else
+                chord (e, at (0), at (15.9), { 50, 54, 57 }, 100);
+            length = 19.0 * beat;
+        }
+        else if (star && type == "Lead")
         {
             line ({ { 0, 1, 60 }, { 1, 1, 63 }, { 2, 2, 67 }, { 4, 1, 65 }, { 5, 1, 63 }, { 6, 2, 62 }, { 8, 1, 60 }, { 9, 1, 63 },
                     { 10, 1, 67 }, { 11, 1, 70 }, { 12, 4, 72 } }, 100);
@@ -552,4 +609,21 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         REQUIRE (writer != nullptr);
         writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples());
     }
+}
+
+TEST_CASE ("The arp randomizer's desert scales: Phrygian dominant and double harmonic", "[arp][expansions]")
+{
+    const auto notesOf = [] (const char* name)
+    {
+        const auto scale = synth::arp::scaleNames.indexOf (name);
+        REQUIRE (scale >= 0);
+        std::vector<int> notes;
+        for (int n = 0; n < 12; ++n)
+            if (synth::arp::inScale (scale, n))
+                notes.push_back (n);
+        return notes;
+    };
+    CHECK (notesOf ("Phrygian Dominant") == std::vector<int> { 0, 1, 4, 5, 7, 8, 10 });
+    CHECK (notesOf ("Double Harmonic") == std::vector<int> { 0, 1, 4, 5, 7, 8, 11 });
+    CHECK (synth::arp::scaleNames.indexOf ("Whole Tone") == 13);   // the old ones keep their places
 }
