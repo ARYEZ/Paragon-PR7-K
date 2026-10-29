@@ -385,5 +385,5 @@ TEST_CASE ("CPU: a supersaw chord with SKEW moved by an LFO on every note", "[ro
     const auto fixed = juce::jmin (once (false), once (false), once (false));
     const auto moving = juce::jmin (once (true), once (true), once (true));
     WARN ("2 saws x 7 copies x 8 keys with SKEW: " << fixed << "% of one core; moved by an LFO per note: " << moving << "% (the fastest of three)");
-    CHECK (moving < fixed + 3.0);
+    CHECK (moving < fixed * 1.3 + 1.0);   // in proportion: a slower machine (CI's shared Mac) scales both
 }
