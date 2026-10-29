@@ -499,8 +499,12 @@ void ParagonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
     g.setColour (ParagonColours::panelEdge);
     g.strokePath (track, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
+    // A two-way knob (its range runs from -x to +x: pan, an envelope's amount,
+    // a curve) lights from the top, its centre, so its value reads at a glance.
+    const auto twoWay = slider.getMinimum() < 0.0 && juce::approximatelyEqual (-slider.getMinimum(), slider.getMaximum());
+    const auto from = twoWay ? startAngle + (endAngle - startAngle) * (float) slider.valueToProportionOfLength (0.0) : startAngle;
     juce::Path value;
-    value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, startAngle, angle, true);
+    value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, juce::jmin (from, angle), juce::jmax (from, angle), true);
     g.setColour (ParagonColours::accent);
     g.strokePath (value, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
@@ -547,6 +551,18 @@ void ParagonLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int 
         drawPianoKey (g, cap, 3.0f, 2.0f, slider.isMouseButtonDown(), slider.isMouseOver());
         g.setColour (colour);
         g.fillRect (cap.reduced (5.0f, 0.0f).withSizeKeepingCentre (cap.getWidth() - 10.0f, 1.6f).translated (0.0f, -0.5f));
+        return;
+    }
+
+    if (style == juce::Slider::LinearBar && slider.getProperties()[bipolarBarProperty])
+    {
+        // Lit from the middle (0) to the value, either way.
+        const auto area = juce::Rectangle<float> ((float) x, (float) y, (float) width, (float) height);
+        const auto middle = area.getX() + area.getWidth() * (float) slider.valueToProportionOfLength (0.0);
+        g.setColour (slider.findColour (juce::Slider::trackColourId));
+        g.fillRect (juce::Rectangle<float>::leftTopRightBottom (juce::jmin (middle, sliderPos), area.getY(), juce::jmax (middle, sliderPos), area.getBottom()));
+        g.setColour (ParagonColours::panelEdge.brighter (0.3f));
+        g.drawVerticalLine (juce::roundToInt (middle), area.getY(), area.getBottom());
         return;
     }
 

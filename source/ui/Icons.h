@@ -20,7 +20,13 @@ namespace Icons
                       // Version 0.24
                       glitch,
                       // Version 0.27
-                      pitch };
+                      pitch,
+                      // PR7-K 0.15: the arpeggiator
+                      arpeggio,
+                      // PR7-K 0.17: the rack (FX)
+                      rack,
+                      // PR7-K 0.21: the drums
+                      drums };
 
     juce::Path get (Type type);
 
@@ -28,3 +34,23 @@ namespace Icons
     void draw (juce::Graphics&, Type type, juce::Rectangle<float> area, juce::Colour colour,
                float strokeWidth = 1.6f, bool glow = false);
 }
+
+// A button with a line icon and optional text beside it, as on the header
+// (SYNTH, PRESETS, undo, redo). When it's a toggle and on, it's drawn in the accent colour.
+class IconButton final : public juce::Button
+{
+public:
+    IconButton (const juce::String& name, Icons::Type icon, const juce::String& text = {},
+                juce::Justification justification = juce::Justification::centred);
+
+    // Draws a box round the button (on the header the tabs have none).
+    void setOutlined (bool shouldBeOutlined) { outlined = shouldBeOutlined; repaint(); }
+
+    void paintButton (juce::Graphics&, bool highlighted, bool down) override;
+
+private:
+    Icons::Type icon;
+    juce::String text;
+    juce::Justification justification;
+    bool outlined = false;
+};

@@ -1,13 +1,10 @@
+// The window: its layout, the oscillator tabs, the pages and the on-screen keyboard.
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "Parameters.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
-#include "ui/EqPage.h"
-#include "ui/Finish.h"
-#include "ui/PerformanceControls.h"
-#include "ui/OraclePage.h"
 
 using Catch::Matchers::WithinAbs;
 
@@ -31,6 +28,9 @@ namespace
         {
             if (! child->isVisible() || dynamic_cast<juce::TooltipWindow*> (child) != nullptr)
                 continue;
+            // A list's rows are placed by JUCE beyond its visible part, for scrolling.
+            if (dynamic_cast<juce::ListBox*> (&parent) != nullptr)
+                continue;
 
             const auto name = path + "/" + (child->getName().isNotEmpty() ? child->getName()
                                                                           : juce::String (typeid (*child).name()));
@@ -41,21 +41,43 @@ namespace
         }
     }
 
-    std::vector<float> playThrough (ParagonX1AudioProcessor& processor, const std::vector<float>& input)
+    float value (ParagonX1AudioProcessor& processor, const juce::String& id)
     {
-        juce::AudioBuffer<float> buffer (2, (int) input.size());
-        buffer.clear();
-        std::copy (input.begin(), input.end(), buffer.getWritePointer (0));
-        juce::MidiBuffer midi;
-        processor.processBlock (buffer, midi);
-        return { buffer.getReadPointer (1), buffer.getReadPointer (1) + buffer.getNumSamples() };
+        return processor.getParameters().getRawParameterValue (id)->load();
     }
 
-    void set (ParagonX1AudioProcessor& processor, const char* id, float plainValue)
+    // The control showing `id` in the window, or nullptr.
+    ParamControl* controlFor (juce::Component& root, const juce::String& id)
     {
-        auto* parameter = processor.getParameters().getParameter (id);
-        parameter->setValueNotifyingHost (parameter->convertTo0to1 (plainValue));
+        std::vector<ParamControl*> controls;
+        findAll (root, controls);
+        for (auto* control : controls)
+            if (control->getParameterId() == id)
+                return control;
+        return nullptr;
     }
+
+    template <typename Type>
+    Type* inside (juce::Component& parent)
+    {
+        std::vector<Type*> found;
+        findAll (parent, found);
+        return found.empty() ? nullptr : found.front();
+    }
+
+    struct Window
+    {
+        Window()
+        {
+            editor.reset (processor.createEditor());
+            editor->setSize (1600, 900);
+            view = dynamic_cast<MainView*> (editor->getChildComponent (0));
+            REQUIRE (view != nullptr);
+        }
+        ParagonX1AudioProcessor processor;
+        std::unique_ptr<juce::AudioProcessorEditor> editor;
+        MainView* view = nullptr;
+    };
 }
 
 TEST_CASE ("The window lays out cleanly at every size", "[ui]")
@@ -94,265 +116,397 @@ TEST_CASE ("The window opens as big as fits above the taskbar, up to 1824 x 1026
     CHECK (Editor::openingSize ({ 800, 600 }).x == 960);   // never below the smallest size
 }
 
-TEST_CASE ("PEARL BLACK recolours the unit's printing, and every open window follows", "[ui]")
+TEST_CASE ("The oscillator tabs point one set of controls at the chosen oscillator", "[ui]")
 {
-    Finish::set (Finish::Type::pearlWhite, false);
-    ParagonX1AudioProcessor processor;
-    std::unique_ptr<juce::AudioProcessorEditor> first (processor.createEditor()), second (processor.createEditor());
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    CHECK (oscillators.getSelected() == 0);
+    REQUIRE (controlFor (*w.view, ParamIDs::osc (0, "Volume")) != nullptr);
 
-    // RIG LEVEL is printed on the unit: ink on white, light on black.
-    const auto rigLevelColour = [] (juce::Component& editor)
-    {
-        std::vector<juce::Label*> labels;
-        findAll (editor, labels);
-        for (auto* label : labels)
-            if (label->getText() == "RIG LEVEL")
-                return label->findColour (juce::Label::textColourId);
-        return juce::Colour();
-    };
-    CHECK (rigLevelColour (*first) == ParagonColours::ink);
+    oscillators.selectOscillator (2);
+    CHECK (controlFor (*w.view, ParamIDs::osc (0, "Volume")) == nullptr);
+    auto* volume = controlFor (*w.view, ParamIDs::osc (2, "Volume"));
+    REQUIRE (volume != nullptr);
 
-    // Chosen in one window (here, without saving the preference), it shows in both.
-    Finish::set (Finish::Type::pearlBlack, false);
-    CHECK (Finish::isBlack());
-    CHECK (rigLevelColour (*first) == Finish::ink());
-    CHECK (rigLevelColour (*second) == Finish::ink());
-    CHECK (Finish::ink().getPerceivedBrightness() > 0.8f);
+    // Turning OSC 3's VOLUME knob turns OSC 3's volume, and leaves OSC 1's alone.
+    auto* knob = inside<juce::Slider> (*volume);
+    REQUIRE (knob != nullptr);
+    knob->setValue (0.5, juce::sendNotificationSync);
+    CHECK_THAT (value (w.processor, ParamIDs::osc (2, "Volume")), WithinAbs (0.5, 1.0e-3));
+    CHECK_THAT (value (w.processor, ParamIDs::osc (0, "Volume")), WithinAbs (1.0, 1.0e-6));
 
-    // Pearl white with neon keys: the white unit's ink, the black unit's keys.
-    Finish::set (Finish::Type::pearlWhiteNeon, false);
-    CHECK (! Finish::isBlack());
-    CHECK (Finish::neonKeys());
-    CHECK (rigLevelColour (*first) == ParagonColours::ink);
-
-    // The key and knob drawing still works in every finish.
-    for (const auto type : { Finish::Type::pearlBlack, Finish::Type::pearlWhiteNeon, Finish::Type::pearlWhite })
-    {
-        Finish::set (type, false);
-        first->setSize (1280, 720);
-        const auto image = first->createComponentSnapshot (first->getLocalBounds());
-        CHECK (image.isValid());
-    }
-    CHECK (rigLevelColour (*first) == ParagonColours::ink);
+    // Every setting of the tab is re-pointed, not just some. (ON is the tab's
+    // own LED; TABLE is the wavetable chooser, which follows the tab too: its
+    // own test is below. The SHAPER switches are on the shapers' pages, one per oscillator.)
+    for (const auto* what : ParamIDs::oscSettings)
+        if (juce::String (what) != "On" && juce::String (what) != "Table" && ! juce::String (what).startsWith ("Shp"))
+            CHECK (controlFor (*w.view, ParamIDs::osc (2, what)) != nullptr);
 }
 
-TEST_CASE ("The chain and the stomps pick what the dock shows; the graphic EQ is the default", "[ui]")
+TEST_CASE ("Each oscillator tab's LED switches that oscillator on and off", "[ui]")
 {
-    ParagonX1AudioProcessor processor;
-    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
-
-    std::vector<EqOverview*> eqPanels;
-    findAll (*editor, eqPanels);
-    REQUIRE (eqPanels.size() == 1);
-    CHECK (eqPanels[0]->isVisible());
-
-    // The chain has just the EQ (PR7-B's effects went in 0.3.0).
-    std::vector<SignalChain*> chains;
-    findAll (*editor, chains);
-    REQUIRE (chains.size() == 1);
-    chains[0]->onSelect (0);
-    CHECK (eqPanels[0]->isVisible());
-
-    // The LIMITER's name shows its knobs; the EQ button goes back.
-    std::vector<Footswitch*> footswitches;
-    findAll (*editor, footswitches);
-    REQUIRE (footswitches.size() == 14);   // the seven stomps first, then the rig row
-    footswitches[6]->onSelect();
-    CHECK_FALSE (eqPanels[0]->isVisible());
-
-    std::vector<juce::TextButton*> buttons;
-    findAll (*editor, buttons);
-    const auto back = std::find_if (buttons.begin(), buttons.end(), [] (auto* b) { return b->getButtonText() == "EQ"; });
-    REQUIRE (back != buttons.end());
-    CHECK ((*back)->isVisible());
-    (*back)->onClick();
-    CHECK (eqPanels[0]->isVisible());
-    CHECK_FALSE ((*back)->isVisible());
+    Window w;
+    std::vector<juce::ToggleButton*> leds;
+    findAll (w.view->getOscillatorPanel(), leds);
+    // The first eight toggles in the panel are the tabs' LEDs, in order.
+    REQUIRE (leds.size() >= (size_t) ParamIDs::numOscillators);
+    CHECK (leds[0]->getToggleState());   // OSC 1 is on in a new sound
+    CHECK_FALSE (leds[4]->getToggleState());
+    leds[4]->setToggleState (true, juce::sendNotificationSync);
+    CHECK (value (w.processor, ParamIDs::osc (4, "On")) > 0.5f);
 }
 
-TEST_CASE ("Seven stomps in a row over the rig row, labelled from the plan", "[ui]")
+TEST_CASE ("PRESETS and SETTINGS cover the synth panels; the keyboard stays", "[ui]")
 {
-    ParagonX1AudioProcessor processor;
-    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
-    editor->setSize (1600, 900);
+    Window w;
+    auto* keyboard = inside<juce::MidiKeyboardComponent> (*w.view);
+    REQUIRE (keyboard != nullptr);
+    CHECK (w.view->getOscillatorPanel().isVisible());
 
-    // Laid out as a DigiTech GSP21's foot controller: the seven stomps in a
-    // row, and under them five rigs, BANK down and BANK up.
-    std::vector<Footswitch*> switches;
-    findAll (*editor, switches);
-    REQUIRE (switches.size() == 14);
-    const std::vector<Footswitch*> stomps (switches.begin(), switches.begin() + 7);
+    w.view->showPage (MainView::Page::presets);
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    CHECK (keyboard->isVisible());
+    checkLayout (*w.view, "presets");
 
-    const juce::StringArray names { "ORACLE", "COMP", "INSERTS", "EQ", "DOMINION", "AUTO EQ", "LIMITER" };
-    for (size_t i = 0; i < stomps.size(); ++i)
-        CHECK (stomps[i]->getTitle() == names[(int) i] + " footswitch");
+    w.view->showPage (MainView::Page::settings);
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    checkLayout (*w.view, "settings");
 
-    const auto bounds = [&] (size_t i) { return switches[i]->getBoundsInParent(); };
-    for (size_t i = 0; i < 7; ++i)
-    {
-        INFO ("Column " << i + 1);
-        CHECK (bounds (i).getY() == bounds (0).getY());              // the stomps in one row
-        CHECK (bounds (i + 7).getY() == bounds (7).getY());          // the rig row under it
-        CHECK (bounds (i + 7).getY() >= bounds (i).getBottom());     // not overlapping
-        CHECK (bounds (i + 7).getX() == bounds (i).getX());          // in columns
-        if (i > 0)
-            CHECK (bounds (i).getX() >= bounds (i - 1).getRight());  // side by side, not overlapping
-    }
-
-    // ORACLE's name opens its own page, over the pedal; BACK TO PEDAL closes it.
-    std::vector<OraclePage*> oraclePages;
-    findAll (*editor, oraclePages);
-    REQUIRE (oraclePages.size() == 1);
-    CHECK_FALSE (oraclePages[0]->isVisible());
-    stomps[0]->onSelect();
-    CHECK (oraclePages[0]->isVisible());
-    REQUIRE (oraclePages[0]->onClose);
-    oraclePages[0]->onClose();
-    CHECK_FALSE (oraclePages[0]->isVisible());
-
-    // ORACLE, COMP, EQ and LIMITER switch what PR7-E already has.
-    const auto isOn = [&] (const char* id) { return processor.getParameters().getRawParameterValue (id)->load() > 0.5f; };
-    REQUIRE_FALSE (isOn (ParamIDs::tunerOn));
-    stomps[0]->toggle();
-    CHECK (isOn (ParamIDs::tunerOn));
-    stomps[3]->toggle();
-    CHECK (isOn (ParamIDs::eqOn));
-    stomps[6]->toggle();
-    CHECK (isOn (ParamIDs::limitOn));
-    stomps[1]->toggle();
-    CHECK (isOn (ParamIDs::compOn));
-    stomps[4]->toggle();
-    CHECK (isOn (ParamIDs::domOn));
-
-    // The rest aren't built yet: their pads change nothing and their names open nothing.
-    for (const auto i : { 2, 5 })
-    {
-        INFO (names[i]);
-        auto& stomp = *stomps[(size_t) i];
-        CHECK (stomp.isPlaceholder());
-        CHECK_FALSE (stomp.onSelect);
-        const auto before = processor.captureRig().parameters;
-        stomp.toggle();
-        CHECK_FALSE (stomp.isAnyOn());
-        CHECK (processor.captureRig().parameters == before);
-    }
+    w.view->showPage (MainView::Page::synth);
+    CHECK (w.view->getOscillatorPanel().isVisible());
 }
 
-TEST_CASE ("BYPASS passes the clean guitar, on both channels", "[ui][bypass]")
+TEST_CASE ("The on-screen keyboard plays the synth", "[ui]")
 {
-    ParagonX1AudioProcessor processor;
-    processor.setPlayConfigDetails (1, 2, 48000.0, 512);
-    processor.prepareToPlay (48000.0, 512);
+    Window w;
+    w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    w.processor.prepareToPlay (48000.0, 256);
 
-    // Make the processed sound very different from the input...
-    set (processor, ParamIDs::eqOn, 1.0f);
-    set (processor, ParamIDs::eqOutput, 12.0f);
-    set (processor, ParamIDs::inputGain, 12.0f);
-    set (processor, ParamIDs::bypass, 1.0f);
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    w.processor.processBlock (buffer, midi);
+    CHECK (buffer.getMagnitude (0, 256) == 0.0f);   // silence until a key goes down
 
-    std::vector<float> input (512);
-    for (size_t i = 0; i < input.size(); ++i)
-        input[i] = 0.3f * std::sin (0.05f * (float) i);
-
+    w.processor.getKeyboardState().noteOn (1, 60, 0.9f);   // as clicking a key does
     for (int block = 0; block < 4; ++block)
-        playThrough (processor, input);   // let the 20 ms bypass fade finish (one block is ~11 ms)
-    const auto output = playThrough (processor, input);
-    for (size_t i = 0; i < input.size(); ++i)
-        REQUIRE_THAT (output[i], WithinAbs (input[i], 1.0e-6));
+        w.processor.processBlock (buffer, midi);
+    CHECK (buffer.getMagnitude (0, 256) > 0.05f);
+    CHECK (w.processor.getActiveVoices() == 1);
 
-    CHECK (processor.getBypassParameter() == processor.getParameters().getParameter (ParamIDs::bypass));
+    w.processor.getKeyboardState().noteOff (1, 60, 0.0f);
+    for (int block = 0; block < 100; ++block)
+        w.processor.processBlock (buffer, midi);
+    CHECK (buffer.getMagnitude (0, 256) == 0.0f);
+    CHECK (w.processor.getActiveVoices() == 0);
 }
 
-TEST_CASE ("No latency: BYPASS and the processed sound line up with the input", "[ui][bypass]")
+TEST_CASE ("The oscillator's VOICES page: unison, vibrato and the chorder, laid out cleanly", "[ui]")
 {
-    // Nothing in PR7-E's chain looks ahead (the NAM amp, which did, went with
-    // PR7-B's bass blocks), so the DAW needn't compensate and bypassing
-    // can't shift the sound in time.
-    ParagonX1AudioProcessor processor;
-    processor.setPlayConfigDetails (1, 2, 44100.0, 512);
-    processor.prepareToPlay (44100.0, 512);
-    CHECK (processor.getLatencySamples() == 0);
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    oscillators.selectOscillator (1);
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (1, "UniMix"))->isVisible());   // on the WAVE page, hidden
 
-    std::vector<float> click (512, 0.0f);
-    click[10] = 0.5f;
-    for (const auto bypassed : { false, true })
+    oscillators.showPage (OscillatorPanel::Page::voices);
+    for (const auto* what : { "UniVoices", "UniMix", "UniDetune", "UniSpread", "UniOctaves", "VibMode", "VibRate", "VibAmount", "Ch1On", "Ch4Vol" })
     {
-        INFO ("Bypassed: " << (bypassed ? "yes" : "no"));
-        set (processor, ParamIDs::bypass, bypassed ? 1.0f : 0.0f);
-        for (int block = 0; block < 4; ++block)
-            playThrough (processor, std::vector<float> (512, 0.0f));   // let the bypass fade finish
-        const auto output = playThrough (processor, click);
-        CHECK_THAT (output[10], WithinAbs (0.5, 1.0e-6));
-        CHECK_THAT (output[11], WithinAbs (0.0, 1.0e-6));
+        INFO (what);
+        auto* control = controlFor (*w.view, ParamIDs::osc (1, what));
+        REQUIRE (control != nullptr);
+        CHECK (control->isVisible());
     }
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (1, "Transpose"))->isVisible());
+    checkLayout (*w.view, "voices");
+
+    // Turning MIX on this page turns oscillator 2's unison up.
+    auto* mix = inside<juce::Slider> (*controlFor (*w.view, ParamIDs::osc (1, "UniMix")));
+    REQUIRE (mix != nullptr);
+    mix->setValue (0.7, juce::sendNotificationSync);
+    CHECK_THAT (value (w.processor, ParamIDs::osc (1, "UniMix")), WithinAbs (0.7, 1.0e-3));
+
+    oscillators.showPage (OscillatorPanel::Page::wave);
+    CHECK (controlFor (*w.view, ParamIDs::osc (1, "Transpose"))->isVisible());
 }
 
-TEST_CASE ("BYPASS is global: rigs don't change it and it doesn't mark them modified", "[ui][bypass]")
+TEST_CASE ("WAVETABLE: the oscillator shows TABLE, INDEX, MODE and FRAMES in place of WIDTH, without overlaps", "[ui][wavetable]")
 {
-    ParagonX1AudioProcessor processor;
-    const auto folder = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ParagonX1UiTests").getChildFile (juce::Uuid().toString());
-    processor.useRigFolder (folder);
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    oscillators.selectOscillator (1);
+    CHECK (controlFor (*w.view, ParamIDs::osc (1, "Width"))->isVisible());
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (1, "WtIndex"))->isVisible());
+    CHECK_FALSE (oscillators.getWavetableChooser().isVisible());
 
-    processor.loadRig (*processor.getRigLibrary().findFactory ("Init"));
-    set (processor, ParamIDs::eqAutoGain, 1.0f);
-    REQUIRE (processor.saveCurrentRigAs ("Reverb Rig"));
-    const auto reverbRig = processor.getCurrentRig().file;
-    processor.loadRig (*processor.getRigLibrary().findFactory ("Init"));
-    set (processor, ParamIDs::bypass, 1.0f);
-    CHECK_FALSE (processor.isRigModified());
+    auto* wave = w.processor.getParameters().getParameter (ParamIDs::osc (1, "Wave"));
+    wave->setValueNotifyingHost (wave->convertTo0to1 ((float) synth::OscWave::wavetable));
+    oscillators.selectOscillator (1);   // as the panel's timer would see it
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (1, "Width"))->isVisible());
+    for (const auto* what : { "WtIndex", "WtMode", "WtFrames", "Transpose", "Volume", "Voices" })
+    {
+        INFO (what);
+        CHECK (controlFor (*w.view, ParamIDs::osc (1, what))->isVisible());
+    }
+    REQUIRE (oscillators.getWavetableChooser().isVisible());
+    checkLayout (*w.view, "wavetable");
 
-    processor.loadRig (*processor.getRigLibrary().find (reverbRig));
-    CHECK (processor.getParameters().getRawParameterValue (ParamIDs::eqAutoGain)->load() > 0.5f);   // the rig did load
-    CHECK (processor.getParameters().getRawParameterValue (ParamIDs::bypass)->load() > 0.5f);
-    folder.deleteRecursively();
+    // Nothing on the panel overlaps anything else.
+    std::vector<juce::Component*> shown;
+    for (auto* child : oscillators.getChildren())
+        if (child->isVisible() && (dynamic_cast<ParamControl*> (child) != nullptr || child == &oscillators.getWavetableChooser()))
+            shown.push_back (child);
+    for (size_t i = 0; i < shown.size(); ++i)
+        for (size_t j = i + 1; j < shown.size(); ++j)
+        {
+            INFO (shown[i]->getBounds().toString() << " and " << shown[j]->getBounds().toString());
+            CHECK_FALSE (shown[i]->getBounds().intersects (shown[j]->getBounds()));
+        }
+
+    // Choosing a factory table from the TABLE menu sets oscillator 2's.
+    auto* box = inside<juce::ComboBox> (oscillators.getWavetableChooser());
+    REQUIRE (box != nullptr);
+    box->setSelectedId (synth::factoryTables::names.indexOf ("Vowels") + 1, juce::sendNotificationSync);
+    CHECK (juce::roundToInt (value (w.processor, ParamIDs::osc (1, "Table"))) == synth::factoryTables::names.indexOf ("Vowels"));
+    CHECK (w.processor.getWavetable (1)->getName() == "Vowels");
+    CHECK (box->getText() == "Vowels");
 }
 
-TEST_CASE ("The rig row: five rigs of a bank, BANK down and up change the five shown, a pad loads its rig", "[ui][rigs]")
+TEST_CASE ("The oscillator's SHAPE page: SKEW, PINCH, FORMANT and CRUSH beside the wave, laid out cleanly", "[ui][shape]")
 {
-    ParagonX1AudioProcessor processor;
-    const auto folder = juce::File::createTempFile ("rigRow");
-    processor.useRigFolder (folder);
-    std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    oscillators.selectOscillator (2);
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (2, "Skew"))->isVisible());   // on the WAVE page, hidden
 
-    std::vector<Footswitch*> switches;
-    findAll (*editor, switches);
-    REQUIRE (switches.size() == 14);
-    const std::vector<Footswitch*> rigs (switches.begin() + 7, switches.begin() + 12);
-    auto& bankDown = *switches[12];
-    auto& bankUp = *switches[13];
-    CHECK (bankDown.getName() == "BANK");
-    CHECK (bankUp.getName() == "BANK");
+    oscillators.showPage (OscillatorPanel::Page::shape);
+    for (const auto* what : { "Skew", "Pinch", "Formant", "FormantMode", "Crush", "CrushMode", "Wave", "Width", "Gain" })
+    {
+        INFO (what);
+        CHECK (controlFor (*w.view, ParamIDs::osc (2, what))->isVisible());
+    }
+    for (const auto* what : { "Transpose", "Noise", "UniMix" })
+    {
+        INFO (what);
+        CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (2, what))->isVisible());
+    }
+    checkLayout (*w.view, "shape");
 
-    // The library's rigs, five to a page within each bank.
-    std::vector<const RigLibrary::Entry*> bankA;
-    for (const auto& e : processor.getRigLibrary().getEntries())
-        if (e.rig.bank == 0)
-            bankA.push_back (&e);
-    REQUIRE (bankA.size() > 5);
+    std::vector<juce::Component*> shown;
+    for (auto* child : oscillators.getChildren())
+        if (child->isVisible() && dynamic_cast<juce::Button*> (child) == nullptr)
+            shown.push_back (child);
+    for (size_t i = 0; i < shown.size(); ++i)
+        for (size_t j = i + 1; j < shown.size(); ++j)
+        {
+            INFO (shown[i]->getBounds().toString() << " and " << shown[j]->getBounds().toString());
+            CHECK_FALSE (shown[i]->getBounds().intersects (shown[j]->getBounds()));
+        }
 
-    // Starting on the page with the current rig (none yet: the first page): bank A's first five.
-    for (size_t i = 0; i < rigs.size(); ++i)
-        CHECK (rigs[i]->getName() == bankA[i]->rig.name.toUpperCase());
+    // Its knobs turn oscillator 3's.
+    auto* skew = inside<juce::Slider> (*controlFor (*w.view, ParamIDs::osc (2, "Skew")));
+    REQUIRE (skew != nullptr);
+    skew->setValue (0.4, juce::sendNotificationSync);
+    CHECK_THAT (value (w.processor, ParamIDs::osc (2, "Skew")), WithinAbs (0.4, 1.0e-3));
+    CHECK (w.processor.getSynthSettings().oscillators[2].hasBend());
+}
 
-    // A pad loads its rig and lights its LED.
-    rigs[2]->toggle();
-    CHECK (processor.getCurrentRig().name == bankA[2]->rig.name);
-    CHECK (rigs[2]->isAnyOn());
-    CHECK_FALSE (rigs[0]->isAnyOn());
+TEST_CASE ("The oscillator's FM page: SYNC, FM and AM beside the wave, laid out cleanly", "[ui][modulation]")
+{
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    oscillators.selectOscillator (4);
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (4, "FmAmount"))->isVisible());
 
-    // BANK up shows the next five without loading one; BANK down goes back.
-    bankUp.toggle();
-    CHECK (rigs[0]->getName() == bankA[5]->rig.name.toUpperCase());
-    CHECK (processor.getCurrentRig().name == bankA[2]->rig.name);
-    CHECK_FALSE (rigs[2]->isAnyOn());
-    bankDown.toggle();
-    CHECK (rigs[2]->getName() == bankA[2]->rig.name.toUpperCase());
-    CHECK (rigs[2]->isAnyOn());
+    oscillators.showPage (OscillatorPanel::Page::fm);
+    for (const auto* what : { "SyncAmount", "SyncMode", "SyncEnv", "SyncEnvTime", "SyncEnvCurve", "FmAmount", "FmSource", "AmAmount", "AmShape",
+                              "ModRate", "ModGrid", "ModLock", "Wave", "Gain" })
+    {
+        INFO (what);
+        CHECK (controlFor (*w.view, ParamIDs::osc (4, what))->isVisible());
+    }
+    for (const auto* what : { "Skew", "Transpose", "UniMix" })
+    {
+        INFO (what);
+        CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (4, what))->isVisible());
+    }
+    checkLayout (*w.view, "fm");
 
-    // A page starts at each ten: bank A's genre rigs (A11 on) begin one of their own.
-    bankUp.toggle();
-    bankUp.toggle();
-    CHECK (rigs[0]->getName() == "MODERN METAL VOCAL");
+    std::vector<juce::Component*> shown;
+    for (auto* child : oscillators.getChildren())
+        if (child->isVisible() && dynamic_cast<juce::Button*> (child) == nullptr)
+            shown.push_back (child);
+    for (size_t i = 0; i < shown.size(); ++i)
+        for (size_t j = i + 1; j < shown.size(); ++j)
+        {
+            INFO (shown[i]->getBounds().toString() << " and " << shown[j]->getBounds().toString());
+            CHECK_FALSE (shown[i]->getBounds().intersects (shown[j]->getBounds()));
+        }
 
-    folder.deleteRecursively();
+    auto* fm = inside<juce::Slider> (*controlFor (*w.view, ParamIDs::osc (4, "FmAmount")));
+    REQUIRE (fm != nullptr);
+    fm->setValue (0.3, juce::sendNotificationSync);
+    CHECK (w.processor.getSynthSettings().oscillators[4].hasFm());
+}
+
+TEST_CASE ("The oscillator's FFT page: the editor, its views and knobs, laid out cleanly", "[ui][fft]")
+{
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    oscillators.selectOscillator (2);
+    CHECK_FALSE (oscillators.getSpectrumEditor().isVisible());
+    oscillators.showPage (OscillatorPanel::Page::fft);
+    REQUIRE (oscillators.getSpectrumEditor().isVisible());
+    for (const auto* what : { "FftSweep", "FftFlip", "FftLp", "FftHp", "FftSlope", "FftVSpeed", "FftVStrength", "Wave", "Gain" })
+    {
+        INFO (what);
+        CHECK (controlFor (*w.view, ParamIDs::osc (2, what))->isVisible());
+    }
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (2, "Transpose"))->isVisible());
+    checkLayout (*w.view, "fft");
+
+    std::vector<juce::Component*> shown;
+    for (auto* child : oscillators.getChildren())
+        if (child->isVisible() && dynamic_cast<juce::Button*> (child) == nullptr)
+            shown.push_back (child);
+    for (size_t i = 0; i < shown.size(); ++i)
+        for (size_t j = i + 1; j < shown.size(); ++j)
+        {
+            INFO (shown[i]->getBounds().toString() << " and " << shown[j]->getBounds().toString());
+            CHECK_FALSE (shown[i]->getBounds().intersects (shown[j]->getBounds()));
+        }
+
+    // Each view's bands sit left to right and are found again where they're drawn.
+    auto& editor = oscillators.getSpectrumEditor();
+    for (const auto view : { SpectrumEditor::View::free, SpectrumEditor::View::harmonic, SpectrumEditor::View::bins })
+    {
+        editor.setView (view);
+        const auto last = view == SpectrumEditor::View::harmonic ? SpectrumEditor::harmonicColumns : synth::SpectrumEdit::bands - 1;
+        for (const auto band : { 0, 1, 7, 23, last })
+        {
+            INFO ((int) view << " band " << band);
+            CHECK (editor.bandAt (editor.xForBand (band)) == band);
+        }
+        CHECK (editor.xForBand (0) < editor.xForBand (last));
+    }
+    CHECK_THAT (editor.dbAt (editor.yForDb (-12.0f)), WithinAbs (-12.0, 0.01));
+    CHECK (SpectrumEditor::intervalName (3) == "5th");
+    CHECK (SpectrumEditor::intervalName (7) == "b7");
+}
+
+TEST_CASE ("The oscillator's DRAW page: drawing switches the oscillator to FREEFORM and changes what plays", "[ui][freeform]")
+{
+    Window w;
+    auto& oscillators = w.view->getOscillatorPanel();
+    oscillators.selectOscillator (1);
+    CHECK_FALSE (oscillators.getFreeformEditor().isVisible());
+    oscillators.showPage (OscillatorPanel::Page::draw);
+    auto& editor = oscillators.getFreeformEditor();
+    REQUIRE (editor.isVisible());
+    CHECK (controlFor (*w.view, ParamIDs::osc (1, "Wave"))->isVisible());
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::osc (1, "Transpose"))->isVisible());
+    checkLayout (*w.view, "draw");
+
+    // A stroke across the top-left quarter: those points go up, the rest stay flat.
+    const auto area = editor.getPlotArea();
+    const auto at = [&] (float x, float y) { return juce::Point<float> (area.getX() + area.getWidth() * x, area.getY() + area.getHeight() * y); };
+    const auto event = [&] (juce::Point<float> p, int clicks = 1)
+    {
+        return juce::MouseEvent (juce::Desktop::getInstance().getMainMouseSource(), p, juce::ModifierKeys::leftButtonModifier, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                 &editor, &editor, juce::Time::getCurrentTime(), p, juce::Time::getCurrentTime(), clicks, false);
+    };
+    editor.mouseDown (event (at (0.02f, 0.25f)));
+    editor.mouseDrag (event (at (0.23f, 0.25f)));
+    editor.mouseUp (event (at (0.23f, 0.25f)));
+    CHECK (juce::roundToInt (value (w.processor, ParamIDs::osc (1, "Wave"))) == (int) synth::OscWave::freeform);
+    const auto& drawing = w.processor.getDrawing (1);
+    CHECK_THAT (drawing.values[64], WithinAbs (0.5, 0.02));
+    CHECK_THAT (drawing.values[300], WithinAbs (0.0, 1.0e-6));
+    CHECK (editor.pointAt (editor.getPlotArea().getRight() + 50.0f) == synth::FreeformDrawing::points - 1);
+    CHECK_THAT (editor.valueAt (area.getCentreY()), WithinAbs (0.0, 0.01));
+}
+
+TEST_CASE ("The FILTER panel's SHP tabs: each shaper's page, its controls pointed at it, laid out cleanly", "[ui][shaper]")
+{
+    Window w;
+    auto& panel = w.view->getFilterPanel();
+    CHECK (controlFor (*w.view, ParamIDs::fltCutoff)->isVisible());
+    for (int k = 0; k < ParamIDs::numShapers; ++k)
+    {
+        INFO ("shaper " << k + 1);
+        panel.showPage (k + 1);
+        CHECK (panel.getPage() == k + 1);
+        CHECK_FALSE (controlFor (*w.view, ParamIDs::fltCutoff)->isVisible());
+        for (const auto* what : { "On", "Model", "Place", "Drive", "DriveVel", "Mix", "Output", "Eq1Gain", "Eq1Freq", "Eq1Q",
+                                  "Eq2Gain", "Eq2Freq", "Eq2Q", "EqSplit" })
+        {
+            INFO (what);
+            auto* control = controlFor (*w.view, ParamIDs::shp (k, what));
+            REQUIRE (control != nullptr);
+            CHECK (control->isVisible());
+        }
+        for (int i = 0; i < ParamIDs::numOscillators; ++i)
+            CHECK (controlFor (*w.view, ParamIDs::osc (i, ParamIDs::oscSettings[ParamIDs::oscSetting ("Shp1") + k])) != nullptr);
+        checkLayout (*w.view, "shaper");
+
+        std::vector<juce::Component*> shown;
+        for (auto* child : panel.getChildren())
+            if (child->isVisible())
+                shown.push_back (child);
+        for (size_t i = 0; i < shown.size(); ++i)
+            for (size_t j = i + 1; j < shown.size(); ++j)
+            {
+                INFO (shown[i]->getBounds().toString() << " and " << shown[j]->getBounds().toString());
+                CHECK_FALSE (shown[i]->getBounds().intersects (shown[j]->getBounds()));
+            }
+    }
+    panel.showPage (0);
+    CHECK (controlFor (*w.view, ParamIDs::fltCutoff)->isVisible());
+}
+
+TEST_CASE ("The MOD page: LFOs, macros and the matrix; adding and editing a route reaches the synth", "[ui][mod]")
+{
+    Window w;
+    w.view->showPage (MainView::Page::modulation);
+    auto& page = w.view->getModPage();
+    REQUIRE (page.isVisible());
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    checkLayout (*w.view, "mod");
+
+    // Each LFO tab points the controls at its LFO; SYNC swaps RATE for LENGTH.
+    page.getModulatorPanel().selectLfo (2);
+    CHECK (controlFor (*w.view, ParamIDs::lfo (2, "Rate"))->isVisible());
+    auto* sync = w.processor.getParameters().getParameter (ParamIDs::lfo (2, "Sync"));
+    sync->setValueNotifyingHost (sync->convertTo0to1 ((float) synth::mod::LfoSync::straight));
+    page.getModulatorPanel().selectLfo (2);
+    CHECK (controlFor (*w.view, ParamIDs::lfo (2, "Division"))->isVisible());
+    CHECK_FALSE (controlFor (*w.view, ParamIDs::lfo (2, "Rate"))->isVisible());
+    for (const auto* id : ParamIDs::macros)
+        CHECK (controlFor (*w.view, id) != nullptr);
+
+    // + ADD ROUTE adds a row (LFO 1, no destination yet: not playing).
+    auto& matrix = page.getMatrixPanel();
+    CHECK (matrix.getNumRows() == 0);
+    matrix.addRoute();
+    REQUIRE (matrix.getNumRows() == 1);
+    CHECK (w.processor.getModMatrix().routes.size() == 1);
+    CHECK (w.processor.getNumPlayingRoutes() == 0);
+
+    // A destination (as its menu would set it), a source and an amount, from the row's own controls.
+    auto edited = w.processor.getModMatrix();
+    edited.routes[0].destination = ParamIDs::fltCutoff;
+    w.processor.setModMatrix (edited);
+    auto* row = matrix.getRow (0);
+    REQUIRE (row != nullptr);
+    row->source.setSelectedId ((int) synth::mod::Source::modWheel + 1, juce::sendNotificationSync);
+    row->amount.setValue (-0.25, juce::sendNotificationSync);
+    row->mode.onClick();   // what a click runs
+    const auto& route = w.processor.getModMatrix().routes[0];
+    CHECK (route.source == "modWheel");
+    CHECK_THAT (route.amount, WithinAbs (-0.25, 1.0e-6));
+    CHECK (route.percent);
+    CHECK (w.processor.getNumPlayingRoutes() == 1);
+    checkLayout (*w.view, "mod with a route");
+
+    // X deletes it.
+    row->remove.onClick();
+    CHECK (w.processor.getModMatrix().routes.empty());
 }

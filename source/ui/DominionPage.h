@@ -112,7 +112,7 @@ private:
     Choice mode, stereo;
     Knob depth, detail, attack, release, link, focus, detailLow, detailHigh, attackLow, attackHigh, releaseLow, releaseHigh,
          maxCut, wetTrim, mix, out;
-    juce::TextButton back { "BACK TO PEDAL" };
+    juce::TextButton back { "BACK TO RACK" };
     PresetButton preset;
     juce::Label presetLabel { {}, "PRESET" };
 

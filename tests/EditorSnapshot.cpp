@@ -3,484 +3,508 @@
 #include "Parameters.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
-#include "ui/EqDisplay.h"
-#include "ui/DominionPage.h"
-#include "ui/EqPage.h"
-#include "ui/OraclePage.h"
-#include "ui/CompPage.h"
-#include "ui/Finish.h"
-#include "ui/Footswitch.h"
+#include "dsp/effects/Drive.h"
+#include "dsp/effects/LoFi.h"
+#include "dsp/effects/Reverb.h"
 #include "ui/ParagonLookAndFeel.h"
-
-namespace
-{
-    juce::Component* findById (juce::Component& parent, const juce::String& id)
-    {
-        if (parent.getComponentID() == id)
-            return &parent;
-        for (auto* child : parent.getChildren())
-            if (auto* found = findById (*child, id))
-                return found;
-        return nullptr;
-    }
-}
 
 // Hidden test (the "[.]" tag): renders the editor to a PNG for reviewing the
 // UI without a DAW. Run with:
 //   PARAGON_SNAPSHOT=editor.png ./ParagonX1Tests "[snapshot]"
-// Optionally set PARAGON_SNAPSHOT_EFFECTS=1 to switch on the tuner and the
-// EQ (the stomps that work so far). PARAGON_SNAPSHOT_PAGE=presets shows
-// the rig browser, with a couple of example user rigs, and =settings the SETTINGS page. PARAGON_SNAPSHOT_WIDTH
-// sets the window width (default 1280).
-template <typename Type>
-Type* findType (juce::Component& parent)
-{
-    if (auto* match = dynamic_cast<Type*> (&parent))
-        return match;
-    for (auto* child : parent.getChildren())
-        if (auto* found = findType<Type> (*child))
-            return found;
-    return nullptr;
-}
-
+// Options (environment variables):
+//   PARAGON_SNAPSHOT_WIDTH=n         the window's width (default 1600; 2560 for a sharp 2x look)
+//   PARAGON_SNAPSHOT_PAGE=presets    the preset browser (with two example user presets), or =settings
+//   PARAGON_SNAPSHOT_PRESET=name     that factory preset loaded
+//   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
+//   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
+//   PARAGON_SNAPSHOT_FILTERPAGE=n     the FILTER panel's SHP n tab (shaper n's page)
+//   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
+//   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
+//   PARAGON_SNAPSHOT_PAGE=drums      THE DRUMS (PARAGON_SNAPSHOT_DRUM=n: slot n chosen; PARAGON_SNAPSHOT_DRUMS=1: a beat just played, its rows lit;
+//                                    PARAGON_SNAPSHOT_DRUMSEQ=1: the SEQUENCER view, a beat playing with the song;
+//                                    PARAGON_SNAPSHOT_DRUMEDIT=1: the clap with an envelope, an anchor, GAIN and LP)
+//   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
+//   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
+    const auto env = [] (const char* name) { return juce::SystemStats::getEnvironmentVariable (name, {}); };
     const auto path = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT", "editor.png");
 
     ParagonX1AudioProcessor processor;
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
     processor.prepareToPlay (48000.0, 256);
 
-    const auto showPresets = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PAGE", {}) == "presets";
-
-    // PARAGON_SNAPSHOT_FINISH=black or =neon: the pearl black unit, or pearl
-    // white with neon keys (not saved as the preference).
-    const auto finish = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_FINISH", {});
-    Finish::set (finish == "black" ? Finish::Type::pearlBlack : finish == "neon" ? Finish::Type::pearlWhiteNeon : Finish::Type::pearlWhite, false);
     const auto rigFolder = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ParagonX1SnapshotRigs");
     rigFolder.deleteRecursively();
     processor.useRigFolder (rigFolder);
 
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_EFFECTS", {}) == "1")
-        for (const auto* id : { "tunerOn", "eqOn" })
-            processor.getParameters().getParameter (id)->setValueNotifyingHost (1.0f);
-
-    // PARAGON_SNAPSHOT_RIG=1: a saved rig loaded on the main page, as in the mockup.
-    if (showPresets || juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_RIG", {}) == "1")
+    const auto page = env ("PARAGON_SNAPSHOT_PAGE");
+    if (page == "presets")
     {
-        processor.saveCurrentRigAs ("Mix Bus");
-        processor.saveCurrentRigAs ("Vocal Check");
-        processor.loadRig (*processor.getRigLibrary().find (rigFolder.getChildFile (juce::String ("Mix Bus") + Rig::fileExtension)));
-        processor.getParameters().getParameter ("eqOutput")->setValueNotifyingHost (0.6f);   // shows the * marker
+        processor.loadRig (*processor.getRigLibrary().findFactory ("Warm Pad"));
+        processor.saveCurrentRigAs ("My Pad");
+        processor.saveCurrentRigAs ("Night Drive Lead");
     }
 
-    // PARAGON_SNAPSHOT_FACTORY=name: that factory rig loaded (and selected on the PRESETS page).
-    if (const auto factory = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_FACTORY", {}); factory.isNotEmpty())
-        if (const auto* entry = processor.getRigLibrary().findFactory (factory))
-            processor.loadRig (*entry);
-
-    // PARAGON_SNAPSHOT_TUNER=1: the tuner on, after hearing a short sung
-    // phrase (some notes sharp, some flat, some with vibrato) that ends on a
-    // held A3 4 cents sharp, and the expression pedal assigned to the wah.
-    // With PARAGON_SNAPSHOT_BLOCK=9 the TUNER panel shows its trace.
-    const auto showTuner = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_TUNER", {}) == "1";
-    if (showTuner)
+    if (const auto name = env ("PARAGON_SNAPSHOT_PRESET"); name.isNotEmpty())
     {
-        auto set = [&] (const char* id, float value)
-        {
-            auto* p = processor.getParameters().getParameter (id);
-            p->setValueNotifyingHost (p->convertTo0to1 (value));
-        };
-        set ("tunerOn", 1.0f);
-        set ("expressionTarget", 2.0f);
-        set ("expression", 0.6f);
-        set ("expressionMin", 0.2f);
-
-        struct SungNote { double hz, cents, seconds, vibratoCents; };   // hz 0: a breath
-        const SungNote phrase[] = { { 220.0, 6, 1.2, 0 }, { 0, 0, 0.25, 0 }, { 261.63, 14, 1.5, 20 }, { 0, 0, 0.2, 0 },
-                                    { 293.66, -4, 1.0, 0 }, { 329.63, 22, 0.8, 0 }, { 293.66, -8, 1.6, 25 }, { 0, 0, 0.4, 0 },
-                                    { 261.63, 10, 1.0, 0 }, { 220.0, 3, 2.0, 15 }, { 0, 0, 0.3, 0 }, { 196.0, -12, 1.2, 0 },
-                                    { 220.0, 4, 2.5, 10 } };
-        juce::AudioBuffer<float> buffer (2, 256);
-        juce::MidiBuffer midi;
-        double phase = 0.0;
-        int block = 0;
-        for (const auto& sung : phrase)
-        {
-            for (int b = 0; b < (int) (sung.seconds * 48000.0 / 256.0); ++b, ++block)
-            {
-                buffer.clear();
-                for (int i = 0; i < 256; ++i)
-                {
-                    const auto t = (double) (block * 256 + i) / 48000.0;
-                    const auto cents = sung.cents + sung.vibratoCents * std::sin (juce::MathConstants<double>::twoPi * 5.5 * t);
-                    phase += juce::MathConstants<double>::twoPi * sung.hz * std::pow (2.0, cents / 1200.0) / 48000.0;
-                    if (sung.hz > 0.0)
-                        buffer.setSample (0, i, (float) (0.25 * std::sin (phase) + 0.1 * std::sin (2.0 * phase)));
-                }
-                processor.processBlock (buffer, midi);
-                if (block % 6 == 5)
-                    processor.updateTuner();   // about 30 times a second, as its timer does
-            }
-        }
+        const auto* entry = processor.getRigLibrary().findFactory (name);
+        REQUIRE (entry != nullptr);
+        processor.loadRig (*entry);
     }
 
-    // PARAGON_SNAPSHOT_EQ=1: the EQ on with a typical mix-bus set of bands
-    // (a low cut, a mud cut, a dynamic presence lift, air, a side-only high shelf), after
-    // a few seconds of noise shaped like music (falling 3 dB an octave), so
-    // the analyser has something to show. PARAGON_SNAPSHOT_PAGE=eq opens
-    // the EQ's page; PARAGON_SNAPSHOT_EQ_BAND=n selects band n (from 1).
-    const auto showEq = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_EQ", {}) == "1";
-    juce::Random random (7);
-    double pinkState[2][3] {};
-    auto referenceTone = false;   // EQ Match's snapshot: brighter and thinner than the track
-    double lowState[2] {};
-    const auto playNoise = [&] (int blocks)
+    for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))
     {
+        const auto id = pair.upToFirstOccurrenceOf ("=", false, false).trim();
+        auto* parameter = processor.getParameters().getParameter (id);
+        INFO (id);
+        REQUIRE (parameter != nullptr);
+        parameter->setValueNotifyingHost (parameter->convertTo0to1 (pair.fromFirstOccurrenceOf ("=", false, false).getFloatValue()));
+    }
+
+    // A chord held, played for a moment so the notes are sounding.
+    if (env ("PARAGON_SNAPSHOT_NOTES") == "1")
+    {
+        for (const auto note : { 48, 55, 60, 64 })
+            processor.getKeyboardState().noteOn (1, note, 0.8f);
         juce::AudioBuffer<float> buffer (2, 256);
         juce::MidiBuffer midi;
-        for (int block = 0; block < blocks; ++block)
-        {
-            for (int ch = 0; ch < 2; ++ch)
-                for (int i = 0; i < 256; ++i)
-                {
-                    // Paul Kellet's economy pink filter on white noise.
-                    auto& b = pinkState[ch];
-                    const auto white = random.nextFloat() * 2.0 - 1.0;
-                    b[0] = 0.99765 * b[0] + white * 0.0990460;
-                    b[1] = 0.96300 * b[1] + white * 0.2965164;
-                    b[2] = 0.57000 * b[2] + white * 1.0526913;
-                    auto sample = 0.05 * (b[0] + b[1] + b[2] + white * 0.1848);
-                    if (referenceTone)
-                    {
-                        lowState[ch] += 0.03 * (sample - lowState[ch]);   // the lows (below about 230 Hz)...
-                        sample = sample - 0.6 * lowState[ch] + 0.012 * white;   // ...turned down, and more top
-                    }
-                    buffer.setSample (ch, i, (float) sample);
-                }
+        for (int block = 0; block < 40; ++block)
             processor.processBlock (buffer, midi);
-        }
-    };
-    if (showEq)
-    {
-        EqBands bands (processor);
-        processor.getParameters().getParameter ("eqOn")->setValueNotifyingHost (1.0f);
-        bands.create (eq::Shape::lowCut, 32.0, 0.0);
-        bands.set (0, "Slope", 3.0f);   // 24 dB/oct
-        bands.create (eq::Shape::bell, 280.0, -3.5);
-        bands.set (1, "Q", 1.6f);
-        bands.create (eq::Shape::bell, 3200.0, 2.5, -5.0);   // dynamic: pulls back when the presence gets loud
-        bands.set (2, "DynAuto", 0.0f);
-        bands.set (2, "Thresh", -42.0f);
-        bands.create (eq::Shape::highShelf, 11000.0, 3.0);
-        bands.set (3, "Q", 0.7f);
-        bands.create (eq::Shape::highShelf, 6000.0, 2.0);
-        bands.set (4, "Place", (float) eq::Placement::side);
-        bands.create (eq::Shape::notch, 120.0, 0.0);
-        bands.set (5, "Q", 8.0f);
-        bands.set (5, "On", 0.0f);   // switched off: shown hollow
-
-        playNoise (300);
     }
-
-    // PARAGON_SNAPSHOT_EXPRESSION=0..1 sets the expression pedal's position.
-    if (const auto pedal = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_EXPRESSION", {}); pedal.isNotEmpty())
-        processor.getParameters().getParameter ("expression")->setValueNotifyingHost (pedal.getFloatValue());
-
-    // PARAGON_SNAPSHOT_PARAMS=id=value,id=value sets any parameters (plain values, e.g. modType=8).
-    for (const auto& setting : juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PARAMS", {}), ",", {}))
-        if (auto* p = processor.getParameters().getParameter (setting.upToFirstOccurrenceOf ("=", false, false)))
-            p->setValueNotifyingHost (p->convertTo0to1 (setting.fromFirstOccurrenceOf ("=", false, false).getFloatValue()));
 
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
-    if (showTuner)
-        for (int i = 0; i < 12; ++i)   // let the editor's timers run: the tuner reads a few times
+    auto* view = dynamic_cast<MainView*> (editor->getChildComponent (0));
+    REQUIRE (view != nullptr);
+    if (page == "fx")
+    {
+        // THE RACK (stage 7a). PARAGON_SNAPSHOT_RACK=1: all four units at work on "Unison Strings" holding a chord
+        // (ECHELON's low cut, a dip, a dynamic presence band and an air shelf; DOMINION; CONSTRICTOR; the LIMITER
+        // on MODERN with TRUE PEAK, 6 dB in), the editor's timers run so the ladders and screens read it.
+        // PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter opens that unit's page.
+        view->showPage (MainView::Page::fx);
+        if (env ("PARAGON_SNAPSHOT_RACK") == "1")
         {
-            juce::Timer::callPendingTimersSynchronously();
-            juce::Thread::sleep (40);
+            processor.loadRig (*processor.getRigLibrary().findFactory ("Unison Strings"));
+            const auto set = [&] (const juce::String& id, float value)
+            {
+                auto* parameter = processor.getParameters().getParameter (id);
+                REQUIRE (parameter != nullptr);
+                parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
+            };
+            struct Band { eq::Shape shape; float hz, db, q, dynamic; };
+            const Band bands[] = { { eq::Shape::lowCut, 40.0f, 0.0f, 0.7f, 0.0f }, { eq::Shape::bell, 280.0f, -3.0f, 1.2f, 0.0f },
+                                   { eq::Shape::bell, 3200.0f, 1.5f, 1.5f, -4.0f }, { eq::Shape::highShelf, 11000.0f, 2.0f, 0.7f, 0.0f } };
+            for (int i = 0; i < 4; ++i)
+            {
+                set (ParamIDs::eqBand (i, "Used"), 1.0f);
+                set (ParamIDs::eqBand (i, "Shape"), (float) (int) bands[i].shape);
+                set (ParamIDs::eqBand (i, "Freq"), bands[i].hz);
+                set (ParamIDs::eqBand (i, "Gain"), bands[i].db);
+                set (ParamIDs::eqBand (i, "Q"), bands[i].q);
+                set (ParamIDs::eqBand (i, "Dyn"), bands[i].dynamic);
+            }
+            set (ParamIDs::eqOn, 1.0f);
+            set (ParamIDs::domOn, 1.0f);
+            set (ParamIDs::domDepth, 7.0f);
+            set (ParamIDs::compOn, 1.0f);
+            set (ParamIDs::compThreshold, -26.0f);
+            set (ParamIDs::compRatio, 3.0f);
+            set (ParamIDs::limitOn, 1.0f);
+            set (ParamIDs::limitTruePeak, 1.0f);
+            set (ParamIDs::limitGain, 6.0f);
+            // The SENDS (7b): DELAY in ping-pong eighths dotted, REVERB a hall; oscillator 2 (an octave up) sends less.
+            set (ParamIDs::delayOn, 1.0f);
+            set (ParamIDs::delayPingPong, 1.0f);
+            set (ParamIDs::delaySync, 7.0f);
+            set (ParamIDs::delayFeedback, 0.45f);
+            set (ParamIDs::delayToReverb, 0.3f);
+            set (ParamIDs::reverbOn, 1.0f);
+            set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall);
+            set (ParamIDs::reverbSize, 0.65f);
+            set (ParamIDs::osc (1, "On"), 1.0f);
+            set (ParamIDs::osc (1, "Transpose"), 12.0f);
+            set (ParamIDs::osc (1, "SendDelay"), 0.4f);
+            set (ParamIDs::osc (1, "SendReverb"), 0.6f);
+            // MOD / LO-FI (7c): the Vortex in STEREO, AEON after it, a gently worn cassette.
+            set (ParamIDs::modOn, 1.0f);
+            set (ParamIDs::modStereo, 1.0f);
+            set (ParamIDs::modMix, 0.6f);
+            set (ParamIDs::mod2On, 1.0f);
+            set (ParamIDs::mod2Depth, 0.6f);
+            set (ParamIDs::mod2Res, 6.5f);
+            set (ParamIDs::lofiOn, 1.0f);
+            set (ParamIDs::lofiType, (float) (int) effects::LoFi::Type::cassette);
+            set (ParamIDs::lofiAmount, 3.0f);
+            set (ParamIDs::lofiNoise, 2.0f);
+            // THE INSERTS (7d): oscillator 2 through bus A: SKYLINE driven, a SEQUENCE glitch.
+            set (ParamIDs::osc (1, "Insert"), 1.0f);
+            set (ParamIDs::ins (0, "DriveOn"), 1.0f);
+            set (ParamIDs::ins (0, "DriveModel"), (float) (int) effects::Drive::Model::skyline);
+            set (ParamIDs::ins (0, "DriveGain"), 7.0f);
+            set (ParamIDs::ins (0, "GlitchOn"), 1.0f);
+            set (ParamIDs::ins (0, "GlitchMix"), 0.6f);
+            for (const auto note : { 48, 55, 60, 64, 67 })
+                processor.getKeyboardState().noteOn (1, note, 0.85f);
+            juce::AudioBuffer<float> buffer (2, 256);
+            juce::MidiBuffer midi;
+            for (int block = 0; block < 700; ++block)
+            {
+                processor.processBlock (buffer, midi);
+                if (block > 600 && block % 10 == 0)   // the timers fire only when they're due
+                {
+                    juce::Thread::sleep (35);
+                    juce::Timer::callPendingTimersSynchronously();
+                }
+            }
         }
-    if (showPresets)
-        if (auto* tab = dynamic_cast<juce::Button*> (findById (*editor, "presetsTab")))
-            tab->onClick();
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PAGE", {}) == "settings")
-        if (auto* tab = dynamic_cast<juce::Button*> (findById (*editor, "settingsTab")))
-            tab->onClick();
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PAGE", {}) == "eq")
-    {
-        // Stomp 4's name opens the EQ's page.
-        std::vector<Footswitch*> stomps;
-        std::function<void (juce::Component&)> collect = [&] (juce::Component& c)
+        const auto fx = env ("PARAGON_SNAPSHOT_FX");
+        auto& fxPage = view->getFxPage();
+        if (const auto bus = env ("PARAGON_SNAPSHOT_BUS").getIntValue(); bus >= 1 && bus <= 4)
+            fxPage.getInsertStrip().setBus (bus - 1);
+        fxPage.show (fx == "eq" ? FxPage::View::eq : fx == "dominion" ? FxPage::View::dominion : fx == "comp" ? FxPage::View::comp
+                     : fx == "limiter" ? FxPage::View::limiter : fx == "sends" ? FxPage::View::sends : fx == "delay" ? FxPage::View::delay
+                     : fx == "reverb" ? FxPage::View::reverb : fx == "modfx" ? FxPage::View::modFx : fx == "mod" ? FxPage::View::mod
+                     : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
+                     : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
+                     : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi : FxPage::View::rack);
+        // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot
+        // never is (as PR7-E's snapshots, refresh them by hand). ECHELON with its dynamic band 3 selected.
+        if (fx == "eq")
         {
-            if (auto* stomp = dynamic_cast<Footswitch*> (&c))
-                stomps.push_back (stomp);
-            for (auto* child : c.getChildren())
-                collect (*child);
-        };
-        collect (*editor);
-        REQUIRE (stomps.size() >= 7);   // the stomps come first, then the rig row
-        stomps[3]->onSelect();
-    }
-    if (auto* display = findType<EqDisplay> (*editor))
-    {
-        if (const auto band = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_EQ_BAND", {}).getIntValue(); band > 0)
-            display->select (band - 1);
-        if (showEq)
-            for (int i = 0; i < 20; ++i)   // audio and the analyser's updates, as they come in a DAW
+            fxPage.getEqPage().getDisplay().refresh();
+            fxPage.getEqPage().getDisplay().select (2);
+            fxPage.getEqPage().refreshControls();
+            if (env ("PARAGON_SNAPSHOT_MATCH") == "1")
             {
-                playNoise (6);
-                display->refresh();
+                fxPage.getEqPage().showMatch (true);
+                fxPage.getEqPage().getMatchPanel().refresh();
             }
+        }
+        if (fx == "dominion")
+            fxPage.getDominionPage().getDisplay().refresh();
+        if (fx == "comp")
+            fxPage.getCompPage().getDisplay().refresh();
+        if (fx == "limiter")
+            fxPage.getLimiterPage().refresh();
     }
-    // PARAGON_SNAPSHOT_PAGE=dominion opens DOMINION's page (stomp 5's name).
-    // PARAGON_SNAPSHOT_DOMINION=1: DOMINION on, a few depth-curve bands, and
-    // pink noise with three resonances (180 Hz boom, 2.5 kHz ring, 6.3 kHz
-    // whistle) through it, so the graph shows its cuts.
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PAGE", {}) == "dominion")
+    if (const auto osc = env ("PARAGON_SNAPSHOT_OSC").getIntValue(); osc > 0)
+        view->getOscillatorPanel().selectOscillator (osc - 1);
+    if (env ("PARAGON_SNAPSHOT_TRAVEL") == "1")
     {
-        std::vector<Footswitch*> stomps;
-        std::function<void (juce::Component&)> collect = [&] (juce::Component& c)
+        // Oscillator 1's TRAVEL with a drawn envelope, a pattern and strength curves.
+        auto matrix = processor.getModMatrix();
+        auto& t = matrix.travel[0];
+        t.envelope = { { { 0.0f, 0.0f, 0.0f }, { 0.3f, 1.0f, -0.4f }, { 0.7f, 0.35f, 0.3f }, { 1.0f, 0.8f, 0.0f } }, -1, -1, -1 };
+        using M = synth::travel::StepMode;
+        const synth::travel::Step steps[] = { { M::normal, 1.0f, 1 }, { M::normal, 2.0f, 1 }, { M::trigger, 4.0f, 1 }, { M::reverse, 1.0f, 1 },
+                                              { M::pingPongHalf, 2.0f, 2 }, { M::high, 1.0f, 1 }, { M::silence, 1.0f, 1 }, { M::low, 1.0f, 1 } };
+        for (int k = 0; k < 8; ++k)
         {
-            if (auto* stomp = dynamic_cast<Footswitch*> (&c))
-                stomps.push_back (stomp);
-            for (auto* child : c.getChildren())
-                collect (*child);
-        };
-        collect (*editor);
-        REQUIRE (stomps.size() >= 7);   // the stomps come first, then the rig row
-        stomps[4]->onSelect();
-        if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_DOMINION", {}) == "1")
-            if (auto* display = findType<DominionDisplay> (*editor))
+            t.pattern.steps[(size_t) k] = steps[k];
+            t.pattern.strength[(size_t) k] = { k % 2 == 0 ? 1.0f : 0.2f, 0.6f, k % 2 == 0 ? 0.3f : 1.0f, k == 4, k == 2 ? -0.6f : 0.0f };
+        }
+        processor.setModMatrix (matrix);
+        view->getOscillatorPanel().selectOscillator (0);
+    }
+    if (env ("PARAGON_SNAPSHOT_OSCPAGE") == "travel")
+        view->getOscillatorPanel().showPage (OscillatorPanel::Page::travel);
+    if (env ("PARAGON_SNAPSHOT_OSCPAGE") == "voices")
+        view->getOscillatorPanel().showPage (OscillatorPanel::Page::voices);
+    if (env ("PARAGON_SNAPSHOT_OSCPAGE") == "shape")
+        view->getOscillatorPanel().showPage (OscillatorPanel::Page::shape);
+    if (env ("PARAGON_SNAPSHOT_OSCPAGE") == "fm")
+        view->getOscillatorPanel().showPage (OscillatorPanel::Page::fm);
+    if (env ("PARAGON_SNAPSHOT_OSCPAGE") == "fft")
+        view->getOscillatorPanel().showPage (OscillatorPanel::Page::fft);
+    if (env ("PARAGON_SNAPSHOT_PAGE") == "mod")
+        view->showPage (MainView::Page::modulation);
+    if (env ("PARAGON_SNAPSHOT_PAGE") == "arp")
+    {
+        // ARP 1 on, oscillators 1 and 2 routed to it, with a pattern that shows every kind of block.
+        view->showPage (MainView::Page::arp);
+        auto& page = view->getArpPage();
+        if (env ("PARAGON_SNAPSHOT_ARP") == "1")
+        {
+            page.route (0, true);
+            page.route (1, true);
+            if (auto* on = processor.getParameters().getParameter (ParamIDs::arp (0, "On")))
+                on->setValueNotifyingHost (1.0f);
+            synth::arp::Pattern p;
+            const int transposes[] = { 0, 12, 7, 0, 3, 12, 19, 0, -5, 0, 7, 12, 0, 5, 7, 24 };
+            for (int k = 0; k < 16; ++k)
             {
-                processor.getParameters().getParameter (ParamIDs::domOn)->setValueNotifyingHost (1.0f);
-                // PARAGON_SNAPSHOT_DOMINION_PRESET=name loads one of its factory presets instead of the three bands.
-                const auto presetName = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_DOMINION_PRESET", {});
-                if (const auto* preset = processor.getDominionPresets().findFactory (presetName))
-                    processor.loadDominionPreset (*preset);
-                else
-                {
-                    display->createBand (dominion::Shape::lowCut, 60.0, 0.0);
-                    display->createBand (dominion::Shape::bell, 2800.0, 6.0);
-                    display->createBand (dominion::Shape::highShelf, 9000.0, -6.0);
-                }
-                juce::Random random (3);
-                double b[3] {};
-                juce::AudioBuffer<float> buffer (2, 256);
-                juce::MidiBuffer midi;
-                for (int block = 0, n = 0; block < 900; ++block)
-                {
-                    for (int i = 0; i < 256; ++i, ++n)
-                    {
-                        const auto white = random.nextFloat() * 2.0 - 1.0;
-                        b[0] = 0.99765 * b[0] + white * 0.0990460;
-                        b[1] = 0.96300 * b[1] + white * 0.2965164;
-                        b[2] = 0.57000 * b[2] + white * 1.0526913;
-                        const auto t = n / 48000.0;
-                        const auto x = 0.05 * (b[0] + b[1] + b[2] + white * 0.1848)
-                                     + 0.12 * std::sin (2.0 * juce::MathConstants<double>::pi * 180.0 * t)
-                                     + 0.10 * std::sin (2.0 * juce::MathConstants<double>::pi * 2500.0 * t)
-                                     + 0.05 * std::sin (2.0 * juce::MathConstants<double>::pi * 6300.0 * t);
-                        buffer.setSample (0, i, (float) x);
-                        buffer.setSample (1, i, (float) x);
-                    }
-                    processor.processBlock (buffer, midi);
-                }
-                display->select (1);
-                display->refresh();
+                auto& b = p.blocks[(size_t) k];
+                b.on = k != 6 && k != 13;
+                b.transpose = transposes[k];
+                b.velocity = k % 4 == 0 ? 1.0f : 0.6f + 0.05f * (float) (k % 3);
+                b.length = k == 8 ? 2 : 1;
+                b.slide = k == 3 || k == 11;
+                b.ratchet = k == 15 ? 3 : (k == 5 ? 2 : 1);
             }
-    }
-
-    // PARAGON_SNAPSHOT_PAGE=comp opens COMP's page (stomp 2's name).
-    // PARAGON_SNAPSHOT_COMP=1: COMP on with four bands (the lows tightened,
-    // mud tamed, harshness tamed, the air brought up) and pink noise
-    // with a loud kick-like 60 Hz and a harsh 3 kHz through it, band 3 selected.
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PAGE", {}) == "comp")
-    {
-        std::vector<Footswitch*> stomps;
-        std::function<void (juce::Component&)> collect = [&] (juce::Component& c)
+            page.getEditor().setShown (p, true);
+        }
+        if (env ("PARAGON_SNAPSHOT_ARP") == "2")
         {
-            if (auto* stomp = dynamic_cast<Footswitch*> (&c))
-                stomps.push_back (stomp);
-            for (auto* child : c.getChildren())
-                collect (*child);
-        };
-        collect (*editor);
-        REQUIRE (stomps.size() >= 7);
-        stomps[1]->onSelect();
-        if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_COMP", {}) == "1")
-            if (auto* page = findType<CompPage> (*editor))
+            // CHORDS mode (5b): a chord progression with tones switched off and sub notes, and a randomizer set up.
+            page.route (0, true);
+            auto& parameters = processor.getParameters();
+            parameters.getParameter (ParamIDs::arp (0, "On"))->setValueNotifyingHost (1.0f);
+            auto* mode = parameters.getParameter (ParamIDs::arp (0, "Mode"));
+            mode->setValueNotifyingHost (mode->convertTo0to1 ((float) (int) synth::arp::Mode::chords));
+            auto* source = parameters.getParameter (ParamIDs::arp (0, "NoteSource"));
+            source->setValueNotifyingHost (source->convertTo0to1 (2.0f));
+            synth::arp::Pattern p;
+            const char* chords[] = { "Min7", "Min7", "Maj7", "Maj7", "Sus4", "7", "Min9", "Power" };
+            const int transposes[] = { 0, 0, 8, 8, 5, 7, 3, 0 };
+            for (int k = 0; k < 8; ++k)
             {
-                auto& display = page->getDisplay();
-                const auto set = [&] (const juce::String& id, float value)
-                {
-                    auto* p = processor.getParameters().getParameter (id);
+                auto& b = p.blocks[(size_t) (k * 2)];
+                b.on = true;
+                b.length = k % 2 == 0 ? 2 : 1;
+                b.transpose = transposes[k];
+                b.chord = synth::arp::chordNames.indexOf (chords[k]);
+                b.velocity = k % 2 == 0 ? 1.0f : 0.7f;
+                b.sub = k % 4 == 0;
+                b.subTranspose = k == 4 ? -24 : -12;
+                b.chordMask = k == 3 ? 0x1f & ~0x4 : 0x1f;
+            }
+            page.getEditor().setShown (p, true);
+            auto r = synth::arp::Randomizer {};
+            r.scale = synth::arp::scaleNames.indexOf ("Dorian");
+            r.autoDice = true;
+            r.seed = 42;
+            r.rollLengths = false;
+            auto matrix = processor.getModMatrix();
+            matrix.arpRandomizers[0] = r;
+            processor.setModMatrix (matrix);
+        }
+        page.selectArp (0);
+    }
+    if (const auto lfo = env ("PARAGON_SNAPSHOT_LFO").getIntValue(); lfo > 0)
+        view->getModPage().getModulatorPanel().selectLfo (lfo - 1);
+    if (const auto envelope = env ("PARAGON_SNAPSHOT_ENV").getIntValue(); envelope > 0)
+        view->getModPage().getModulatorPanel().selectEnvelope (envelope - 1);
+    if (env ("PARAGON_SNAPSHOT_PITCH") == "1")
+        view->getModPage().getModulatorPanel().selectPitch();
+    if (env ("PARAGON_SNAPSHOT_MIDI") == "1")
+    {
+        // A few MIDI links, a knob learning, and a route made by dropping LFO 1 on the cutoff.
+        MidiLinks links;
+        links.link (74, ParamIDs::fltCutoff);
+        links.link (71, ParamIDs::fltRes);
+        links.link (1, ParamIDs::osc (0, "WtIndex"));
+        links.link (7, ParamIDs::ampVolume);
+        processor.setMidiLinks (links);
+        processor.startMidiLearn (ParamIDs::fltDrive);
+        processor.controllerForTest (74, 0.6f);
+        view->addRoute ("lfo1", ParamIDs::fltCutoff);
+        view->getSourceStrip().refresh();
+        if (env ("PARAGON_SNAPSHOT_PAGE") == "settings")
+        {
+            view->showPage (MainView::Page::synth);
+            view->showPage (MainView::Page::settings);
+        }
+    }
+    if (env ("PARAGON_SNAPSHOT_STEP") == "2")   // the STEP tab as the sound has it
+        view->getModPage().getModulatorPanel().selectStepSeq();
+    if (env ("PARAGON_SNAPSHOT_STEP") == "1")
+    {
+        // A pattern with heights, a rest and linked steps (on both rows, for STEREO).
+        auto matrix = processor.getModMatrix();
+        for (auto& row : matrix.stepPattern.rows)
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = row[(size_t) k];
+                step.level = k % 4 == 0 ? 1.0f : k % 4 == 2 ? 0.7f : 0.45f;
+                step.on = k % 8 != 7;
+                step.tied = k % 8 == 4;
+            }
+        matrix.stepPattern.rows[1][0].on = false;
+        processor.setModMatrix (matrix);
+        view->getModPage().getModulatorPanel().selectStepSeq();
+    }
+    if (const auto shape = env ("PARAGON_SNAPSHOT_SHAPE").getIntValue(); shape > 0)
+        view->getModPage().getModulatorPanel().selectShape (shape - 1);
+    if (const auto page = env ("PARAGON_SNAPSHOT_FILTERPAGE").getIntValue(); page > 0)
+        view->getFilterPanel().showPage (page);
+    if (env ("PARAGON_SNAPSHOT_OSCPAGE") == "draw")
+        view->getOscillatorPanel().showPage (OscillatorPanel::Page::draw);
+    if (const auto curve = env ("PARAGON_SNAPSHOT_FFT"); curve.isNotEmpty())
+    {
+        // A curve for oscillator 1 ("band:dB band:dB ...", as presets keep it), and its view (FFT_VIEW=harmonic|bins).
+        processor.setSpectrum (0, synth::SpectrumEdit::decode (curve.replaceCharacter (',', ' ')));
+        processor.finishTableBuilds();
+    }
+    if (env ("PARAGON_SNAPSHOT_FFT_VIEW") == "harmonic")
+        view->getOscillatorPanel().getSpectrumEditor().setView (SpectrumEditor::View::harmonic);
+    if (env ("PARAGON_SNAPSHOT_FFT_VIEW") == "bins")
+        view->getOscillatorPanel().getSpectrumEditor().setView (SpectrumEditor::View::bins);
+    if (page == "drums")
+    {
+        // THE DRUMS (stage 6a): the kit on, slot PARAGON_SNAPSHOT_DRUM (1-12) chosen; PARAGON_SNAPSHOT_DRUMS=1 plays a
+        // beat into it first (kick, snare and closed hat just hit: their rows lit).
+        if (auto* on = processor.getParameters().getParameter (ParamIDs::drumsOn))
+            on->setValueNotifyingHost (1.0f);
+        view->showPage (MainView::Page::drums);
+        auto& drums = view->getDrumPage();
+        if (env ("PARAGON_SNAPSHOT_DRUMS") == "2")
+        {
+            // A file of nine kicks (each a semitone higher) in the kick's slot, its 4th kick chosen.
+            auto file = std::make_shared<synth::drums::Sample>();
+            file->name = "Kit_1_Kick";
+            file->sampleRate = 44100.0;
+            file->channels.assign (1, std::vector<float> ((size_t) (4.0 * 44100.0), 0.0f));
+            for (int k = 0; k < 9; ++k)
+            {
+                synth::drums::SlotSettings kick;
+                kick.pitch = (float) k;
+                kick.decay = 0.3f;
+                const auto hit = synth::drums::Kit::renderHit (kick, 1.0f, 44100.0, 0.4);
+                const auto at = (int) (0.05 * 44100.0) + (int) (k * 0.45 * 44100.0);
+                for (int i = 0; i < hit.getNumSamples() && at + i < file->length(); ++i)
+                    file->channels[0][(size_t) (at + i)] = hit.getSample (0, i);
+            }
+            processor.setDrumSample (0, file);
+            if (auto* m = processor.getParameters().getParameter (ParamIDs::drum (0, "Model")))
+                m->setValueNotifyingHost (m->convertTo0to1 ((float) (int) synth::drums::Model::sample));
+            drums.select (0);
+            drums.setSize (1476, 672);
+            drums.getDisplay().pickHit (3);
+            if (env ("PARAGON_SNAPSHOT_DRUMEDIT") == "2")   // and a fade out drawn over it
+            {
+                auto matrix = processor.getModMatrix();
+                matrix.drumEnvelopes[0] = { { { 0.0f, 1.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } }, -1, -1, -1 };
+                processor.setModMatrix (matrix);
+                drums.getEnvelopeEditor().setTarget (MultiPointEditor::Kind::drumEnvelope, 0);
+            }
+            drums.refreshPictures();
+        }
+        if (env ("PARAGON_SNAPSHOT_DRUMS") != "2")
+            drums.select (juce::jmax (1, env ("PARAGON_SNAPSHOT_DRUM").getIntValue()) - 1);
+        if (env ("PARAGON_SNAPSHOT_DRUMS") == "1")
+        {
+            juce::AudioBuffer<float> buffer (2, 512);
+            juce::MidiBuffer midi;
+            for (const auto note : { 36, 38, 42 })
+                midi.addEvent (juce::MidiMessage::noteOn (1, note, 1.0f), 0);
+            processor.processBlock (buffer, midi);
+            midi.clear();
+            for (int b = 0; b < 6; ++b)
+                processor.processBlock (buffer, midi);
+            drums.updateLights();
+        }
+        if (env ("PARAGON_SNAPSHOT_DRUMEDIT") == "1")
+        {
+            // THE SAMPLE EDITOR (6c): the clap with a drawn envelope (its flams held, its tail cut), an anchor on its
+            // main slap, GAIN and LP.
+            const auto set = [&processor] (const juce::String& id, float value)
+            {
+                if (auto* p = processor.getParameters().getParameter (id))
                     p->setValueNotifyingHost (p->convertTo0to1 (value));
-                };
-                set (ParamIDs::compOn, 1.0f);
-                // PARAGON_SNAPSHOT_COMP_PRESET=name: one of COMP's factory presets instead of the four bands.
-                const auto presetName = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_COMP_PRESET", {});
-                const auto* preset = processor.getCompPresets().findFactory (presetName);
-                if (preset != nullptr)
-                    processor.loadCompPreset (*preset);
-                struct Spec { float low, high, threshold, range; int mode, stereo; };
-                const Spec specs[] = { { 20.0f, 120.0f, -30.0f, -8.0f, 0, 0 }, { 180.0f, 500.0f, -36.0f, -5.0f, 0, 0 },
-                                       { 2000.0f, 6000.0f, -40.0f, -9.0f, 0, 0 }, { 9000.0f, 20000.0f, -40.0f, 4.0f, 0, 0 } };
-                for (const auto& spec : specs)
-                    if (const auto band = preset != nullptr ? -1 : display.createBand (spec.low, spec.high); band >= 0)
-                    {
-                        display.setBand (band, "Thresh", spec.threshold);
-                        display.setBand (band, "Range", spec.range);
-                        display.setBand (band, "Mode", (float) spec.mode);
-                        display.setBand (band, "Stereo", (float) spec.stereo);
-                    }
-                juce::Random random (5);
-                double b[3] {};
-                juce::AudioBuffer<float> buffer (2, 256);
-                juce::MidiBuffer midi;
-                for (int block = 0, n = 0; block < 400; ++block)
-                {
-                    for (int i = 0; i < 256; ++i, ++n)
-                    {
-                        const auto white = random.nextFloat() * 2.0 - 1.0;
-                        b[0] = 0.99765 * b[0] + white * 0.0990460;
-                        b[1] = 0.96300 * b[1] + white * 0.2965164;
-                        b[2] = 0.57000 * b[2] + white * 1.0526913;
-                        const auto t = n / 48000.0;
-                        const auto x = 0.05 * (b[0] + b[1] + b[2] + white * 0.1848)
-                                     + 0.3 * std::sin (2.0 * juce::MathConstants<double>::pi * 60.0 * t)
-                                     + 0.12 * std::sin (2.0 * juce::MathConstants<double>::pi * 3000.0 * t);
-                        buffer.setSample (0, i, (float) x);
-                        buffer.setSample (1, i, (float) (x * 0.6));
-                    }
-                    processor.processBlock (buffer, midi);
-                }
-                display.select (preset != nullptr ? 0 : 2);
-                display.refresh();
-            }
-    }
-
-    // PARAGON_SNAPSHOT_PAGE=oracle opens ORACLE's page (stomp 1's name).
-    // PARAGON_SNAPSHOT_ORACLE=1: ORACLE on, having heard a sung line as a
-    // DAW played it at 100 BPM from bar 2 (scoops into some notes, vibrato
-    // on the long ones, some sharp or flat), with one note selected.
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_PAGE", {}) == "oracle")
-    {
-        if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_ORACLE", {}) == "1")
+            };
+            set (ParamIDs::drum (3, "Delay"), -22.0f);
+            set (ParamIDs::drum (3, "Gain"), 3.0f);
+            set (ParamIDs::drum (3, "LowPass"), 7000.0f);
+            set (ParamIDs::drum (3, "Decay"), 0.7f);
+            auto matrix = processor.getModMatrix();
+            matrix.drumEnvelopes[3] = { { { 0.0f, 1.0f, 0.0f }, { 0.35f, 0.9f, -0.4f }, { 0.6f, 0.25f, 0.0f }, { 0.75f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } }, -1, -1, -1 };
+            processor.setModMatrix (matrix);
+            processor.updateDrumReverses();   // the clap's hit length, which the envelope spans
+            drums.select (3);
+            drums.refreshPictures();
+        }
+        if (env ("PARAGON_SNAPSHOT_DRUMCHOSEN") == "1")
         {
-            struct Transport final : juce::AudioPlayHead
+            // 6c part 2: the hats and cymbal chosen together, a kit and sequence "loaded", the tom's hit playing.
+            drums.clickRow (6, {});
+            drums.clickRow (8, juce::ModifierKeys::ctrlModifier);
+            drums.clickRow (10, juce::ModifierKeys::ctrlModifier);
+            drums.clickRow (11, juce::ModifierKeys::ctrlModifier);
+            juce::AudioBuffer<float> buffer (2, 512);
+            juce::MidiBuffer midi;
+            midi.addEvent (juce::MidiMessage::noteOn (1, 45, 1.0f), 0);
+            processor.processBlock (buffer, midi);
+            midi.clear();
+            for (int b = 0; b < 12; ++b)
+                processor.processBlock (buffer, midi);
+            drums.updateLights();
+        }
+        if (env ("PARAGON_SNAPSHOT_DRUMSEQ") == "1")
+        {
+            // THE DRUM SEQUENCER (stage 6b): a beat in pattern A (accented hats with a roll, a pitched tom fill, a
+            // reversed cymbal swelling into the bar, a short open hat), played with the song to just past beat 2, the
+            // snares chosen.
+            synth::drumseq::Pattern beat;
+            const auto note = [&beat] (int row, double start, float velocity = 1.0f) -> synth::drumseq::Note&
             {
+                synth::drumseq::Note n;
+                n.row = row;
+                n.start = start;
+                n.velocity = velocity;
+                beat.notes.push_back (n);
+                return beat.notes.back();
+            };
+            for (const auto k : { 0.0, 3.0, 8.0, 10.0 })
+                note (0, k);
+            note (2, 4.0);
+            note (2, 12.0);
+            for (int k = 0; k < 14; k += 2)
+                note (6, k, k % 4 == 0 ? 1.0f : 0.55f);
+            note (6, 14.0, 0.8f).roll = 2;
+            note (10, 7.0, 0.7f).gate = 0.25f;
+            note (9, 13.0).pitch = 2.0f;
+            note (7, 14.0);
+            note (5, 15.0).pitch = -3.0f;
+            note (11, 15.0).reverse = synth::drumseq::Reverse::endSync;
+            note (1, 6.0, 0.6f).pan = -0.5f;
+            auto matrix = processor.getModMatrix();
+            matrix.drumPatterns[0] = beat;
+            processor.setModMatrix (matrix);
+            if (auto* on = processor.getParameters().getParameter (ParamIDs::dseqOn))
+                on->setValueNotifyingHost (1.0f);
+            if (auto* sh = processor.getParameters().getParameter (ParamIDs::shuffle))
+                sh->setValueNotifyingHost (0.2f);
+            processor.updateDrumReverses();
+
+            struct Song final : juce::AudioPlayHead
+            {
+                double ppq = 0.0;
                 juce::Optional<PositionInfo> getPosition() const override
                 {
                     PositionInfo info;
-                    info.setTimeInSamples (sample);
-                    info.setBpm (100.0);
-                    info.setPpqPosition ((double) sample / 48000.0 * 100.0 / 60.0);
-                    info.setTimeSignature (juce::AudioPlayHead::TimeSignature { 4, 4 });
+                    info.setBpm (120.0);
+                    info.setPpqPosition (ppq);
                     info.setIsPlaying (true);
                     return info;
                 }
-                juce::int64 sample = 0;
-            } transport;
-            processor.setPlayHead (&transport);
-            processor.getParameters().getParameter (ParamIDs::tunerOn)->setValueNotifyingHost (1.0f);
-
-            // beats, MIDI note, cents off, vibrato (cents), scoop from below (semitones); note 0 is a rest.
-            struct Sung { double beats, note, cents, vibrato, scoop; };
-            const Sung line[] = { { 1.0, 0, 0, 0, 0 }, { 0.5, 64, 4, 0, 0 }, { 0.5, 67, -6, 0, 1.0 }, { 1.0, 69, 8, 0, 0 },
-                                  { 0.5, 67, 0, 0, 0 }, { 1.5, 64, -14, 30, 0 }, { 0.5, 0, 0, 0, 0 }, { 0.5, 62, 2, 0, 0 },
-                                  { 0.5, 64, 6, 0, 0 }, { 0.5, 67, 18, 0, 2.0 }, { 0.5, 67, 10, 0, 0 }, { 2.0, 72, -4, 40, 1.0 },
-                                  { 0.5, 0, 0, 0, 0 }, { 0.5, 71, -8, 0, 0 }, { 0.5, 69, 0, 0, 0 }, { 1.0, 67, 12, 20, 0 },
-                                  { 0.5, 64, -3, 0, 0 }, { 2.5, 62, -10, 35, 0.5 }, { 1.0, 0, 0, 0, 0 } };
-            transport.sample = (juce::int64) (60.0 / 100.0 * 4.0 * 48000.0);   // bar 2
-            juce::AudioBuffer<float> buffer (2, 256);
+            };
+            static Song song;
+            processor.setPlayHead (&song);
+            juce::AudioBuffer<float> buffer (2, 512);
             juce::MidiBuffer midi;
-            double phase = 0.0;
-            int block = 0;
-            for (const auto& sung : line)
+            for (int b = 0; b < 58; ++b)   // 1.14 beats: the playhead on step 5
             {
-                const auto length = sung.beats * 0.6;
-                const auto samples = (int) (length * 48000.0);
-                for (int done = 0; done < samples; done += 256, ++block)
-                {
-                    buffer.clear();
-                    for (int i = 0; i < 256; ++i)
-                    {
-                        const auto t = (done + i) / 48000.0;
-                        if (sung.note <= 0.0 || done + i >= samples)
-                            continue;
-                        const auto scoop = sung.scoop * std::exp (-t / 0.04);
-                        const auto vibrato = sung.vibrato * std::sin (juce::MathConstants<double>::twoPi * 5.5 * t) * juce::jmin (1.0, t / 0.3);
-                        const auto pitch = sung.note + (sung.cents + vibrato) / 100.0 - scoop;
-                        phase += juce::MathConstants<double>::twoPi * 440.0 * std::pow (2.0, (pitch - 69.0) / 12.0) / 48000.0;
-                        const auto envelope = juce::jmin (1.0, t / 0.01, (length - t) / 0.03);
-                        buffer.setSample (0, i, (float) (envelope * (0.22 * std::sin (phase) + 0.1 * std::sin (2.0 * phase) + 0.04 * std::sin (3.0 * phase))));
-                    }
-                    processor.processBlock (buffer, midi);
-                    transport.sample += 256;
-                    if (block % 6 == 5)
-                    {
-                        processor.updateTuner();
-                        processor.updateOracle();
-                    }
-                }
+                processor.processBlock (buffer, midi);
+                song.ppq += 512.0 / 48000.0 * 2.0;
             }
-            processor.updateOracle();
             processor.setPlayHead (nullptr);
-        }
-
-        std::vector<Footswitch*> stomps;
-        std::function<void (juce::Component&)> collect = [&] (juce::Component& c)
-        {
-            if (auto* stomp = dynamic_cast<Footswitch*> (&c))
-                stomps.push_back (stomp);
-            for (auto* child : c.getChildren())
-                collect (*child);
-        };
-        collect (*editor);
-        REQUIRE (stomps.size() >= 7);   // the stomps come first, then the rig row
-        stomps[0]->onSelect();
-        if (auto* page = findType<OraclePage> (*editor))
-        {
-            page->getRoll().fit();
-            const auto& notes = processor.getOracle().getNotes();
-            if (notes.size() > 5)
-                page->getRoll().setSelection ({ notes[5].id });   // the long, flat one with vibrato
+            drums.showView (DrumPage::View::sequencer);
+            drums.select (2);
+            drums.getSequencer().getGrid().setSelection ({ 4, 5 });
+            drums.updateLights();
         }
     }
+    if (page == "presets")
+        view->showPage (MainView::Page::presets);
+    else if (page == "settings")
+        view->showPage (MainView::Page::settings);
 
-    // PARAGON_SNAPSHOT_MATCH=1 (with PAGE=eq): EQ Match open, having heard
-    // pink noise as the track and a brighter, thinner noise as the reference.
-    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_MATCH", {}) == "1")
-        if (auto* page = findType<EqPage> (*editor))
-        {
-            page->showMatch (true);
-            auto& match = processor.getEqMatch();
-            const auto listen = [&] (eq::match::Session::Recording what, bool reference)
-            {
-                match.setRecording (what);
-                referenceTone = reference;
-                for (int i = 0; i < 28; ++i)   // 5 seconds, read as the timer would
-                {
-                    playNoise (32);
-                    match.update (processor.getEqInputTap());
-                }
-            };
-            listen (eq::match::Session::Recording::track, false);
-            listen (eq::match::Session::Recording::reference, true);
-            match.setRecording (eq::match::Session::Recording::none);
-            referenceTone = false;
-            page->getMatchPanel().refresh();
-            if (auto* display = findType<EqDisplay> (*editor))
-                display->refresh();
-        }
-
-    // PARAGON_SNAPSHOT_BLOCK=n opens block n's panel in the dock (0 = the EQ overview, 1 = DOMINION's page, 2 = COMP, 3 = the LIMITER, 4 = the TUNER panel).
-    if (const auto block = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_BLOCK", {}); block.isNotEmpty())
-        if (auto* chain = findType<SignalChain> (*editor))
-            chain->onSelect (block.getIntValue());
-    if (const auto width = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", {}).getIntValue(); width > 0)
-        editor->setSize (width, width * 9 / 16);
+    const auto width = juce::jmax (960, juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", "1600").getIntValue());
+    editor->setSize (width, width * 9 / 16);
     editor->resized();
-    const auto image = editor->createComponentSnapshot (editor->getLocalBounds());
 
+    const auto image = editor->createComponentSnapshot (editor->getLocalBounds());
     juce::File file (juce::File::getCurrentWorkingDirectory().getChildFile (path));
     file.deleteFile();
     juce::FileOutputStream stream (file);
@@ -490,72 +514,20 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 
 // PARAGON_SNAPSHOT=menu.png ./ParagonX1Tests "[snapshot-menu]": a drop-down
 // menu as the plugin draws it (menus open in their own window, so the editor
-// snapshot can't show one): DOMINION's band shapes, Bell ticked, one highlighted.
+// snapshot can't show one): the FILTER's types, LP 24 ticked, one highlighted.
 TEST_CASE ("Render a drop-down menu to a PNG", "[.][snapshot-menu]")
 {
     const auto path = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT", "menu.png");
     ParagonLookAndFeel look;
-    const juce::StringArray items { "Low Cut", "Low Shelf", "High Shelf", "High Cut", "Bell", "Band Pass", "Band Reject", "Tilt" };
+    const auto& items = synth::filterTypeNames;
     constexpr int scale = 2, width = 150, itemHeight = 26;
     juce::Image image (juce::Image::ARGB, width * scale, (itemHeight * items.size() + 8) * scale, true);
     juce::Graphics g (image);
     g.addTransform (juce::AffineTransform::scale ((float) scale));
     look.drawPopupMenuBackground (g, width, itemHeight * items.size() + 8);
     for (int i = 0; i < items.size(); ++i)
-        look.drawPopupMenuItem (g, { 0, 4 + i * itemHeight, width, itemHeight }, false, true, i == 2, items[i] == "Bell", false,
+        look.drawPopupMenuItem (g, { 0, 4 + i * itemHeight, width, itemHeight }, false, true, i == 5, items[i] == "LP 24", false,
                                 items[i], {}, nullptr, nullptr);
-
-    juce::File file (juce::File::getCurrentWorkingDirectory().getChildFile (path));
-    file.deleteFile();
-    juce::FileOutputStream stream (file);
-    REQUIRE (stream.openedOk());
-    REQUIRE (juce::PNGImageFormat().writeImageToStream (image, stream));
-}
-
-// PARAGON_SNAPSHOT=menu.png ./ParagonX1Tests "[snapshot-preset-menu]": COMP's
-// PRESET menu from its GENRES header on (0.15.0), with one genre's submenu
-// open beside it, as the plugin's look-and-feel draws them.
-TEST_CASE ("Render COMP's genre preset submenus to a PNG", "[.][snapshot-preset-menu]")
-{
-    const auto path = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT", "menu.png");
-    const auto openGenre = juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_GENRE", "Djent");
-    ParagonLookAndFeel look;
-    juce::StringArray genres, inGenre;
-    for (const auto& preset : CompPresets::factory())
-        if (preset.category.startsWith ("Genres/"))
-        {
-            genres.addIfNotAlreadyThere (preset.category.fromFirstOccurrenceOf ("/", false, false));
-            if (preset.category == "Genres/" + openGenre)
-                inGenre.add (preset.name);
-        }
-
-    constexpr int scale = 2, width = 190, itemHeight = 26, headerHeight = 26;
-    const auto mainHeight = headerHeight + itemHeight * genres.size() + 8;
-    juce::Image image (juce::Image::ARGB, width * 2 * scale, mainHeight * scale, true);
-    juce::Graphics g (image);
-    g.addTransform (juce::AffineTransform::scale ((float) scale));
-    g.fillAll (juce::Colours::darkgrey);
-
-    {
-        juce::Graphics::ScopedSaveState state (g);
-        g.reduceClipRegion (0, 0, width, mainHeight);
-        look.drawPopupMenuBackground (g, width, mainHeight);
-        look.drawPopupMenuSectionHeader (g, { 0, 4, width, headerHeight }, "GENRES");
-        for (int i = 0; i < genres.size(); ++i)
-            look.drawPopupMenuItem (g, { 0, 4 + headerHeight + i * itemHeight, width, itemHeight }, false, true,
-                                    genres[i] == openGenre, false, true, genres[i], {}, nullptr, nullptr);
-    }
-    {
-        const auto row = genres.indexOf (openGenre);
-        const auto subHeight = itemHeight * inGenre.size() + 8;
-        juce::Graphics::ScopedSaveState state (g);
-        g.setOrigin (width, juce::jmin (headerHeight + row * itemHeight, mainHeight - subHeight));
-        g.reduceClipRegion (0, 0, width, subHeight);   // the background fills its clip
-        look.drawPopupMenuBackground (g, width, subHeight);
-        for (int i = 0; i < inGenre.size(); ++i)
-            look.drawPopupMenuItem (g, { 0, 4 + i * itemHeight, width, itemHeight }, false, true, false, i == 0, false,
-                                    inGenre[i], {}, nullptr, nullptr);
-    }
 
     juce::File file (juce::File::getCurrentWorkingDirectory().getChildFile (path));
     file.deleteFile();

@@ -5,20 +5,18 @@ namespace
     // Bump when the file layout changes in a way older code can't read.
     constexpr int fileVersion = 1;
 
-    // Which plugin version's parameters the rig was saved with, for the
-    // occasional parameter whose default changed (older plugins ignore it).
-    // 15: the reverb's TYPE (from PR7-G, via PR7-B; gone in PR7-E 0.3.0).
-    // 30: PR7-E 0.3.0, when the expression pedal's effect targets went.
-    // 31: PR7-E 0.5.0, the dynamic EQ (nothing to migrate: new bands' defaults are static).
-    // 32: PR7-E 0.8.0, the LIMITER (off by default: nothing to migrate).
-    // 33: PR7-E 0.9.0, COMP (off by default: nothing to migrate).
-    // 34: PR7-E 0.10.0, DOMINION (off by default: nothing to migrate).
-    // 35: PR7-E 0.13.0, COMP's bands (none by default) and compWide (on by
-    //     default, so an older rig, which doesn't mention it, sounds as it did).
-    constexpr int parameterVersion = 35;
+    // Which plugin version's parameters the preset was saved with, for the
+    // occasional parameter whose default changes (older plugins ignore it).
+    // PR7-K counts afresh from its siblings' numbering:
+    // 1: PR7-K 0.1.0, the first synth parameters.
+    constexpr int parameterVersion = 1;
 
     const juce::Identifier rigTag { "ParagonRig" };
     const juce::Identifier parameterTag { "Param" };
+    const juce::Identifier wavetableTag { "Wavetable" };
+    const juce::Identifier spectrumTag { "Spectrum" };
+    const juce::Identifier freeformTag { "Freeform" };
+    const juce::Identifier drumSampleTag { "DrumSample" };
 }
 
 juce::String Rig::bankName (int bankIndex)
@@ -50,6 +48,45 @@ std::unique_ptr<juce::XmlElement> Rig::toXml() const
         parameter->setAttribute ("id", id);
         parameter->setAttribute ("value", value);
     }
+    for (const auto& [oscillator, table] : wavetables)
+    {
+        if (! table.isValid())
+            continue;
+        auto* element = xml->createNewChildElement (wavetableTag);
+        element->setAttribute ("osc", oscillator + 1);
+        element->setAttribute ("name", table.name);
+        element->setAttribute ("frameSize", table.frameSize);
+        element->addTextElement (synth::wavetableFiles::encode (table));
+    }
+    for (const auto& [slot, sample] : drumSamples)
+    {
+        if (sample == nullptr || sample->length() < 2)
+            continue;
+        auto* element = xml->createNewChildElement (drumSampleTag);
+        element->setAttribute ("slot", slot + 1);
+        element->setAttribute ("name", sample->name);
+        if (sample->path.isNotEmpty())
+            element->setAttribute ("path", sample->path);
+        element->addTextElement (synth::drums::sampleFiles::encode (*sample));
+    }
+    for (const auto& [oscillator, edit] : spectra)
+    {
+        if (edit.isFlat())
+            continue;
+        auto* element = xml->createNewChildElement (spectrumTag);
+        element->setAttribute ("osc", oscillator + 1);
+        element->setAttribute ("gains", edit.encode());
+    }
+    for (const auto& [oscillator, drawing] : drawings)
+    {
+        if (drawing == synth::FreeformDrawing {})
+            continue;
+        auto* element = xml->createNewChildElement (freeformTag);
+        element->setAttribute ("osc", oscillator + 1);
+        element->setAttribute ("drawing", drawing.encode());
+    }
+    if (! modulation.isEmpty())
+        xml->addChildElement (modulation.toXml().release());
     return xml;
 }
 
@@ -76,12 +113,39 @@ std::optional<Rig> Rig::fromXml (const juce::XmlElement& xml)
         if (const auto id = parameter->getStringAttribute ("id"); id.isNotEmpty())
             rig.parameters[id] = (float) parameter->getDoubleAttribute ("value");
 
-    const auto savedWith = xml.getIntAttribute ("parameterVersion", 0);
-    // Saved before 0.3.0 with the expression pedal on one of PR7-B's effects
-    // (2 to 8, all gone): unassigned instead (see ExpressionTargets).
-    if (const auto target = rig.parameters.find ("expressionTarget");
-        savedWith < 30 && target != rig.parameters.end() && target->second > 1.5f)
-        target->second = 0.0f;
+    for (const auto* element : xml.getChildWithTagNameIterator (wavetableTag))
+    {
+        const auto oscillator = element->getIntAttribute ("osc") - 1;
+        auto table = synth::wavetableFiles::decode (element->getStringAttribute ("name"), element->getIntAttribute ("frameSize"),
+                                                    element->getAllSubText());
+        if (oscillator >= 0 && oscillator < 8 && table.isValid())
+            rig.wavetables[oscillator] = std::move (table);
+    }
+    for (const auto* element : xml.getChildWithTagNameIterator (drumSampleTag))
+    {
+        const auto slot = element->getIntAttribute ("slot") - 1;
+        if (slot >= 0 && slot < synth::drums::numSlots)
+            if (auto sample = synth::drums::sampleFiles::decode (element->getStringAttribute ("name"), element->getAllSubText()))
+            {
+                std::const_pointer_cast<synth::drums::Sample> (sample)->path = element->getStringAttribute ("path");
+                rig.drumSamples[slot] = std::move (sample);
+            }
+    }
+    for (const auto* element : xml.getChildWithTagNameIterator (spectrumTag))
+    {
+        const auto oscillator = element->getIntAttribute ("osc") - 1;
+        const auto edit = synth::SpectrumEdit::decode (element->getStringAttribute ("gains"));
+        if (oscillator >= 0 && oscillator < 8 && ! edit.isFlat())
+            rig.spectra[oscillator] = edit;
+    }
+    for (const auto* element : xml.getChildWithTagNameIterator (freeformTag))
+    {
+        const auto oscillator = element->getIntAttribute ("osc") - 1;
+        if (oscillator >= 0 && oscillator < 8)
+            rig.drawings[oscillator] = synth::FreeformDrawing::decode (element->getStringAttribute ("drawing"));
+    }
+    if (const auto* modulation = xml.getChildByName ("Modulation"))
+        rig.modulation = ModMatrix::fromXml (*modulation);
 
     return rig;
 }

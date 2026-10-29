@@ -6,7 +6,7 @@ PresetButton::PresetButton (Hooks h) : hooks (std::move (h))
 {
     setColour (juce::TextButton::buttonColourId, juce::Colour (0xff151217));
     setColour (juce::TextButton::textColourOffId, ParagonColours::text);
-    setTooltip (hooks.stompName + "'s own presets (apart from the rigs): they change only " + hooks.stompName
+    setTooltip (hooks.stompName + "'s own presets (apart from the synth's): they change only " + hooks.stompName
                 + "'s settings, not whether it's on. Save your own here too");
     onClick = [this] { showMenu(); };
     refresh();

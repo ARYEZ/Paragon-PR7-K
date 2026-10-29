@@ -6,18 +6,47 @@ FetchContent_MakeAvailable(catch2)
 
 add_executable(ParagonX1Tests
     TestMain.cpp
+    SynthTests.cpp
+    WavetableTests.cpp
+    ShapeTests.cpp
+    ModulationTests.cpp
+    FftTests.cpp
+    FreeformTests.cpp
+    ShaperTests.cpp
+    MatrixTests.cpp
+    EnvelopeModTests.cpp
+    PitchModuleTests.cpp
+    StepSeqTests.cpp
+    TravelTests.cpp
+    ModRoutingTests.cpp
+    ArpTests.cpp
+    ArpChordTests.cpp
+    DrumTests.cpp
+    DrumKitTests.cpp
+    DrumSeqTests.cpp
+    DrumEditorTests.cpp
+    DrumKitFileTests.cpp
+    DrumSeqPluginTests.cpp
+    StackSizeTests.cpp
+    ParameterIdTests.cpp
     ProcessorTests.cpp
-    EffectTests.cpp
     RigTests.cpp
     UiTests.cpp
-    TunerTests.cpp
+    UndoTests.cpp
+    EffectTests.cpp
     EqTests.cpp
     LimiterTests.cpp
+    MasterLimiterTests.cpp
+    RackTests.cpp
+    DelayReverbTests.cpp
+    ModFxTests.cpp
+    ModFxStereoTests.cpp
+    DriveGlitchTests.cpp
+    InsertTests.cpp
+    SendTests.cpp
     CompressorTests.cpp
     DominionTests.cpp
-    OracleTests.cpp
     MultibandTests.cpp
-    PerformanceTests.cpp
     EditorSnapshot.cpp)
 
 # Link the plugin's shared code (processor, editor, JUCE modules) so the

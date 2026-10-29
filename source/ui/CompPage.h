@@ -123,7 +123,7 @@ private:
     Knob mix, threshold, ratio, attack, release, makeUp;
     juce::ComboBox character;
     juce::AudioProcessorValueTreeState::ComboBoxAttachment characterAttachment;
-    juce::TextButton back { "BACK TO PEDAL" };
+    juce::TextButton back { "BACK TO RACK" };
     PresetButton preset;
     juce::Label presetLabel { {}, "PRESET" };
 

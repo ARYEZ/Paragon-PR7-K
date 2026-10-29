@@ -1,5 +1,7 @@
 #include "Icons.h"
 
+#include "ParagonLookAndFeel.h"
+
 namespace Icons
 {
     namespace
@@ -347,6 +349,44 @@ namespace Icons
                 break;
             }
 
+            case Type::arpeggio:
+            {
+                // Four notes climbing, as an arpeggio's blocks on a grid.
+                for (int i = 0; i < 4; ++i)
+                {
+                    const auto x = 0.04f + 0.24f * (float) i, y = 0.72f - 0.2f * (float) i;
+                    p.addRoundedRectangle (x, y, 0.19f, 0.16f, 0.03f);
+                }
+                break;
+            }
+
+            case Type::rack:
+            {
+                // Three rack units, one over another, each with a knob at its right.
+                for (int i = 0; i < 3; ++i)
+                {
+                    const auto y = 0.08f + 0.3f * (float) i;
+                    p.addRoundedRectangle (0.04f, y, 0.92f, 0.24f, 0.04f);
+                    p.addEllipse (0.7f, y + 0.06f, 0.12f, 0.12f);
+                }
+                break;
+            }
+
+            case Type::drums:
+            {
+                // A drum from the side (its head an ellipse, its shell below) and two sticks crossed above it.
+                p.addEllipse (0.12f, 0.42f, 0.76f, 0.2f);
+                p.startNewSubPath (0.12f, 0.52f);
+                p.lineTo (0.12f, 0.82f);
+                p.quadraticTo (0.5f, 1.0f, 0.88f, 0.82f);
+                p.lineTo (0.88f, 0.52f);
+                p.startNewSubPath (0.2f, 0.06f);
+                p.lineTo (0.62f, 0.44f);
+                p.startNewSubPath (0.8f, 0.06f);
+                p.lineTo (0.38f, 0.44f);
+                break;
+            }
+
             case Type::flame:
                 // The mockup's "All Rigs" icon.
                 p.startNewSubPath (0.5f, 0.05f);
@@ -377,4 +417,54 @@ namespace Icons
         g.setColour (colour);
         g.strokePath (path, juce::PathStrokeType (strokeWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
+}
+
+//==============================================================================
+IconButton::IconButton (const juce::String& name, Icons::Type iconType, const juce::String& buttonText,
+                        juce::Justification textJustification)
+    : juce::Button (name), icon (iconType), text (buttonText), justification (textJustification)
+{
+    setTooltip (name);
+    setMouseCursor (juce::MouseCursor::PointingHandCursor);
+}
+
+void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
+{
+    auto bounds = getLocalBounds().toFloat().reduced (0.5f);
+    const auto on = getToggleState();
+
+    if (on || outlined || down)
+    {
+        g.setColour (on ? ParagonColours::accentDim.withAlpha (0.55f) : juce::Colour (0xff110e12));
+        g.fillRoundedRectangle (bounds, 4.0f);
+        g.setColour (on ? ParagonColours::accent.withAlpha (0.8f) : ParagonColours::panelEdge);
+        g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
+    }
+
+    auto colour = on ? ParagonColours::accent : (highlighted ? ParagonColours::text : ParagonColours::text.withAlpha (0.85f));
+    if (! isEnabled())
+        colour = ParagonColours::textDim.withAlpha (0.45f);
+
+    auto content = bounds.reduced (text.isEmpty() ? 4.0f : 8.0f, 0.0f);
+    const auto iconSize = juce::jmin (18.0f, bounds.getHeight() * 0.5f);
+
+    if (text.isEmpty())
+    {
+        Icons::draw (g, icon, content.withSizeKeepingCentre (iconSize, iconSize), colour, 1.6f, on);
+        return;
+    }
+
+    const auto font = juce::FontOptions (juce::jmin (15.0f, bounds.getHeight() * 0.55f), on ? juce::Font::bold : juce::Font::plain);
+    const auto textWidth = (float) juce::GlyphArrangement::getStringWidthInt (font, text);
+    const auto gap = iconSize * 0.45f;
+
+    // Centred: icon and text together in the middle. Otherwise from the left.
+    auto row = justification == juce::Justification::centred
+                 ? content.withSizeKeepingCentre (juce::jmin (content.getWidth(), iconSize + gap + textWidth), content.getHeight())
+                 : content;
+    Icons::draw (g, icon, row.removeFromLeft (iconSize).withSizeKeepingCentre (iconSize, iconSize), colour, 1.6f, on);
+    row.removeFromLeft (gap);
+    g.setColour (colour);
+    g.setFont (font);
+    g.drawText (text, row, juce::Justification::centredLeft, true);
 }

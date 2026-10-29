@@ -541,7 +541,7 @@ DominionPage::DominionPage (ParagonX1AudioProcessor& p)
     addAndMakeVisible (display);
     display.onSelect = [this] (int selected) { showBand (selected); };
 
-    onButton.setTooltip ("Switch DOMINION on or off (the same as stomp 5)");
+    onButton.setTooltip ("Switch DOMINION on or off (the same as its POWER switch in the rack)");
     delta.setTooltip ("Hear only what DOMINION takes away");
     styleButton (back);
     back.onClick = [this] { if (onClose) onClose(); };
@@ -693,9 +693,10 @@ void DominionPage::resized()
 
     // The side panel: STEREO, TILT, SCALE, then DELTA, MIX and OUT.
     auto side = sidePanel.reduced (12, 10);
+    // (PR7-K's page is 46 px shorter than PR7-E's: TILT and SCALE give up some of their height so MIX and OUT fit.)
     stereoArea = side.removeFromTop (118);
-    tiltArea = side.removeFromTop (234);
-    scaleArea = side.removeFromTop (118);
+    tiltArea = side.removeFromTop (200);
+    scaleArea = side.removeFromTop (104);
     outputArea = side;
 
     auto stereoRow = stereoArea.withTrimmedTop (22);

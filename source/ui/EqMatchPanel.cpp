@@ -34,13 +34,13 @@ EqMatchPanel::EqMatchPanel (ParagonX1AudioProcessor& p, EqDisplay& d)
     add.setColour (juce::TextButton::buttonColourId, ParagonColours::accentDim.withAlpha (0.7f));
     add.setColour (juce::TextButton::textColourOffId, ParagonColours::accent);
 
-    trackRecord.setTooltip ("Listen to your track: play the part you want to match (a few seconds at least; longer is better)");
-    trackClear.setTooltip ("Forget what's been heard of your track and start again");
-    referenceRecord.setTooltip ("Use another part of this track as the reference: move to it in your song and play it");
+    trackRecord.setTooltip ("Listen to your sound: play the synth as you want to match it (a few seconds at least; longer is better)");
+    trackClear.setTooltip ("Forget what's been heard of your sound and start again");
+    referenceRecord.setTooltip ("Use another sound as the reference: load another preset and play it (the synth's own sound, before ECHELON)");
     loadFile.setTooltip ("Use a song as the reference: pick an audio file (WAV, AIFF, FLAC, Ogg, MP3)");
     saved.setTooltip ("A reference saved before, or save your track or this reference for another time");
-    add.setTooltip ("Add the proposed bands to the EQ, as ordinary bands you can change (undo takes them all back)");
-    close.setTooltip ("Close EQ Match without adding anything (what's been heard is kept)");
+    add.setTooltip ("Add the proposed bands to ECHELON, as ordinary bands you can change (undo takes them all back)");
+    close.setTooltip ("Close MATCH without adding anything (what's been heard is kept)");
 
     trackRecord.onClick = [this]
     {
@@ -185,7 +185,7 @@ void EqMatchPanel::updateButtons()
     trackRecord.setToggleState (session.getRecording() == Recording::track, juce::dontSendNotification);
     trackRecord.setButtonText (trackRecord.getToggleState() ? "RECORDING" : "RECORD");
     referenceRecord.setToggleState (session.getRecording() == Recording::reference, juce::dontSendNotification);
-    referenceRecord.setButtonText (referenceRecord.getToggleState() ? "RECORDING" : "RECORD INPUT");
+    referenceRecord.setButtonText (referenceRecord.getToggleState() ? "RECORDING" : "RECORD SYNTH");
     loadFile.setEnabled (! session.isLoading());
     add.setEnabled (! proposal.empty());
     add.setButtonText (proposal.empty() ? juce::String ("ADD BANDS")
@@ -229,7 +229,7 @@ void EqMatchPanel::showSavedMenu()
     if (files.isEmpty())
         menu.addItem (99, "(none yet)", false);
     menu.addSeparator();
-    menu.addItem (1, "Save your track as a reference...", session.getTrack().isValid());
+    menu.addItem (1, "Save your sound as a reference...", session.getTrack().isValid());
     menu.addItem (2, "Save this reference...", session.getReference().isValid());
     menu.addItem (3, "Show the references folder");
 
@@ -238,7 +238,7 @@ void EqMatchPanel::showSavedMenu()
         if (chosen >= 100 && chosen - 100 < files.size())
             session.useSaved (files[chosen - 100]);
         else if (chosen == 1)
-            askForName ("Save your track as a reference", [this] (juce::String name) { session.save (session.getTrack(), name); });
+            askForName ("Save your sound as a reference", [this] (juce::String name) { session.save (session.getTrack(), name); });
         else if (chosen == 2)
             askForName ("Save this reference", [this] (juce::String name) { session.save (session.getReference(), name); });
         else if (chosen == 3)
@@ -252,7 +252,7 @@ void EqMatchPanel::showSavedMenu()
 
 void EqMatchPanel::askForName (const juce::String& title, std::function<void (juce::String)> then)
 {
-    auto* window = new juce::AlertWindow (title, "A name for it (it's kept with your rigs):", juce::MessageBoxIconType::NoIcon, this);
+    auto* window = new juce::AlertWindow (title, "A name for it (it's kept with your presets):", juce::MessageBoxIconType::NoIcon, this);
     window->addTextEditor ("name", session.getReferenceName().isNotEmpty() && session.getReferenceName() != "Input"
                                        ? session.getReferenceName() : juce::String ("My Reference"));
     window->addButton ("SAVE", 1, juce::KeyPress (juce::KeyPress::returnKey));
@@ -311,10 +311,10 @@ void EqMatchPanel::paint (juce::Graphics& g)
     auto title = titleArea;
     g.setColour (ParagonColours::text);
     g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
-    g.drawText ("EQ MATCH", title.removeFromTop (24), juce::Justification::centredLeft, false);
+    g.drawText ("MATCH", title.removeFromTop (24), juce::Justification::centredLeft, false);
     g.setColour (ParagonColours::textDim);
     g.setFont (juce::FontOptions (11.5f));
-    g.drawFittedText ("Make your track's tone like a reference: listen to both, then add the bands it proposes.",
+    g.drawFittedText ("Make your sound's tone like a reference: listen to both, then add the bands it proposes.",
                       title.withTrimmedTop (4), juce::Justification::topLeft, 5);
 
     const auto section = [&] (juce::Rectangle<int> area, const juce::String& name, const juce::String& status, bool problem)
@@ -330,14 +330,14 @@ void EqMatchPanel::paint (juce::Graphics& g)
     const auto track = session.getTrack();
     juce::String trackStatus;
     if (session.getRecording() == Recording::track)
-        trackStatus = "Listening: play the part to match. " + secondsText (track.seconds) + " heard";
+        trackStatus = "Listening: play the sound to match. " + secondsText (track.seconds) + " heard";
     else if (track.seconds > 0.0)
         trackStatus = secondsText (track.seconds) + " heard";
     else
-        trackStatus = "Nothing heard yet: press RECORD and play your track.";
+        trackStatus = "Nothing heard yet: press RECORD and play.";
     if (track.seconds > 0.0 && ! track.isValid())
         trackStatus << " (" << secondsText (eq::match::minSeconds) << " needed)";
-    section (trackArea, "YOUR TRACK", trackStatus, false);
+    section (trackArea, "YOUR SOUND", trackStatus, false);
 
     const auto reference = session.getReference();
     juce::String referenceStatus;
@@ -345,14 +345,14 @@ void EqMatchPanel::paint (juce::Graphics& g)
     if (session.isLoading())
         referenceStatus = "Reading the file...";
     else if (session.getRecording() == Recording::reference)
-        referenceStatus = "Listening: play the reference part of your song. " + secondsText (reference.seconds) + " heard";
+        referenceStatus = "Listening: play the reference sound. " + secondsText (reference.seconds) + " heard";
     else if (session.getProblem().isNotEmpty())
     {
         referenceStatus = session.getProblem();
         problem = true;
     }
     else if (session.getReferenceName().isEmpty())
-        referenceStatus = "None yet: record another part of the song, load a song file, or pick a saved one.";
+        referenceStatus = "None yet: record another sound (RECORD SYNTH), load a song file, or pick a saved one.";
     else
         referenceStatus = session.getReferenceName() + (reference.seconds > 0.0 ? ", " + secondsText (reference.seconds) + " heard" : juce::String());
     section (referenceArea, "REFERENCE", referenceStatus, problem);
