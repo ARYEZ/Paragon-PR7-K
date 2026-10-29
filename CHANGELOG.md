@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.29.0
+
+**DATASTREAM**, the fifth expansion: a bank of its own under EXPANSIONS (DS01 to DS15), named by you. Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses locked to the beat, huge throbbing basses, orchestral-electronic swells, clean leads with long glides, a robotic voice and crisp digital bleeps. Cold and exact: no tape, no wobble. Our own sounds; no title, characters, places, terms or music from the films.
+
+- Leads: **Light Trail** (a bright synced lead streaking between notes on a long glide), **Vector Voice** (a robotic, talk-box-like vowel lead, a little bit-crushed), **Data Burst** (a crisp square lead with a quick blip into each note).
+- Pads: **Grid Horizon** (a vast, cold orchestral-synth swell), **Neon Cathedral** (an organ-like pad slowly opening its harmonics), **Digital Sky** (a shimmering pad cut into exact sixteenths, bouncing left and right).
+- Basses: **Pulse Engine** (a huge bass throbbing in sixteenths with your song), **Bitfall Bass** (a digital bass that bit-crushes as you push the mod wheel), **Deep Lattice** (a deep, round octave bass).
+- Keys: **Glass Console** (cold, glassy FM keys), **Brass Protocol** (a big orchestral-synth brass stab), **Bit Chimes** (crisp, bit-crushed digital bleeps).
+- Arps: **Overclock** (a held chord driven up in tight sixteenths, its filter opening over four bars), **System Pulse** (whole chords chopped into sixteenths that bounce left and right), **Circuit Run** (fast random digital runs with ratchets and glitch stutters: hold one key).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: GLOW, ROBOT, BLIP, SWELL, HARMONICS, SMOOTH, GROWL, CRUSH, WEIGHT, SHIMMER, BITE, RESONANCE. Each preset's notes say what they do.
+- Also: a CPU test that failed on GitHub's slower Mac machines now allows for a machine's speed (it checks the same thing).
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
 ## 0.28.0
 
 **SANDSEA**, the fourth expansion: a bank of its own under EXPANSIONS (SS01 to SS15), named by you. Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices with wide ornamented vibrato, enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Our own sounds; no title, characters, places or music from the film.
