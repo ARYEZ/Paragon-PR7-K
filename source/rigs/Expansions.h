@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 5> list
+    inline constexpr std::array<Expansion, 6> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -32,5 +32,9 @@ namespace expansions
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
           "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Our own sounds." },
+        { "LAST LIGHT", "LL",
+          "Inspired by the score of a film about space, time and leaving the people you love: a soft cinematic felt "
+          "piano, an enormous church organ, aching strings, a ticking clock and vast cold spaces. Sad and longing. "
+          "Our own sounds." },
     }};
 }

@@ -74,7 +74,7 @@ namespace
         void play (double seconds, std::vector<std::pair<double, juce::MidiMessage>> events, std::vector<float>* left = nullptr,
                    std::vector<float>* right = nullptr, float* loudest = nullptr, bool* finite = nullptr)
         {
-            std::sort (events.begin(), events.end(), [] (const auto& a, const auto& b) { return a.first < b.first; });
+            std::stable_sort (events.begin(), events.end(), [] (const auto& a, const auto& b) { return a.first < b.first; });   // stable: a note-off before a note-on at the same time stays first
             juce::AudioBuffer<float> buffer (2, block);
             juce::MidiBuffer midi;
             size_t next = 0;
@@ -291,7 +291,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto star = rig.bank == Rig::numBanks + 2;   // STARCOURT: 100 BPM in C minor
         const auto sand = rig.bank == Rig::numBanks + 3;   // SANDSEA: 90 BPM in D, Phrygian dominant
         const auto data = rig.bank == Rig::numBanks + 4;   // DATASTREAM: 120 BPM in E minor
-        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : 85.0;
+        const auto last = rig.bank == Rig::numBanks + 5;   // LAST LIGHT: 70 BPM in A minor, slow and sad
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -324,7 +325,87 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             for (const auto& n : notes)
                 chord (e, at (n.on), at (n.on + n.len), { n.note }, velocity);
         };
-        if (data && type == "Lead")
+        const auto pedal = [&] (double down, double up)   // the sustain pedal
+        {
+            e.push_back ({ at (down), juce::MidiMessage::controllerEvent (1, 64, 127) });
+            e.push_back ({ at (up), juce::MidiMessage::controllerEvent (1, 64, 0) });
+        };
+        const auto style = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {});
+        if (last && type == "Keys" && style == "velocities")
+        {
+            // The felt piano's range: A1, A2, A3, A4, A5 and A6, each soft, medium and hard, two beats apart.
+            int k = 0;
+            for (const auto note : { 33, 45, 57, 69, 81, 93 })
+                for (const auto velocity : { 35, 75, 120 })
+                {
+                    chord (e, at (k * 2.0), at (k * 2.0 + 1.6), { note }, velocity);
+                    ++k;
+                }
+            length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (last && type == "Keys" && rig.name != "Music Box Elegy")
+        {
+            // A slow, sad piano: Am, F, C, Em in the left hand, a falling melody over it, the pedal changed with each chord.
+            const int bass[] = { 45, 41, 48, 40 };
+            const std::initializer_list<int> hands[] = { { 57, 60, 64 }, { 57, 60, 65 }, { 55, 60, 64 }, { 55, 59, 64 } };
+            for (int c = 0; c < 4; ++c)
+            {
+                chord (e, at (c * 4), at (c * 4 + 3.9), { bass[c] }, 70);
+                int k = 0;
+                for (const auto n : hands[c])
+                    chord (e, at (c * 4 + 1 + k * 0.5), at (c * 4 + 1.4 + k++ * 0.5), { n }, 55);
+                pedal (c * 4 + 0.05, c * 4 + 3.95);
+            }
+            line ({ { 0, 2, 76 }, { 2, 1, 74 }, { 3, 1, 72 }, { 4, 3, 72 }, { 7, 1, 71 }, { 8, 2, 72 }, { 10, 1, 74 },
+                    { 11, 1, 76 }, { 12, 4, 71 } }, 80);
+            pedal (16.05, 19.0);
+            if (rig.name == "Felt Memory")
+                wheel (12.0, 16.0, 90);
+            length = 22.0 * beat;
+        }
+        else if (last && type == "Keys")
+        {
+            line ({ { 0, 0.5, 81 }, { 0.5, 0.5, 84 }, { 1, 0.5, 88 }, { 2, 1, 86 }, { 3, 1, 84 }, { 4, 0.5, 83 }, { 4.5, 0.5, 84 },
+                    { 5, 1, 81 }, { 6, 2, 79 }, { 8, 0.5, 81 }, { 8.5, 0.5, 76 }, { 9, 3, 81 } }, 85);
+            length = 16.0 * beat;
+        }
+        else if (last && type == "Lead")
+        {
+            line ({ { 0, 2, 69 }, { 2, 1, 72 }, { 3, 1, 71 }, { 4, 3, 69 }, { 7, 1, 64 }, { 8, 2, 65 }, { 10, 1, 64 },
+                    { 11, 1, 62 }, { 12, 4, 64 } }, 90);
+            if (rig.name == "Cello Drift")
+                pressure (8.0, 12.0, 110);
+            length = 20.0 * beat;
+        }
+        else if (last && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 45, 57, 60, 64 }, 90);   // A minor
+            chord (e, at (8), at (15.8), { 41, 57, 60, 65 }, 90);  // F
+            if (rig.name == "Cathedral Organ")
+                wheel (2.0, 15.0, 127);
+            if (rig.name == "Horizon Strings")
+                pressure (8.0, 15.0, 100);
+            length = 24.0 * beat;
+        }
+        else if (last && type == "Bass")
+        {
+            if (rig.name == "Heartbeat")
+                for (int bar = 0; bar < 4; ++bar)
+                {
+                    chord (e, at (bar * 4), at (bar * 4 + 0.3), { 33 }, 110);
+                    chord (e, at (bar * 4 + 0.6), at (bar * 4 + 0.9), { 33 }, 80);
+                }
+            else
+                line ({ { 0, 4, 33 }, { 4, 4, 29 }, { 8, 4, 36 }, { 12, 4, 28 } }, 100);
+            length = 20.0 * beat;
+        }
+        else if (last)
+        {
+            chord (e, at (0), at (7.9), { 57, 60, 64 }, 85);
+            chord (e, at (8), at (15.9), { 53, 57, 60 }, 85);
+            length = 20.0 * beat;
+        }
+        else if (data && type == "Lead")
         {
             line ({ { 0, 1, 64 }, { 1, 0.5, 67 }, { 1.5, 0.5, 69 }, { 2, 2, 71 }, { 4, 1, 74 }, { 5, 1, 71 }, { 6, 2, 69 },
                     { 8, 1, 67 }, { 9, 1, 69 }, { 10, 1, 71 }, { 11, 1, 74 }, { 12, 4, 76 } }, 100);
