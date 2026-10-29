@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.26.0
+
+**HELLFORGE**, the second expansion: a bank of its own under EXPANSIONS (HF01 to HF15). Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through heavy distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds; no game, composer or music from the scores.
+
+- Leads: **Molten Riff** (a supersaw lead guitar through RABID, the pitch wheel set to dive an octave), **Warning Siren** (a sync lead winding up into each note), **Signal Scream** (a howling FM lead chopped by GLITCH).
+- Pads: **Ash Choir** (a dark, distorted vowel choir), **Furnace Drone** (a wall of detuned saws and noise through ABYSS), **Corrupted Signal** (a stepping, bit-crushed wavetable through GLITCH and LO-FI, in time with your song).
+- Basses: **Gut Chug** (a palm-muted chug: each hit dies inside its sixteenth), **Tectonic Drop** (a two-octave sub drop), **Grinder Bass** (a folding, chewing wavetable bass in sixteenths).
+- Keys: **Rust Organ** (an overdriven organ through a rotary speaker), **Ritual Bells** (dark, clanging FM bells), **Iron Riff** (one finger plays a whole power chord with a clean sub under it: Gatling Pulse played by hand).
+- Arps: **Gatling Pulse** (syncopated power-chord chugs: hold one low key), **Shrapnel Grid** (random ratcheted Phrygian fragments that never quite repeat), **War Machine** (a pumping root-octave-fifth sequence, ducked on every beat).
+- Macros: 1 BRIGHT (or METAL), **2 SPACE** on every preset, 3 DESTROY (more drive) or SCREAM, HEAT, CORRUPT. Each preset's notes say what its macros and mod wheel do.
+- Each uses at most one of the heavier drive models (none uses HALO), so they stay light on CPU. Levels are balanced by measurement against NEON RAIN; they were made without listening here, so your ears decide.
+
 ## 0.25.0
 
 Expansions, and effects in the mod matrix.
