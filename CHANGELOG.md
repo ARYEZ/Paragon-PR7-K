@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.33.0
+
+**NEGATIVE SPACE**, the ninth expansion: a bank of its own under EXPANSIONS (NS01 to NS15), named by you. Inspired by the modern dark-ambient film and TV scores of the 2010s: a fragile, intimate piano close up over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Cold, tense, quietly melancholy. Our own sounds; no titles, composers, products or music.
+
+- Keys, three pianos: **Soft Felt Piano** (the centrepiece: a soft, intimate felt piano heard up close; each note built harmonic by harmonic, the higher ones fading first as a real string's do, two strings a hair apart, the soft thump of felt, brighter and louder the harder you play, ringing on with the sustain pedal; the MOD WHEEL adds the keys' mechanical noise), **Broken Upright** (the same piano worn and out of tune, warbling like old tape, a distorted drone rising under each note), **Ghost Piano** (the same piano dissolving through a backwards reverb, a shimmer rising above it).
+- Leads: **Static Lead** (a buzzing, lonely lead), **Hollow Signal** (a thin, filtered line: the MOD WHEEL sweeps it), **Glass Tone** (a pure, cold tone).
+- Pads: **Low Hum** (a distorted drone rumbling under everything), **Cold Room** (a sterile, airy ambience), **Broken Signal** (a pad that keeps dropping out, in time with your song).
+- Basses: **Grit Rumble** (a distorted, rumbling low end), **Pulse Bass** (a hypnotic sequenced bass in sixteenths with your song: hold a note), **Sub Throb** (a deep sub pulsing in half notes).
+- Arps: **Hypnotic Motion** (a driving analog pulse building over four bars), **Glitch Pulse** (a chopped, stuttering pattern), **Steady Rows** (a metronomic beat from the drum sequencer under a rowing figure: hold notes above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: BUZZ, RESONANCE, FIFTH, GRIT, AIR, DROPOUT, SNAP, BODY, FELT, DRONE, SHIMMER, CRUSH, DRIVE. Each preset's notes say what they do.
+- The pianos are made by synthesis, not recorded: an impression of a soft felted upright, not a copy of any instrument; checked by measurement from soft to hard across six octaves.
+- **The preset browser:** banks A to E now sit on one row, and the expansion buttons shrink a little when there are many, so every expansion fits (the ninth had run off the bottom).
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
 ## 0.32.0
 
 **DREAMSTATE**, the eighth expansion: a bank of its own under EXPANSIONS (DR01 to DR15), named by you. Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy reverb-soaked guitar, sparse piano and ticking clocks. Our own sounds; no title, characters, places, terms or music from the film.
