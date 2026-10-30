@@ -155,8 +155,13 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
             CHECK (rigs[i].tags.contains (expansions::list[(size_t) x].name));
             ++perType[typeOf (rigs[i])];
         }
-        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp" })
-            CHECK (perType[type] == 3);   // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps
+        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps; CHROMEFURY is lead-heavy at the owner's ask: 6, 3, 3, 1, 2.
+        const auto leadHeavy = juce::String (expansions::list[(size_t) x].name) == "CHROMEFURY";
+        CHECK (perType["Lead"] == (leadHeavy ? 6 : 3));
+        CHECK (perType["Pad"] == 3);
+        CHECK (perType["Bass"] == 3);
+        CHECK (perType["Keys"] == (leadHeavy ? 1 : 3));
+        CHECK (perType["Arp"] == (leadHeavy ? 2 : 3));
     }
 }
 
@@ -319,8 +324,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto unspoken = rig.bank == Rig::numBanks + 10;  // UNSPOKEN: 70 BPM in B minor, slow and suspended
         const auto shrine = rig.bank == Rig::numBanks + 11;    // CYBERSHRINE: 72 BPM in D minor, ceremonial
         const auto stowaway = rig.bank == Rig::numBanks + 12;  // STOWAWAY: 60 BPM round A, half-step clashes, sparse
+        const auto fury = rig.bank == Rig::numBanks + 13;      // CHROMEFURY: 140 BPM in D minor, Phrygian bite
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -370,6 +376,55 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (fury && type == "Lead")
+        {
+            // A screaming riff in D minor: a run up through the flat second, a held high note with the wheel,
+            // a bend dive at the end.
+            line ({ { 0, 0.5, 62 }, { 0.5, 0.5, 63 }, { 1, 0.5, 65 }, { 1.5, 0.5, 67 }, { 2, 2, 69 }, { 4, 0.75, 70 },
+                    { 4.75, 0.75, 69 }, { 5.5, 0.5, 67 }, { 6, 2, 69 }, { 8, 1, 74 }, { 9, 1, 72 }, { 10, 4, 74 },
+                    { 14, 2, 69 } }, 110);
+            wheel (10.0, 14.0, 110);
+            for (int k = 0; k <= 16; ++k)   // a whammy dive on the last note
+                e.push_back ({ at (14.5 + k * 1.2 / 16.0), juce::MidiMessage::pitchWheel (1, 8192 - k * 512) });
+            e.push_back ({ at (16.5), juce::MidiMessage::pitchWheel (1, 8192) });
+            length = 19.0 * beat;
+        }
+        else if (fury && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 38, 50, 57, 62 }, 95);
+            chord (e, at (8), at (15.8), { 39, 51, 58, 63 }, 95);   // the flat second, a Phrygian lift
+            wheel (8.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (fury && type == "Bass")
+        {
+            if (rig.name == "Piston Drive")
+                line ({ { 0, 8, 26 }, { 8, 4, 27 }, { 12, 4, 24 } }, 110);
+            else
+                line ({ { 0, 0.75, 26 }, { 0.75, 0.75, 26 }, { 1.5, 0.5, 27 }, { 2, 1.5, 26 }, { 4, 0.75, 26 }, { 4.75, 0.75, 26 },
+                        { 5.5, 0.5, 29 }, { 6, 1.5, 27 }, { 8, 0.75, 26 }, { 8.75, 0.75, 26 }, { 9.5, 0.5, 27 }, { 10, 1.5, 26 },
+                        { 12, 2, 24 }, { 14, 2, 27 } }, 110);
+            wheel (8.0, 15.0, 110);
+            length = 19.0 * beat;
+        }
+        else if (fury && type == "Keys")
+        {
+            const std::initializer_list<int> chords[] = { { 50, 57, 62, 65 }, { 51, 58, 63, 67 }, { 48, 55, 60, 64 }, { 50, 57, 62, 65 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                for (const auto offset : { 0.0, 0.75, 1.5, 3.0 })
+                    chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.4), notes, offset == 0.0 ? 115 : 100);
+                ++c;
+            }
+            length = 19.0 * beat;
+        }
+        else if (fury)
+        {
+            chord (e, at (0), at (7.9), { 62, 65, 69 }, 105);
+            chord (e, at (8), at (15.9), { 63, 67, 70 }, 105);
+            length = 19.0 * beat;
         }
         else if (stowaway && type == "Lead")
         {
