@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.36.0
+
+**CYBERSHRINE**, the twelfth expansion: a bank of its own under EXPANSIONS (CS01 to CS15), named by you. Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an ancient chorus of women's voices in close, clashing harmony, ornamented like a folk ritual, huge slow drums and deep temple bells, and a cold, rainy, reverberant machine world. Our own sounds; no title, characters, places, terms or music from the film.
+
+- Leads: **Folk Voice** (a keening "ah" voice flicking up into every note from just below, like a folk singer's ornament: the MOD WHEEL adds vibrato), **Wire Song** (a glassy synced digital lead), **Half There** (a lead that drifts in and out of hearing).
+- Pads: **Ancient Chorus** (the centrepiece: a choir with a fifth above each note and a second choir a whole step up rubbing against it), **Rain City** (a dark, wet pad with rain falling through it), **Deep Dive** (a pad that sinks from bright to dark over ten seconds of each chord: the MOD WHEEL brings it back up).
+- Basses: **Temple Drum** (a huge drum you play as a bass, dropping an octave into each note), **Cold Current** (a dark bass pulsing in sixteenths with your song: hold a note), **Machine Heart** (a slow, low heartbeat with your song).
+- Keys: **Temple Bell** (deep bells that beat and shimmer for eight seconds), **Silk Strings** (zither-like plucks, each pressed up a semitone just after it sounds), **Glass Net** (cold digital keys).
+- Arps: **Ritual Drums** (slow, booming low drums and a deep bell each bar from the drum sequencer, with your chord above C3 sung by a choir; the kit is on C2 to B2), **Signal Ghost** (random glassy blips with long echoes, a new pattern every pass), **Dive Sequence** (a rising, watery arpeggio).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: ORNAMENT, SYNC, SHIMMER, CLASH, RAIN, DEPTH, BOOM, PULSE, GROWL, BEAT, BEND, BITS, VOWEL, ECHO. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Silk Strings and Ritual Drums by their peaks); made without listening here, so your ears decide.
+
 ## 0.35.0
 
 **UNSPOKEN**, the eleventh expansion: a bank of its own under EXPANSIONS (UN01 to UN15), named by you. Inspired by the score of a 2016 film about first contact and a language that changes how you see time: human voices breathing, murmuring and stuttering in eerie layers, vast swelling drones, circular phrases that run forwards and back, cold fog, quiet awe and grief. Our own sounds; no title, characters, terms or music from the film.
