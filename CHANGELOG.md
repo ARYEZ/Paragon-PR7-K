@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.35.0
+
+**UNSPOKEN**, the eleventh expansion: a bank of its own under EXPANSIONS (UN01 to UN15), named by you. Inspired by the score of a 2016 film about first contact and a language that changes how you see time: human voices breathing, murmuring and stuttering in eerie layers, vast swelling drones, circular phrases that run forwards and back, cold fog, quiet awe and grief. Our own sounds; no title, characters, terms or music from the film.
+
+- Leads: **Glass Voice** (a clear, wordless "eh" voice drifting on its own, with a slow glide: the MOD WHEEL adds vibrato), **Distant Call** (a long call like a whale's, bending up into every note and sliding between them: the MOD WHEEL adds a growl), **Signal Tone** (a pure tone that won't quite hold still, with a slow tremolo: the MOD WHEEL deepens it).
+- Pads: **Breathing Choir** (a vowel choir rocking between "oo" and "oh", breath swelling through it), **Circle Drone** (a drone whose colour keeps turning while it circles the room), **Low Mist** (a cold fog through a backwards reverb, so each chord seems to arrive before it's played).
+- Basses: **Vast Hull** (a low ring like a struck metal hull), **Tidal Swell** (strings and brass rising and sinking every two bars: press into the keys to push it), **Deep Murmur** (a sub with a dark "oo" voice on top).
+- Keys: **Ink Bells** (a bell strike with a soft tone blooming in after it), **Memory Loop** (NEGATIVE SPACE's felt piano, every note answered backwards), **Fog Glass** (cold, glassy keys in a cathedral).
+- Arps: **Stutter Choir** (vowel syllables broken into bursts of two, three and four: hold a chord), **Circular Time** (a pattern that reads the same forwards and backwards), **Breath Pulse** (voices and breath cut into a rhythm with your song).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: VOWEL, SCOOP, WOBBLE, BREATH, MOTION, FOG, METAL, BRASS, MOUTH, BLOOM, ECHO, SHINE, GLOW. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Stutter Choir and Breath Pulse by their peaks); made without listening here, so your ears decide.
+
 ## 0.34.0
 
 **NIGHTDRIVE**, the tenth expansion: a bank of its own under EXPANSIONS (ND01 to ND15), named by you. Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro synthwave, turned all the way up as you asked, with chorus on everything, big reverbs and long echoes. Our own sounds; no title, characters, songs or artists.
