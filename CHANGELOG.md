@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.32.0
+
+**DREAMSTATE**, the eighth expansion: a bank of its own under EXPANSIONS (DR01 to DR15), named by you. Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy reverb-soaked guitar, sparse piano and ticking clocks. Our own sounds; no title, characters, places, terms or music from the film.
+
+- Leads: **Twang Guitar** (a twangy baritone-guitar-like pluck with a slow tremolo), **Fading Horn** (a soft, noble horn: press into the keys after playing for more brass), **Weightless** (a floating, breathy, hollow-voiced lead on a slow glide).
+- Pads: **Folding City** (the MOD WHEEL folds the tone and pulls the upper layer down an octave), **Time Dilation** (chords swelling in backwards and sinking as they hold), **Heavy Chords** (dark, massive brass and strings).
+- Basses: **Colossus Blast** (the huge, low brass blast: play one low note, C1 to C2, and let it ring; the MOD WHEEL adds grit), **Undertow** (a deep sub swelling up from nothing), **Ostinato Bass** (a driving low string bass in sixteenths with your song: hold a note).
+- Keys: **Echo Piano** (LAST LIGHT's felt piano, darker, with long echoes), **Slowed Chorale** (keys that sag and warble like a tape slowing down), **Glass Memory** (cold, glassy bells).
+- Arps: **Ostinato Strings** (relentless string sixteenths: push the MOD WHEEL to build), **Layers Deep** (three arpeggiators on one chord at three speeds at once), **Countdown** (a ticking clock from the drum sequencer under a pulsing figure: hold notes above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: TWANG, BRASS, VOICE, FOLD, DRAG, WEIGHT, SAG, SURGE, BITE, FELT, WARBLE, SHIMMER, DEPTH, TENSION. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
 ## 0.31.0
 
 **SIMULACRUM**, the seventh expansion: a bank of its own under EXPANSIONS (SM01 to SM15), named by you. Inspired by the score and soundtrack of a 1999 science-fiction film about a simulated world: a dark, atonal orchestra with brass in clashing keys, late-'90s industrial and big-beat basses and breaks, fast trance arpeggios, falling digital rain and time slowing down. Our own sounds; no title, characters, places, phrases or music from the film.
