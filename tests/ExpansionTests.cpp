@@ -315,8 +315,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto dream = rig.bank == Rig::numBanks + 7;  // DREAMSTATE: 80 BPM in G minor, slow and heavy
         const auto negative = rig.bank == Rig::numBanks + 8;   // NEGATIVE SPACE: 85 BPM in D minor
         const auto night = rig.bank == Rig::numBanks + 9;      // NIGHTDRIVE: 100 BPM in A minor, synthwave
+        const auto unspoken = rig.bank == Rig::numBanks + 10;  // UNSPOKEN: 70 BPM in B minor, slow and suspended
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -366,6 +367,54 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (unspoken && type == "Lead")
+        {
+            // B minor, slow: a questioning line that rises and settles back where it began.
+            line ({ { 0, 3, 66 }, { 3, 1, 69 }, { 4, 4, 71 }, { 8, 2, 74 }, { 10, 2, 73 }, { 12, 4, 66 } }, 95);
+            if (rig.name != "Glass Voice")
+                wheel (8.0, 15.0, 100);
+            else
+                wheel (4.0, 8.0, 90);
+            length = 21.0 * beat;
+        }
+        else if (unspoken && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 47, 54, 59, 62 }, 90);   // B minor
+            chord (e, at (8), at (15.8), { 43, 55, 59, 62 }, 90);  // G major
+            if (rig.name == "Low Mist")
+                wheel (8.0, 15.0, 110);
+            length = 24.0 * beat;
+        }
+        else if (unspoken && type == "Bass")
+        {
+            line ({ { 0, 8, 35 }, { 8, 4, 31 }, { 12, 4, 30 } }, 105);
+            if (rig.name == "Tidal Swell")
+                pressure (8.0, 15.0, 100);
+            else if (rig.name == "Vast Hull")
+                wheel (6.0, 14.0, 110);
+            length = 21.0 * beat;
+        }
+        else if (unspoken && type == "Keys")
+        {
+            // Sparse: B minor, G, D, F sharp, a note answered by silence.
+            const std::initializer_list<int> chords[] = { { 47, 59, 62, 66 }, { 43, 59, 62, 67 }, { 50, 57, 62, 66 }, { 42, 58, 61, 66 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4), at (c * 4 + 2.8), notes, 80);
+                line ({ { c * 4 + 2.0, 1.5, c % 2 == 0 ? 74 : 73 } }, 65);
+                if (rig.name == "Memory Loop")
+                    pedal (c * 4 + 0.05, c * 4 + 3.95);
+                ++c;
+            }
+            length = 22.0 * beat;
+        }
+        else if (unspoken)
+        {
+            chord (e, at (0), at (7.9), { 59, 62, 66 }, 95);
+            chord (e, at (8), at (15.9), { 55, 59, 62 }, 95);
+            length = 21.0 * beat;
         }
         else if (night && type == "Lead")
         {
