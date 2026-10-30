@@ -59,7 +59,7 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
     addRadio (filterButtons, "Factory Presets", 1, [this] { filter = Filter::factory; refreshList(); });
     addRadio (bankButtons, "All Banks", 2, [this] { bankFilter = -1; refreshList(); });
     for (int bank = 0; bank < Rig::numBanks; ++bank)
-        addRadio (bankButtons, "Bank " + Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
+        addRadio (bankButtons, Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });   // A-E, one row
     // The built-in expansions, a bank each, under their own heading.
     for (int bank = Rig::numBanks; bank < Rig::numBanksWithExpansions(); ++bank)
         addRadio (bankButtons, Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
@@ -419,12 +419,33 @@ void RigBrowser::resized()
         sidebar.removeFromTop (4);
     }
     sidebar.removeFromTop (28);
-    for (int index = 0; index < bankButtons.size(); ++index)
+    if (bankButtons.size() > Rig::numBanks)
     {
-        if (index == Rig::numBanks + 1)
-            sidebar.removeFromTop (24);   // room for EXPANSIONS
-        bankButtons[index]->setBounds (sidebar.removeFromTop (28));
+        // ALL BANKS, then the user's banks A-E side by side on one row (they were a column of five: with nine
+        // expansions under them the list ran off the bottom), then the expansions, a row each, made a little
+        // shorter (down to 20 px) when there are too many for 28 px rows.
+        bankButtons[0]->setBounds (sidebar.removeFromTop (28));
         sidebar.removeFromTop (4);
+        auto row = sidebar.removeFromTop (28);
+        const auto gap = 4;
+        const auto width = (row.getWidth() - gap * (Rig::numBanks - 1)) / Rig::numBanks;
+        for (int bank = 0; bank < Rig::numBanks; ++bank)
+        {
+            bankButtons[bank + 1]->setBounds (bank == Rig::numBanks - 1 ? row : row.removeFromLeft (width));
+            row.removeFromLeft (gap);
+        }
+        sidebar.removeFromTop (4);
+        const auto expansions = bankButtons.size() - Rig::numBanks - 1;
+        if (expansions > 0)
+        {
+            sidebar.removeFromTop (24);   // room for EXPANSIONS
+            const auto height = juce::jlimit (20, 28, sidebar.getHeight() / expansions - 4);
+            for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
+            {
+                bankButtons[index]->setBounds (sidebar.removeFromTop (height));
+                sidebar.removeFromTop (4);
+            }
+        }
     }
 
     area.removeFromLeft (12);

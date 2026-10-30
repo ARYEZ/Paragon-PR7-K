@@ -294,6 +294,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto last = rig.bank == Rig::numBanks + 5;   // LAST LIGHT: 70 BPM in A minor, slow and sad
         const auto sim = rig.bank == Rig::numBanks + 6;    // SIMULACRUM: 130 BPM in E minor (E Phrygian for the runs)
         const auto dream = rig.bank == Rig::numBanks + 7;  // DREAMSTATE: 80 BPM in G minor, slow and heavy
+        const auto negative = rig.bank == Rig::numBanks + 8;   // NEGATIVE SPACE: 85 BPM in D minor
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
@@ -333,7 +334,71 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             e.push_back ({ at (up), juce::MidiMessage::controllerEvent (1, 64, 0) });
         };
         const auto style = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {});
-        if (dream && type == "Lead")
+        if (type == "Keys" && style == "velocities")
+        {
+            // A keys preset's range: A1, A2, A3, A4, A5 and A6, each soft, medium and hard, two beats apart.
+            int k = 0;
+            for (const auto note : { 33, 45, 57, 69, 81, 93 })
+                for (const auto velocity : { 35, 75, 120 })
+                {
+                    chord (e, at (k * 2.0), at (k * 2.0 + 1.6), { note }, velocity);
+                    ++k;
+                }
+            length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (negative && type == "Keys")
+        {
+            // A quiet, lonely piano: D minor, B flat, F, A in the left hand, a sparse falling line over it, the pedal
+            // changed with each chord; softer than LAST LIGHT's clip.
+            const int bass[] = { 38, 34, 41, 33 };
+            const std::initializer_list<int> hands[] = { { 50, 53, 57 }, { 50, 53, 58 }, { 48, 53, 57 }, { 49, 52, 57 } };
+            for (int c = 0; c < 4; ++c)
+            {
+                chord (e, at (c * 4), at (c * 4 + 3.9), { bass[c] }, 55);
+                int k = 0;
+                for (const auto n : hands[c])
+                    chord (e, at (c * 4 + 1 + k * 0.5), at (c * 4 + 1.4 + k++ * 0.5), { n }, 45);
+                pedal (c * 4 + 0.05, c * 4 + 3.95);
+            }
+            line ({ { 0, 2, 69 }, { 2, 1, 65 }, { 3, 1, 64 }, { 4, 3, 62 }, { 7, 1, 65 }, { 8, 2, 69 }, { 10, 1, 70 },
+                    { 11, 1, 69 }, { 12, 4, 64 } }, 65);
+            pedal (16.05, 19.0);
+            if (rig.name == "Soft Felt Piano")
+                wheel (12.0, 16.0, 90);
+            length = 22.0 * beat;
+        }
+        else if (negative && type == "Lead")
+        {
+            line ({ { 0, 2, 62 }, { 2, 1, 65 }, { 3, 1, 64 }, { 4, 3, 62 }, { 7, 1, 57 }, { 8, 2, 58 }, { 10, 1, 57 },
+                    { 11, 1, 55 }, { 12, 4, 57 } }, 90);
+            if (rig.name == "Hollow Signal")
+                wheel (8.0, 14.0, 110);
+            length = 20.0 * beat;
+        }
+        else if (negative && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 38, 50, 53, 57 }, 90);   // D minor
+            chord (e, at (8), at (15.8), { 34, 50, 53, 58 }, 90);  // B flat
+            length = 24.0 * beat;
+        }
+        else if (negative && type == "Bass")
+        {
+            if (rig.name == "Pulse Bass")
+            {
+                chord (e, at (0), at (7.9), { 38 }, 110);
+                chord (e, at (8), at (15.9), { 34 }, 110);
+            }
+            else
+                line ({ { 0, 4, 26 }, { 4, 4, 22 }, { 8, 4, 29 }, { 12, 4, 21 } }, 105);
+            length = 20.0 * beat;
+        }
+        else if (negative)
+        {
+            chord (e, at (0), at (7.9), { 62, 65, 69 }, 95);
+            chord (e, at (8), at (15.9), { 58, 62, 65 }, 95);
+            length = 20.0 * beat;
+        }
+        else if (dream && type == "Lead")
         {
             // G minor: G Bb D, the flat sixth (Eb) and the raised seventh (F#) for the pull.
             line ({ { 0, 2, 67 }, { 2, 1, 70 }, { 3, 1, 69 }, { 4, 3, 67 }, { 7, 1, 66 }, { 8, 2, 67 }, { 10, 1, 63 },
@@ -453,18 +518,6 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             else
                 chord (e, at (0), at (15.9), { 64, 67, 71 }, 100);
             length = 19.0 * beat;
-        }
-        else if (last && type == "Keys" && style == "velocities")
-        {
-            // The felt piano's range: A1, A2, A3, A4, A5 and A6, each soft, medium and hard, two beats apart.
-            int k = 0;
-            for (const auto note : { 33, 45, 57, 69, 81, 93 })
-                for (const auto velocity : { 35, 75, 120 })
-                {
-                    chord (e, at (k * 2.0), at (k * 2.0 + 1.6), { note }, velocity);
-                    ++k;
-                }
-            length = (k * 2.0 + 3.0) * beat;
         }
         else if (last && type == "Keys" && rig.name != "Music Box Elegy")
         {
