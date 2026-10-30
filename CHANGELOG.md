@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.37.0
+
+**STOWAWAY**, the thirteenth expansion: a bank of its own under EXPANSIONS (SW01 to SW15), named by you. Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship in deep space, leaning into suspense and tension as you asked: half-step clashes, pitches that creep and sag, uneven swells, and dread that never resolves. Our own sounds; no title, characters, ship, creature, company or music from the film.
+
+- **Leads and pads built differently**, as you asked: none is the mono glide-and-vibrato lead or the unison / choir pad the earlier banks lean on. Each is built round a part of the synth no expansion had used: a hand-drawn wave, the FFT editor, drawn LFO shapes and envelopes, band-pass and notch filters, ring-style AM.
+- Leads: **Echo Flute** (a breathy drawn-wave flute, played straight, into long dark repeating echoes), **Bone Horn** (a primitive rasping horn: a saw cut to its odd harmonics in the FFT editor, roughened by ring-style AM), **Cold Whistle** (a thin whistle through a narrow ringing band-pass, sagging a quarter-tone flat as you hold it).
+- Pads: **Hull Hum** (a ship's room tone: a notch filter wandering through a low buzz, vents breathing above), **Cluster Strings** (a half step inside every chord, swelling unevenly: the MOD WHEEL adds a tritone), **Harmonic Shiver** (only the high, glassy partials, trembling).
+- Basses: **Dread Brass** (a low half-step cluster that blasts, falls back and swells into a bigger blast), **Pressure Drone** (a sub that creeps up a semitone over twenty seconds of holding), **Steam Bass** (a bent square bass with a hiss of steam on every note).
+- Keys: **Bowed Metal** (a metal ring that flares, falls back, then swells as if bowed), **Data Chatter** (crushed computer blips, each at a random pitch), **Dread Piano** (a muffled piano with a buzzing rattle in its strings).
+- Arps: **Proximity Ping** (hold one note: the pings come faster and faster), **Vent Crawl** (random chromatic scratching in the walls), **Alarm Pulse** (a whooping tritone alarm over a ticking beat from the drum sequencer: play above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT, **2 SPACE** and **3 TENSION** on every preset: a clashing half step or tritone, a deeper creep or sag, or a rougher sound. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Vent Crawl, Dread Piano, Harmonic Shiver, Data Chatter and Alarm Pulse by their peaks); made without listening here, so your ears decide.
+
 ## 0.36.0
 
 **CYBERSHRINE**, the twelfth expansion: a bank of its own under EXPANSIONS (CS01 to CS15), named by you. Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an ancient chorus of women's voices in close, clashing harmony, ornamented like a folk ritual, huge slow drums and deep temple bells, and a cold, rainy, reverberant machine world. Our own sounds; no title, characters, places, terms or music from the film.
