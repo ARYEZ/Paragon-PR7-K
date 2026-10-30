@@ -316,8 +316,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto negative = rig.bank == Rig::numBanks + 8;   // NEGATIVE SPACE: 85 BPM in D minor
         const auto night = rig.bank == Rig::numBanks + 9;      // NIGHTDRIVE: 100 BPM in A minor, synthwave
         const auto unspoken = rig.bank == Rig::numBanks + 10;  // UNSPOKEN: 70 BPM in B minor, slow and suspended
+        const auto shrine = rig.bank == Rig::numBanks + 11;    // CYBERSHRINE: 72 BPM in D minor, ceremonial
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -367,6 +368,49 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (shrine && type == "Lead")
+        {
+            // D minor with a folk colour: a keening line that leans on the second and the fourth.
+            line ({ { 0, 2, 69 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 3, 72 }, { 7, 1, 70 }, { 8, 2, 69 }, { 10, 1, 64 },
+                    { 11, 1, 65 }, { 12, 4, 62 } }, 95);
+            wheel (8.0, 15.0, 100);
+            length = 20.0 * beat;
+        }
+        else if (shrine && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 50, 57, 62, 65 }, 90);   // D minor (open)
+            chord (e, at (8), at (15.8), { 46, 58, 62, 65 }, 90);  // B flat
+            if (rig.name != "Ancient Chorus")
+                wheel (8.0, 15.0, 100);
+            length = 24.0 * beat;
+        }
+        else if (shrine && type == "Bass")
+        {
+            if (rig.name == "Temple Drum")
+                line ({ { 0, 1, 38 }, { 2, 1, 38 }, { 2.5, 1, 33 }, { 4, 1, 38 }, { 6, 1, 34 }, { 8, 1, 38 }, { 10, 1, 38 },
+                        { 10.5, 1, 33 }, { 12, 1, 31 }, { 14, 1, 33 } }, 110);
+            else
+                line ({ { 0, 8, 38 }, { 8, 4, 34 }, { 12, 4, 33 } }, 105);
+            length = 20.0 * beat;
+        }
+        else if (shrine && type == "Keys")
+        {
+            const std::initializer_list<int> chords[] = { { 50, 57, 62, 65 }, { 46, 58, 62, 65 }, { 48, 55, 60, 64 }, { 45, 57, 61, 64 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4), at (c * 4 + 2.8), notes, 85);
+                line ({ { c * 4 + 2.0, 1.5, c % 2 == 0 ? 74 : 72 } }, 70);
+                ++c;
+            }
+            length = 22.0 * beat;
+        }
+        else if (shrine)
+        {
+            chord (e, at (0), at (7.9), { 62, 65, 69 }, 95);
+            chord (e, at (8), at (15.9), { 58, 62, 65 }, 95);
+            length = 21.0 * beat;
         }
         else if (unspoken && type == "Lead")
         {
