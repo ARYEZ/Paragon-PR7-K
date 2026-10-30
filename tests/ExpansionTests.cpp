@@ -3,6 +3,7 @@
 // preset's settings and routes are real ones, and that each plays: in time with a song, at a sensible level, clean,
 // and silent once its notes and tails have ended. "[.render]" (hidden) writes a clip of each for listening.
 #include <catch2/catch_test_macros.hpp>
+#include <map>
 
 #include "ModDestinations.h"
 #include "Parameters.h"
@@ -158,6 +159,24 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
     }
 }
 
+TEST_CASE ("Every factory and expansion preset has a name of its own", "[rigs][expansions]")
+{
+    // Two presets of one name can't be told apart in the browser or found by name (NIGHTDRIVE's first arp was called
+    // Pulse Runner, as STARCOURT's SC08 already was).
+    std::map<juce::String, juce::String> seen;
+    auto rigs = makeFactoryRigs();
+    for (auto& rig : makeExpansionRigs())
+        rigs.push_back (rig);
+    for (const auto& rig : rigs)
+    {
+        INFO (rig.name << " (" << rig.getSlotName() << ")");
+        const auto [where, isNew] = seen.emplace (rig.name, rig.getSlotName());
+        if (! isNew)
+            FAIL_CHECK ("also " << where->second);
+    }
+    CHECK (seen.size() == rigs.size());
+}
+
 TEST_CASE ("Every expansion preset's settings, routes and macros are real ones", "[rigs][expansions]")
 {
     ParagonX1AudioProcessor processor;
@@ -295,7 +314,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto sim = rig.bank == Rig::numBanks + 6;    // SIMULACRUM: 130 BPM in E minor (E Phrygian for the runs)
         const auto dream = rig.bank == Rig::numBanks + 7;  // DREAMSTATE: 80 BPM in G minor, slow and heavy
         const auto negative = rig.bank == Rig::numBanks + 8;   // NEGATIVE SPACE: 85 BPM in D minor
-        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0 : 85.0;
+        const auto night = rig.bank == Rig::numBanks + 9;      // NIGHTDRIVE: 100 BPM in A minor, synthwave
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
+                   : night ? 100.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -345,6 +366,64 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (night && type == "Lead")
+        {
+            // A minor: a hook over Am - F - C - G.
+            line ({ { 0, 1.5, 69 }, { 1.5, 0.5, 72 }, { 2, 2, 76 }, { 4, 1.5, 77 }, { 5.5, 0.5, 76 }, { 6, 2, 72 },
+                    { 8, 1.5, 72 }, { 9.5, 0.5, 74 }, { 10, 2, 76 }, { 12, 1, 74 }, { 13, 1, 72 }, { 14, 2, 71 } }, 100);
+            if (rig.name != "Night Cruise")
+                wheel (8.0, 14.0, 100);
+            length = 19.0 * beat;
+        }
+        else if (night && type == "Pad")
+        {
+            const std::initializer_list<int> chords[] = { { 45, 57, 60, 64 }, { 41, 57, 60, 65 }, { 48, 55, 60, 64 }, { 43, 55, 59, 62 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4), at (c * 4 + 3.9), notes, 95);
+                ++c;
+            }
+            if (rig.name == "Midnight Strings")
+                pressure (8.0, 15.0, 100);
+            length = 21.0 * beat;
+        }
+        else if (night && type == "Bass")
+        {
+            const int roots[] = { 33, 29, 36, 31 };
+            if (rig.name == "Octave Drive")
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4), at (c * 4 + 3.9), { roots[c] }, 110);
+            else
+                for (int c = 0; c < 4; ++c)
+                    for (const auto [on, len] : { std::pair { 0.0, 1.4 }, std::pair { 1.5, 0.4 }, std::pair { 2.0, 1.4 }, std::pair { 3.5, 0.4 } })
+                        chord (e, at (c * 4 + on), at (c * 4 + on + len), { roots[c] + (on == 3.5 ? 12 : 0) }, on == 0.0 ? 110 : 95);
+            length = 18.0 * beat;
+        }
+        else if (night && type == "Keys")
+        {
+            const std::initializer_list<int> chords[] = { { 57, 60, 64, 69 }, { 53, 57, 60, 65 }, { 55, 60, 64, 67 }, { 55, 59, 62, 67 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                if (rig.name == "Retro Stab")
+                    for (const auto offset : { 0.0, 1.5, 3.0 })
+                        chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.6), notes, offset == 0.0 ? 110 : 95);
+                else
+                {
+                    chord (e, at (c * 4), at (c * 4 + 1.9), notes, 95);
+                    chord (e, at (c * 4 + 2), at (c * 4 + 3.9), notes, 80);
+                }
+                ++c;
+            }
+            length = 20.0 * beat;
+        }
+        else if (night)
+        {
+            chord (e, at (0), at (7.9), { 57, 60, 64 }, 100);
+            chord (e, at (8), at (15.9), { 53, 57, 60 }, 100);
+            length = 20.0 * beat;
         }
         else if (negative && type == "Keys")
         {
