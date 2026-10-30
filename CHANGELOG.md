@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.38.0
+
+**CHROMEFURY**, the fourteenth expansion: a bank of its own under EXPANSIONS (CF01 to CF15), named by you. Inspired by the score of a 2015 post-apocalyptic chase film: relentless war drums, sawing string ostinatos, guitar-like screaming leads over growling low synths, engines, speed, dust and fire. Our own sounds; no title, characters, vehicles, places, phrases or music from the film.
+
+- **Lead-heavy, as you asked: 6 leads** (and 3 pads, 3 basses, 1 keys, 2 arps), heavier than HELLFORGE's. Distortion is stacked like a guitar rig: in series (a gritty wave, a shaper before the filter and another after it, an insert drive) and in parallel (two layers through two different drive models on two buses, like two amps on one guitar), with a power chord inside each note and a clean sub kept out of the distortion so the low end stays solid. Every lead dives an octave on the pitch bend.
+- Leads: **Highway Scream** (a screaming, guitar-like solo lead: RABID and BANSHEE in parallel), **Chrome Howl** (a sync howl through two shapers and COSMONAUT's fuzz), **Fury Saw** (the thickest lead in the plugin: twelve saws over two octaves through CHIMERA and SKYLINE; plays chords too), **Nitro Wail** (a hard FM scream, wave-folded into RABID), **Iron Throat** (a distorted lead that talks: the MOD WHEEL moves the vowel like a talk box), **Thunder Octave** (an octave-fuzz snarl through COSMONAUT).
+- Pads: **Sand Storm** (a distorted, wind-blown pad), **Burning Horizon** (a heavy pad rising for four seconds), **Dust Choir** (a driven choir).
+- Basses: **Engine Growl** (the MOD WHEEL revs it), **Diesel Sub** (a clean sub with a distorted growl on top), **Piston Drive** (pumping eighths with your song: hold a note).
+- Keys: **Rust Stabs** (big driven chord stabs).
+- Arps: **Battle Drums** (pounding low toms under a driven chord: play above C3, the kit is on C2 to B2), **Pursuit** (a sawing string ostinato with a Phrygian bite).
+- Macros: 1 BRIGHT, **2 SPACE** and **3 FURY** (more gain) on every preset. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Battle Drums by its peaks); made without listening here, so your ears decide.
+
 ## 0.37.0
 
 **STOWAWAY**, the thirteenth expansion: a bank of its own under EXPANSIONS (SW01 to SW15), named by you. Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship in deep space, leaning into suspense and tension as you asked: half-step clashes, pitches that creep and sag, uneven swells, and dread that never resolves. Our own sounds; no title, characters, ship, creature, company or music from the film.
