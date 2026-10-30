@@ -2,7 +2,21 @@
 
 Each version's notes appear on its GitHub Release page.
 
-## 0.29.0
+## 0.30.0
+
+**LAST LIGHT**, the sixth expansion: a bank of its own under EXPANSIONS (LL01 to LL15), named by you. Inspired by the score of a film about space, time and leaving the people you love: sad, longing and melancholy, built round a soft, cinematic felt piano, with an enormous church organ, aching strings, a ticking clock and vast cold spaces. Our own sounds; no title, characters, places or music from the film.
+
+- Keys: **Felt Memory** (the felt piano: a dark, rounded tone, the bright strike of the hammer dying away, the soft thump of felt on each note, brighter and louder the harder you play, ringing on with the sustain pedal; the MOD WHEEL adds the keys' mechanical noise), **Distant Felt** (the felt piano far away and long ago, on worn cassette in a vast hall), **Music Box Elegy** (a fragile music box: play it high).
+- Leads: **Lonely Signal** (a pure, lonely lead with a slow glide and a late vibrato), **Cello Drift** (a slow, bowed cello-like lead: press into the keys after playing to bow harder), **Wordless Elegy** (a soft wordless voice).
+- Pads: **Cathedral Organ** (an enormous pipe organ: the MOD WHEEL is its swell), **Horizon Strings** (slow, aching string swells: press into the keys to swell louder), **Fading Light** (a dark, breathing pad drifting slowly).
+- Basses: **Organ Pedal** (deep organ pedal notes), **Gravity Well** (a sub rising slowly out of nothing), **Heartbeat** (a soft, low pulse: play two notes close together).
+- Arps: **Ticking Clock** (a clock ticking from the drum sequencer under a quiet felt-piano figure: hold notes above C3, the kit is on C2 to B2), **Docking** (an organ figure climbing in sixteenths, building over four bars), **Tesseract** (a slow felt-piano arpeggio through a backwards reverb).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: VIBRATO, BOW, VOWEL, STOPS, SWELL, DRIFT, RANKS, WARMTH, THUMP, FELT, WEAR, TINE. Each preset's notes say what they do.
+- The felt piano is made by synthesis, not recorded: an impression of a felt piano, not a copy of one. Checked by measurement from soft to hard across six octaves; your ears decide.
+- **0.29.0 was never published:** its Linux build passed every check, then crashed while closing (it didn't happen again in six runs here), so nothing went out. DATASTREAM was already inside 0.28.0; its notes are under 0.29.0 below, and everything in it is in this version.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.29.0 (not published: see 0.30.0)
 
 **DATASTREAM**, the fifth expansion: a bank of its own under EXPANSIONS (DS01 to DS15), named by you. Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses locked to the beat, huge throbbing basses, orchestral-electronic swells, clean leads with long glides, a robotic voice and crisp digital bleeps. Cold and exact: no tape, no wobble. Our own sounds; no title, characters, places, terms or music from the films.
 
