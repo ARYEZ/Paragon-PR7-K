@@ -292,7 +292,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto sand = rig.bank == Rig::numBanks + 3;   // SANDSEA: 90 BPM in D, Phrygian dominant
         const auto data = rig.bank == Rig::numBanks + 4;   // DATASTREAM: 120 BPM in E minor
         const auto last = rig.bank == Rig::numBanks + 5;   // LAST LIGHT: 70 BPM in A minor, slow and sad
-        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : 85.0;
+        const auto sim = rig.bank == Rig::numBanks + 6;    // SIMULACRUM: 130 BPM in E minor (E Phrygian for the runs)
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -331,7 +332,65 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             e.push_back ({ at (up), juce::MidiMessage::controllerEvent (1, 64, 0) });
         };
         const auto style = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {});
-        if (last && type == "Keys" && style == "velocities")
+        if (sim && type == "Lead")
+        {
+            // E minor, the flat second (F) for menace.
+            line ({ { 0, 1.5, 64 }, { 1.5, 0.5, 65 }, { 2, 2, 64 }, { 4, 1, 67 }, { 5, 1, 71 }, { 6, 2, 72 }, { 8, 1, 71 },
+                    { 9, 1, 67 }, { 10, 1, 65 }, { 11, 1, 67 }, { 12, 4, 64 } }, 100);
+            if (rig.name != "Phantom Line")
+                wheel (8.0, 14.0, 110);
+            length = 19.0 * beat;
+        }
+        else if (sim && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 40, 52, 55, 59 }, 95);   // E minor
+            chord (e, at (8), at (15.8), { 41, 53, 57, 60 }, 95);  // F: the flat second
+            length = 22.0 * beat;
+        }
+        else if (sim && type == "Bass")
+        {
+            if (rig.name == "Industrial Pulse")
+            {
+                chord (e, at (0), at (7.9), { 28 }, 110);
+                chord (e, at (8), at (11.9), { 29 }, 110);
+                chord (e, at (12), at (15.9), { 31 }, 110);
+            }
+            else
+            {
+                const int notes[] = { 28, 28, 31, 28, 29, 28, 35, 33 };
+                for (int bar = 0; bar < 4; ++bar)
+                    for (int k = 0; k < 8; ++k)
+                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { notes[k] }, k % 2 == 0 ? 110 : 90);
+                if (rig.name == "Breakbeat Bass")
+                    wheel (8.0, 16.0, 120);
+            }
+            length = 18.0 * beat;
+        }
+        else if (sim && type == "Keys")
+        {
+            const std::initializer_list<int> chords[] = { { 64, 67, 71 }, { 65, 69, 72 }, { 64, 67, 71 }, { 62, 65, 69 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                for (const auto offset : { 0.0, 1.5, 3.0 })
+                    chord (e, at (c * 4 + offset), at (c * 4 + offset + 1.0), notes, offset == 0.0 ? 105 : 85);
+                ++c;
+            }
+            if (rig.name == "Warped Keys")
+                wheel (6.0, 14.0, 127);
+            length = 19.0 * beat;
+        }
+        else if (sim)
+        {
+            if (rig.name == "Rain Cascade")
+                chord (e, at (0), at (15.9), { 64 }, 100);
+            else if (rig.name == "System Breach")
+                chord (e, at (0), at (15.9), { 64, 67 }, 105);
+            else
+                chord (e, at (0), at (15.9), { 64, 67, 71 }, 100);
+            length = 19.0 * beat;
+        }
+        else if (last && type == "Keys" && style == "velocities")
         {
             // The felt piano's range: A1, A2, A3, A4, A5 and A6, each soft, medium and hard, two beats apart.
             int k = 0;
