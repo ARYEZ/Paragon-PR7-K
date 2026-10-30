@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 12> list
+    inline constexpr std::array<Expansion, 13> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -60,5 +60,9 @@ namespace expansions
           "Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an "
           "ancient chorus of women's voices in close, clashing harmony, huge slow ritual drums, deep temple bells, and "
           "a cold, rainy, reverberant machine world. Our own sounds." },
+        { "STOWAWAY", "SW",
+          "Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship "
+          "in deep space: echoing woodwinds, primitive horns, trembling string harmonics, low brass clusters, the "
+          "ship's hum, hiss, chatter and alarms, and dread that never resolves. Our own sounds." },
     }};
 }

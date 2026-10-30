@@ -67,6 +67,7 @@ namespace
         {
             processor.loadRig (entryNamed (name));
             processor.prepareToPlay (rate, block);   // fresh: no tails from the last one
+            processor.finishTableBuilds();           // FFT-edited waves are built in the background
             processor.seedRandomForTest (1);
             song.ppq = 0.0;
             song.playing = true;
@@ -317,8 +318,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto night = rig.bank == Rig::numBanks + 9;      // NIGHTDRIVE: 100 BPM in A minor, synthwave
         const auto unspoken = rig.bank == Rig::numBanks + 10;  // UNSPOKEN: 70 BPM in B minor, slow and suspended
         const auto shrine = rig.bank == Rig::numBanks + 11;    // CYBERSHRINE: 72 BPM in D minor, ceremonial
+        const auto stowaway = rig.bank == Rig::numBanks + 12;  // STOWAWAY: 60 BPM round A, half-step clashes, sparse
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -368,6 +370,56 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (stowaway && type == "Lead")
+        {
+            // Sparse and uneasy: A, a half step up and back, a tritone, long silences between.
+            line ({ { 0, 2.5, 69 }, { 3, 1, 70 }, { 4, 3, 69 }, { 8, 2, 75 }, { 10.5, 1.5, 74 }, { 13, 3, 69 } }, 90);
+            wheel (8.0, 15.0, 100);
+            length = 21.0 * beat;
+        }
+        else if (stowaway && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 45, 52, 57, 60 }, 85);    // A minor, open
+            chord (e, at (8), at (15.8), { 46, 52, 58, 61 }, 85);   // B flat over the E: unresolved
+            wheel (10.0, 15.0, 100);
+            length = 23.0 * beat;
+        }
+        else if (stowaway && type == "Bass")
+        {
+            if (rig.name == "Steam Bass")
+                line ({ { 0, 1, 33 }, { 1.5, 0.5, 33 }, { 2, 1, 34 }, { 4, 1, 33 }, { 5.5, 0.5, 39 }, { 6, 2, 33 },
+                        { 8, 1, 33 }, { 9.5, 0.5, 33 }, { 10, 1, 34 }, { 12, 1, 33 }, { 13.5, 0.5, 39 }, { 14, 2, 34 } }, 105);
+            else
+                line ({ { 0, 8, 33 }, { 8, 8, 34 } }, 100);
+            if (rig.name == "Dread Brass")
+                wheel (8.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (stowaway && type == "Keys")
+        {
+            if (rig.name == "Data Chatter")
+                for (int k = 0; k < 24; ++k)
+                    chord (e, at (k * 0.5 + (k % 3 == 2 ? 0.25 : 0.0)), at (k * 0.5 + 0.2), { 69 + (k * 5) % 12 }, 90);
+            else
+            {
+                chord (e, at (0), at (3.5), { 45, 52, 57 }, 80);
+                line ({ { 4, 2, 70 }, { 6, 2, 69 } }, 70);
+                chord (e, at (8), at (11.5), { 46, 52, 58 }, 80);
+                line ({ { 12, 3, 63 } }, 70);
+            }
+            length = 20.0 * beat;
+        }
+        else if (stowaway)
+        {
+            if (rig.name == "Proximity Ping")
+                chord (e, at (0), at (15.9), { 81 }, 100);
+            else
+            {
+                chord (e, at (0), at (7.9), { 57, 60, 64 }, 95);
+                chord (e, at (8), at (15.9), { 58, 61, 64 }, 95);
+            }
+            length = 20.0 * beat;
         }
         else if (shrine && type == "Lead")
         {
