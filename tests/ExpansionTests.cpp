@@ -293,7 +293,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto data = rig.bank == Rig::numBanks + 4;   // DATASTREAM: 120 BPM in E minor
         const auto last = rig.bank == Rig::numBanks + 5;   // LAST LIGHT: 70 BPM in A minor, slow and sad
         const auto sim = rig.bank == Rig::numBanks + 6;    // SIMULACRUM: 130 BPM in E minor (E Phrygian for the runs)
-        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : 85.0;
+        const auto dream = rig.bank == Rig::numBanks + 7;  // DREAMSTATE: 80 BPM in G minor, slow and heavy
+        p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -332,7 +333,70 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             e.push_back ({ at (up), juce::MidiMessage::controllerEvent (1, 64, 0) });
         };
         const auto style = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {});
-        if (sim && type == "Lead")
+        if (dream && type == "Lead")
+        {
+            // G minor: G Bb D, the flat sixth (Eb) and the raised seventh (F#) for the pull.
+            line ({ { 0, 2, 67 }, { 2, 1, 70 }, { 3, 1, 69 }, { 4, 3, 67 }, { 7, 1, 66 }, { 8, 2, 67 }, { 10, 1, 63 },
+                    { 11, 1, 62 }, { 12, 4, 62 } }, 95);
+            if (rig.name == "Fading Horn")
+                pressure (8.0, 12.0, 110);
+            length = 20.0 * beat;
+        }
+        else if (dream && type == "Pad")
+        {
+            chord (e, at (0), at (7.8), { 43, 55, 58, 62 }, 95);   // G minor
+            chord (e, at (8), at (15.8), { 39, 55, 58, 63 }, 95);  // E flat
+            if (rig.name == "Folding City")
+                wheel (6.0, 15.0, 127);
+            length = 24.0 * beat;
+        }
+        else if (dream && type == "Bass")
+        {
+            if (rig.name == "Colossus Blast")
+            {
+                chord (e, at (0), at (3.5), { 31 }, 120);
+                chord (e, at (8), at (11.5), { 27 }, 120);
+                wheel (8.0, 12.0, 110);
+            }
+            else if (rig.name == "Ostinato Bass")
+            {
+                chord (e, at (0), at (7.9), { 31 }, 110);
+                chord (e, at (8), at (15.9), { 27 }, 110);
+            }
+            else
+                line ({ { 0, 6, 31 }, { 8, 6, 27 } }, 105);
+            length = 20.0 * beat;
+        }
+        else if (dream && type == "Keys")
+        {
+            if (rig.name == "Echo Piano")
+            {
+                line ({ { 0, 2, 67 }, { 2, 2, 70 }, { 4, 2, 74 }, { 6, 2, 72 }, { 8, 3, 70 }, { 11, 1, 69 }, { 12, 4, 67 } }, 75);
+                chord (e, at (0), at (7.9), { 43, 50 }, 60);
+                chord (e, at (8), at (15.9), { 39, 46 }, 60);
+                pedal (0.05, 7.95);
+                pedal (8.05, 15.95);
+            }
+            else if (rig.name == "Glass Memory")
+                line ({ { 0, 1, 79 }, { 1, 1, 82 }, { 2, 2, 86 }, { 4, 1, 84 }, { 5, 1, 82 }, { 6, 2, 81 }, { 8, 4, 79 } }, 90);
+            else
+            {
+                chord (e, at (0), at (3.8), { 55, 58, 62 }, 90);
+                chord (e, at (4), at (7.8), { 51, 55, 58 }, 90);
+                chord (e, at (8), at (11.8), { 50, 54, 57 }, 90);
+                chord (e, at (12), at (15.8), { 55, 58, 62 }, 90);
+            }
+            length = 20.0 * beat;
+        }
+        else if (dream)
+        {
+            if (rig.name == "Ostinato Strings")
+                wheel (6.0, 15.0, 120);
+            chord (e, at (0), at (7.9), { 55, 58, 62 }, 100);
+            chord (e, at (8), at (15.9), { 51, 55, 58 }, 100);
+            length = 20.0 * beat;
+        }
+        else if (sim && type == "Lead")
         {
             // E minor, the flat second (F) for menace.
             line ({ { 0, 1.5, 64 }, { 1.5, 0.5, 65 }, { 2, 2, 64 }, { 4, 1, 67 }, { 5, 1, 71 }, { 6, 2, 72 }, { 8, 1, 71 },
