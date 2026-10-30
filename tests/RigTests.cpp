@@ -138,6 +138,7 @@ TEST_CASE ("Every factory preset plays: a note sounds, stays clean, and fades aw
         INFO (rig.name);
         r.processor.loadRig (r.entryNamed (rig.name));
         r.processor.prepareToPlay (48000.0, 256);   // fresh
+        r.processor.seedRandomForTest (1);           // the same unison phases, humanising... on every run and computer
 
         juce::AudioBuffer<float> buffer (2, 256);
         juce::MidiBuffer midi;
