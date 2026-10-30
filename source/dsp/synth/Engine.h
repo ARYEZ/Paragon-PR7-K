@@ -6,6 +6,7 @@
 #include "SynthSettings.h"
 #include "OscModulation.h"
 #include "WaveBend.h"
+#include "VoiceFilter.h"
 
 #include <array>
 #include <vector>
@@ -140,6 +141,10 @@ namespace synth
             bool coefficientsFresh = true;
             std::array<shaper::Channel, numShapers> shapeLeft, shapeRight;
             std::array<float, numShapers> shapeGain {}, shapeMakeUp {};   // as of the last update, glided from (0: not yet)
+            vocal::Channel vocalLeft, vocalRight;          // the VOICE filter (0.39.0)
+            vocal::Coefficients vocalCoefficients;         // ...as of the last update, glided from
+            bool vocalFresh = true;
+            float vocalLevel = 0.0f;                       // LEVELLING's gain as of the last update (0: not yet)
 
             void reset() noexcept
             {
@@ -148,6 +153,10 @@ namespace synth
                 driveLeft.reset();
                 driveRight.reset();
                 coefficientsFresh = true;
+                vocalLeft.reset();
+                vocalRight.reset();
+                vocalFresh = true;
+                vocalLevel = 0.0f;
                 for (int k = 0; k < numShapers; ++k)
                 {
                     shapeLeft[(size_t) k].reset();
@@ -193,6 +202,10 @@ namespace synth
             std::array<float, mod::maxRoutes> lagged {};
             bool lagFresh = true;
             float spikePosition = 1.0f;                 // 0 to 1 through the spike (1: done)
+            // The VOICE filter's LEVELLING for this note (0.39.0): its gain, and what it was worked out for.
+            float vocalLevel = 1.0f, vocalPitch = -1000.0f;
+            std::array<float, 3> vocalFor { -1.0f, -1.0f, -1.0f };   // the VOWEL, SIZE and SHARP they're for
+            vocal::Coefficients vocalCoefficients;                  // its resonators (the first formant follows a high note)
 
             std::array<OscState, numOscillators> oscillators;
         };
@@ -206,7 +219,7 @@ namespace synth
         void renderOscillators (Voice&, int numSamples, const Settings&, float bendSemitones) noexcept;
         void assignPaths (Voice&, const Settings&) noexcept;   // each oscillator's route, and a path for each
         void processPath (Voice&, Path&, float* left, float* right, int n, const Settings&,
-                          const FilterChannel::Coefficients& filterTarget) noexcept;
+                          const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget, float vocalLevel) noexcept;
         void processShaper (Path&, int shaper, float* left, float* right, int n, const Settings&, float velocityDown) noexcept;
         float vibratoValue (VibratoWave, float& phase, float& held, float advance) noexcept;   // -1 to 1, then moves on
 
@@ -271,6 +284,7 @@ namespace synth
         std::array<float*, numInsertBuses> insertBaseLeft {}, insertBaseRight {};
         static constexpr int busShift = 19;
         static int busOf (int key) noexcept { return (key >> busShift) & 7; }
+        static constexpr int voiceBit = 1 << 22;   // 0.39.0: the path goes through the VOICE filter
         float* outputBase = nullptr;   // `process`'s left output (renderVoice finds its place in the sends from it)
         bool sendsWanted (const Settings& s, int send) const noexcept { return s.sendOn[(size_t) send] && sendBaseLeft[(size_t) send] != nullptr; }
         static float sendGainOf (int key, int send) noexcept

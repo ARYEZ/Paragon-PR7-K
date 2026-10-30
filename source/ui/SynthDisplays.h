@@ -107,6 +107,18 @@ private:
     int shaper = 0;
 };
 
+// The VOICE filter (0.39.0): its response from 50 Hz to 8 kHz (the five formants of the vowel set), the
+// vowel's name and the singer's size, and the five vowels along the bottom with the one set lit.
+class VoiceDisplay final : public ParameterDisplay
+{
+public:
+    explicit VoiceDisplay (juce::AudioProcessorValueTreeState&);
+    void paint (juce::Graphics&) override;
+
+private:
+    std::vector<float> snapshot() const override;
+};
+
 // An envelope's shape: attack, hold, decay, a stretch of sustain, release,
 // with their curves. Time is drawn squeezed (long stages take less room than
 // their length) so a 10 ms attack and a 5 s release are both readable.

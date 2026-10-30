@@ -55,6 +55,10 @@ namespace ModDestinations
             d.push_back ({ ParamIDs::pitchEnvRange, "Pitch", "Envelope Range", { Field::pitchEnvRange, 0 } });
             d.push_back ({ ParamIDs::pitchKeytrack, "Pitch", "Keytrack", { Field::pitchKeytrack, 0 } });
             d.push_back ({ ParamIDs::seqVolMix, "Step Seq", "Vol Mix", { Field::stepSeqVolMix, 0 } });
+            d.push_back ({ ParamIDs::voiceVowel, "Voice", "Vowel", { Field::voiceVowel, 0 } });
+            d.push_back ({ ParamIDs::voiceSize, "Voice", "Size", { Field::voiceSize, 0 } });
+            d.push_back ({ ParamIDs::voiceSharp, "Voice", "Sharp", { Field::voiceSharp, 0 } });
+            d.push_back ({ ParamIDs::voiceMix, "Voice", "Mix", { Field::voiceMix, 0 } });
             d.push_back ({ ParamIDs::ampVolume, "Amp", "Volume", { Field::ampVolume, 0 } });
             d.push_back ({ ParamIDs::ampPan, "Amp", "Pan", { Field::ampPan, 0 } });
 

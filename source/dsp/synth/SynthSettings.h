@@ -118,6 +118,7 @@ namespace synth
         int subOctave = 1;          // index into subOctaveNames
         bool subInvert = false;
         bool toFilter = true;       // through the FILTER (off: straight to the AMP)
+        bool toVoice = true;        // through the VOICE filter (0.39.0), when it's on
         // Through which SHAPERs (stage 3e), when they're on: all four, unless unticked.
         std::array<bool, numShapers> toShaper { true, true, true, true };
         // Follows the PITCH module's envelope (stage 4c), when it's on.
@@ -226,6 +227,16 @@ namespace synth
         EnvelopeSettings envelope { 0.0f, 0.0f, 500.0f, 0.0f, 300.0f };
     };
 
+    // The VOICE filter (0.39.0, VoiceFilter.h): fixed-frequency vowel formants, after the FILTER.
+    struct VocalSettings
+    {
+        bool on = false;
+        float vowel = 0.5f;          // 0 OO, 0.25 OH, 0.5 AH, 0.75 EH, 1 EE
+        float size = 0.35f;          // 0 a bass singer to 1 a soprano
+        float sharp = 0.5f;          // 0 wide to 1 narrow formants
+        float mix = 1.0f;            // 0 dry to 1 all voice
+    };
+
     struct AmpSettings
     {
         float volume = 1.0f;        // 0 to 2
@@ -269,6 +280,7 @@ namespace synth
     {
         std::array<OscSettings, numOscillators> oscillators {};
         FilterSettings filter;
+        VocalSettings voice;
         std::array<ShaperSettings, numShapers> shapers {};
         AmpSettings amp;
         PlaySettings play;

@@ -67,7 +67,9 @@ namespace synth
             // Stage 4f: the bends, the shapers' EQ, the PITCH module, TRAVEL and the step sequencer
             oscSkew, oscPinch, oscTravelStrength, oscTravelPhase,
             shaperEq1Gain, shaperEq1Freq, shaperEq1Q, shaperEq2Gain, shaperEq2Freq, shaperEq2Q,
-            pitchEnvRange, pitchKeytrack, stepSeqVolMix
+            pitchEnvRange, pitchKeytrack, stepSeqVolMix,
+            // 0.39.0: the VOICE filter
+            voiceVowel, voiceSize, voiceSharp, voiceMix
         };
         struct Target
         {

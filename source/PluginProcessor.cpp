@@ -752,6 +752,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.subOctave = choice (get (oscSetting ("SubOct")), synth::subOctaveNames.size());
         o.subInvert = get (oscSetting ("SubInvert")) > 0.5f;
         o.toFilter = get (oscSetting ("Filter")) > 0.5f;
+        o.toVoice = get (oscSetting ("Voice")) > 0.5f;
         o.voiceLimit = juce::jlimit (1, synth::maxVoices, juce::roundToInt (get (oscSetting ("Voices"))));
         for (int k = 0; k < synth::numShapers; ++k)
             o.toShaper[(size_t) k] = get (oscSetting ("Shp1") + k) > 0.5f;
@@ -854,6 +855,13 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
     f.envelopeAmount = param (fltEnv);
     f.envelopeVelocity = param (fltEnvVel);
     f.envelope = envelope (fltAttack, fltHold, fltDecay, fltSustain, fltRelease, fltAttackCurve, fltDecayCurve, fltReleaseCurve);
+
+    auto& v = s.voice;
+    v.on = isOn (voiceOn);
+    v.vowel = param (voiceVowel);
+    v.size = param (voiceSize);
+    v.sharp = param (voiceSharp);
+    v.mix = param (voiceMix);
 
     static_assert (synth::numShapers == ParamIDs::numShapers);
     for (size_t k = 0; k < s.shapers.size(); ++k)

@@ -275,7 +275,7 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
     CHECK (library.step (&entries.front(), -1) == &entries.back());
     CHECK (library.step (nullptr, 1) == &entries.front());
 
-    CHECK (library.nextFreeNumber (0) == 43);   // the factory presets fill A01 to A42
+    CHECK (library.nextFreeNumber (0) == 44);   // the factory presets fill A01 to A43
 }
 
 TEST_CASE ("Saving and loading a preset restores the sound but not the global settings", "[rigs]")
@@ -368,10 +368,10 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
 {
     RigRig r;
     r.processor.loadRig (r.entryNamed ("Init"));
-    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A43
-    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A44
-    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A43");
-    r.processor.loadRig (r.entryNamed ("Tight Kit"));   // A42
+    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A44
+    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A45
+    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A44");
+    r.processor.loadRig (r.entryNamed ("Sung Vowels"));   // A43
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Second");
     r.processor.stepRig (1);

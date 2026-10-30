@@ -668,5 +668,22 @@ std::vector<Rig> makeFactoryRigs()
     }
     add (tight);
 
+    // The VOICE filter (0.39.0).
+    Builder sung ("Sung Vowels", 43, { "Pad", "Choir", "Voice" },
+                  "A small choir singing AH: three saws a few cents apart, each with its own slow vibrato, and a breath of noise, "
+                  "through the VOICE filter (a tenor's formants, fixed whatever note is sung). The MOD WHEEL moves the vowel from "
+                  "AH towards EE; MACRO 1 sings OO. Our own settings, not tuned by ear.");
+    sung.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.8f).osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.7f).osc (0, "Volume", 0.6f)
+        .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 14.0f).osc (0, "VibRate", 5.0f).osc (0, "VibFade", 600.0f)
+        .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.4f).osc (1, "NoiseColour", 0.1f).osc (1, "Volume", 0.12f)
+        .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.3f).set (ParamIDs::voiceSharp, 0.45f)
+        .ampEnvelope (350.0f, 1000.0f, 0.9f, 900.0f)
+        .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall)
+        .set (ParamIDs::reverbSize, 0.5f).set (ParamIDs::reverbMix, 0.25f);
+    route (sung, "modWheel", ParamIDs::voiceVowel, 0.4f);
+    route (sung, "macro1", ParamIDs::voiceVowel, -0.5f);
+    sung.rig.modulation.macroNames[0] = "OO";
+    add (sung);
+
     return rigs;
 }

@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.39.0
+
+**The VOICE filter**, for choirs and voices that sound human (your ask, before the ASCENSION expansion). A new tab, **VOICE**, beside FILTER and SHP 1-4.
+
+- **Why it was needed:** a real voice gets its vowel from resonances of the throat and mouth ("formants") that stay at the same frequencies whatever note is sung. Our choirs so far came from the Vowels wavetable, whose vowels move with the note: thin and chipmunky up high, muddy down low. That's the main thing that made them sound synthetic.
+- **What it does:** five resonances at a vowel's formants, fixed in frequency, shape whatever goes in (feed it something buzzy: a saw or a narrow pulse) into a sung vowel. **VOWEL** moves smoothly through OO, OH, AH, EH and EE; **SIZE** goes from a bass singer's voice through tenor and alto to a soprano's; **SHARP** makes the vowel softer and breathier or sharper and more nasal; **MIX** blends it with the sound going in. The oscillators ticked on the page go through it (all of them, unless you untick some). It comes after the FILTER, before the effects, so the reverb and echoes hear the sung vowel too.
+- **Made to sound even:** narrow formants make some notes jump out (when a harmonic lands right on one, up to 10 dB louder) and others drop away; as a sampled choir's notes are levelled, so is each note here, within a few dB. And as sopranos open a vowel on high notes (singers call it vowel modification), the first formant moves up when a note goes above it, so high notes on OO and OH don't vanish.
+- **Playable:** VOWEL, SIZE, SHARP and MIX are in the mod matrix: route the mod wheel or a macro to VOWEL and it speaks.
+- The formant data (each vowel's frequencies, levels and widths for a bass and a soprano) is the widely published table from sound-synthesis textbooks; the blending, levelling and vowel modification are our own. Synthesis, not a recorded choir: made without listening here, so your ears decide.
+- New starting preset **A43 Sung Vowels**: a small choir singing AH, the MOD WHEEL moving it towards EE.
+- About half a percent of one core more for a four-note unison chord.
+
 ## 0.38.0
 
 **CHROMEFURY**, the fourteenth expansion: a bank of its own under EXPANSIONS (CF01 to CF15), named by you. Inspired by the score of a 2015 post-apocalyptic chase film: relentless war drums, sawing string ostinatos, guitar-like screaming leads over growling low synths, engines, speed, dust and fire. Our own sounds; no title, characters, vehicles, places, phrases or music from the film.

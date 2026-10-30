@@ -52,7 +52,9 @@ namespace ParamIDs
         // Stage 7b: how much it sends to DELAY and to REVERB.
         "SendDelay", "SendReverb",
         // Stage 7d: the insert bus it plays into (NONE, A to D).
-        "Insert" };
+        "Insert",
+        // 0.39.0: whether it goes through the VOICE filter (when that's on).
+        "Voice" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)
@@ -66,6 +68,12 @@ namespace ParamIDs
     // The FILTER and AMP. Numbered from 1: Avenger has four of each, and
     // more may come in a later stage (an oscillator's Filter switch, now on or
     // off for filter 1, can become a choice of filters without breaking presets).
+    // The VOICE filter (0.39.0): vowel formants at fixed frequencies, after the FILTER.
+    inline constexpr auto voiceOn     = "voiceOn";
+    inline constexpr auto voiceVowel  = "voiceVowel";     // 0 OO to 1 EE
+    inline constexpr auto voiceSize   = "voiceSize";      // 0 bass to 1 soprano
+    inline constexpr auto voiceSharp  = "voiceSharp";     // 0 wide to 1 narrow
+    inline constexpr auto voiceMix    = "voiceMix";       // 0 to 1
     inline constexpr auto fltOn       = "flt1On";
     inline constexpr auto fltType     = "flt1Type";
     inline constexpr auto fltCutoff   = "flt1Cutoff";     // Hz

@@ -4,6 +4,7 @@
 #include "dsp/synth/SynthSettings.h"
 #include "dsp/synth/OscModulation.h"
 #include "dsp/synth/Wavetable.h"
+#include "dsp/synth/VoiceFilter.h"
 
 namespace
 {
@@ -32,6 +33,7 @@ namespace
     constexpr int stage6aStart = 21;   // 0.21.1: SAMPLE's START and END
     constexpr int stage6b = 22;  // 0.22.0
     constexpr int stage6c = 23;  // 0.23.0
+    constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
     const ToText asPercent = [] (float value, int) { return juce::String (juce::roundToInt (value * 100.0f)) + "%"; };
@@ -337,6 +339,34 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 
         // Whether it follows the PITCH envelope (stage 4c).
         addSwitch (layout, osc (i, "PitchEnv"), name + "Pitch Envelope", defaults.pitchEnvelope, stage4c);
+
+        // Whether it goes through the VOICE filter (0.39.0).
+        addSwitch (layout, osc (i, "Voice"), name + "Voice", defaults.toVoice, stageVoice);
+    }
+
+    // The VOICE filter (0.39.0): off in a new sound.
+    {
+        const synth::VocalSettings voice;
+        const ToText asVowel = [] (float value, int)
+        {
+            const auto position = juce::jlimit (0.0f, 1.0f, value) * 4.0f;
+            const auto nearest = juce::roundToInt (position);
+            if (std::abs (position - (float) nearest) < 0.05f)
+                return synth::vocal::vowelNames[nearest];
+            const auto first = juce::jlimit (0, 3, (int) position);
+            return synth::vocal::vowelNames[first] + "-" + synth::vocal::vowelNames[first + 1] + " "
+                 + juce::String (juce::roundToInt ((position - (float) first) * 100.0f)) + "%";
+        };
+        const ToText asSize = [] (float value, int)
+        {
+            return value < 0.2f ? juce::String ("BASS") : value < 0.45f ? juce::String ("TENOR")
+                 : value < 0.75f ? juce::String ("ALTO") : juce::String ("SOPRANO");
+        };
+        addSwitch (layout, voiceOn, "Voice On", voice.on, stageVoice);
+        add (layout, voiceVowel, "Voice Vowel", { 0.0f, 1.0f }, voice.vowel, asVowel, stageVoice);
+        add (layout, voiceSize, "Voice Size", { 0.0f, 1.0f }, voice.size, asSize, stageVoice);
+        add (layout, voiceSharp, "Voice Sharp", { 0.0f, 1.0f }, voice.sharp, asPercent, stageVoice);
+        add (layout, voiceMix, "Voice Mix", { 0.0f, 1.0f }, voice.mix, asPercent, stageVoice);
     }
 
     // The FILTER: off in a new sound (Avenger's starts without one), ready at a 24 dB low-pass at 2 kHz.

@@ -1308,6 +1308,23 @@ namespace synth
             filterTarget = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
         }
 
+        // The VOICE filter's resonators for this note and its LEVELLING, worked out again when the note has moved
+        // a quarter tone or its VOWEL, SIZE or SHARP have changed (by the knobs or the matrix).
+        if (settings.voice.on)
+        {
+            const auto& v = settings.voice;
+            const std::array<float, 3> wanted { v.vowel, v.size, v.sharp };
+            if (wanted != voice.vocalFor || std::abs (voice.pitch - voice.vocalPitch) > 0.5f)
+            {
+                const auto noteHz = 440.0 * std::exp2 ((voice.pitch - 69.0) / 12.0);
+                voice.vocalCoefficients = vocal::Coefficients::make (v.vowel, v.size, v.sharp, sampleRate, noteHz);
+                voice.vocalLevel = vocal::levelling (voice.vocalCoefficients, noteHz, sampleRate);
+                voice.vocalPitch = voice.pitch;
+                voice.vocalFor = wanted;
+            }
+        }
+        const auto& vocalTarget = voice.vocalCoefficients;
+
         // Each path through its shapers and filter, then all of them together (and, 7b, into the sends at each path's amount).
         std::fill (mixLeft.begin(), mixLeft.begin() + n, 0.0f);
         std::fill (mixRight.begin(), mixRight.begin() + n, 0.0f);
@@ -1333,7 +1350,7 @@ namespace synth
         {
             if (! pathUsed[p])
                 continue;
-            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, filterTarget);
+            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, filterTarget, vocalTarget, voice.vocalLevel);
             if (const auto bus = busOf (voice.paths[p].key); bus > 0)
             {
                 for (int i = 0; i < n; ++i)
@@ -1801,6 +1818,10 @@ namespace synth
             case Field::pitchEnvRange: s.pitch.rangeSemitones = value; break;
             case Field::pitchKeytrack: s.pitch.keytrack = value; break;
             case Field::stepSeqVolMix: s.stepSeq.volMix = value; break;
+            case Field::voiceVowel: s.voice.vowel = value; break;
+            case Field::voiceSize: s.voice.size = value; break;
+            case Field::voiceSharp: s.voice.sharp = value; break;
+            case Field::voiceMix: s.voice.mix = value; break;
         }
     }
 
@@ -1817,6 +1838,8 @@ namespace synth
             if (! s.on || ! voice.oscillators[i].active)
                 continue;
             auto key = s.toFilter && settings.filter.on ? 1 : 0;
+            if (s.toVoice && settings.voice.on)
+                key |= voiceBit;
             for (int k = 0; k < numShapers; ++k)
                 if (settings.shapers[(size_t) k].on && s.toShaper[(size_t) k])
                     key |= 2 << k;
@@ -1874,7 +1897,8 @@ namespace synth
     }
 
     void Engine::processPath (Voice& voice, Path& path, float* left, float* right, int n, const Settings& settings,
-                              const FilterChannel::Coefficients& filterTarget) noexcept
+                              const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget,
+                              float vocalLevel) noexcept
     {
         const auto velocityDown = 1.0f - voice.velocity;
         // SHAPERs placed before the FILTER, in order...
@@ -1909,6 +1933,25 @@ namespace synth
                 right[i] = path.filterRight.process (r, type, c);
             }
             path.coefficients = filterTarget;
+        }
+
+        // ...the VOICE filter (0.39.0): the vowel's formants at fixed frequencies, MIX against what went in...
+        if ((path.key & voiceBit) != 0)
+        {
+            const auto from = path.vocalFresh ? vocalTarget : path.vocalCoefficients;
+            path.vocalFresh = false;
+            const auto fromLevel = path.vocalLevel > 0.0f ? path.vocalLevel : vocalLevel;
+            const auto wet = settings.voice.mix, dry = 1.0f - wet;
+            for (int i = 0; i < n; ++i)
+            {
+                const auto t = (float) (i + 1) / (float) n;
+                const auto c = vocal::Coefficients::lerp (from, vocalTarget, t);
+                const auto w = wet * (fromLevel + (vocalLevel - fromLevel) * t);
+                left[i] = path.vocalLeft.process (left[i], c) * w + left[i] * dry;
+                right[i] = path.vocalRight.process (right[i], c) * w + right[i] * dry;
+            }
+            path.vocalCoefficients = vocalTarget;
+            path.vocalLevel = vocalLevel;
         }
 
         // ...and the ones after it.
