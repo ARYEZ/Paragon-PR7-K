@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.34.0
+
+**NIGHTDRIVE**, the tenth expansion: a bank of its own under EXPANSIONS (ND01 to ND15), named by you. Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro synthwave, turned all the way up as you asked, with chorus on everything, big reverbs and long echoes. Our own sounds; no title, characters, songs or artists.
+
+- Leads: **Night Cruise** (a smooth, singing lead with a slow glide), **Chrome Whistle** (a glassy, whistling square: the MOD WHEEL deepens the vibrato), **Romance Sync** (a soaring sync lead for big hooks: the MOD WHEEL pushes the sync).
+- Pads: **Neon Haze** (a lush polysynth through two choruses), **Midnight Strings** (dreamy string-machine strings: press into the keys after playing to swell), **Afterglow** (a slow, warm swell with a gently gated shimmer).
+- Basses: **Octave Drive** (the classic synthwave octave bass in sixteenths with your song: hold a note), **Velvet Bass** (round and warm), **Rubber Pulse** (bouncy, with a resonant snap).
+- Keys: **Glass Tine** (the '80s digital electric piano: a glassy FM tine over a soft body), **Retro Stab** (a big, chorused chord stab), **Cassette Keys** (soft keys from an old tape).
+- Arps: **Highway Lights** (sixteenths streaming up three octaves with dotted echoes), **Night Runner** (a drum-machine beat under a driving saw arpeggio: hold notes above C3, the kit is on C2 to B2), **Heartline** (a slow, emotional arpeggio with ping-pong echoes).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: VIBRATO, OCTAVE, SOAR, LUSH, ENSEMBLE, GATE, SNAP, WARMTH, BOUNCE, BARK, PUNCH, WOBBLE, SPARKLE, ECHO. Each preset's notes say what they do.
+- Every factory and expansion preset now has a name of its own (a test checks it): the first draft of Night Runner shared STARCOURT's Pulse Runner name.
+- Levels balanced by measurement against the other expansions (Night Runner by its drum peaks); made without listening here, so your ears decide.
+
 ## 0.33.0
 
 **NEGATIVE SPACE**, the ninth expansion: a bank of its own under EXPANSIONS (NS01 to NS15), named by you. Inspired by the modern dark-ambient film and TV scores of the 2010s: a fragile, intimate piano close up over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Cold, tense, quietly melancholy. Our own sounds; no titles, composers, products or music.
