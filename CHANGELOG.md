@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.31.0
+
+**SIMULACRUM**, the seventh expansion: a bank of its own under EXPANSIONS (SM01 to SM15), named by you. Inspired by the score and soundtrack of a 1999 science-fiction film about a simulated world: a dark, atonal orchestra with brass in clashing keys, late-'90s industrial and big-beat basses and breaks, fast trance arpeggios, falling digital rain and time slowing down. Our own sounds; no title, characters, places, phrases or music from the film.
+
+- Leads: **Rooftop Chase** (a screaming hard-synced lead through drive; the MOD WHEEL pushes the sync), **Phantom Line** (a cold, hollow lead with long echoes), **Slow Time** (every note sags as it holds, smeared through a backwards reverb; the MOD WHEEL makes it sag further).
+- Pads: **Green Rain** (a tone falling over and over like digital rain, with random sparkles), **Brass Cluster** (a dark brass swell in two keys at once), **Endless Field** (a cold drone pumping slowly with your song).
+- Basses: **Industrial Pulse** (a distorted bass chugging in sixteenths with your song: hold a note), **Breakbeat Bass** (a growling bass wobbling in eighths; the MOD WHEEL opens it up), **Mainframe Sub** (a deep sub that stutters like a failing machine).
+- Keys: **Terminal** (cold digital chimes), **Glass Code** (brittle bit-crushed keys), **Warped Keys** (keys that melt out of shape on the MOD WHEEL).
+- Arps: **System Breach** (a big-beat breakbeat from the drum sequencer under a driven bass riff: hold notes above C3, the kit is on C2 to B2), **Rain Cascade** (fast falling runs in the dark Phrygian scale: hold one key), **Firefight** (a relentless trance arpeggio building over four bars).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: SCREAM, ECHO, SAG, GLITTER, CLASH, PUMP, DESTROY, GROWL, MALFUNCTION, RATIO, CRUSH, WARP, BITE. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (System Breach by its drums' peaks); made without listening here, so your ears decide.
+
 ## 0.30.0
 
 **LAST LIGHT**, the sixth expansion: a bank of its own under EXPANSIONS (LL01 to LL15), named by you. Inspired by the score of a film about space, time and leaving the people you love: sad, longing and melancholy, built round a soft, cinematic felt piano, with an enormous church organ, aching strings, a ticking clock and vast cold spaces. Our own sounds; no title, characters, places or music from the film.
