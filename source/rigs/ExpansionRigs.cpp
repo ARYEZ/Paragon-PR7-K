@@ -5738,6 +5738,404 @@ namespace
         pursuit.set (ParamIDs::patchLevel, 0.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (pursuit);
     }
+    // ASCENSION (the owner's name): inspired by the score of a 2001 science-fiction game about an ancient ring-shaped
+    // world: a monks' chant growing into a vast choir, strings and brass for heroic action, big drums, mystery and awe.
+    // Built on the VOICE filter (0.39.0), made for it at the owner's ask for a choir that sounds human and epic: the
+    // choirs are buzzy sources (saws, narrow pulses, a breath of noise) shaped into sung vowels whose formants stay
+    // put whatever note is sung, each voice with its own vibrato, the vowel opening from a hummed "mm" as a singer's
+    // does. The grand choir's SIZE follows the keys (basses low, sopranos high). No title, characters, factions,
+    // places, terms or music from the game: our own sounds.
+    void ascension (Expansion x)
+    {
+        using SP14 = synth::mod::ShapePoint;
+        const auto voice = [] (Builder& b, float vowel, float size, float sharp)
+        {
+            b.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, vowel).set (ParamIDs::voiceSize, size).set (ParamIDs::voiceSharp, sharp);
+        };
+        const auto breath = [] (Builder& b, int o, float volume)   // light noise, through the VOICE filter too: a breathy vowel
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", 0.08f)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto ensemble = [] (Builder& b, int o, int voices, float detune, float cents, float rate)   // a section: each its own vibrato
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", 0.85f).osc (o, "UniDetune", detune).osc (o, "UniSpread", 0.9f)
+             .osc (o, "VibMode", (float) synth::VibratoMode::independent).osc (o, "VibAmount", cents).osc (o, "VibRate", rate)
+             .osc (o, "VibFade", 700.0f).osc (o, "VibCurve", 0.4f);
+        };
+        // The hummed start: the vowel opens from OO to the one set over `ms` (a one-shot envelope on VOWEL).
+        const auto hum = [] (Builder& b, int env, float openTo, float ms)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { { SP14 { 0.0f, 0.0f, 0.3f }, SP14 { ms / 1000.0f, 1.0f, 0.0f } }, -1, -1, -1 };
+            b.set (ParamIDs::voiceVowel, 0.0f);
+            route (b, ("env" + juce::String (env + 1)).toRawUTF8(), ParamIDs::voiceVowel, openTo);
+        };
+        // SIZE following the keys: about a bass at C2, an alto at middle C, a soprano at C6 (keytrack is note / 127,
+        // so two routes bent to its square: 2 x (note / 127)^2).
+        const auto sizeByKey = [] (Builder& b)
+        {
+            b.set (ParamIDs::voiceSize, 0.0f);
+            for (int k = 0; k < 2; ++k)
+                b.rig.modulation.routes.push_back ({ true, "keytrack", ParamIDs::voiceSize, 1.0f, false, 0.0f, 0.5f });
+        };
+        const auto offVoice = [] (Builder& b, int o) { b.osc (o, "Voice", 0.0f); };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto monk = x.make ("Monk Solo", 1, { "Lead", "Voice", "Chant", "Mono" },
+            "A single low voice chanting: a saw shaped by the VOICE filter into a bass singer's \"oh\", opening from a hum "
+            "as each phrase starts, a slow, steady vibrato, a breath, a long cathedral. MACROS: BRIGHT, SPACE, VOWEL "
+            "(towards \"ah\"). MOD WHEEL: opens the vowel too.");
+        monk.osc (0, "Volume", 0.8f).osc (0, "VibAmount", 9.0f).osc (0, "VibRate", 4.6f).osc (0, "VibFade", 900.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.3f)
+            .ampEnvelope (180.0f, 800.0f, 0.95f, 1200.0f)
+            .mono (90.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::always);
+        breath (monk, 2, 0.05f);
+        voice (monk, 0.25f, 0.05f, 0.45f);
+        hum (monk, 0, 0.25f, 260.0f);
+        route (monk, "modWheel", ParamIDs::voiceVowel, 0.25f, 80.0f);
+        route (monk, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (monk, "macro3", ParamIDs::voiceVowel, 0.25f);
+        macros (monk, "BRIGHT", "SPACE", "VOWEL");
+        reverb (monk, RT::cathedral, 0.75f, 0.32f, 40.0f, 4.0f);
+        space (monk);
+        monk.set (ParamIDs::patchLevel, -4.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (monk);
+
+        auto soprano = x.make ("Soprano Call", 2, { "Lead", "Voice", "Soprano", "Vibrato" },
+            "A solo soprano soaring over everything: a narrow pulse and a quiet saw sung as \"ah\" by the VOICE filter at a "
+            "soprano's size, a wide vibrato blooming as she holds a note, a gentle glide, echoes and a cathedral. MACROS: "
+            "BRIGHT, SPACE, VOWEL (towards \"ee\"). MOD WHEEL: a wider vibrato.");
+        soprano.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.7f)
+               .osc (0, "VibAmount", 22.0f).osc (0, "VibRate", 5.6f).osc (0, "VibFade", 450.0f).osc (0, "VibCurve", 0.5f)
+               .osc (1, "On", 1.0f).osc (1, "Volume", 0.3f).osc (1, "Fine", -3.0f)
+               .osc (1, "VibAmount", 22.0f).osc (1, "VibRate", 5.6f).osc (1, "VibFade", 450.0f).osc (1, "VibCurve", 0.5f)
+               .ampEnvelope (120.0f, 800.0f, 0.95f, 900.0f)
+               .mono (70.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        breath (soprano, 2, 0.04f);
+        voice (soprano, 0.5f, 0.95f, 0.5f);
+        route (soprano, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (soprano, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.2f);
+        route (soprano, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (soprano, "macro3", ParamIDs::voiceVowel, 0.4f);
+        macros (soprano, "BRIGHT", "SPACE", "VOWEL");
+        delay (soprano, "1/4", 0.35f, 0.15f, true, 4.0f);
+        reverb (soprano, RT::cathedral, 0.6f, 0.3f, 40.0f, 4.5f);
+        space (soprano);
+        soprano.set (ParamIDs::patchLevel, -6.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (soprano);
+
+        auto hero = x.make ("Hero Theme", 3, { "Lead", "Brass", "Strings", "Heroic" },
+            "A heroic lead of brass and strings together: saws in a small unison that swell brighter as each note "
+            "speaks (a brassy filter envelope), with a horn's body from the VOICE filter (a broad \"oh\", half mixed in), "
+            "a string-like vibrato, and a big hall. MACROS: BRIGHT, SPACE, POWER (more brass bite). MOD WHEEL: vibrato.");
+        hero.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.08f).osc (0, "UniSpread", 0.5f)
+            .osc (0, "Volume", 0.6f).osc (0, "VibAmount", 6.0f).osc (0, "VibRate", 5.2f).osc (0, "VibFade", 500.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp24, 900.0f, 0.15f, 0.45f).filterEnvelope (120.0f, 600.0f, 0.6f, 500.0f)
+            .set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltEnvVel, 0.5f)
+            .ampEnvelope (40.0f, 600.0f, 0.9f, 600.0f)
+            .mono (50.0f);
+        voice (hero, 0.3f, 0.3f, 0.2f);
+        hero.set (ParamIDs::voiceMix, 0.5f);
+        route (hero, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        route (hero, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (hero, "macro3", ParamIDs::fltEnv, 0.25f);
+        macros (hero, "BRIGHT", "SPACE", "POWER");
+        delay (hero, "1/8 dotted", 0.3f, 0.12f, true, 4.5f);
+        reverb (hero, RT::hall, 0.8f, 0.22f);
+        space (hero);
+        hero.set (ParamIDs::patchLevel, -0.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (hero);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto chant = x.make ("Monk Chant", 4, { "Pad", "Choir", "Voice", "Chant" },
+            "Low male voices in slow unison, the sound of the bank: a section of five saw voices, each with its own slow "
+            "vibrato, and a section an octave down, sung by the VOICE filter as basses' \"oh\", opening from a hum at "
+            "each chord, a breath through it, a vast cathedral. MACROS: BRIGHT, SPACE, VOWEL (towards \"ah\"). MOD WHEEL: "
+            "more breath.");
+        chant.osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+             .ampEnvelope (500.0f, 1500.0f, 0.95f, 2200.0f);
+        ensemble (chant, 0, 5, 0.08f, 8.0f, 4.4f);
+        ensemble (chant, 1, 3, 0.06f, 7.0f, 4.0f);
+        breath (chant, 2, 0.05f);
+        voice (chant, 0.25f, 0.05f, 0.45f);
+        hum (chant, 0, 0.25f, 500.0f);
+        route (chant, "modWheel", ParamIDs::osc (2, "Volume"), 0.1f);
+        route (chant, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (chant, "macro3", ParamIDs::voiceVowel, 0.25f);
+        macros (chant, "BRIGHT", "SPACE", "VOWEL");
+        reverb (chant, RT::cathedral, 0.9f, 0.35f, 40.0f, 4.0f);
+        eqBand (chant, 0, eq::Shape::lowCut, 60.0f, 0.0f);
+        space (chant);
+        chant.set (ParamIDs::patchLevel, -11.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (chant);
+
+        auto grand = x.make ("Grand Choir", 5, { "Pad", "Choir", "Voice", "Epic" },
+            "The full, epic choir in all four sections: the low notes you play sung by basses, the middle by tenors and "
+            "altos, the high by sopranos (the VOICE filter's SIZE follows the keys), a section of saws and a section of "
+            "narrow pulses each with its own vibrato, every chord opening from a hum into \"ah\", a breath through it, a "
+            "huge hall. MACROS: BRIGHT, SPACE, VOWEL (towards \"oh\"). MOD WHEEL: the vowel towards \"ee\".");
+        grand.osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Volume", 0.35f)
+             .ampEnvelope (450.0f, 1500.0f, 0.95f, 2000.0f);
+        ensemble (grand, 0, 5, 0.1f, 10.0f, 5.0f);
+        ensemble (grand, 1, 4, 0.08f, 12.0f, 5.4f);
+        breath (grand, 2, 0.04f);
+        voice (grand, 0.5f, 0.4f, 0.45f);
+        sizeByKey (grand);
+        hum (grand, 0, 0.5f, 380.0f);
+        route (grand, "modWheel", ParamIDs::voiceVowel, 0.4f, 100.0f);
+        route (grand, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (grand, "macro3", ParamIDs::voiceVowel, -0.25f);
+        macros (grand, "BRIGHT", "SPACE", "VOWEL");
+        reverb (grand, RT::hall, 0.95f, 0.32f, 40.0f, 4.5f);
+        eqBand (grand, 0, eq::Shape::lowCut, 70.0f, 0.0f);
+        space (grand);
+        grand.set (ParamIDs::patchLevel, -15.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (grand);
+
+        auto angel = x.make ("Angel Choir", 6, { "Pad", "Choir", "Voice", "Airy" },
+            "Airy high voices: sopranos singing a soft \"oh\" opening towards \"ah\" (the VOICE filter, SHARP low for a "
+            "breathy, unfocused sound), a quiet copy an octave up floating above, more breath, slow echoes and a cathedral. "
+            "MACROS: BRIGHT, SPACE, AIR (more breath). MOD WHEEL: the vowel towards \"ah\".");
+        angel.osc (0, "Wave", triangle).osc (0, "Volume", 0.8f)
+             .osc (1, "On", 1.0f).osc (1, "Volume", 0.35f)
+             .osc (1, "Ch1On", 1.0f).osc (1, "Ch1Coarse", 12.0f).osc (1, "Ch1Vol", 0.35f)
+             .ampEnvelope (700.0f, 1500.0f, 0.95f, 2500.0f);
+        ensemble (angel, 0, 4, 0.08f, 12.0f, 5.5f);
+        ensemble (angel, 1, 3, 0.1f, 12.0f, 5.8f);
+        breath (angel, 2, 0.08f);
+        voice (angel, 0.3f, 0.95f, 0.2f);
+        route (angel, "modWheel", ParamIDs::voiceVowel, 0.25f, 100.0f);
+        route (angel, "macro1", ParamIDs::voiceSharp, 0.4f);
+        route (angel, "macro3", ParamIDs::osc (2, "Volume"), 0.12f);
+        macros (angel, "BRIGHT", "SPACE", "AIR");
+        delay (angel, "1/2", 0.4f, 0.15f, true, 4.0f);
+        reverb (angel, RT::cathedral, 0.7f, 0.35f, 50.0f, 5.0f);
+        eqBand (angel, 0, eq::Shape::lowCut, 150.0f, 0.0f);
+        space (angel);
+        angel.set (ParamIDs::patchLevel, -11.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (angel);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto low = x.make ("Low Chant", 7, { "Bass", "Voice", "Drone", "Sub" },
+            "The deepest voices as a bass: a saw sung as a bass singer's dark \"oo\" by the VOICE filter, a clean sine "
+            "under it kept off the filter, a slow vibrato. MACROS: BRIGHT, SPACE, VOWEL (towards \"oh\"). MOD WHEEL: opens "
+            "the vowel.");
+        low.osc (0, "Volume", 0.8f).osc (0, "VibAmount", 6.0f).osc (0, "VibRate", 4.0f).osc (0, "VibFade", 900.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.5f).osc (1, "PhaseRand", 0.0f)
+           .ampEnvelope (250.0f, 1000.0f, 0.95f, 900.0f)
+           .mono (40.0f);
+        offVoice (low, 1);
+        voice (low, 0.1f, 0.0f, 0.5f);
+        route (low, "modWheel", ParamIDs::voiceVowel, 0.25f, 80.0f);
+        route (low, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (low, "macro3", ParamIDs::voiceVowel, 0.2f);
+        macros (low, "BRIGHT", "SPACE", "VOWEL");
+        reverb (low, RT::hall, 0.6f, 0.15f);
+        space (low);
+        low.set (ParamIDs::patchLevel, -5.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (low);
+
+        auto strings = x.make ("Battle Strings", 8, { "Bass", "Strings", "Ostinato", "Step Sequencer" },
+            "Low strings driving an ostinato in sixteenths with your song: pinched, bowed saws a few cents apart, each "
+            "step bitten by the filter, the STEP SEQUENCER accenting the pattern. Hold a note. MACROS: BRIGHT, SPACE, "
+            "BITE (more filter snap). MOD WHEEL: opens the filter.");
+        strings.osc (0, "Pinch", 0.3f).osc (0, "Volume", 0.55f)
+               .osc (1, "On", 1.0f).osc (1, "Pinch", 0.3f).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.45f)
+               .filter (FilterType::lp24, 700.0f, 0.15f, 0.3f).filterEnvelope (0.0f, 150.0f, 0.3f, 120.0f)
+               .ampEnvelope (3.0f, 500.0f, 1.0f, 200.0f)
+               .mono (0.0f)
+               .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 0.85f).set (ParamIDs::seqGate, 0.7f)
+               .set (ParamIDs::seqContour, 0.15f).set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 16.0f);
+        for (int row = 0; row < 2; ++row)
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = strings.rig.modulation.stepPattern.rows[(size_t) row][(size_t) k];
+                const auto at = k % 16;
+                step.on = true;
+                step.level = at % 4 == 0 ? 1.0f : at % 2 == 0 ? 0.7f : 0.5f;
+            }
+        route (strings, "stepSeq", ParamIDs::fltCutoff, 0.1f);
+        route (strings, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (strings, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (strings, "macro3", ParamIDs::fltEnv, 0.25f);
+        macros (strings, "BRIGHT", "SPACE", "BITE");
+        reverb (strings, RT::hall, 0.6f, 0.15f);
+        space (strings);
+        strings.set (ParamIDs::patchLevel, 1.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (strings);
+
+        auto brass = x.make ("Deep Brass", 9, { "Bass", "Brass", "Swell", "Voice" },
+            "Low brass swelling up: a saw and a pulse an octave down, the filter opening slowly as the note grows (a brass "
+            "swell), a horn's throat from the VOICE filter (a bass's \"oh\", half mixed in), a hall. Press into the keys "
+            "to push it. MACROS: BRIGHT, SPACE, BLARE (a harder swell).");
+        brass.osc (0, "Volume", 0.6f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f)
+             .filter (FilterType::lp24, 300.0f, 0.15f, 0.45f).filterEnvelope (700.0f, 1200.0f, 0.7f, 800.0f)
+             .ampEnvelope (300.0f, 1000.0f, 0.95f, 900.0f)
+             .mono (0.0f);
+        voice (brass, 0.25f, 0.0f, 0.2f);
+        brass.set (ParamIDs::voiceMix, 0.5f);
+        route (brass, "aftertouch", ParamIDs::fltCutoff, 0.15f, 150.0f);
+        route (brass, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (brass, "macro3", ParamIDs::fltEnv, 0.25f);
+        macros (brass, "BRIGHT", "SPACE", "BLARE");
+        reverb (brass, RT::hall, 0.8f, 0.18f);
+        space (brass);
+        brass.set (ParamIDs::patchLevel, -1.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (brass);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto stabs = x.make ("Choir Stabs", 10, { "Keys", "Choir", "Voice", "Stab" },
+            "Short shouts of \"ah!\" from the whole choir: a section of saws whose vowel snaps open from \"oo\" in a few "
+            "milliseconds, sung by basses low and sopranos high (SIZE follows the keys), short, into a huge hall. MACROS: "
+            "BRIGHT, SPACE, VOWEL (towards \"oh\"). MOD WHEEL: the vowel towards \"ee\".");
+        stabs.osc (0, "Volume", 0.6f)
+             .ampEnvelope (6.0f, 380.0f, 0.0f, 300.0f).set (ParamIDs::ampDecayCurve, -0.4f);
+        ensemble (stabs, 0, 5, 0.1f, 6.0f, 5.0f);
+        stabs.osc (0, "VibFade", 0.0f);
+        breath (stabs, 1, 0.05f);
+        voice (stabs, 0.5f, 0.4f, 0.45f);
+        sizeByKey (stabs);
+        hum (stabs, 0, 0.5f, 60.0f);
+        route (stabs, "modWheel", ParamIDs::voiceVowel, 0.4f, 60.0f);
+        route (stabs, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (stabs, "macro3", ParamIDs::voiceVowel, -0.25f);
+        macros (stabs, "BRIGHT", "SPACE", "VOWEL");
+        reverb (stabs, RT::hall, 0.9f, 0.3f, 30.0f, 4.5f);
+        eqBand (stabs, 0, eq::Shape::lowCut, 70.0f, 0.0f);
+        space (stabs);
+        stabs.set (ParamIDs::patchLevel, -7.9f);   // LEVEL: set by its peaks: big chords struck hard (measured, not by ear)
+        x.add (stabs);
+
+        auto bells = x.make ("Ancient Bells", 11, { "Keys", "Bells", "Additive", "Church" },
+            "Deep, ringing bells built as a real bell's partials are: a hum an octave down, the strike note, a minor "
+            "third, a fifth and an octave above (five sines), each fading at its own pace (the higher, the sooner), a "
+            "cathedral. MACROS: BRIGHT (more of the upper partials), SPACE, HUM (more of the low hum).");
+        constexpr std::array<float, 5> partials { -12.0f, 0.0f, 3.0f, 7.0f, 12.0f };
+        constexpr std::array<float, 5> fines { 0.0f, 0.0f, 16.0f, 2.0f, 0.0f };     // the tierce a little sharp, as on a real bell
+        constexpr std::array<float, 5> levels { 0.35f, 0.5f, 0.3f, 0.2f, 0.25f };
+        constexpr std::array<float, 5> seconds { 7.0f, 5.0f, 3.5f, 2.5f, 2.0f };
+        for (int k = 0; k < 5; ++k)
+        {
+            bells.osc (k, "On", 1.0f).osc (k, "Wave", sine).osc (k, "Transpose", partials[(size_t) k]).osc (k, "Fine", fines[(size_t) k])
+                 .osc (k, "Volume", 0.0f).osc (k, "PhaseRand", 0.0f)
+                 .set (ParamIDs::env (k, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            bells.rig.modulation.envelopes[(size_t) k] = { { SP14 { 0.0f, 1.0f, -0.6f }, SP14 { seconds[(size_t) k], 0.0f, 0.0f } }, -1, -1, -1 };
+            route (bells, ("env" + juce::String (k + 1)).toRawUTF8(), ParamIDs::osc (k, "Volume"), levels[(size_t) k] * 0.5f);
+        }
+        bells.ampEnvelope (1.0f, 7000.0f, 0.0f, 3000.0f).set (ParamIDs::ampVel, 0.5f);
+        route (bells, "macro1", ParamIDs::osc (3, "Volume"), 0.1f);
+        route (bells, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        route (bells, "macro3", ParamIDs::osc (0, "Volume"), 0.15f);
+        macros (bells, "BRIGHT", "SPACE", "HUM");
+        reverb (bells, RT::cathedral, 0.6f, 0.3f, 30.0f, 4.5f);
+        space (bells);
+        bells.set (ParamIDs::patchLevel, -4.3f);   // LEVEL: set by its peaks when a chord is struck (measured, not by ear)
+        x.add (bells);
+
+        auto lament = x.make ("Lament Piano", 12, { "Keys", "Piano", "Sad", "Spacious" },
+            "A sad, spacious piano: NEGATIVE SPACE's soft felt piano, here far back in a hall, its echoes slow and dark. "
+            "The MOD WHEEL adds the felt's noise. MACROS: BRIGHT, SPACE, ECHO (more of the echoes).");
+        softPiano (lament);
+        route (lament, "macro3", ParamIDs::delayMix, 0.25f);
+        macros (lament, "BRIGHT", "SPACE", "ECHO");
+        delay (lament, "1/2", 0.35f, 0.12f, true, 3.0f);
+        reverb (lament, RT::hall, 0.85f, 0.32f, 30.0f, 4.0f);
+        space (lament);
+        lament.set (ParamIDs::patchLevel, -4.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (lament);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto charge = x.make ("String Charge", 13, { "Arp", "Strings", "Ostinato", "Heroic" },
+            "A racing string ostinato: ARP 1 runs up and down the chord you hold over two octaves in sixteenths with "
+            "your song, pinched bowed saws with a sharp attack, the first of every four accented, a hall. MACROS: BRIGHT, "
+            "SPACE, BITE (more filter snap).");
+        charge.osc (0, "Pinch", 0.3f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Pinch", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.4f).osc (1, "Arp", 1.0f)
+              .filter (FilterType::lp24, 1500.0f, 0.15f, 0.35f).filterEnvelope (0.0f, 110.0f, 0.25f, 90.0f)
+              .ampEnvelope (2.0f, 220.0f, 0.5f, 100.0f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+              .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.7f);
+        {
+            auto& p = charge.rig.modulation.arps[0].patterns[0];
+            p = {};
+            for (int k = 0; k < 16; ++k)
+            {
+                p.blocks[(size_t) k].on = true;
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.7f;
+            }
+        }
+        route (charge, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (charge, "macro3", ParamIDs::fltEnv, 0.25f);
+        macros (charge, "BRIGHT", "SPACE", "BITE");
+        reverb (charge, RT::hall, 0.7f, 0.2f);
+        space (charge);
+        charge.set (ParamIDs::patchLevel, 3.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (charge);
+
+        auto sacred = x.make ("Sacred Drums", 14, { "Arp", "Drums", "Choir", "Voice" },
+            "Huge, slow drums under a chanting choir: the drum sequencer plays low-tuned toms and a deep kick in a broad, "
+            "processional pattern with your song, while a chord you hold above C3 is sung by the choir (the VOICE filter, "
+            "\"oh\" opening to \"ah\"). The kit is on C2 to B2. MACROS: BRIGHT, SPACE, VOWEL.");
+        sacred.osc (0, "Volume", 0.5f)
+              .ampEnvelope (500.0f, 1500.0f, 0.95f, 2000.0f)
+              .set (ParamIDs::drumsOn, 1.0f).set (ParamIDs::dseqOn, 1.0f)
+              .set (ParamIDs::drum (0, "Pitch"), -5.0f).set (ParamIDs::drum (0, "Decay"), 0.75f).set (ParamIDs::drum (0, "SendReverb"), 0.4f)
+              .set (ParamIDs::drum (5, "Pitch"), -10.0f).set (ParamIDs::drum (5, "Decay"), 0.8f).set (ParamIDs::drum (5, "SendReverb"), 0.6f)
+              .set (ParamIDs::drum (7, "Pitch"), -8.0f).set (ParamIDs::drum (7, "Decay"), 0.8f).set (ParamIDs::drum (7, "SendReverb"), 0.6f);
+        ensemble (sacred, 0, 5, 0.08f, 9.0f, 4.6f);
+        breath (sacred, 1, 0.05f);
+        voice (sacred, 0.25f, 0.2f, 0.45f);
+        hum (sacred, 0, 0.35f, 500.0f);
+        {
+            auto& a = sacred.rig.modulation.drumPatterns[0];
+            const auto note = [&a] (int row, double start, float velocity)
+            {
+                synth::drumseq::Note n;
+                n.row = row;
+                n.start = start;
+                n.velocity = velocity;
+                a.notes.push_back (n);
+            };
+            note (0, 0.0, 1.0f);
+            note (5, 4.0, 0.8f);
+            note (5, 6.0, 0.6f);
+            note (0, 8.0, 0.9f);
+            note (7, 12.0, 0.8f);
+            note (5, 14.0, 0.7f);
+        }
+        route (sacred, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (sacred, "macro3", ParamIDs::voiceVowel, 0.25f);
+        macros (sacred, "BRIGHT", "SPACE", "VOWEL");
+        reverb (sacred, RT::cathedral, 0.8f, 0.3f);
+        space (sacred);
+        sacred.set (ParamIDs::patchLevel, -6.5f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        x.add (sacred);
+
+        auto pulse8 = x.make ("Signal Pulse", 15, { "Arp", "Electronic", "Pulse", "Delay" },
+            "A pulsing electronic arp for the action: ARP 1 plays the chord you hold in eighths, a narrow pulse plucked "
+            "by a resonant filter, dotted-eighth echoes bouncing across, a hall. MACROS: BRIGHT, SPACE, GLOW (resonance).");
+        pulse8.osc (0, "Wave", pulse).osc (0, "Width", 0.25f).osc (0, "Volume", 0.6f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+              .filter (FilterType::lp24, 1200.0f, 0.4f, 0.35f).filterEnvelope (0.0f, 200.0f, 0.15f, 150.0f)
+              .ampEnvelope (1.0f, 300.0f, 0.2f, 200.0f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+              .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        route (pulse8, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pulse8, "macro3", ParamIDs::fltRes, 0.3f);
+        macros (pulse8, "BRIGHT", "SPACE", "GLOW");
+        delay (pulse8, "1/8 dotted", 0.45f, 0.25f, true, 4.5f);
+        reverb (pulse8, RT::hall, 0.6f, 0.18f);
+        space (pulse8);
+        pulse8.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (pulse8);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -5757,5 +6155,6 @@ std::vector<Rig> makeExpansionRigs()
     cybershrine ({ Rig::numBanks + 11, rigs });
     stowaway ({ Rig::numBanks + 12, rigs });
     chromefury ({ Rig::numBanks + 13, rigs });
+    ascension ({ Rig::numBanks + 14, rigs });
     return rigs;
 }

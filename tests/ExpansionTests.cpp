@@ -325,8 +325,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto shrine = rig.bank == Rig::numBanks + 11;    // CYBERSHRINE: 72 BPM in D minor, ceremonial
         const auto stowaway = rig.bank == Rig::numBanks + 12;  // STOWAWAY: 60 BPM round A, half-step clashes, sparse
         const auto fury = rig.bank == Rig::numBanks + 13;      // CHROMEFURY: 140 BPM in D minor, Phrygian bite
+        const auto ascent = rig.bank == Rig::numBanks + 14;    // ASCENSION: 80 BPM in D minor, Dorian chant
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -376,6 +377,70 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (ascent && type == "Lead")
+        {
+            // A chant-like line in D Dorian: stepwise, rising to the fifth and settling, with a long held note.
+            line ({ { 0, 2, 62 }, { 2, 1, 64 }, { 3, 1, 65 }, { 4, 3, 67 }, { 7, 1, 65 }, { 8, 2, 69 }, { 10, 1, 71 },
+                    { 11, 1, 69 }, { 12, 4, 62 } }, rig.name == "Soprano Call" ? 100 : 95);
+            if (rig.name == "Soprano Call")
+                line ({ { 16, 3, 74 } }, 100);
+            wheel (8.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (ascent && type == "Pad")
+        {
+            // Wide voicings, so the basses sing low and the sopranos high: D minor, then B flat.
+            chord (e, at (0), at (7.8), { 38, 50, 57, 62, 65, 69 }, 92);
+            chord (e, at (8), at (15.8), { 34, 50, 58, 62, 65, 70 }, 92);
+            if (rig.name != "Monk Chant")
+                wheel (10.0, 15.0, 100);
+            length = 24.0 * beat;
+        }
+        else if (ascent && type == "Bass")
+        {
+            if (rig.name == "Battle Strings")
+                line ({ { 0, 8, 38 }, { 8, 4, 34 }, { 12, 4, 36 } }, 110);
+            else
+                line ({ { 0, 6, 38 }, { 6, 2, 36 }, { 8, 4, 34 }, { 12, 4, 33 } }, 100);
+            if (rig.name == "Deep Brass")
+                pressure (8.0, 15.0, 100);
+            length = 21.0 * beat;
+        }
+        else if (ascent && type == "Keys")
+        {
+            if (rig.name == "Choir Stabs")
+            {
+                const std::initializer_list<int> chords[] = { { 38, 50, 57, 62, 69 }, { 34, 46, 58, 62, 70 }, { 36, 48, 55, 60, 67 }, { 33, 45, 57, 61, 69 } };
+                int c = 0;
+                for (const auto& notes : chords)
+                {
+                    for (const auto offset : { 0.0, 1.5, 3.0 })
+                        chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.5), notes, offset == 0.0 ? 115 : 100);
+                    ++c;
+                }
+            }
+            else if (rig.name == "Ancient Bells")
+                line ({ { 0, 2, 50 }, { 3, 2, 57 }, { 6, 2, 53 }, { 9, 2, 55 }, { 12, 3, 50 } }, 100);
+            else
+            {
+                const int bass[] = { 38, 34, 41, 33 };
+                const std::initializer_list<int> hands[] = { { 50, 53, 57 }, { 50, 53, 58 }, { 48, 53, 57 }, { 49, 52, 57 } };
+                for (int c = 0; c < 4; ++c)
+                {
+                    chord (e, at (c * 4), at (c * 4 + 3.9), { bass[c] }, 60);
+                    chord (e, at (c * 4 + 1), at (c * 4 + 3.9), hands[c], 50);
+                    pedal (c * 4 + 0.05, c * 4 + 3.95);
+                }
+                line ({ { 0, 2, 69 }, { 2, 2, 67 }, { 4, 3, 65 }, { 8, 2, 64 }, { 10, 2, 65 }, { 12, 4, 62 } }, 65);
+            }
+            length = 22.0 * beat;
+        }
+        else if (ascent)
+        {
+            chord (e, at (0), at (7.9), { 62, 65, 69 }, 100);
+            chord (e, at (8), at (15.9), { 58, 62, 65 }, 100);
+            length = 21.0 * beat;
         }
         else if (fury && type == "Lead")
         {
