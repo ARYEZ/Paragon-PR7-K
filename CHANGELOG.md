@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.42.0
+
+**PSI STORM**, the seventeenth expansion: a bank of its own under EXPANSIONS (PS01 to PS15), named by you. Inspired by the score of a 1988 animated cyberpunk film about a biker gang and a boy whose psychic power breaks loose: shimmering bronze gamelan and deep bamboo, hypnotic group chant and slow monks' chant, a neon city at night, light trails, and power swelling out of control. Our own sounds; no title, characters, the city, the band, terms or music from the film.
+
+- **MACRO 3 is POWER on every preset**: more drive, clang, swell or a sharper voice: the energy breaking loose.
+- Leads: **Chant Leader** (a man's voice calling out, its vowel stepping through syllables in time with your song), **Tail Light Streak** (drops into every note from an octave up, fast echoes trailing behind), **Psychic Scream** (grows the longer you hold it: the pitch climbs a whole step, it tears and distorts, then cracks at the top).
+- Pads: **Requiem Chant** (low monks chanting in parallel fifths), **Ruined City** (cold, shifting metal with wind through it), **Power Surge** (swells over six seconds into a bright, unstable roar).
+- Basses: **Bamboo Bass** (hollow struck tubes in beating pairs), **Night Ride** (a chase bass jumping octaves in sixteenths with your song: hold a note), **Mutant Flesh** (a bloated, uneven wobble).
+- Keys: **Bronze Gamelan** (each note on two instruments tuned slightly apart, so they shimmer, as gamelan pairs do), **Temple Gong** (blooms after the strike and sags in pitch: play low), **Bamboo Marimba** (woody and bright).
+- Arps: **Interlock** (two bronze parts filling each other's gaps in the pelog scale: hold just the root key), **Chant Rhythm** (barked shouts in a 3-3-2 rhythm), **Festival Drums** (big low drums with rolls under the bronze: play above C3, the kit is on C2 to B2).
+- **New scale for the arp's RANDOMIZER: Pelog**, the gamelan's own five notes (its common form, to the nearest semitones). Added at the end of the list, so no existing preset changes.
+- **The preset browser fits more expansions**: with 17, PSI STORM's button was cut off at the bottom; the rows now pack tighter when space runs short (about 21 fit).
+- Levels balanced by measurement against the other expansions. The gamelan, gong and bamboo are synthesized, not recorded instruments. Made without listening here, so your ears decide.
+
 ## 0.41.0
 
 **REFRACTION**, the sixteenth expansion: a bank of its own under EXPANSIONS (RF01 to RF15), named by you. Inspired by the score of a 2018 science-fiction film about an expedition into a zone where everything is refracted and copied: a quiet fingerpicked string, light bending into colours, sounds that mutate and double as you hold them, and a vast, wailing alien swell. Otherworldly, as you asked. Our own sounds; no title, characters, places, terms or music from the film.
