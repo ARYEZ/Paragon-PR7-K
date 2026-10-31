@@ -123,6 +123,34 @@ TEST_CASE ("FFT LP and HP: harmonics above (or below) the cutoff taken away, liv
     CHECK (spectrum.loudestBetweenHarmonics (noteHz (100), 20000.0) < -90.0);
 }
 
+TEST_CASE ("FFT LP with SLOPE: moving the cutoff changes the sound smoothly, never in jumps", "[fft]")
+{
+    // A harmonic's level as the cutoff rises in small steps from 10 to 24 harmonics, at full SLOPE: it may only grow,
+    // and by small amounts. Before 0.47.0 the blended pair of levels moved one level at a time and the level jumped
+    // back and forth as the cutoff crossed each level (heard as clicks while it was swept).
+    for (const auto slope : { 0.5f, 1.0f })
+    {
+        double previous = -1.0;
+        double biggestStep = 0.0;
+        bool fell = false;
+        for (int k = 0; k <= 40; ++k)
+        {
+            const auto cutoff = 10.0f * std::pow (2.4f, (float) k / 40.0f);
+            const auto saw = playSaw (45, 0.3, [&] (synth::OscSettings& o) { o.fftLp = cutoff; o.fftSlope = slope; });
+            const auto level = levelAt (saw, 110.0 * 12, 4800, 14400) / sawHarmonic (12);
+            if (previous >= 0.0)
+            {
+                fell = fell || level < previous - 0.01;
+                biggestStep = std::max (biggestStep, std::abs (level - previous));
+            }
+            previous = level;
+        }
+        INFO ("SLOPE " << slope << ", biggest step " << biggestStep);
+        CHECK_FALSE (fell);
+        CHECK (biggestStep < 0.12);
+    }
+}
+
 TEST_CASE ("FFT VSPEED and VSTRENGTH: the harmonics swell and fade at VSPEED", "[fft]")
 {
     const auto strength = 1.0f;

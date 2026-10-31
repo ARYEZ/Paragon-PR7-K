@@ -330,8 +330,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto psi = rig.bank == Rig::numBanks + 16;       // PSI STORM: 120 BPM, pelog on D (D Eb F A Bb)
         const auto blood = rig.bank == Rig::numBanks + 17;     // BLOODWAVE: 120 BPM in F minor, darksynth
         const auto dust = rig.bank == Rig::numBanks + 18;      // DUSTFALL: 70 BPM in D minor, vast and cold
+        const auto super = rig.bank == Rig::numBanks + 19;     // SUPERPOSITION: 90 BPM in C minor, cold and cerebral
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -381,6 +382,55 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (super && type == "Lead")
+        {
+            // A searching line in C minor: a phrase, the same phrase changed, then a long held note.
+            line ({ { 0, 1, 60 }, { 1, 0.5, 63 }, { 1.5, 0.5, 67 }, { 2, 2, 65 }, { 4, 1, 60 }, { 5, 0.5, 63 }, { 5.5, 0.5, 68 },
+                    { 6, 2, 67 }, { 8, 1, 70 }, { 9, 1, 68 }, { 10, 2, 67 }, { 12, 4, 72 } }, 100);
+            wheel (12.0, 16.0, 100);
+            length = 20.0 * beat;
+        }
+        else if (super && type == "Pad")
+        {
+            // C minor, then A flat major over C: two versions of the same place.
+            chord (e, at (0), at (7.8), { 36, 48, 55, 63, 67 }, 90);
+            chord (e, at (8), at (15.8), { 32, 48, 56, 63, 68 }, 90);
+            wheel (10.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (super && type == "Bass")
+        {
+            if (rig.name == "Probability Bass")   // held notes: TRAVEL does the movement
+                line ({ { 0, 3.8, 36 }, { 4, 3.8, 32 }, { 8, 3.8, 39 }, { 12, 3.8, 34 } }, 105);
+            else   // a pulse on the beat, with gaps, so Event Horizon's fall is heard
+            {
+                constexpr int roots[] = { 36, 32, 39, 34 };
+                for (int k = 0; k < 16; ++k)
+                    if (k % 4 != 3)
+                        line ({ { k * 1.0, 0.7, roots[k / 4] } }, k % 2 == 0 ? 110 : 90);
+            }
+            wheel (8.0, 15.0, 90);
+            length = 19.0 * beat;
+        }
+        else if (super && type == "Keys")
+        {
+            // Cm, Ab, Eb, Bb: sparse chords and a high answer.
+            const std::initializer_list<int> chords[] = { { 48, 55, 60, 63 }, { 44, 56, 60, 63 }, { 51, 55, 58, 63 }, { 46, 58, 62, 65 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4.0), at (c * 4.0 + 3.0), notes, 90);
+                ++c;
+            }
+            line ({ { 1, 1, 72 }, { 5, 1, 75 }, { 9, 1, 70 }, { 13, 2, 74 } }, 80);
+            length = 20.0 * beat;
+        }
+        else if (super)
+        {
+            chord (e, at (0), at (7.9), { 48, 51, 55 }, 100);
+            chord (e, at (8), at (15.9), { 48, 51, 56 }, 100);
+            length = 19.0 * beat;
         }
         else if (dust && type == "Lead")
         {

@@ -60,10 +60,15 @@ namespace synth
             int lo = 0, hi = 0;
             float t = 0.0f;
         };
+        // FFT LP / HP's cutoff `position` among the levels, `width` (SLOPE) levels wide: two levels `span` apart,
+        // blended so that on average the cutoff sits at `position`. The pair steps along a grid `span` levels apart
+        // (0.47.0): as the cutoff moves past a grid line the blend is all one level on both sides, so a moving cutoff
+        // never jumps. Before, the pair moved one level at a time, and with SLOPE above 0 the sound jumped (a click)
+        // each time the cutoff crossed a level. With SLOPE at 0 (span 1) it's the same as before.
         LevelBlend blendFor (float position, float width, int minimum) noexcept
         {
             const auto span = juce::jmax (1, juce::roundToInt (width));
-            auto lo = (int) std::floor (position - 0.5f * (float) (span - 1));
+            auto lo = span * (int) std::floor (position / (float) span);
             auto hi = lo + span;
             const auto t = juce::jlimit (0.0f, 1.0f, (position - (float) lo) / (float) span);
             lo = juce::jlimit (minimum, tables::numLevels - 1, lo);

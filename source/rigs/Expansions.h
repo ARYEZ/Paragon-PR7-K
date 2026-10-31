@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 19> list
+    inline constexpr std::array<Expansion, 20> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -88,5 +88,10 @@ namespace expansions
           "Inspired by the score of a 2017 science-fiction film, the sequel to a classic set thirty years on: colder, "
           "bigger and more brutal, with colossal distorted brass blasts and crushing sub drones, orange dust and grey "
           "snow over empty cities, machines at work, and, in between, fragile, lonely beauty. Our own sounds." },
+        { "SUPERPOSITION", "SP",
+          "Inspired by the score of a 2024 science-fiction series about a physicist thrown into other versions of his "
+          "own life, searching for the way home: cold, cerebral and quietly dreadful, the same sound in many versions "
+          "(copies drifting apart, notes never the same twice, patterns that never repeat), and under it the warm "
+          "thread of home. Our own sounds." },
     }};
 }
