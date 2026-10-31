@@ -327,8 +327,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto fury = rig.bank == Rig::numBanks + 13;      // CHROMEFURY: 140 BPM in D minor, Phrygian bite
         const auto ascent = rig.bank == Rig::numBanks + 14;    // ASCENSION: 80 BPM in D minor, Dorian chant
         const auto refract = rig.bank == Rig::numBanks + 15;   // REFRACTION: 75 BPM in E minor, uneasy half steps
+        const auto psi = rig.bank == Rig::numBanks + 16;       // PSI STORM: 120 BPM, pelog on D (D Eb F A Bb)
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -378,6 +379,56 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (psi && type == "Lead")
+        {
+            // A calling line in pelog on D (D Eb F A Bb), rising to a long held note (so Psychic Scream can build).
+            line ({ { 0, 1, 62 }, { 1, 1, 63 }, { 2, 2, 65 }, { 4, 1, 69 }, { 5, 1, 70 }, { 6, 2, 69 }, { 8, 1, 65 },
+                    { 9, 1, 63 }, { 10, 2, 62 }, { 12, 1, 65 }, { 13, 1, 69 }, { 14, 10, 74 } }, 100);
+            wheel (18.0, 24.0, 100);
+            length = 28.0 * beat;
+        }
+        else if (psi && type == "Pad")
+        {
+            // Open fifths on D, then on B flat: the chant's drone, then the shift.
+            chord (e, at (0), at (11.8), { 38, 45, 50, 57, 62, 69 }, 90);
+            chord (e, at (12), at (23.8), { 34, 41, 46, 53, 62, 65 }, 90);
+            wheel (14.0, 22.0, 100);
+            length = 30.0 * beat;
+        }
+        else if (psi && type == "Bass")
+        {
+            if (rig.name == "Night Ride")
+                line ({ { 0, 8, 38 }, { 8, 4, 34 }, { 12, 4, 33 } }, 110);
+            else
+                line ({ { 0, 2, 38 }, { 2, 1, 39 }, { 3, 1, 41 }, { 4, 3, 38 }, { 8, 2, 45 }, { 10, 2, 46 }, { 12, 4, 38 } }, 105);
+            wheel (8.0, 15.0, 90);
+            length = 20.0 * beat;
+        }
+        else if (psi && type == "Keys")
+        {
+            if (rig.name == "Temple Gong")
+                line ({ { 0, 4, 38 }, { 4, 4, 45 }, { 8, 4, 34 }, { 12, 6, 38 } }, 110);
+            else   // a running gamelan figure in pelog on D, in eighths
+            {
+                constexpr int figure[] = { 62, 63, 65, 69, 70, 69, 65, 63, 62, 65, 63, 62, 57, 58, 57, 62 };
+                for (int k = 0; k < 16; ++k)
+                    line ({ { k * 0.5, 0.45, figure[k] } }, k % 4 == 0 ? 110 : 90);
+                for (int k = 0; k < 8; ++k)
+                    line ({ { 8.0 + k, 0.9, figure[k * 2] } }, 100);
+            }
+            length = 22.0 * beat;
+        }
+        else if (psi)
+        {
+            if (rig.name == "Interlock")
+                chord (e, at (0), at (15.9), { 62 }, 100);   // one key: the root
+            else
+            {
+                chord (e, at (0), at (7.9), { 62, 65, 69 }, 100);
+                chord (e, at (8), at (15.9), { 58, 62, 65 }, 100);
+            }
+            length = 20.0 * beat;
         }
         else if (refract && type == "Lead")
         {
@@ -1331,7 +1382,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
     }
 }
 
-TEST_CASE ("The arp randomizer's desert scales: Phrygian dominant and double harmonic", "[arp][expansions]")
+TEST_CASE ("The arp randomizer's added scales: Phrygian dominant, double harmonic and pelog", "[arp][expansions]")
 {
     const auto notesOf = [] (const char* name)
     {
@@ -1345,5 +1396,7 @@ TEST_CASE ("The arp randomizer's desert scales: Phrygian dominant and double har
     };
     CHECK (notesOf ("Phrygian Dominant") == std::vector<int> { 0, 1, 4, 5, 7, 8, 10 });
     CHECK (notesOf ("Double Harmonic") == std::vector<int> { 0, 1, 4, 5, 7, 8, 11 });
+    CHECK (notesOf ("Pelog") == std::vector<int> { 0, 1, 3, 7, 8 });
+    CHECK (synth::arp::scaleNames.size() == (int) synth::arp::scaleMasks.size());
     CHECK (synth::arp::scaleNames.indexOf ("Whole Tone") == 13);   // the old ones keep their places
 }
