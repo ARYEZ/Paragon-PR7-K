@@ -6690,7 +6690,7 @@ namespace
         leader.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (leader);
 
-        auto trail = x.make ("Light Trail", 2, { "Lead", "Pitch", "Unison", "Delay" },
+        auto trail = x.make ("Tail Light Streak", 2, { "Lead", "Pitch", "Unison", "Delay" },
             "A bright, fast lead that streaks into every note like a tail light smearing across the night: a three-voice "
             "saw unison that drops into each note from an octave up in a few tens of milliseconds (the PITCH envelope), "
             "a quick glide between notes, fast sixteenth echoes trailing behind, a chorus. MACROS: BRIGHT, SPACE, POWER "
