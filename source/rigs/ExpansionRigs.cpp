@@ -6136,6 +6136,484 @@ namespace
         pulse8.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (pulse8);
     }
+
+    // REFRACTION: inspired by the score of a 2018 science-fiction film about an expedition into a zone where
+    // everything is refracted and copied (a quiet folk guitar, light bending into colours, plants and bodies
+    // mutating, a vast wailing alien swell). No title, characters, places, terms or music from the film: our own
+    // sounds. The owner's ask: otherworldly. MACRO 3 is MUTATE on most: it pushes each sound from lovely to wrong.
+    void refraction (Expansion x)
+    {
+        using SP15 = synth::mod::ShapePoint;
+        using DM = effects::Drive::Model;
+        const auto freeRate = [] (float ratio) { return 0.5f + std::log2 (ratio) / 8.0f; };   // ModRate for a FREE ratio
+        const auto oneShot = [] (Builder& b, int env, std::vector<SP15> points)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { std::move (points), -1, -1, -1 };
+        };
+        const auto voice = [] (Builder& b, float vowel, float size, float sharp)
+        {
+            b.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, vowel).set (ParamIDs::voiceSize, size).set (ParamIDs::voiceSharp, sharp);
+        };
+        const auto clean = [] (Builder& b, int o)   // off the filter, shapers, buses and VOICE
+        {
+            b.osc (o, "Filter", 0.0f).osc (o, "Insert", 0.0f).osc (o, "Voice", 0.0f);
+            for (const auto* shp : { "Shp1", "Shp2", "Shp3", "Shp4" })
+                b.osc (o, shp, 0.0f);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto prism = x.make ("Refraction", 1, { "Lead", "Split", "Stereo", "Drift" },
+            "One note that splits like light through a prism as you hold it: a pulse in the middle, then a fifth "
+            "fading in on the left and an octave on the right, each sliding into tune from a little off (the fifth "
+            "from under, the octave from over), a faint twelfth above them, a shimmering chorus, echoes and a "
+            "digital space. MACROS: BRIGHT, SPACE, MUTATE (the split copies pulled out of tune: microtones). "
+            "MOD WHEEL: vibrato.");
+        prism.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.55f)
+             .osc (0, "VibAmount", 5.0f).osc (0, "VibRate", 5.0f).osc (0, "VibFade", 600.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 7.0f).osc (1, "Fine", -25.0f)
+             .osc (1, "Pan", -0.6f).osc (1, "Volume", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 12.0f).osc (2, "Fine", 20.0f)
+             .osc (2, "Pan", 0.6f).osc (2, "Volume", 0.0f)
+             .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 19.0f).osc (3, "Volume", 0.0f)
+             .filter (FilterType::lp12, 5000.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (20.0f, 600.0f, 0.85f, 900.0f);
+        oneShot (prism, 0, { SP15 { 0.0f, 0.0f, 0.4f }, SP15 { 1.5f, 1.0f, 0.0f } });    // the split opening
+        oneShot (prism, 1, { SP15 { 0.0f, 0.0f, 0.0f }, SP15 { 1.0f, 0.0f, 0.4f }, SP15 { 3.0f, 1.0f, 0.0f } });   // the twelfth, later
+        route (prism, "env1", ParamIDs::osc (1, "Volume"), 0.2f);
+        route (prism, "env1", ParamIDs::osc (2, "Volume"), 0.1f);
+        route (prism, "env2", ParamIDs::osc (3, "Volume"), 0.03f);
+        route (prism, "env1", ParamIDs::osc (1, "Fine"), 0.125f);    // -25 cents into tune
+        route (prism, "env1", ParamIDs::osc (2, "Fine"), -0.1f);     // +20 cents into tune
+        route (prism, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (prism, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (prism, "macro3", ParamIDs::osc (1, "Fine"), 0.2f);
+        route (prism, "macro3", ParamIDs::osc (2, "Fine"), -0.2f);
+        macros (prism, "BRIGHT", "SPACE", "MUTATE");
+        chorus (prism, ParamIDs::modIds, MT::dimension, 0.4f, 0.5f, 0.4f);
+        delay (prism, "1/4 dotted", 0.4f, 0.2f, true, 5.0f);
+        reverb (prism, RT::digital, 0.7f, 0.25f, 30.0f, 5.0f);
+        space (prism);
+        prism.set (ParamIDs::patchLevel, -2.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (prism);
+
+        auto mirror = x.make ("Mirror Voice", 2, { "Lead", "Voice", "Pitch", "Stereo" },
+            "A lead with a double that copies you a moment late and slightly wrong: a saw on the left, and on the right a "
+            "second saw that arrives after it, sliding up into the note from a half step under (the PITCH envelope, for "
+            "the double only), sung as an inhuman \"ee\" by the VOICE filter, with an unsteady, random vibrato. "
+            "MACROS: BRIGHT, SPACE, MUTATE (the double's formant pushed, its voice stranger). MOD WHEEL: more of the double.");
+        mirror.osc (0, "Volume", 0.55f).osc (0, "Pan", -0.35f).osc (0, "PitchEnv", 0.0f).osc (0, "Voice", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Volume", 0.0f).osc (1, "Pan", 0.35f)
+              .osc (1, "VibWave", (float) synth::VibratoWave::random).osc (1, "VibAmount", 15.0f).osc (1, "VibRate", 6.0f)
+              .filter (FilterType::lp12, 3000.0f, 0.1f, 0.15f).filterEnvelope (20.0f, 400.0f, 0.7f, 500.0f)
+              .set (ParamIDs::fltKey, 0.5f)
+              .ampEnvelope (15.0f, 500.0f, 0.9f, 700.0f)
+              .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 1.0f);
+        mirror.rig.modulation.pitchEnvelope = { { SP15 { 0.0f, 0.0f, 0.0f }, SP15 { 0.15f, 0.0f, -0.4f }, SP15 { 0.5f, 0.5f, 0.0f } }, -1, -1, -1 };
+        oneShot (mirror, 0, { SP15 { 0.0f, 0.0f, 0.0f }, SP15 { 0.15f, 0.0f, 0.3f }, SP15 { 0.5f, 1.0f, 0.0f } });   // the double arriving
+        route (mirror, "env1", ParamIDs::osc (1, "Volume"), 0.3f);
+        voice (mirror, 1.0f, 0.7f, 0.6f);
+        route (mirror, "modWheel", ParamIDs::osc (1, "Volume"), 0.15f);
+        route (mirror, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (mirror, "macro3", ParamIDs::osc (1, "Formant"), 0.2f);
+        route (mirror, "macro3", ParamIDs::voiceSize, -0.4f);
+        macros (mirror, "BRIGHT", "SPACE", "MUTATE");
+        delay (mirror, "1/8", 0.25f, 0.18f, false, 4.0f);
+        reverb (mirror, RT::hall, 0.7f, 0.25f, 30.0f, 4.5f);
+        space (mirror);
+        mirror.set (ParamIDs::patchLevel, -3.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (mirror);
+
+        auto wail = x.make ("Hollow Wail", 3, { "Lead", "Sync", "Glide", "Drive" },
+            "The vast alien swell: a saw whose SYNC opens as the note grows, giving it a voice that wanders (a slow LFO "
+            "on the sync), a pulse an octave down, a tube shaper and insert bus A's SKYLINE, every note scooping up from "
+            "under, sliding slowly between notes, a wide vibrato that blooms late, a cathedral. Play it slowly. MACROS: "
+            "BRIGHT, SPACE, MUTATE (more sync: a harsher, stranger voice). MOD WHEEL: wider vibrato.");
+        wail.osc (0, "SyncAmount", 0.2f).osc (0, "SyncEnv", 0.35f).osc (0, "SyncEnvTime", 900.0f).osc (0, "Volume", 0.55f)
+            .osc (0, "VibAmount", 18.0f).osc (0, "VibRate", 4.5f).osc (0, "VibFade", 900.0f).osc (0, "VibCurve", 0.6f)
+            .osc (0, "Insert", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.45f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+            .osc (1, "Insert", 1.0f)
+            .shaper (0, synth::ShaperModel::tube, 0.25f)
+            .filter (FilterType::lp24, 1000.0f, 0.35f, 0.3f).filterEnvelope (300.0f, 1500.0f, 0.6f, 800.0f)
+            .set (ParamIDs::fltKey, 0.5f)
+            .ampEnvelope (120.0f, 800.0f, 0.9f, 1200.0f)
+            .mono (220.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::always).set (ParamIDs::glideCurve, 0.4f)
+            .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 5.0f)
+            .set (ParamIDs::lfo (0, "Rate"), 0.35f);
+        wail.rig.modulation.pitchEnvelope = { { SP15 { 0.0f, 0.25f, -0.4f }, SP15 { 0.45f, 0.5f, 0.0f } }, -1, -1, -1 };
+        drive (wail, 0, DM::skyline, 2.5f, 3.0f, 4.0f, 0.3f, 0.4f);
+        route (wail, "lfo1", ParamIDs::osc (0, "SyncAmount"), 0.08f);
+        route (wail, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (wail, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (wail, "macro3", ParamIDs::osc (0, "SyncAmount"), 0.35f);
+        macros (wail, "BRIGHT", "SPACE", "MUTATE");
+        delay (wail, "1/4", 0.35f, 0.15f, true, 4.0f);
+        reverb (wail, RT::cathedral, 0.8f, 0.3f, 40.0f, 4.0f);
+        space (wail);
+        wail.set (ParamIDs::patchLevel, -1.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (wail);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto veil = x.make ("Prism Veil", 4, { "Pad", "FFT", "Unison", "Glass" },
+            "A glassy veil: a saw edited in the FFT editor (its lowest overtones taken out, a bright band from the 4th to "
+            "the 12th lifted), swinging slowly between two versions of itself so its harmonics rise and fall (VSPEED), "
+            "in a wide unison, a sine an octave up, a shimmering chorus and a huge digital space. MACROS: BRIGHT, SPACE, "
+            "MUTATE (SKEW: bends the wave, bringing a hollow, wrong low end back). MOD WHEEL: faster shimmer.");
+        veil.rig.spectra[0].gainsDb[1] = synth::SpectrumEdit::minDb;   // harmonics 2 and 3 out
+        veil.rig.spectra[0].gainsDb[2] = synth::SpectrumEdit::minDb;
+        for (int band = 3; band <= 11; ++band)
+            veil.rig.spectra[0].gainsDb[(size_t) band] = 6.0f;          // harmonics 4 to 12
+        veil.osc (0, "Volume", 0.5f).osc (0, "FftVSpeed", 0.3f).osc (0, "FftVStrength", 0.6f).osc (0, "FftLp", 64.0f)
+            .osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.75f).osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.9f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.15f)
+            .ampEnvelope (900.0f, 1500.0f, 0.95f, 2500.0f)
+            .set (ParamIDs::lfo (1, "Rate"), 0.07f).set (ParamIDs::lfo (1, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (veil, "lfo2", ParamIDs::osc (0, "FftLp"), 0.1f);
+        route (veil, "modWheel", ParamIDs::osc (0, "FftVSpeed"), 0.2f);
+        route (veil, "macro1", ParamIDs::osc (0, "FftLp"), 0.15f);
+        route (veil, "macro3", ParamIDs::osc (0, "Skew"), 0.3f);
+        macros (veil, "BRIGHT", "SPACE", "MUTATE");
+        chorus (veil, ParamIDs::modIds, MT::dimension, 0.3f, 0.6f, 0.5f);
+        reverb (veil, RT::digital, 0.9f, 0.3f, 40.0f, 5.0f);
+        eqBand (veil, 0, eq::Shape::lowCut, 120.0f, 0.0f);
+        space (veil);
+        veil.set (ParamIDs::patchLevel, -8.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (veil);
+
+        auto growth = x.make ("Overgrowth", 5, { "Pad", "Wavetable", "Travel", "Evolving" },
+            "A pad that keeps growing into something else while you hold it: the Wavefold table walked by TRAVEL's "
+            "envelope and an eight-step pattern (forwards, back, flipped, halfway and back) over about twelve seconds, "
+            "each note starting somewhere different (a slow random LFO on INDEX, per note), so no two chords are quite "
+            "the same, a warm triangle under it. MACROS: BRIGHT, SPACE, MUTATE (TRAVEL goes further). MOD WHEEL: FORMANT.");
+        growth.osc (0, "Wave", wavetable).osc (0, "Table", table ("Wavefold")).osc (0, "WtIndex", 0.2f).osc (0, "Volume", 0.5f)
+              .osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.7f).osc (0, "UniDetune", 0.15f).osc (0, "UniSpread", 0.85f)
+              .osc (0, "TrOn", 1.0f).osc (0, "TrEditors", (float) synth::travel::Editors::envSeq).osc (0, "TrSteps", 8.0f)
+              .osc (0, "TrPatternMode", (float) synth::travel::Mode::pingPong)
+              .osc (0, "TrSync", (float) synth::mod::LfoSync::free).osc (0, "TrRate", 0.08f)
+              .osc (0, "TrStrength", 0.5f).osc (0, "TrSmooth", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+              .filter (FilterType::lp12, 2500.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+              .ampEnvelope (1500.0f, 2000.0f, 0.95f, 3000.0f)
+              .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.15f);
+        {
+            auto& t = growth.rig.modulation.travel[0];
+            t.envelope = { { SP15 { 0.0f, 0.0f, 0.3f }, SP15 { 0.6f, 1.0f, -0.3f }, SP15 { 1.0f, 0.4f, 0.0f } }, -1, -1, -1 };
+            using M = synth::travel::StepMode;
+            const synth::travel::Step steps[] = { { M::normal, 1.0f, 2 }, { M::reverse, 1.0f, 1 }, { M::pingPongHalf, 1.0f, 1 }, { M::flip, 1.0f, 1 },
+                                                  { M::normal, 2.0f, 1 }, { M::mid, 1.0f, 1 }, { M::reverse, 1.0f, 2 }, { M::pingPongHalf, 2.0f, 1 } };
+            for (int k = 0; k < 8; ++k)
+                t.pattern.steps[(size_t) k] = steps[k];
+        }
+        route (growth, "lfo1", ParamIDs::osc (0, "WtIndex"), 0.1f);
+        route (growth, "modWheel", ParamIDs::osc (0, "Formant"), 0.15f);
+        route (growth, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (growth, "macro3", ParamIDs::osc (0, "TrStrength"), 0.2f);
+        macros (growth, "BRIGHT", "SPACE", "MUTATE");
+        chorus (growth, ParamIDs::modIds, MT::uniVibe, 0.2f, 0.4f, 0.3f);
+        reverb (growth, RT::hall, 0.9f, 0.3f, 40.0f, 4.5f);
+        eqBand (growth, 0, eq::Shape::lowCut, 70.0f, 0.0f);
+        space (growth);
+        growth.set (ParamIDs::patchLevel, -8.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (growth);
+
+        auto spores = x.make ("Spore Drift", 6, { "Pad", "Noise", "Voice", "Sparkle" },
+            "Air full of drifting spores: soft noise whispered through the VOICE filter, its vowel wandering by itself "
+            "(a slow random LFO), a quiet triangle chord inside it, and two high sines (two octaves up, and two octaves "
+            "and a fifth) that twinkle on and off at random, one left, one right, in a vast digital space. MACROS: BRIGHT, "
+            "SPACE, MUTATE (the whisper narrows into a strange, ringing tone). MOD WHEEL: more twinkles.");
+        spores.osc (0, "Gain", 0.0f).osc (0, "Noise", 0.6f).osc (0, "NoiseColour", 0.1f).osc (0, "NoiseWidth", 2.0f).osc (0, "Volume", 0.8f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Volume", 0.3f).osc (1, "Voice", 0.0f)
+              .osc (1, "UniVoices", 3.0f).osc (1, "UniMix", 0.6f).osc (1, "UniDetune", 0.1f).osc (1, "UniSpread", 0.8f)
+              .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 24.0f).osc (2, "Volume", 0.0f).osc (2, "Pan", -0.6f).osc (2, "Voice", 0.0f)
+              .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 31.0f).osc (3, "Volume", 0.0f).osc (3, "Pan", 0.6f).osc (3, "Voice", 0.0f)
+              .ampEnvelope (1500.0f, 2000.0f, 1.0f, 3000.0f)
+              .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.2f)
+              .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global)
+              .set (ParamIDs::lfo (1, "Wave"), (float) synth::mod::LfoWave::sampleHold).set (ParamIDs::lfo (1, "Rate"), 6.0f)
+              .set (ParamIDs::lfo (2, "Wave"), (float) synth::mod::LfoWave::sampleHold).set (ParamIDs::lfo (2, "Rate"), 4.3f);
+        voice (spores, 0.5f, 0.5f, 0.55f);
+        route (spores, "lfo1", ParamIDs::voiceVowel, 0.3f);
+        route (spores, "lfo2", ParamIDs::osc (2, "Volume"), 0.08f, 15.0f);
+        route (spores, "lfo3", ParamIDs::osc (3, "Volume"), 0.06f, 15.0f);
+        route (spores, "modWheel", ParamIDs::osc (2, "Volume"), 0.05f);
+        route (spores, "modWheel", ParamIDs::osc (3, "Volume"), 0.04f);
+        route (spores, "macro1", ParamIDs::osc (0, "NoiseColour"), -0.1f);
+        route (spores, "macro3", ParamIDs::voiceSharp, 0.4f);
+        route (spores, "macro3", ParamIDs::voiceSize, -0.4f);
+        macros (spores, "BRIGHT", "SPACE", "MUTATE");
+        delay (spores, "1/8 dotted", 0.4f, 0.15f, true, 5.5f);
+        reverb (spores, RT::digital, 0.9f, 0.35f, 40.0f, 5.0f);
+        eqBand (spores, 0, eq::Shape::lowCut, 200.0f, 0.0f);
+        space (spores);
+        spores.set (ParamIDs::patchLevel, -6.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (spores);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto mutation = x.make ("Mutation", 7, { "Bass", "Shape", "Formant", "Mono" },
+            "A bass that changes as it holds: each note starts as a plain filtered saw and, over three seconds, turns "
+            "strange (an envelope moving FORMANT, SKEW and a little CRUSH), over a clean sine kept off all of it. "
+            "MACROS: BRIGHT, SPACE, MUTATE (it goes further). MOD WHEEL: opens the filter.");
+        mutation.osc (0, "Volume", 0.6f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
+                .filter (FilterType::lp24, 900.0f, 0.25f, 0.3f).filterEnvelope (0.0f, 400.0f, 0.4f, 300.0f)
+                .ampEnvelope (5.0f, 800.0f, 0.9f, 400.0f)
+                .mono (0.0f);
+        clean (mutation, 1);
+        oneShot (mutation, 0, { SP15 { 0.0f, 0.0f, 0.4f }, SP15 { 3.0f, 1.0f, 0.0f } });
+        route (mutation, "env1", ParamIDs::osc (0, "Formant"), 0.2f);
+        route (mutation, "env1", ParamIDs::osc (0, "Skew"), 0.25f);
+        route (mutation, "env1", ParamIDs::osc (0, "Crush"), 0.15f);
+        route (mutation, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (mutation, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (mutation, "macro3", ParamIDs::osc (0, "Formant"), 0.2f);
+        route (mutation, "macro3", ParamIDs::osc (0, "Skew"), 0.2f);
+        macros (mutation, "BRIGHT", "SPACE", "MUTATE");
+        reverb (mutation, RT::room, 0.5f, 0.1f);
+        space (mutation);
+        mutation.set (ParamIDs::patchLevel, -4.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (mutation);
+
+        auto rot = x.make ("Root Rot", 8, { "Bass", "Drone", "FM", "LFO Shape" },
+            "A dark sub drone with something rotting on top: a clean sine, and a narrow pulse with a little FM at an "
+            "uneven ratio (a damp, off-pitch growl), a diode shaper, a low filter breathing in a drawn, irregular "
+            "shape (LFO 1's own curve, never quite a rhythm). MACROS: BRIGHT, SPACE, MUTATE (more rot: the shaper and "
+            "FM). MOD WHEEL: opens the filter.");
+        rot.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.12f).osc (1, "Volume", 0.45f)
+           .osc (1, "FmAmount", 0.08f).osc (1, "ModRate", freeRate (0.53f))
+           .shaper (0, synth::ShaperModel::diode, 0.35f)
+           .filter (FilterType::lp24, 350.0f, 0.3f, 0.0f)
+           .ampEnvelope (120.0f, 1000.0f, 1.0f, 800.0f)
+           .mono (30.0f)
+           .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::custom1).set (ParamIDs::lfo (0, "Rate"), 0.3f);
+        clean (rot, 0);
+        rot.rig.modulation.lfoShapes[0] = { { SP15 { 0.0f, 0.3f, 0.4f }, SP15 { 0.18f, 0.85f, -0.3f }, SP15 { 0.31f, 0.5f, 0.2f },
+                                              SP15 { 0.47f, 0.95f, -0.6f }, SP15 { 0.7f, 0.15f, 0.3f }, SP15 { 0.86f, 0.55f, 0.0f } }, -1, -1, -1 };
+        route (rot, "lfo1", ParamIDs::fltCutoff, 0.08f);
+        route (rot, "modWheel", ParamIDs::fltCutoff, 0.12f);
+        route (rot, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (rot, "macro3", ParamIDs::shp (0, "Drive"), 0.3f);
+        route (rot, "macro3", ParamIDs::osc (1, "FmAmount"), 0.1f);
+        macros (rot, "BRIGHT", "SPACE", "MUTATE");
+        reverb (rot, RT::hall, 0.6f, 0.12f);
+        space (rot);
+        rot.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (rot);
+
+        auto cells = x.make ("Cell Division", 9, { "Bass", "Step Seq", "LFO", "Pulse" },
+            "A pulsing bass that keeps dividing: a pulse wave beating in eighths with your song (the STEP SEQUENCER), and "
+            "an octave copy of it, a few cents off, that splits away for the first half of every beat (a square LFO in "
+            "time), over a clean sine. Hold a note. MACROS: BRIGHT, SPACE, MUTATE (the copy further out of tune and "
+            "bent). MOD WHEEL: opens the filter.");
+        cells.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Fine", 8.0f)
+             .osc (1, "Volume", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Volume", 0.35f).osc (2, "PhaseRand", 0.0f)
+             .filter (FilterType::lp24, 600.0f, 0.3f, 0.35f).filterEnvelope (0.0f, 180.0f, 0.3f, 150.0f)
+             .ampEnvelope (3.0f, 500.0f, 1.0f, 200.0f)
+             .mono (0.0f)
+             .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 0.75f).set (ParamIDs::seqGate, 0.6f)
+             .set (ParamIDs::seqContour, 0.15f).set (ParamIDs::seqDivision, division ("1/8")).set (ParamIDs::seqLength, 8.0f)
+             .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::square)
+             .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight).set (ParamIDs::lfo (0, "Division"), 5.0f)   // 1/4
+             .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        clean (cells, 2);
+        for (int row = 0; row < 2; ++row)
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = cells.rig.modulation.stepPattern.rows[(size_t) row][(size_t) k];
+                step.on = true;
+                step.level = k % 2 == 0 ? 1.0f : 0.6f;
+            }
+        route (cells, "lfo1", ParamIDs::osc (1, "Volume"), 0.15f, 5.0f);
+        route (cells, "stepSeq", ParamIDs::fltCutoff, 0.08f);
+        route (cells, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (cells, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (cells, "macro3", ParamIDs::osc (1, "Fine"), 0.1f);
+        route (cells, "macro3", ParamIDs::osc (1, "Formant"), 0.15f);
+        macros (cells, "BRIGHT", "SPACE", "MUTATE");
+        reverb (cells, RT::hall, 0.5f, 0.1f);
+        space (cells);
+        cells.set (ParamIDs::patchLevel, -4.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (cells);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto folk = x.make ("Folk Pluck", 10, { "Keys", "Pluck", "Guitar-like", "Intimate" },
+            "A quiet, fingerpicked string, close up: a saw and a pulse plucked by the filter (bright at the pick, "
+            "brighter the harder you play, darker as it rings), a tiny noise click for the fingertip, a wooden body "
+            "(a bump at 220 Hz) and a small room. Synthesis, not a sampled guitar: guitar-like, not a guitar. MACROS: "
+            "BRIGHT, SPACE, MUTATE (the second string drifts out of tune, as if the instrument is changing). MOD WHEEL: "
+            "brighter.");
+        folk.osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f)
+            .osc (2, "On", 1.0f).osc (2, "Gain", 0.0f).osc (2, "Noise", 0.4f).osc (2, "NoiseColour", 0.2f).osc (2, "Volume", 0.0f)
+            .filter (FilterType::lp12, 1800.0f, 0.1f, 0.55f).filterEnvelope (0.0f, 350.0f, 0.05f, 300.0f)
+            .set (ParamIDs::fltKey, 0.8f).set (ParamIDs::fltEnvVel, 0.6f)
+            .ampEnvelope (1.0f, 1800.0f, 0.0f, 600.0f).set (ParamIDs::ampDecayCurve, -0.4f).set (ParamIDs::ampVel, 0.6f);
+        oneShot (folk, 0, { SP15 { 0.0f, 1.0f, 0.0f }, SP15 { 0.02f, 0.0f, 0.0f } });
+        route (folk, "env1", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (folk, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (folk, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (folk, "macro3", ParamIDs::osc (1, "Fine"), 0.15f);
+        macros (folk, "BRIGHT", "SPACE", "MUTATE");
+        eqBand (folk, 0, eq::Shape::bell, 220.0f, 3.0f, 1.0f);
+        eqBand (folk, 1, eq::Shape::lowCut, 70.0f, 0.0f);
+        reverb (folk, RT::room, 0.45f, 0.15f);
+        space (folk);
+        folk.set (ParamIDs::patchLevel, -0.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (folk);
+
+        auto bloom = x.make ("Bloom Keys", 11, { "Keys", "FM", "Reverse Reverb", "Bell" },
+            "Bell-like keys that blossom after you strike them: a sine with FM from oscillator 2 (a sine 19 semitones "
+            "up, a hair sharp: a soft bell), the FM opening after the strike instead of before (ENV 1 rises over 0.6 s, "
+            "then settles), a triangle an octave up, and a reverse reverb that swells up behind each note. MACROS: "
+            "BRIGHT, SPACE, MUTATE (the bell's ratio pulled off: clangy, alien). MOD WHEEL: more FM.");
+        bloom.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.03f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 19.0f).osc (1, "Fine", 12.0f)
+             .osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.12f)
+             .ampEnvelope (2.0f, 3000.0f, 0.1f, 1500.0f).set (ParamIDs::ampVel, 0.5f);
+        oneShot (bloom, 0, { SP15 { 0.0f, 0.0f, 0.5f }, SP15 { 0.6f, 1.0f, -0.3f }, SP15 { 2.0f, 0.4f, 0.0f } });
+        route (bloom, "env1", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (bloom, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (bloom, "macro1", ParamIDs::osc (2, "Volume"), 0.1f);
+        route (bloom, "macro3", ParamIDs::osc (1, "Fine"), 0.2f);
+        macros (bloom, "BRIGHT", "SPACE", "MUTATE");
+        chorus (bloom, ParamIDs::modIds, MT::uniVibe, 0.3f, 0.3f, 0.3f);
+        delay (bloom, "1/4", 0.3f, 0.12f, true, 4.5f);
+        reverb (bloom, RT::reverse, 0.6f, 0.3f, 20.0f, 5.0f);
+        space (bloom);
+        bloom.set (ParamIDs::patchLevel, -3.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (bloom);
+
+        auto crystal = x.make ("Crystal Trees", 12, { "Keys", "Chorder", "Crush", "Glass" },
+            "Brittle crystal chimes: a triangle with two chorder notes far above it (an octave and a fifth a few cents "
+            "sharp, and an octave and a flat seventh tuned down near the 7th harmonic, so they shimmer against each other), a touch of CRUSH for "
+            "a glassy grain, every note a little out of tune at random, short and bright, through fast sixteenth echoes "
+            "and a digital space. MACROS: BRIGHT, SPACE, MUTATE (more crush and a pushed formant: crystal cracking). MOD "
+            "WHEEL: longer echoes.");
+        crystal.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "Crush", 0.2f).osc (0, "CrushMode", 0.0f)
+               .osc (0, "Random", 0.15f).osc (0, "PhaseRand", 0.0f)
+               .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 19.0f).osc (0, "Ch1Fine", 13.0f).osc (0, "Ch1Vol", 0.35f).osc (0, "Ch1Pan", -0.4f)
+               .osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 22.0f).osc (0, "Ch2Fine", -27.0f).osc (0, "Ch2Vol", 0.2f).osc (0, "Ch2Pan", 0.4f)
+               .filter (FilterType::hp12, 400.0f, 0.1f, 0.0f)
+               .ampEnvelope (0.0f, 900.0f, 0.0f, 800.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.5f);
+        route (crystal, "modWheel", ParamIDs::delayFeedback, 0.2f);
+        route (crystal, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (crystal, "macro3", ParamIDs::osc (0, "Crush"), 0.3f);
+        route (crystal, "macro3", ParamIDs::osc (0, "Formant"), 0.15f);
+        macros (crystal, "BRIGHT", "SPACE", "MUTATE");
+        delay (crystal, "1/16", 0.45f, 0.25f, true, 7.0f);
+        reverb (crystal, RT::digital, 0.7f, 0.25f, 30.0f, 6.0f);
+        space (crystal);
+        crystal.set (ParamIDs::patchLevel, 7.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (crystal);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto doubling = x.make ("Doubling", 13, { "Arp", "Arps Together", "Stereo", "Mirror" },
+            "Two arps mirroring each other: hold a chord, and ARP 1 climbs it in sixteenths on a pulse on the left while "
+            "ARP 2 falls through it on a triangle an octave up on the right, a few cents off, both on the same clock, a slow flanger sweeping through them. "
+            "MACROS: BRIGHT, SPACE, MUTATE (the mirror image drifts further from the original). ");
+        doubling.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Pan", -0.6f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Fine", 7.0f)
+                .osc (1, "Pan", 0.6f).osc (1, "Volume", 0.55f).osc (1, "Arp", 2.0f)
+                .filter (FilterType::lp24, 2500.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 200.0f, 0.2f, 150.0f)
+                .ampEnvelope (1.0f, 350.0f, 0.2f, 200.0f)
+                .set (ParamIDs::arpsTogether, 1.0f);
+        for (const auto [k, mode] : { std::pair { 0, synth::arp::Mode::up }, std::pair { 1, synth::arp::Mode::down } })
+            doubling.set (ParamIDs::arp (k, "On"), 1.0f).set (ParamIDs::arp (k, "Mode"), (float) mode)
+                    .set (ParamIDs::arp (k, "Division"), division ("1/16")).set (ParamIDs::arp (k, "Octaves"), 2.0f)
+                    .set (ParamIDs::arp (k, "Gate"), 0.5f);
+        route (doubling, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (doubling, "macro3", ParamIDs::osc (1, "Fine"), 0.15f);
+        route (doubling, "macro3", ParamIDs::osc (1, "Formant"), 0.2f);
+        macros (doubling, "BRIGHT", "SPACE", "MUTATE");
+        chorus (doubling, ParamIDs::modIds, MT::flanger, 0.08f, 0.6f, 0.4f);   // a slow AEON sweep through both
+        delay (doubling, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
+        reverb (doubling, RT::hall, 0.6f, 0.2f);
+        space (doubling);
+        doubling.set (ParamIDs::patchLevel, -2.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (doubling);
+
+        auto glow = x.make ("Bioluminescence", 14, { "Arp", "Random", "Pitch", "Whole Tone" },
+            "Little lights blinking on in the dark: ARP 1 plays random notes from the chord you hold over three octaves, "
+            "in a dreamlike whole-tone scale, with plenty of rests, a new pattern every pass (AUTODICE); every note is a "
+            "glassy blip that chirps down into its pitch from an octave up in a few milliseconds (the PITCH envelope), "
+            "a quiet sine two octaves over it, echoes and a digital space. MACROS: BRIGHT, SPACE, MUTATE (FORMANT and a "
+            "deeper chirp). MOD WHEEL: more of the high sine.");
+        glow.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.1f).osc (1, "Arp", 1.0f)
+            .ampEnvelope (1.0f, 500.0f, 0.0f, 500.0f).set (ParamIDs::ampDecayCurve, -0.4f)
+            .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 12.0f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::random)
+            .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.3f).set (ParamIDs::arp (0, "Humanize"), 0.1f);
+        glow.rig.modulation.pitchEnvelope = { { SP15 { 0.0f, 1.0f, -0.5f }, SP15 { 0.03f, 0.5f, 0.0f } }, -1, -1, -1 };
+        {
+            auto& r = glow.rig.modulation.arpRandomizers[0];
+            r.scale = synth::arp::scaleNames.indexOf ("Whole Tone");
+            r.restChance = 0.45f;
+            r.lengthChances = { 1.0f, 0.3f, 0.0f, 0.0f };
+            r.velocityLow = 0.4f;
+            r.velocityHigh = 1.0f;
+            r.autoDice = true;
+            r.seed = 11;
+            auto& p = glow.rig.modulation.arps[0].patterns[0];
+            p = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
+        }
+        route (glow, "modWheel", ParamIDs::osc (1, "Volume"), 0.08f);
+        route (glow, "macro1", ParamIDs::osc (1, "Volume"), 0.05f);
+        route (glow, "macro3", ParamIDs::osc (0, "Formant"), 0.25f);
+        route (glow, "macro3", ParamIDs::pitchEnvRange, 0.25f);
+        macros (glow, "BRIGHT", "SPACE", "MUTATE");
+        delay (glow, "1/16 dotted", 0.45f, 0.3f, true, 6.0f);
+        glow.set (ParamIDs::delayToReverb, 0.4f);
+        reverb (glow, RT::digital, 0.8f, 0.3f, 40.0f, 5.5f);
+        space (glow);
+        glow.set (ParamIDs::patchLevel, 3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (glow);
+
+        auto garden = x.make ("Pulse Garden", 15, { "Arp", "Voice", "Ratchet", "Organic" },
+            "A slow, organic pulse, like something breathing in the dark: ARP 1 plays the chord you hold in eighths "
+            "with uneven accents, a few rests, a flutter (ratchets) now and then and one slide, each pulse a saw sung by "
+            "the VOICE filter opening from \"oo\" and closing again (an envelope restarted by every arp note), a sine "
+            "body under it, a hall. MACROS: BRIGHT, SPACE, MUTATE (the voice's size, human to something else).");
+        garden.osc (0, "Volume", 0.55f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+              .osc (1, "Voice", 0.0f)
+              .ampEnvelope (10.0f, 500.0f, 0.3f, 250.0f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+              .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.8f)
+              .set (ParamIDs::env (0, "Trigger"), (float) synth::mod::EnvelopeTrigger::arpNotes);
+        oneShot (garden, 0, { SP15 { 0.0f, 0.0f, 0.3f }, SP15 { 0.25f, 1.0f, 0.2f }, SP15 { 0.7f, 0.3f, 0.0f } });
+        voice (garden, 0.0f, 0.3f, 0.6f);
+        route (garden, "env1", ParamIDs::voiceVowel, 0.6f);
+        {
+            auto& p = garden.rig.modulation.arps[0].patterns[0];
+            p = {};
+            constexpr float velocities[] = { 1.0f, 0.55f, 0.7f, 0.5f, 0.9f, 0.6f, 0.0f, 0.65f, 1.0f, 0.5f, 0.75f, 0.55f, 0.85f, 0.0f, 0.6f, 0.7f };
+            for (int k = 0; k < 16; ++k)
+            {
+                auto& block = p.blocks[(size_t) k];
+                block.on = velocities[k] > 0.0f;
+                block.velocity = velocities[k];
+            }
+            p.blocks[7].ratchet = 3;
+            p.blocks[15].ratchet = 2;
+            p.blocks[10].slide = true;
+        }
+        route (garden, "macro1", ParamIDs::voiceSharp, 0.3f);
+        route (garden, "macro3", ParamIDs::voiceSize, 0.5f);
+        macros (garden, "BRIGHT", "SPACE", "MUTATE");
+        delay (garden, "1/4 dotted", 0.3f, 0.15f, true, 4.5f);
+        reverb (garden, RT::hall, 0.7f, 0.25f);
+        space (garden);
+        garden.set (ParamIDs::patchLevel, 1.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (garden);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -6156,5 +6634,6 @@ std::vector<Rig> makeExpansionRigs()
     stowaway ({ Rig::numBanks + 12, rigs });
     chromefury ({ Rig::numBanks + 13, rigs });
     ascension ({ Rig::numBanks + 14, rigs });
+    refraction ({ Rig::numBanks + 15, rigs });
     return rigs;
 }

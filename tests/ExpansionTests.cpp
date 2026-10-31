@@ -326,8 +326,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto stowaway = rig.bank == Rig::numBanks + 12;  // STOWAWAY: 60 BPM round A, half-step clashes, sparse
         const auto fury = rig.bank == Rig::numBanks + 13;      // CHROMEFURY: 140 BPM in D minor, Phrygian bite
         const auto ascent = rig.bank == Rig::numBanks + 14;    // ASCENSION: 80 BPM in D minor, Dorian chant
+        const auto refract = rig.bank == Rig::numBanks + 15;   // REFRACTION: 75 BPM in E minor, uneasy half steps
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -377,6 +378,63 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (refract && type == "Lead")
+        {
+            // A slow, searching line in E minor that slips by half steps (the F natural, the D sharp), long notes to
+            // hear each sound change as it's held.
+            line ({ { 0, 3, 64 }, { 3, 1, 65 }, { 4, 4, 67 }, { 8, 2, 71 }, { 10, 1, 72 }, { 11, 1, 71 }, { 12, 2, 67 },
+                    { 14, 1, 66 }, { 15, 1, 63 }, { 16, 4, 64 } }, 95);
+            wheel (16.0, 20.0, 100);
+            length = 24.0 * beat;
+        }
+        else if (refract && type == "Pad")
+        {
+            // E minor, then a C major chord with an F natural in it (the half step against E): beautiful, then wrong.
+            chord (e, at (0), at (7.8), { 40, 52, 59, 64, 67, 71 }, 90);
+            chord (e, at (8), at (15.8), { 36, 52, 55, 60, 65, 72 }, 90);
+            wheel (10.0, 15.0, 100);
+            length = 24.0 * beat;
+        }
+        else if (refract && type == "Bass")
+        {
+            line ({ { 0, 6, 28 }, { 6, 2, 29 }, { 8, 4, 24 }, { 12, 4, 27 } }, 100);
+            wheel (8.0, 15.0, 90);
+            length = 20.0 * beat;
+        }
+        else if (refract && type == "Keys")
+        {
+            if (rig.name == "Folk Pluck")
+            {
+                // Fingerpicked: a low string and broken chords in eighths, Em - C - Am - B.
+                const int roots[] = { 40, 36, 45, 47 };
+                const std::initializer_list<int> shapes[] = { { 52, 55, 59, 64 }, { 52, 55, 60, 64 }, { 52, 57, 60, 64 }, { 51, 54, 59, 63 } };
+                for (int c = 0; c < 4; ++c)
+                {
+                    line ({ { c * 4.0, 2.0, roots[c] } }, 80);
+                    double t = c * 4.0 + 0.5;
+                    for (const auto note : shapes[c])
+                    {
+                        line ({ { t, 1.4, note } }, 65);
+                        t += 0.5;
+                    }
+                    line ({ { c * 4.0 + 2.5, 1.4, *(shapes[c].begin() + 2) } }, 60);
+                }
+                length = 20.0 * beat;
+            }
+            else
+            {
+                line ({ { 0, 2, 64 }, { 2, 2, 71 }, { 4, 3, 67 }, { 8, 2, 76 }, { 10, 2, 75 }, { 12, 4, 64 } }, 95);
+                chord (e, at (0), at (3.8), { 52 }, 70);
+                chord (e, at (8), at (11.8), { 48 }, 70);
+                length = 22.0 * beat;
+            }
+        }
+        else if (refract)
+        {
+            chord (e, at (0), at (7.9), { 64, 67, 71 }, 100);
+            chord (e, at (8), at (15.9), { 60, 64, 65 }, 100);
+            length = 21.0 * beat;
         }
         else if (ascent && type == "Lead")
         {

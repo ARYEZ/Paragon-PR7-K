@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 15> list
+    inline constexpr std::array<Expansion, 16> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -72,5 +72,9 @@ namespace expansions
           "Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant "
           "growing into a vast, epic choir, heroic strings and brass, big drums, mystery and awe. Built on the VOICE "
           "filter for choirs that sound human. Our own sounds." },
+        { "REFRACTION", "RF",
+          "Inspired by the score of a 2018 science-fiction film about an expedition into a zone where everything is "
+          "refracted and copied: a quiet fingerpicked string, light bending into colours, sounds that mutate and double "
+          "as you hold them, and a vast, wailing alien swell. Otherworldly. Our own sounds." },
     }};
 }
