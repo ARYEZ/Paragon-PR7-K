@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "dsp/synth/Mimic.h"
 
 #include "ModDestinations.h"
 
@@ -1087,6 +1088,17 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     for (int start = 0; start < numSamples; start += preparedBlockSize)
         processChunk (buffer, synthMidi, drumMidi, kit, start, juce::jmin (preparedBlockSize, numSamples - start));
 
+    // MIMIC's recording, beside the synth, through the OUTPUT knob as the synth is.
+    if (const auto* reference = referenceForAudio.load(); reference != nullptr && referencePosition.load() >= 0)
+    {
+        const auto position = referencePosition.load();
+        const auto count = juce::jmin (numSamples, reference->getNumSamples() - position);
+        const auto gain = juce::Decibels::decibelsToGain (param (ParamIDs::outputGain));
+        for (int c = 0; c < buffer.getNumChannels() && count > 0; ++c)
+            buffer.addFrom (c, 0, *reference, juce::jmin (c, reference->getNumChannels() - 1), position, count, gain);
+        referencePosition = position + count >= reference->getNumSamples() ? -1 : position + count;
+    }
+
     activeVoices = engine.getNumActiveVoices();
     midi.clear();   // an instrument: nothing goes on down the MIDI chain
 }
@@ -1289,6 +1301,7 @@ void ParagonX1AudioProcessor::updateWavetables()
     std::erase_if (retiredTables, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredMatrices, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredSamples, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
+    std::erase_if (retiredReferences, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
 }
 
 void ParagonX1AudioProcessor::updateEffectModulation (const synth::Settings& settings, int numSamples) noexcept
@@ -1574,6 +1587,70 @@ void ParagonX1AudioProcessor::chooseFactoryWavetable (int osc, int index)
     markModified();
     updateWavetables();
     requestCheckpoint();
+}
+
+//==============================================================================
+// MIMIC (0.44.0).
+void ParagonX1AudioProcessor::applyMimic (const Rig& rig)
+{
+    currentRig = { rig.name, {}, {} };
+    applyRig (rig);
+    rigModified = true;   // new, not saved anywhere yet
+    requestCheckpoint();
+    rigBroadcaster.sendChangeMessage();
+}
+
+bool ParagonX1AudioProcessor::setMimicReference (const juce::File& file)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->sampleRate <= 0.0 || reader->lengthInSamples <= 0)
+        return false;
+    const auto length = (int) juce::jmin (reader->lengthInSamples, (juce::int64) (synth::mimic::maxSeconds * reader->sampleRate));
+    juce::AudioBuffer<float> audio ((int) juce::jlimit (1u, 2u, reader->numChannels), length);
+    reader->read (&audio, 0, length, 0, true, audio.getNumChannels() > 1);
+    return setMimicReference (audio, reader->sampleRate);
+}
+
+bool ParagonX1AudioProcessor::setMimicReference (const juce::AudioBuffer<float>& audio, double sampleRate)
+{
+    if (audio.getNumSamples() == 0 || sampleRate <= 0.0)
+        return false;
+    // At the host's rate (or 48 kHz before it's playing), stereo.
+    const auto hostRate = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
+    const auto ratio = sampleRate / hostRate;
+    const auto length = (int) std::floor (audio.getNumSamples() / ratio);
+    auto resampled = std::make_shared<juce::AudioBuffer<float>> (2, juce::jmax (1, length));
+    for (int c = 0; c < 2; ++c)
+    {
+        const auto* from = audio.getReadPointer (juce::jmin (c, audio.getNumChannels() - 1));
+        if (juce::approximatelyEqual (ratio, 1.0))
+            resampled->copyFrom (c, 0, from, length);
+        else
+        {
+            juce::LagrangeInterpolator interpolator;
+            interpolator.process (ratio, from, resampled->getWritePointer (c), length, audio.getNumSamples(), 0);
+        }
+    }
+    stopMimicReference();
+    if (mimicReference != nullptr)
+        retiredReferences.emplace_back (mimicReference, juce::Time::getMillisecondCounterHiRes());
+    mimicReference = std::move (resampled);
+    referenceForAudio = mimicReference.get();
+    return true;
+}
+
+void ParagonX1AudioProcessor::playMimicReference() noexcept
+{
+    if (referenceForAudio.load() != nullptr)
+        referencePosition = 0;
+}
+
+double ParagonX1AudioProcessor::getMimicReferenceSeconds() const noexcept
+{
+    const auto hostRate = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
+    return mimicReference != nullptr ? mimicReference->getNumSamples() / hostRate : 0.0;
 }
 
 //==============================================================================

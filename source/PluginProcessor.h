@@ -205,6 +205,19 @@ public:
     }
 
     //==========================================================================
+    // MIMIC (0.44.0): a sound made from a recording (rigs/MimicRig.h). Message thread.
+    // Puts a made sound in place as a new, unsaved one: one undo step.
+    void applyMimic (const Rig& rig);
+    // The recording, to play through the output beside the made sound (up to 20 s, at the host's rate, through the
+    // OUTPUT knob as the synth is). False if it can't be read.
+    bool setMimicReference (const juce::File&);
+    bool setMimicReference (const juce::AudioBuffer<float>& audio, double sampleRate);   // for tests and the snapshot
+    void playMimicReference() noexcept;
+    void stopMimicReference() noexcept { referencePosition = -1; }
+    bool isPlayingMimicReference() const noexcept { return referencePosition.load() >= 0; }
+    double getMimicReferenceSeconds() const noexcept;
+
+    //==========================================================================
     // THE DRUMS (stage 6a). While DRUMS is on, the 12 keys from its ROOT play the kit instead of the synth.
     // Samples (message thread): a slot's loaded file, kept in the preset; loading one sets the slot to SAMPLE.
     bool loadDrumSample (int slot, const juce::File&);
@@ -403,6 +416,12 @@ private:
     std::array<std::shared_ptr<const synth::drums::Sample>, ParamIDs::numDrums> drumSamples;
     std::array<std::atomic<const synth::drums::Sample*>, ParamIDs::numDrums> samplesForAudio {};
     std::vector<std::pair<std::shared_ptr<const synth::drums::Sample>, double>> retiredSamples;
+    // MIMIC's recording, played by the audio thread from `referencePosition` (-1: not playing); a replaced one is kept
+    // 2 s, as the tables are, so a block still playing it can't read freed memory.
+    std::shared_ptr<const juce::AudioBuffer<float>> mimicReference;
+    std::atomic<const juce::AudioBuffer<float>*> referenceForAudio { nullptr };
+    std::atomic<int> referencePosition { -1 };
+    std::vector<std::pair<std::shared_ptr<const juce::AudioBuffer<float>>, double>> retiredReferences;
     std::array<std::atomic<bool>, ParamIDs::numDrums> pendingPreview {};
     juce::MidiBuffer synthMidi, drumMidi;
     // Reversed synth drums' rendered hits (by slot), what each was made from, and the audio thread's pointers.

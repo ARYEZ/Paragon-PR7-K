@@ -89,6 +89,7 @@ target_sources(ParagonX1
         source/ui/LevelMeter.cpp
         source/ui/Logo.cpp
         source/ui/RigBrowser.cpp
+        source/ui/MimicPanel.cpp
         source/ui/Icons.cpp
         source/ui/DockPanels.cpp
         source/ui/SynthControls.cpp

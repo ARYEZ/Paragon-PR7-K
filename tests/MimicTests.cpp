@@ -249,3 +249,131 @@ TEST_CASE ("MIMIC: the sound it makes: the wavetable walked by TRAVEL, the loudn
     CHECK (plain.parameters.count (ParamIDs::ampSustain) == 0);
     CHECK (plain.parameters.count (ParamIDs::osc (0, "VibAmount")) == 0);
 }
+
+//==============================================================================
+// In the plugin: the made sound played, compared with the recording; the recording played beside it; the panel.
+#include "PluginProcessor.h"
+#include "ui/MimicPanel.h"
+
+namespace
+{
+    constexpr int block = 512;
+
+    struct MimicPlugin
+    {
+        ParagonX1AudioProcessor processor;
+        MimicPlugin()
+        {
+            processor.setPlayConfigDetails (0, 2, rate, block);
+            processor.prepareToPlay (rate, block);
+            processor.seedRandomForTest (1);
+        }
+        // Plays `note` for `held` seconds of `seconds`: the left side.
+        std::vector<float> play (int note, double held, double seconds)
+        {
+            std::vector<float> out;
+            juce::AudioBuffer<float> buffer (2, block);
+            juce::MidiBuffer midi;
+            const auto blocks = (int) std::ceil (seconds * rate / block);
+            const auto offBlock = (int) (held * rate / block);
+            for (int b = 0; b < blocks; ++b)
+            {
+                midi.clear();
+                if (b == 0 && note >= 0)
+                    midi.addEvent (juce::MidiMessage::noteOn (1, note, 0.8f), 0);
+                if (b == offBlock && note >= 0)
+                    midi.addEvent (juce::MidiMessage::noteOff (1, note), 0);
+                buffer.clear();
+                processor.processBlock (buffer, midi);
+                out.insert (out.end(), buffer.getReadPointer (0), buffer.getReadPointer (0) + block);
+            }
+            return out;
+        }
+    };
+
+    // Harmonic k's level (dB against the fundamental) of `x` from `from` for `count` samples, at fundamental `hz`.
+    std::vector<float> harmonicsOf (const std::vector<float>& x, size_t from, size_t count, double hz, int harmonics)
+    {
+        std::vector<double> amplitude ((size_t) harmonics + 1, 0.0);
+        for (int k = 1; k <= harmonics; ++k)
+        {
+            double re = 0.0, im = 0.0;
+            for (size_t i = 0; i < count; ++i)
+            {
+                const auto w = 0.5 - 0.5 * std::cos (juce::MathConstants<double>::twoPi * (double) i / (double) count);
+                const auto phase = juce::MathConstants<double>::twoPi * k * hz * (double) (from + i) / rate;
+                re += w * x[from + i] * std::cos (phase);
+                im += w * x[from + i] * std::sin (phase);
+            }
+            amplitude[(size_t) k] = std::sqrt (re * re + im * im);
+        }
+        std::vector<float> db ((size_t) harmonics + 1, -200.0f);
+        for (int k = 1; k <= harmonics; ++k)
+            db[(size_t) k] = (float) juce::Decibels::gainToDecibels (amplitude[(size_t) k] / amplitude[1], -200.0);
+        return db;
+    }
+}
+
+TEST_CASE ("MIMIC in the plugin: the made sound plays the recording's tone at its note, and one undo takes it back", "[mimic]")
+{
+    const auto hz = 196.0;   // G3
+    const auto sound = note (1.5, steady (hz), adsr (0.01, 0.05, 1.0, 1.2, 100.0), [] (int k, double) { return k % 2 == 1 ? 1.0 / k : 0.0; });
+    const auto a = synth::mimic::analyse (sound, rate, "Hollow");
+    REQUIRE (a.valid);
+    MimicPlugin p;
+    const auto before = p.processor.getCurrentRig().name;
+    p.processor.applyMimic (mimic::makeRig (a));
+    p.processor.flushUndoStep();
+    CHECK (p.processor.getCurrentRig().name == "Mimic Hollow");
+    CHECK (p.processor.isRigModified());
+
+    p.processor.prepareToPlay (rate, block);
+    const auto out = p.play (a.rootNote, 1.2, 1.4);
+    const auto h = harmonicsOf (out, (size_t) (0.4 * rate), (size_t) (0.4 * rate), hz, 8);
+    for (const auto k : { 3, 5, 7 })
+    {
+        INFO ("harmonic " << k << ": " << h[(size_t) k] << " dB (made " << juce::Decibels::gainToDecibels (1.0 / k) << ")");
+        CHECK_THAT (h[(size_t) k], Catch::Matchers::WithinAbs (juce::Decibels::gainToDecibels (1.0 / k), 1.5));
+    }
+    for (const auto k : { 2, 4, 6 })
+        CHECK (h[(size_t) k] < -25.0f);
+
+    p.processor.undo();
+    CHECK (p.processor.getCurrentRig().name == before);
+}
+
+TEST_CASE ("MIMIC in the plugin: the recording plays beside the synth, through OUTPUT, and stops at its end", "[mimic]")
+{
+    MimicPlugin p;
+    juce::AudioBuffer<float> recording (1, (int) (0.2 * rate));
+    for (int i = 0; i < recording.getNumSamples(); ++i)
+        recording.setSample (0, i, 0.5f * (float) std::sin (juce::MathConstants<double>::twoPi * 440.0 * i / rate));
+    REQUIRE (p.processor.setMimicReference (recording, rate));
+    CHECK_THAT (p.processor.getMimicReferenceSeconds(), Catch::Matchers::WithinAbs (0.2, 0.001));
+    CHECK (p.play (-1, 0.0, 0.05).back() == 0.0f);   // not until asked
+    p.processor.playMimicReference();
+    CHECK (p.processor.isPlayingMimicReference());
+    const auto out = p.play (-1, 0.0, 0.3);
+    const auto gain = juce::Decibels::decibelsToGain (-6.0f);   // OUTPUT's default
+    for (const auto i : { 0, 100, 5000 })
+        CHECK_THAT (out[(size_t) i], Catch::Matchers::WithinAbs (recording.getSample (0, i) * gain, 1.0e-4));
+    CHECK_FALSE (p.processor.isPlayingMimicReference());
+    CHECK (out.back() == 0.0f);
+}
+
+TEST_CASE ("MIMIC's panel: what wasn't found can't be taken; MAKE THIS SOUND puts it in place", "[mimic]")
+{
+    const auto sound = note (1.5, steady (220.0), adsr (0.02, 0.05, 1.0, 1.2, 100.0), saw);
+    const auto a = synth::mimic::analyse (sound, rate, "Plain");
+    REQUIRE (a.valid);
+    MimicPlugin p;
+    MimicPanel panel (p.processor);
+    panel.setSize (900, 600);
+    panel.setAnalysis (a);
+    const auto choices = panel.getChoices();
+    CHECK (choices.tone);
+    CHECK (choices.envelope);
+    panel.makeSound();
+    CHECK (p.processor.getCurrentRig().name == "Mimic Plain");
+    CHECK (p.processor.getSynthSettings().oscillators[0].wave == synth::OscWave::wavetable);
+}

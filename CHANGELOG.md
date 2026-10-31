@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.44.0
+
+**MIMIC**: make a sound from a recording of one (your ask and name, like the "preset cloners" for other synths). On the PRESETS page: **MIMIC A SOUND...** in the right column. Load a recording of one note (or drop it on the panel) and MIMIC listens to it, then builds a sound for PR7-K from what it heard. Our own design: it measures, nothing is learned from other people's presets.
+
+- **What it takes from the recording:**
+  - **its tone**: its own waves, cycle by cycle, as a wavetable (up to 64 frames from the start of the note to where it settles), walked by TRAVEL as the note plays, so a sound that brightens, darkens or changes as it goes does the same.
+  - **its loudness**: attack, decay, sustain and release fitted to how its level moves (held sounds and dying ones, like plucks and bells).
+  - **its movement**: vibrato (how fast, how deep, how late it starts), a swoop into the note (the PITCH envelope), unison (copies a little out of tune: heard from how its harmonics beat), noise or breath (oscillator 2), and stereo width.
+- **The panel** shows the recording's loudness with where the note starts, settles and is let go, the stretch its tone is taken from, its pitch, and what was found (the note to play it at, the envelope times, vibrato, swoop, unison, noise). Toggles choose what to take (TONE, LOUDNESS, VIBRATO, SWOOP, UNISON, NOISE; what wasn't found is greyed). **MAKE THIS SOUND** puts it in place as a new sound (one undo takes it back; save it like any other). **PLAY ORIGINAL** and **PLAY RESULT** let you compare (the result plays the note it was recorded at, held as long).
+- **Best on** one note, held, fairly dry: leads, basses, pads, plucks, keys. Chords, drums and whole mixes have no single pitch to follow (it says so). Reverb and echoes are taken as part of the sound. Play the result near the note it was recorded at: far from it, its tone moves with the keys.
+- **Honest limits:** it's close, not a copy (our oscillators and envelopes are our own), and some figures are estimates (how unison's beating maps to detune, how loud the noise should be). Checked by measurement on sounds made with known settings (pitch within 3 cents, tone within 1.5 dB harmonic by harmonic, sustain, release, vibrato, swoop, unison, noise); not by ear here. **MIMIC's second part** will play the result back, score how close it is, and refine it automatically.
+
 ## 0.43.0
 
 **BLOODWAVE**, the eighteenth expansion: a bank of its own under EXPANSIONS (BW01 to BW15), named by you. Inspired by the soundtrack of a 2012 top-down action game set in a neon-soaked 1989 city: the dark, dirty side of the '80s, with driving distorted synths at club tempos, basses pumping under a drum machine, hazy, feverish detuned loops, worn tape and bit-crushed grit. Our own sounds; no title, characters, masks, the city, artists or music from the game.

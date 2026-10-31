@@ -382,6 +382,15 @@ namespace synth::mimic
                     }
                 wobble.push_back (a.pitches[(size_t) h] - sum / (float) count);
             }
+            // Smoothed over 50 ms: breath and noise jitter the readings from one 10 ms to the next, which would read as
+            // a deeper vibrato (a 5 Hz wobble loses only a few percent).
+            if (wobble.size() >= 5)
+            {
+                auto smoothed = wobble;
+                for (size_t i = 2; i + 2 < wobble.size(); ++i)
+                    smoothed[i] = (wobble[i - 2] + wobble[i - 1] + wobble[i] + wobble[i + 1] + wobble[i + 2]) / 5.0f;
+                wobble = std::move (smoothed);
+            }
             if (wobble.size() >= 40)
             {
                 double power = 0.0;

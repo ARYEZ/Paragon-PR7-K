@@ -8,6 +8,7 @@
 #include "dsp/effects/Reverb.h"
 #include "ui/ParagonLookAndFeel.h"
 #include "ui/RigBrowser.h"
+#include "dsp/synth/Mimic.h"
 
 // Hidden test (the "[.]" tag): renders the editor to a PNG for reviewing the
 // UI without a DAW. Run with:
@@ -526,6 +527,44 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     }
     else if (page == "settings")
         view->showPage (MainView::Page::settings);
+    else if (page == "mimic")
+    {
+        // MIMIC's panel, having heard a made note: G3, a held, darkening tone with vibrato from half a second, a
+        // little breath, stereo.
+        view->showPage (MainView::Page::presets);
+        std::function<RigBrowser* (juce::Component&)> findBrowser = [&] (juce::Component& c) -> RigBrowser*
+        {
+            if (auto* b = dynamic_cast<RigBrowser*> (&c))
+                return b;
+            for (auto* child : c.getChildren())
+                if (auto* found = findBrowser (*child))
+                    return found;
+            return nullptr;
+        };
+        auto* browser = findBrowser (*view);
+        REQUIRE (browser != nullptr);
+        constexpr double rate = 48000.0;
+        juce::AudioBuffer<float> note (2, (int) (2.6 * rate));
+        juce::Random random (5);
+        double phase = 0.0;
+        for (int i = 0; i < note.getNumSamples(); ++i)
+        {
+            const auto t = i / rate;
+            const auto hz = 196.0 * std::exp2 ((t > 0.5 ? 22.0 * std::sin (juce::MathConstants<double>::twoPi * 5.2 * t) : 0.0) / 1200.0);
+            phase += hz / rate;
+            double sum = 0.0;
+            for (int k = 1; k * hz < 20000.0 && k <= 40; ++k)
+                sum += std::sin (juce::MathConstants<double>::twoPi * k * phase) / k * std::exp (-(k - 1) * t * 0.6);
+            const auto level = t < 0.12 ? t / 0.12 : t < 1.9 ? 0.55 + 0.45 * std::exp (-(t - 0.12) / 0.15)
+                                                            : (0.55 + 0.45 * std::exp (-1.78 / 0.15)) * std::pow (10.0, -100.0 * (t - 1.9) / 20.0);
+            const auto breath = 0.5 * (random.nextDouble() * 2.0 - 1.0);
+            note.setSample (0, i, (float) (0.3 * level * (sum + breath)));
+            note.setSample (1, i, (float) (0.3 * level * (sum * 0.9 + breath)));
+        }
+        processor.setMimicReference (note, rate);
+        browser->showMimic();
+        browser->getMimicPanel().setAnalysis (synth::mimic::analyse (note, rate, "Breathy Lead G3"));
+    }
 
     const auto width = juce::jmax (960, juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", "1600").getIntValue());
     editor->setSize (width, width * 9 / 16);

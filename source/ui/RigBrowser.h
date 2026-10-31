@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "PluginProcessor.h"
+#include "ui/MimicPanel.h"
 
 // The PRESETS page: browse, load, file and organise rigs.
 //
@@ -25,6 +26,10 @@ public:
     // Shows only some rigs: `filter` 0 all, 1 favourites, 2 mine, 3 factory;
     // `bank` -1 for every bank, 0-4 for A-E, then the expansions. (The dock's RIG BROWSER uses this.)
     void showFilter (int filter, int bank);
+
+    // MIMIC (0.44.0): its panel, over the preset list.
+    void showMimic (bool show = true);
+    MimicPanel& getMimicPanel() noexcept { return mimicPanel; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -71,7 +76,8 @@ private:
     juce::Label bankLabel { {}, "BANK" }, numberLabel { {}, "NUMBER" }, tagsLabel { {}, "TAGS (comma separated)" };
     juce::TextButton loadButton { "LOAD" }, saveDetailsButton { "SAVE DETAILS" },
                      saveAsButton { "SAVE CURRENT SOUND AS NEW..." }, deleteButton { "DELETE" },
-                     folderButton { "OPEN PRESETS FOLDER" };
+                     folderButton { "OPEN PRESETS FOLDER" }, mimicButton { "MIMIC A SOUND..." };
+    MimicPanel mimicPanel { processor };
 
     juce::Rectangle<int> sidebarArea, detailsArea;
     std::unique_ptr<juce::AlertWindow> dialog;

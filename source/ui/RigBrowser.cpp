@@ -127,14 +127,27 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
         folder.createDirectory();
         folder.revealToUser();
     };
-    for (auto* button : { &loadButton, &saveDetailsButton, &saveAsButton, &deleteButton, &folderButton })
+    mimicButton.onClick = [this] { showMimic (! mimicPanel.isVisible()); };
+    for (auto* button : { &loadButton, &saveDetailsButton, &saveAsButton, &deleteButton, &folderButton, &mimicButton })
         addAndMakeVisible (*button);
+    mimicPanel.onClose = [this] { showMimic (false); };
+    addChildComponent (mimicPanel);
 
     processor.rigBroadcaster.addChangeListener (this);
 
     if (const auto* current = processor.findCurrentRigEntry())
         selectEntry (current);
     refreshList();
+}
+
+void RigBrowser::showMimic (bool show)
+{
+    mimicPanel.setVisible (show);
+    search.setVisible (! show);
+    list.setVisible (! show);
+    mimicButton.setButtonText (show ? "BACK TO PRESETS" : "MIMIC A SOUND...");
+    if (show)
+        mimicPanel.toFront (false);
 }
 
 RigBrowser::~RigBrowser()
@@ -456,6 +469,7 @@ void RigBrowser::resized()
     detailsArea = area.removeFromRight (detailsWidth);
     area.removeFromRight (12);
 
+    mimicPanel.setBounds (area);
     search.setBounds (area.removeFromTop (30));
     area.removeFromTop (8);
     list.setBounds (area);
@@ -480,6 +494,8 @@ void RigBrowser::resized()
     details.removeFromTop (10);
 
     folderButton.setBounds (details.removeFromBottom (26));
+    details.removeFromBottom (6);
+    mimicButton.setBounds (details.removeFromBottom (30));
     details.removeFromBottom (6);
     saveAsButton.setBounds (details.removeFromBottom (30));
     details.removeFromBottom (6);
