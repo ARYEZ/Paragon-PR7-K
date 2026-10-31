@@ -8134,7 +8134,7 @@ namespace
         echo.set (ParamIDs::delayToReverb, 0.4f);
         reverb (echo, RT::cathedral, 0.8f, 0.28f, 40.0f, 3.5f);
         space (echo);
-        echo.set (ParamIDs::patchLevel, -9.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        echo.set (ParamIDs::patchLevel, -10.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (echo);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
