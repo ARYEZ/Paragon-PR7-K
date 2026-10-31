@@ -7120,6 +7120,444 @@ namespace
         festival.set (ParamIDs::patchLevel, -4.0f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
         x.add (festival);
     }
+
+    // BLOODWAVE: inspired by the soundtrack of a 2012 top-down action game set in a neon-soaked 1989 city: the dark,
+    // dirty side of the '80s (driving distorted synths at club tempos, basses pumping under a drum machine, hazy,
+    // feverish detuned loops, worn tape, bit-crushed grit, ominous lulls). No title, characters, masks, the city, the
+    // phone messages, artists or tracks: our own sounds. MACRO 3 is RAGE on every preset: more drive, crush, wobble.
+    void bloodwave (Expansion x)
+    {
+        using SP17 = synth::mod::ShapePoint;
+        using DM = effects::Drive::Model;
+        using GM = effects::Glitch::Mode;
+        const auto oneShot = [] (Builder& b, int env, std::vector<SP17> points)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { std::move (points), -1, -1, -1 };
+        };
+        const auto clean = [] (Builder& b, int o)   // off the filter, shapers, buses and VOICE
+        {
+            b.osc (o, "Filter", 0.0f).osc (o, "Insert", 0.0f).osc (o, "Voice", 0.0f);
+            for (const auto* shp : { "Shp1", "Shp2", "Shp3", "Shp4" })
+                b.osc (o, shp, 0.0f);
+        };
+        const auto lofi = [] (Builder& b, effects::LoFi::Type type, float amount, float mix)
+        {
+            b.set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) type).set (ParamIDs::lofiAmount, amount)
+             .set (ParamIDs::lofiMix, mix).set (ParamIDs::lofiNoise, 0.0f);   // no hiss of its own: the presets must go silent
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto blade = x.make ("Neon Blade", 1, { "Lead", "Crush", "Square", "Drive" },
+            "A sharp lead that cuts through everything: a square wave and a quieter square an octave up, BIT-crushed "
+            "into a hard digital edge, through insert bus A's BANSHEE, a quick glide, dotted-eighth echoes. MACROS: "
+            "BRIGHT, SPACE, RAGE (more crush and bite). MOD WHEEL: vibrato.");
+        blade.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.55f).osc (0, "Crush", 0.3f).osc (0, "CrushMode", 1.0f)
+             .osc (0, "Insert", 1.0f).osc (0, "VibRate", 5.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Fine", 5.0f)
+             .osc (1, "Volume", 0.2f).osc (1, "Insert", 1.0f)
+             .filter (FilterType::lp24, 4000.0f, 0.2f, 0.2f).filterEnvelope (0.0f, 250.0f, 0.6f, 300.0f)
+             .set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (6.0f, 400.0f, 0.85f, 300.0f)
+             .mono (15.0f);
+        drive (blade, 0, DM::screamer, 4.0f, 5.5f, 0.0f, 0.3f, 0.2f);
+        route (blade, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (blade, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (blade, "macro3", ParamIDs::osc (0, "Crush"), 0.35f);
+        route (blade, "macro3", ParamIDs::fltDrive, 0.4f);
+        macros (blade, "BRIGHT", "SPACE", "RAGE");
+        delay (blade, "1/8 dotted", 0.35f, 0.18f, true, 5.0f);
+        reverb (blade, RT::plate, 0.5f, 0.12f);
+        space (blade);
+        blade.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (blade);
+
+        auto fever = x.make ("Fever Lead", 2, { "Lead", "Tape", "Wobble", "Lo-Fi" },
+            "A sick, dreamy lead, like a melody on a stretched tape: a saw and a triangle a few cents apart, their pitch "
+            "wandering at random (a slow random vibrato and a drifting LFO), a tape-speed wobble on the whole sound "
+            "(MOD's VIBRATO), worn by LO-FI's cassette, a hall. MACROS: BRIGHT, SPACE, RAGE (the warble goes seasick). "
+            "MOD WHEEL: more warble.");
+        fever.osc (0, "Volume", 0.5f).osc (0, "VibWave", (float) synth::VibratoWave::random).osc (0, "VibRate", 1.5f).osc (0, "VibAmount", 12.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Fine", 9.0f).osc (1, "Volume", 0.45f)
+             .osc (1, "VibWave", (float) synth::VibratoWave::random).osc (1, "VibRate", 1.2f).osc (1, "VibAmount", 12.0f)
+             .filter (FilterType::lp12, 2500.0f, 0.1f, 0.1f).set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (30.0f, 500.0f, 0.9f, 600.0f)
+             .mono (60.0f)
+             .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.6f)
+             .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        chorus (fever, ParamIDs::modIds, MT::vibrato, 0.7f, 0.25f, 1.0f);
+        lofi (fever, effects::LoFi::Type::cassette, 4.0f, 0.6f);
+        route (fever, "lfo1", ParamIDs::osc (0, "Fine"), 0.04f);
+        route (fever, "lfo1", ParamIDs::osc (1, "Fine"), -0.04f);
+        route (fever, "modWheel", ParamIDs::modDepth, 0.3f);
+        route (fever, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (fever, "macro3", ParamIDs::modDepth, 0.4f);
+        route (fever, "macro3", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        macros (fever, "BRIGHT", "SPACE", "RAGE");
+        delay (fever, "1/4", 0.35f, 0.15f, true, 3.5f);
+        reverb (fever, RT::hall, 0.7f, 0.2f);
+        space (fever);
+        fever.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (fever);
+
+        auto siren = x.make ("Siren Scream", 3, { "Lead", "Rabid", "Pitch", "Dive" },
+            "A distorted saw that screams and, when you let go, dives: a three-voice saw unison through insert bus A's "
+            "RABID, each note falling an octave as it's released (the PITCH envelope's release part), a quick glide, "
+            "a hard shaper before the filter, a plate. MACROS: BRIGHT, SPACE, RAGE (more shaper). MOD WHEEL: a wide "
+            "vibrato.");
+        siren.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.5f)
+             .osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f).osc (0, "VibRate", 6.0f)
+             .shaper (0, synth::ShaperModel::hard, 0.1f)
+             .filter (FilterType::lp24, 3000.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (6.0f, 600.0f, 0.9f, 700.0f)
+             .mono (40.0f)
+             .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 12.0f)
+             .set (ParamIDs::pitchEnvMode, (float) synth::mod::EnvelopeMode::sustain);
+        siren.rig.modulation.pitchEnvelope = { { SP17 { 0.0f, 0.5f, 0.0f }, SP17 { 0.05f, 0.5f, 0.5f }, SP17 { 0.7f, 0.0f, 0.0f } }, 1, -1, -1 };
+        drive (siren, 0, DM::rabid, 5.0f, 5.0f, -4.0f, 0.3f, 0.3f);
+        route (siren, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.3f);
+        route (siren, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (siren, "macro3", ParamIDs::shp (0, "Drive"), 0.35f);
+        macros (siren, "BRIGHT", "SPACE", "RAGE");
+        delay (siren, "1/8", 0.3f, 0.12f, true, 4.5f);
+        reverb (siren, RT::plate, 0.6f, 0.15f);
+        space (siren);
+        siren.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (siren);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto haze = x.make ("Pink Haze", 4, { "Pad", "Unison", "Tape", "Dreamy" },
+            "A hazy dream you can't wake up from: a wide seven-voice saw unison, very detuned, softened by the filter "
+            "breathing slowly, a chorus (PRISM) and a slow tape wobble (MOD 2's VIBRATO), worn by LO-FI's cassette, a "
+            "long hall. MACROS: BRIGHT, SPACE, RAGE (more detune and wear). MOD WHEEL: opens the filter.");
+        haze.osc (0, "Volume", 0.5f).osc (0, "UniVoices", 7.0f).osc (0, "UniMix", 0.85f).osc (0, "UniDetune", 0.25f).osc (0, "UniSpread", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp12, 1800.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+            .ampEnvelope (900.0f, 1500.0f, 0.95f, 2000.0f)
+            .set (ParamIDs::lfo (0, "Rate"), 0.1f).set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        chorus (haze, ParamIDs::modIds, MT::dimension, 0.3f, 0.5f, 0.5f);
+        chorus (haze, ParamIDs::mod2Ids, MT::vibrato, 0.35f, 0.2f, 1.0f);
+        lofi (haze, effects::LoFi::Type::cassette, 3.0f, 0.5f);
+        route (haze, "lfo1", ParamIDs::fltCutoff, 0.08f);
+        route (haze, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (haze, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (haze, "macro3", ParamIDs::osc (0, "UniDetune"), 0.2f);
+        route (haze, "macro3", ParamIDs::lofiAmount, 0.3f);
+        macros (haze, "BRIGHT", "SPACE", "RAGE");
+        reverb (haze, RT::hall, 0.85f, 0.3f);
+        eqBand (haze, 0, eq::Shape::lowCut, 70.0f, 0.0f);
+        space (haze);
+        haze.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (haze);
+
+        auto staticPad = x.make ("Night Static", 5, { "Pad", "Lo-Fi", "Telephone", "Eerie" },
+            "An eerie chord heard down a crackling phone line in the middle of the night: soft pulse waves and a "
+            "sine an octave up, a slow tremolo (MOD's RAZOR), crackle (filtered noise that flickers at random), all "
+            "squeezed through LO-FI's TELEPHONE, a dark room. MACROS: BRIGHT, SPACE, RAGE (more crackle and a harder "
+            "line). MOD WHEEL: more crackle.");
+        staticPad.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.5f)
+                 .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.7f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.25f)
+                 .osc (2, "On", 1.0f).osc (2, "Gain", 0.0f).osc (2, "Noise", 0.5f).osc (2, "NoiseColour", 0.05f).osc (2, "Volume", 0.0f)
+                 .ampEnvelope (800.0f, 1500.0f, 0.95f, 1800.0f)
+                 .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sampleHold).set (ParamIDs::lfo (0, "Rate"), 11.0f)
+                 .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        chorus (staticPad, ParamIDs::modIds, MT::tremolo, 0.25f, 0.4f, 1.0f);
+        lofi (staticPad, effects::LoFi::Type::telephone, 5.0f, 0.85f);
+        route (staticPad, "lfo1", ParamIDs::osc (2, "Volume"), 0.06f, 3.0f);
+        route (staticPad, "modWheel", ParamIDs::osc (2, "Volume"), 0.05f);
+        route (staticPad, "macro1", ParamIDs::lofiMix, -0.3f);
+        route (staticPad, "macro3", ParamIDs::osc (2, "Volume"), 0.06f);
+        route (staticPad, "macro3", ParamIDs::lofiAmount, 0.3f);
+        macros (staticPad, "BRIGHT", "SPACE", "RAGE");
+        reverb (staticPad, RT::room, 0.6f, 0.2f);
+        space (staticPad);
+        staticPad.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (staticPad);
+
+        auto comedown = x.make ("Comedown", 6, { "Pad", "Drone", "Pitch", "Dark" },
+            "The slow, dark drone after the chaos: two saws an octave apart and a sine below them, the filter closing as "
+            "it holds and every note sagging a little flat over eight seconds (the PITCH envelope), a diode shaper "
+            "underneath, a huge dark hall. MACROS: BRIGHT, SPACE, RAGE (the shaper growls). MOD WHEEL: opens the filter.");
+        comedown.osc (0, "Volume", 0.45f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.08f)
+                .osc (1, "On", 1.0f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+                .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -24.0f).osc (2, "Volume", 0.3f).osc (2, "PitchEnv", 0.0f)
+                .shaper (0, synth::ShaperModel::diode, 0.05f)
+                .filter (FilterType::lp24, 1400.0f, 0.15f, 0.0f)
+                .ampEnvelope (1200.0f, 2000.0f, 1.0f, 3000.0f)
+                .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 1.0f);
+        comedown.rig.modulation.pitchEnvelope = { { SP17 { 0.0f, 0.5f, 0.3f }, SP17 { 8.0f, 0.25f, 0.0f } }, -1, -1, -1 };
+        oneShot (comedown, 0, { SP17 { 0.0f, 1.0f, 0.4f }, SP17 { 8.0f, 0.0f, 0.0f } });
+        route (comedown, "env1", ParamIDs::fltCutoff, 0.2f);
+        route (comedown, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (comedown, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (comedown, "macro3", ParamIDs::shp (0, "Drive"), 0.4f);
+        macros (comedown, "BRIGHT", "SPACE", "RAGE");
+        reverb (comedown, RT::hall, 0.95f, 0.3f, 50.0f, 3.5f);
+        space (comedown);
+        comedown.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (comedown);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto pump = x.make ("Pump Bass", 7, { "Bass", "Step Seq", "Pump", "Club" },
+            "The club's breathing bass: a saw and a clean sine whose volume ducks on every beat and swells back up (the "
+            "STEP SEQUENCER drawing a pump in sixteenths, as a bass ducks under a kick), a tube shaper, the filter "
+            "opening as it swells. Play eighths or hold notes. MACROS: BRIGHT, SPACE, RAGE (more tube and filter). MOD "
+            "WHEEL: opens the filter.");
+        pump.osc (0, "Volume", 0.55f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
+            .shaper (0, synth::ShaperModel::tube, 0.15f)
+            .filter (FilterType::lp24, 700.0f, 0.2f, 0.2f).filterEnvelope (0.0f, 200.0f, 0.5f, 150.0f)
+            .ampEnvelope (3.0f, 400.0f, 1.0f, 150.0f)
+            .mono (0.0f)
+            .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 0.85f).set (ParamIDs::seqGate, 1.0f)
+            .set (ParamIDs::seqContour, 0.5f).set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 4.0f);
+        clean (pump, 1);
+        for (int row = 0; row < 2; ++row)
+        {
+            constexpr float levels[] = { 0.1f, 0.5f, 0.85f, 1.0f };
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = pump.rig.modulation.stepPattern.rows[(size_t) row][(size_t) k];
+                step.on = true;
+                step.level = levels[k % 4];
+            }
+        }
+        route (pump, "stepSeq", ParamIDs::fltCutoff, 0.1f);
+        route (pump, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (pump, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pump, "macro3", ParamIDs::shp (0, "Drive"), 0.3f);
+        route (pump, "macro3", ParamIDs::fltEnv, 0.2f);
+        macros (pump, "BRIGHT", "SPACE", "RAGE");
+        reverb (pump, RT::room, 0.4f, 0.08f);
+        space (pump);
+        pump.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (pump);
+
+        auto grinder = x.make ("Darkgrind Bass", 8, { "Bass", "Abyss", "LFO", "Darksynth" },
+            "A filthy darksynth bass: a saw and a narrow pulse through insert bus A's ABYSS, the filter chewing in "
+            "sixteenths with your song (a synced LFO), a clean sine under it kept off the drive. MACROS: BRIGHT, SPACE, "
+            "RAGE (the filter's own drive). MOD WHEEL: a deeper chew.");
+        grinder.osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.35f).osc (1, "Insert", 1.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Volume", 0.45f).osc (2, "PhaseRand", 0.0f)
+               .filter (FilterType::lp24, 600.0f, 0.3f, 0.2f).filterEnvelope (0.0f, 200.0f, 0.4f, 150.0f)
+               .ampEnvelope (6.0f, 500.0f, 1.0f, 200.0f)
+               .mono (20.0f)
+               .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight).set (ParamIDs::lfo (0, "Division"), 7.0f)   // 1/16
+               .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sawDown)
+               .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        clean (grinder, 2);
+        drive (grinder, 0, DM::abyss, 5.0f, 5.0f, -3.0f, 0.05f, 0.1f);
+        route (grinder, "lfo1", ParamIDs::fltCutoff, 0.08f);
+        route (grinder, "modWheel", ParamIDs::fltCutoff, 0.1f);
+        route (grinder, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (grinder, "macro3", ParamIDs::fltDrive, 0.5f);
+        macros (grinder, "BRIGHT", "SPACE", "RAGE");
+        reverb (grinder, RT::room, 0.4f, 0.06f);
+        space (grinder);
+        grinder.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (grinder);
+
+        auto thump = x.make ("Sub Thump", 9, { "Bass", "Sub", "Pitch", "808" },
+            "A round sub that drops into every hit: a sine that falls an octave into its note in a few tens of "
+            "milliseconds (the PITCH envelope: the classic drum-machine bass), a soft shaper for weight, a quick fade. "
+            "MACROS: BRIGHT (more shaper), SPACE, RAGE (a longer drop and harder shaper).");
+        thump.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+             .shaper (0, synth::ShaperModel::soft, 0.15f)
+             .ampEnvelope (1.0f, 900.0f, 0.4f, 250.0f).set (ParamIDs::ampDecayCurve, -0.3f)
+             .mono (0.0f)
+             .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 12.0f);
+        thump.rig.modulation.pitchEnvelope = { { SP17 { 0.0f, 1.0f, -0.6f }, SP17 { 0.05f, 0.5f, 0.0f } }, -1, -1, -1 };
+        thump.osc (0, "Filter", 0.0f);
+        route (thump, "macro1", ParamIDs::shp (0, "Drive"), 0.2f);
+        route (thump, "macro3", ParamIDs::shp (0, "Drive"), 0.3f);
+        route (thump, "macro3", ParamIDs::pitchEnvRange, 0.25f);
+        macros (thump, "BRIGHT", "SPACE", "RAGE");
+        reverb (thump, RT::room, 0.3f, 0.05f);
+        space (thump);
+        thump.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (thump);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto woozy = x.make ("Woozy Keys", 10, { "Keys", "FM", "Electric Piano", "Wobble" },
+            "A druggy electric piano: a sine with FM from a sine at the same pitch (the bark at the strike, louder the "
+            "harder you play), a tine an octave up, its pitch swimming at random (a slow random vibrato) and a "
+            "chorus. MACROS: BRIGHT, SPACE, RAGE (a deeper swim). MOD WHEEL: more swim.");
+        woozy.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.06f)
+             .osc (0, "VibWave", (float) synth::VibratoWave::random).osc (0, "VibRate", 1.0f).osc (0, "VibAmount", 8.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f).osc (1, "Fine", 3.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.1f)
+             .osc (2, "VibWave", (float) synth::VibratoWave::random).osc (2, "VibRate", 1.0f).osc (2, "VibAmount", 8.0f)
+             .ampEnvelope (2.0f, 2500.0f, 0.25f, 500.0f).set (ParamIDs::ampVel, 0.6f);
+        oneShot (woozy, 0, { SP17 { 0.0f, 1.0f, -0.5f }, SP17 { 0.8f, 0.15f, 0.0f } });
+        route (woozy, "env1", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (woozy, "velocity", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (woozy, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        route (woozy, "macro1", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (woozy, "macro3", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (woozy, "macro3", ParamIDs::osc (2, "VibAmount"), 0.2f);
+        macros (woozy, "BRIGHT", "SPACE", "RAGE");
+        chorus (woozy, ParamIDs::modIds, MT::chorus, 0.5f, 0.4f, 0.4f);
+        reverb (woozy, RT::plate, 0.5f, 0.18f);
+        space (woozy);
+        woozy.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (woozy);
+
+        auto vhs = x.make ("VHS Bells", 11, { "Keys", "FM", "Bell", "Lo-Fi" },
+            "Bells off a worn-out tape: a sine with FM from a sine at 3.5 times its pitch (a glassy bell), a touch of "
+            "BIT crush, a tape-speed wobble (MOD's VIBRATO) and LO-FI's cassette, ringing into ping-pong echoes. "
+            "MACROS: BRIGHT, SPACE, RAGE (more crush and wear). MOD WHEEL: more wobble.");
+        vhs.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f).osc (0, "Crush", 0.1f).osc (0, "CrushMode", 1.0f)
+           .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.08f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 22.0f).osc (1, "Fine", -31.0f).osc (1, "Volume", 1.0f)
+           .osc (1, "PhaseRand", 0.0f)
+           .ampEnvelope (1.0f, 2200.0f, 0.0f, 1200.0f).set (ParamIDs::ampDecayCurve, -0.4f).set (ParamIDs::ampVel, 0.5f);
+        oneShot (vhs, 0, { SP17 { 0.0f, 1.0f, -0.5f }, SP17 { 1.2f, 0.2f, 0.0f } });
+        chorus (vhs, ParamIDs::modIds, MT::vibrato, 0.6f, 0.15f, 1.0f);
+        lofi (vhs, effects::LoFi::Type::cassette, 4.0f, 0.6f);
+        route (vhs, "env1", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (vhs, "modWheel", ParamIDs::modDepth, 0.3f);
+        route (vhs, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (vhs, "macro3", ParamIDs::osc (0, "Crush"), 0.3f);
+        route (vhs, "macro3", ParamIDs::lofiAmount, 0.3f);
+        macros (vhs, "BRIGHT", "SPACE", "RAGE");
+        delay (vhs, "1/8 dotted", 0.4f, 0.2f, true, 4.0f);
+        reverb (vhs, RT::hall, 0.6f, 0.18f);
+        space (vhs);
+        vhs.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (vhs);
+
+        auto stabs = x.make ("Club Stabs", 12, { "Keys", "Chorder", "Stab", "House" },
+            "Short club chord stabs: one key plays a whole minor-seventh chord (the chorder: +3, +7, +10), saws and a "
+            "pulse plucked short by a snappy filter, a room and a quarter-note echo. MACROS: BRIGHT, SPACE, RAGE (a "
+            "harder pluck through a tube shaper). MOD WHEEL: a longer pluck.");
+        stabs.osc (0, "Volume", 0.4f).osc (0, "UniVoices", 2.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.08f).osc (0, "UniSpread", 0.6f)
+             .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 3.0f).osc (0, "Ch1Vol", 0.8f)
+             .osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 7.0f).osc (0, "Ch2Vol", 0.8f)
+             .osc (0, "Ch3On", 1.0f).osc (0, "Ch3Coarse", 10.0f).osc (0, "Ch3Vol", 0.7f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+             .shaper (0, synth::ShaperModel::tube, 0.05f)
+             .filter (FilterType::lp24, 600.0f, 0.25f, 0.5f).filterEnvelope (0.0f, 180.0f, 0.0f, 150.0f)
+             .ampEnvelope (2.0f, 300.0f, 0.0f, 150.0f);
+        route (stabs, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (stabs, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (stabs, "macro3", ParamIDs::fltEnv, 0.2f);
+        route (stabs, "macro3", ParamIDs::shp (0, "Drive"), 0.3f);
+        macros (stabs, "BRIGHT", "SPACE", "RAGE");
+        delay (stabs, "1/4", 0.25f, 0.12f, true, 4.0f);
+        reverb (stabs, RT::room, 0.5f, 0.15f);
+        space (stabs);
+        stabs.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (stabs);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto rampage = x.make ("Rampage Arp", 13, { "Arp", "Drive", "Glitch", "Fast" },
+            "A fast, aggressive arp: ARP 1 tears up and down the chord you hold over two octaves in sixteenths with your "
+            "song, a saw and a square plucked by a resonant filter through insert bus A's BANSHEE, the odd stutter "
+            "from GLITCH. MACROS: BRIGHT, SPACE, RAGE (resonance and filter drive).");
+        rampage.osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f).osc (0, "Insert", 1.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Fine", -6.0f).osc (1, "Volume", 0.35f)
+               .osc (1, "Arp", 1.0f).osc (1, "Insert", 1.0f)
+               .filter (FilterType::lp24, 1500.0f, 0.4f, 0.4f).filterEnvelope (0.0f, 150.0f, 0.15f, 100.0f)
+               .ampEnvelope (2.0f, 200.0f, 0.4f, 100.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        drive (rampage, 0, DM::screamer, 5.0f, 5.0f, 0.0f, 0.2f, 0.2f);
+        glitch (rampage, 0, GM::sequence, "1/16", 2.0f, 3.0f, 0.3f);
+        route (rampage, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (rampage, "macro3", ParamIDs::fltRes, 0.25f);
+        route (rampage, "macro3", ParamIDs::fltDrive, 0.4f);
+        macros (rampage, "BRIGHT", "SPACE", "RAGE");
+        delay (rampage, "1/8 dotted", 0.25f, 0.1f, true, 5.0f);
+        reverb (rampage, RT::plate, 0.5f, 0.1f);
+        space (rampage);
+        rampage.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (rampage);
+
+        auto hypno = x.make ("Hypno Loop", 14, { "Arp", "Delay", "Flanger", "Hypnotic" },
+            "A hypnotic loop that spins around you: ARP 1 circles the chord you hold in eighths, a few steps fluttering "
+            "(ratchets), two triangles pulled apart in pitch (one a little flat, one a little sharp) and a soft square, "
+            "long ping-pong echoes in dotted eighths, a slow flanger (AEON) sweeping through it all. MACROS: BRIGHT, "
+            "SPACE, RAGE (the pair pulled further out of tune).");
+        hypno.osc (0, "Wave", triangle).osc (0, "Fine", -12.0f).osc (0, "Pan", -0.4f).osc (0, "Volume", 0.45f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Fine", 12.0f).osc (1, "Pan", 0.4f).osc (1, "Volume", 0.45f).osc (1, "Arp", 1.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.5f).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.12f)
+             .osc (2, "Arp", 1.0f)
+             .ampEnvelope (2.0f, 400.0f, 0.3f, 250.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::asPlayed)
+             .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        {
+            auto& p = hypno.rig.modulation.arps[0].patterns[0];
+            p = synth::arp::Patterns::makeDefault().patterns[0];
+            p.blocks[3].ratchet = 2;
+            p.blocks[11].ratchet = 3;
+            p.blocks[14].ratchet = 2;
+        }
+        chorus (hypno, ParamIDs::modIds, MT::flanger, 0.07f, 0.5f, 0.35f);
+        route (hypno, "macro1", ParamIDs::osc (2, "Volume"), 0.08f);
+        route (hypno, "macro3", ParamIDs::osc (0, "Fine"), -0.1f);
+        route (hypno, "macro3", ParamIDs::osc (1, "Fine"), 0.1f);
+        macros (hypno, "BRIGHT", "SPACE", "RAGE");
+        delay (hypno, "1/8 dotted", 0.55f, 0.28f, true, 4.5f);
+        reverb (hypno, RT::hall, 0.6f, 0.18f);
+        space (hypno);
+        hypno.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (hypno);
+
+        auto machine = x.make ("Drum Machine Run", 15, { "Arp", "Drums", "Bass", "Club" },
+            "A pounding drum-machine beat with a bassline: the drum sequencer plays a four-on-the-floor kick, claps on "
+            "two and four, sixteenth hats and open hats on the offbeats with your song, while the chord you hold above C3 "
+            "drives an offbeat bass two octaves down (ARP 1 in eighths, a saw plucked by the filter). The kit is on C2 to "
+            "B2. MACROS: BRIGHT, SPACE, RAGE (a harder, drivier bass).");
+        machine.osc (0, "Transpose", -24.0f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -24.0f).osc (1, "Volume", 0.4f).osc (1, "Arp", 1.0f)
+               .shaper (0, synth::ShaperModel::tube, 0.1f)
+               .filter (FilterType::lp24, 500.0f, 0.3f, 0.35f).filterEnvelope (0.0f, 150.0f, 0.1f, 100.0f)
+               .ampEnvelope (2.0f, 250.0f, 0.3f, 100.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+               .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.6f)
+               .set (ParamIDs::drumsOn, 1.0f).set (ParamIDs::dseqOn, 1.0f)
+               .set (ParamIDs::drum (3, "SendReverb"), 0.3f).set (ParamIDs::drum (10, "Decay"), 0.35f);
+        clean (machine, 1);
+        machine.osc (1, "Arp", 1.0f);
+        {
+            auto& p = machine.rig.modulation.arps[0].patterns[0];
+            p = {};
+            for (int k = 1; k < 16; k += 2)   // the offbeat eighths
+                p.blocks[(size_t) k].on = true;
+            auto& a = machine.rig.modulation.drumPatterns[0];
+            const auto note = [&a] (int row, double start, float velocity)
+            {
+                synth::drumseq::Note n;
+                n.row = row;
+                n.start = start;
+                n.velocity = velocity;
+                a.notes.push_back (n);
+            };
+            for (int beat = 0; beat < 4; ++beat)
+            {
+                note (0, beat * 4.0, 1.0f);                                  // the kick
+                note (10, beat * 4.0 + 2.0, 0.7f);                           // open hat on the offbeat
+                for (const auto s : { 0, 1, 3 })
+                    note (6, beat * 4.0 + s, s == 0 ? 0.7f : 0.45f);         // closed hats
+            }
+            note (3, 4.0, 0.9f);                                             // claps on two and four
+            note (3, 12.0, 0.9f);
+        }
+        route (machine, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (machine, "macro3", ParamIDs::shp (0, "Drive"), 0.3f);
+        route (machine, "macro3", ParamIDs::fltEnv, 0.2f);
+        macros (machine, "BRIGHT", "SPACE", "RAGE");
+        reverb (machine, RT::room, 0.5f, 0.12f);
+        space (machine);
+        machine.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        x.add (machine);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -7142,5 +7580,6 @@ std::vector<Rig> makeExpansionRigs()
     ascension ({ Rig::numBanks + 14, rigs });
     refraction ({ Rig::numBanks + 15, rigs });
     psiStorm ({ Rig::numBanks + 16, rigs });
+    bloodwave ({ Rig::numBanks + 17, rigs });
     return rigs;
 }

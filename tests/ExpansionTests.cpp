@@ -328,8 +328,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto ascent = rig.bank == Rig::numBanks + 14;    // ASCENSION: 80 BPM in D minor, Dorian chant
         const auto refract = rig.bank == Rig::numBanks + 15;   // REFRACTION: 75 BPM in E minor, uneasy half steps
         const auto psi = rig.bank == Rig::numBanks + 16;       // PSI STORM: 120 BPM, pelog on D (D Eb F A Bb)
+        const auto blood = rig.bank == Rig::numBanks + 17;     // BLOODWAVE: 120 BPM in F minor, darksynth
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -379,6 +380,72 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (blood && type == "Lead")
+        {
+            // A darksynth line in F minor: driving eighths, a climb to a held high note, then a release (Siren
+            // Scream dives on each release).
+            line ({ { 0, 0.5, 65 }, { 0.5, 0.5, 68 }, { 1, 0.5, 72 }, { 1.5, 0.5, 70 }, { 2, 1, 68 }, { 3, 1, 67 },
+                    { 4, 0.5, 65 }, { 4.5, 0.5, 68 }, { 5, 0.5, 72 }, { 5.5, 0.5, 75 }, { 6, 2, 73 }, { 8, 1, 72 },
+                    { 9, 1, 70 }, { 10, 2, 68 }, { 12, 4, 77 } }, 105);
+            wheel (12.0, 16.0, 100);
+            length = 20.0 * beat;
+        }
+        else if (blood && type == "Pad")
+        {
+            // F minor, D flat, B flat minor, C: the dark loop.
+            const std::initializer_list<int> chords[] = { { 41, 53, 56, 60, 65 }, { 37, 53, 56, 61, 65 }, { 34, 53, 58, 61, 65 }, { 36, 52, 55, 60, 64 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4.0), at (c * 4.0 + 3.9), notes, 90);
+                ++c;
+            }
+            wheel (8.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (blood && type == "Bass")
+        {
+            if (rig.name == "Pump Bass")   // held notes: the pump does the rhythm
+                line ({ { 0, 4, 29 }, { 4, 4, 25 }, { 8, 4, 34 }, { 12, 4, 36 } }, 105);
+            else   // driving eighths
+            {
+                constexpr int roots[] = { 29, 25, 34, 36 };
+                for (int k = 0; k < 32; ++k)
+                    line ({ { k * 0.5, 0.4, roots[k / 8] + (k % 4 == 3 ? 12 : 0) } }, k % 2 == 0 ? 110 : 90);
+            }
+            wheel (8.0, 15.0, 90);
+            length = 19.0 * beat;
+        }
+        else if (blood && type == "Keys")
+        {
+            if (rig.name == "Club Stabs")   // one key a stab (the chorder makes the chord)
+            {
+                constexpr int roots[] = { 53, 49, 58, 48 };
+                for (int c = 0; c < 4; ++c)
+                    for (const auto offset : { 0.0, 1.5, 2.5 })
+                        line ({ { c * 4.0 + offset, 0.3, roots[c] } }, 110);
+            }
+            else
+            {
+                const std::initializer_list<int> chords[] = { { 53, 56, 60 }, { 49, 53, 56 }, { 46, 49, 53 }, { 48, 52, 55 } };
+                int c = 0;
+                for (const auto& notes : chords)
+                {
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.8), notes, 95);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), notes, 80);
+                    ++c;
+                }
+                line ({ { 0, 2, 72 }, { 4, 2, 68 }, { 8, 2, 70 }, { 12, 3, 67 } }, 90);
+            }
+            wheel (8.0, 15.0, 100);
+            length = 20.0 * beat;
+        }
+        else if (blood)
+        {
+            chord (e, at (0), at (7.9), { 65, 68, 72 }, 100);
+            chord (e, at (8), at (15.9), { 61, 65, 68 }, 100);
+            length = 19.0 * beat;
         }
         else if (psi && type == "Lead")
         {
