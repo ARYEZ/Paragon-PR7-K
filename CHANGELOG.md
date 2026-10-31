@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.46.0
+
+**DUSTFALL**, the nineteenth expansion: a bank of its own under EXPANSIONS (DF01 to DF15), named by you. Inspired by the score of a 2017 science-fiction film, a sequel set thirty years on: colder, bigger and more brutal, with colossal distorted brass blasts and crushing sub drones, orange dust and grey snow over empty cities, machines at work, and, in between, fragile, lonely beauty. Our own sounds; no title, characters, places, terms or music from the film.
+
+- **MACRO 3 is WEIGHT on every preset**: more low end (a clean sub an octave down on most), more distortion or a bigger space. MACRO 1 brightens, MACRO 2 is SPACE as in every expansion.
+- **Leads:** Hologram Voice (sung by the VOICE filter, a glassy "ee" opening to "ah", flickering faintly), Warning Blast (an enormous distorted brass blare lurching up into each note), Memory Thread (a fragile sine wavering like an old recording, long echoes).
+- **Pads:** Orange Haze (the Analog Morph table drifting, worn by cassette dust), Grey Snowfall (a thin, glassy wave from the FFT editor with bright noise flakes falling through it), Monolith (a vast low distorted drone: play it low).
+- **Basses:** Sub Collapse (sags in pitch after each hit), Engine Throb (throbs like an idling machine, slower low and faster high), Iron Wall (a fuzzed wall through BANSHEE and a hard shaper).
+- **Keys:** Ghost Keys (a glassy FM electric piano, half there), Distant Piano (NEGATIVE SPACE's soft felt piano, darkened as if from far away), Cold Bells (a struck metal bar's own overtones: it rings, not sings).
+- **Arps:** Data Pulse (cold, precise sixteenths), Searchlight (slow swells with a sweep passing over them), Machine City (heavy low industrial drums on C2 to B2 under a pulsing low synth, with your song).
+- **Levels** were balanced by measurement, not by ear: listen and adjust to taste.
+
 ## 0.45.0
 
 **MIMIC, part 2: the MATCH and REFINE.** MIMIC now plays what it made and compares it with your recording, then improves it on its own.
