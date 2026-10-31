@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.41.0
+
+**REFRACTION**, the sixteenth expansion: a bank of its own under EXPANSIONS (RF01 to RF15), named by you. Inspired by the score of a 2018 science-fiction film about an expedition into a zone where everything is refracted and copied: a quiet fingerpicked string, light bending into colours, sounds that mutate and double as you hold them, and a vast, wailing alien swell. Otherworldly, as you asked. Our own sounds; no title, characters, places, terms or music from the film.
+
+- **MACRO 3 is MUTATE on every preset**: it pushes each sound from lovely to wrong in its own way (pitch pulled into microtones, a bent wave, a stranger voice, more crunch, more twinkles).
+- **Each preset is built round a different part of the synth**, so the leads and pads don't sound like the other banks'.
+- Leads: **Refraction** (one note splitting like light as you hold it: a fifth fading in on the left and an octave on the right, each sliding into tune from a little off), **Mirror Voice** (a double that copies you a moment late, sliding up from a half step under, sung as an inhuman "ee" by the VOICE filter), **Hollow Wail** (the vast alien swell: a saw whose SYNC opens as the note grows, scooping into every note and gliding slowly between them, through a drive).
+- Pads: **Prism Veil** (glass from the FFT editor, swinging slowly between two versions of itself so its overtones rise and fall), **Overgrowth** (a wavetable that keeps turning into something else over about twelve seconds, starting somewhere different on every note), **Spore Drift** (whispered noise drifting through vowels, high tones twinkling on and off at random).
+- Basses: **Mutation** (each note starts plain and turns strange over three seconds), **Root Rot** (a sub with a damp, off-pitch growl breathing in a hand-drawn, irregular shape), **Cell Division** (a pulse in eighths with your song that splits off an octave copy on every beat: hold a note).
+- Keys: **Folk Pluck** (a quiet fingerpicked string: guitar-like, not a sampled guitar), **Bloom Keys** (bells that open up after you strike them, into a reverse reverb that swells behind each note), **Crystal Trees** (brittle, grainy chimes, a little out of tune with each other).
+- Arps: **Doubling** (two arps mirroring each other, one climbing, one falling, a slow flanger through both), **Bioluminescence** (random blips in a dreamy whole-tone scale, each chirping down into its pitch, a new pattern every pass), **Pulse Garden** (a slow pulse that breathes a vowel on every note, with the odd flutter).
+- Levels balanced by measurement against the other expansions. Made without listening here, so your ears decide.
+
 ## 0.40.0
 
 **ASCENSION**, the fifteenth expansion: a bank of its own under EXPANSIONS (AS01 to AS15), named by you. Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant growing into a vast, epic choir, heroic strings and brass, big drums, mystery and awe. Our own sounds; no title, characters, factions, places, terms or music from the game.
