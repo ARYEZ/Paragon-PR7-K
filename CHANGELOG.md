@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.43.0
+
+**BLOODWAVE**, the eighteenth expansion: a bank of its own under EXPANSIONS (BW01 to BW15), named by you. Inspired by the soundtrack of a 2012 top-down action game set in a neon-soaked 1989 city: the dark, dirty side of the '80s, with driving distorted synths at club tempos, basses pumping under a drum machine, hazy, feverish detuned loops, worn tape and bit-crushed grit. Our own sounds; no title, characters, masks, the city, artists or music from the game.
+
+- **MACRO 3 is RAGE on every preset**: more drive, crush or wobble.
+- Leads: **Neon Blade** (a bit-crushed square through a screaming drive), **Fever Lead** (warbles like a stretched tape), **Siren Scream** (a distorted saw that dives an octave every time you let go of a note).
+- Pads: **Pink Haze** (a very wide, detuned haze on worn tape), **Night Static** (a chord heard down a crackling phone line), **Comedown** (a dark drone that sags flat and closes over eight seconds).
+- Basses: **Pump Bass** (ducks on every beat, the club's breathing: hold the notes), **Darkgrind Bass** (filthy and distorted, the filter chewing in sixteenths with your song), **Sub Thump** (a sine that drops into every hit, like a drum-machine bass).
+- Keys: **Woozy Keys** (an electric piano whose pitch swims), **VHS Bells** (glassy bells off a worn tape), **Club Stabs** (one key plays a whole minor-seventh chord).
+- Arps: **Rampage Arp** (fast and driven, the odd glitch stutter), **Hypno Loop** (two triangles pulled out of tune, spinning echoes), **Drum Machine Run** (four-on-the-floor kick, claps, hats and an offbeat bass: play above C3, the kit is on C2 to B2).
+- Levels balanced by measurement against the other expansions (Club Stabs set so a three-key chord, twelve notes, doesn't clip). Made without listening here, so your ears decide.
+
 ## 0.42.0
 
 **PSI STORM**, the seventeenth expansion: a bank of its own under EXPANSIONS (PS01 to PS15), named by you. Inspired by the score of a 1988 animated cyberpunk film about a biker gang and a boy whose psychic power breaks loose: shimmering bronze gamelan and deep bamboo, hypnotic group chant and slow monks' chant, a neon city at night, light trails, and power swelling out of control. Our own sounds; no title, characters, the city, the band, terms or music from the film.
