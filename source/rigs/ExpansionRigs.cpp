@@ -8124,7 +8124,7 @@ namespace
         for (int band = 8; band < synth::SpectrumEdit::bands; ++band)
             echo.rig.spectra[0].gainsDb[(size_t) band] = synth::SpectrumEdit::minDb;
         echo.osc (0, "Volume", 0.55f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.07f).osc (0, "UniSpread", 0.8f)
-            .osc (0, "FftLp", 0.6f).osc (0, "FftSlope", 0.5f)
+            .osc (0, "FftLp", 6.0f).osc (0, "FftSlope", 0.5f)
             .ampEnvelope (700.0f, 1500.0f, 0.9f, 2000.0f);
         route (echo, "modWheel", ParamIDs::osc (0, "FftLp"), 0.3f);
         route (echo, "macro1", ParamIDs::osc (0, "FftLp"), 0.3f);
