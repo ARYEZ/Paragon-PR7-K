@@ -439,11 +439,15 @@ void RigBrowser::resized()
         if (expansions > 0)
         {
             sidebar.removeFromTop (24);   // room for EXPANSIONS
-            const auto height = juce::jlimit (20, 28, sidebar.getHeight() / expansions - 4);
+            // With many expansions (17 in 0.42.0) the gaps close up to 2 px and the rows go down to 16 px, so
+            // about 21 still fit before the list would run off the bottom.
+            const auto each = sidebar.getHeight() / expansions;
+            const auto gap = each >= 26 ? 4 : 2;
+            const auto height = juce::jlimit (16, 28, each - gap);
             for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
             {
                 bankButtons[index]->setBounds (sidebar.removeFromTop (height));
-                sidebar.removeFromTop (4);
+                sidebar.removeFromTop (gap);
             }
         }
     }
