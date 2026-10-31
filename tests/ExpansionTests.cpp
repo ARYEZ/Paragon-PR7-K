@@ -329,8 +329,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto refract = rig.bank == Rig::numBanks + 15;   // REFRACTION: 75 BPM in E minor, uneasy half steps
         const auto psi = rig.bank == Rig::numBanks + 16;       // PSI STORM: 120 BPM, pelog on D (D Eb F A Bb)
         const auto blood = rig.bank == Rig::numBanks + 17;     // BLOODWAVE: 120 BPM in F minor, darksynth
+        const auto dust = rig.bank == Rig::numBanks + 18;      // DUSTFALL: 70 BPM in D minor, vast and cold
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -380,6 +381,48 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (dust && type == "Lead")
+        {
+            // A slow, lonely line in D minor, rising to a long held note (the wheel late in it).
+            line ({ { 0, 1.5, 62 }, { 1.5, 0.5, 65 }, { 2, 2, 69 }, { 4, 1, 67 }, { 5, 1, 65 }, { 6, 2, 64 },
+                    { 8, 1.5, 62 }, { 9.5, 0.5, 65 }, { 10, 2, 70 }, { 12, 4, 69 } }, 100);
+            wheel (12.0, 16.0, 100);
+            length = 20.0 * beat;
+        }
+        else if (dust && type == "Pad")
+        {
+            // D minor, then B flat over D: slow and wide.
+            chord (e, at (0), at (7.8), { 38, 50, 57, 62, 65 }, 90);
+            chord (e, at (8), at (15.8), { 34, 50, 58, 62, 65 }, 90);
+            wheel (10.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (dust && type == "Bass")
+        {
+            // Long low notes: D, B flat, G, A.
+            line ({ { 0, 3.5, 26 }, { 4, 3.5, 22 }, { 8, 3.5, 31 }, { 12, 3.5, 33 } }, 110);
+            wheel (8.0, 15.0, 90);
+            length = 19.0 * beat;
+        }
+        else if (dust && type == "Keys")
+        {
+            // Sparse chords and a high answer: Dm, B flat, Gm, A.
+            const std::initializer_list<int> chords[] = { { 50, 57, 62, 65 }, { 46, 58, 62, 65 }, { 43, 58, 62, 67 }, { 45, 57, 61, 64 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4.0), at (c * 4.0 + 3.0), notes, 90);
+                ++c;
+            }
+            line ({ { 1, 1, 74 }, { 5, 1, 77 }, { 9, 1, 74 }, { 13, 2, 73 } }, 80);
+            length = 20.0 * beat;
+        }
+        else if (dust)
+        {
+            chord (e, at (0), at (7.9), { 50, 53, 57 }, 100);
+            chord (e, at (8), at (15.9), { 50, 53, 58 }, 100);
+            length = 19.0 * beat;
         }
         else if (blood && type == "Lead")
         {
