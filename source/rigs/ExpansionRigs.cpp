@@ -7449,7 +7449,7 @@ namespace
         delay (stabs, "1/4", 0.25f, 0.12f, true, 4.0f);
         reverb (stabs, RT::room, 0.5f, 0.15f);
         space (stabs);
-        stabs.set (ParamIDs::patchLevel, 1.9f);   // LEVEL: set by its peaks: short stabs (measured, not by ear)
+        stabs.set (ParamIDs::patchLevel, -1.5f);   // LEVEL: set so a three-key chord (twelve notes) doesn't clip (measured, not by ear)
         x.add (stabs);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
