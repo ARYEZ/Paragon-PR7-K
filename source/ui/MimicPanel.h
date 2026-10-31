@@ -4,6 +4,7 @@
 
 #include "PluginProcessor.h"
 #include "dsp/synth/Mimic.h"
+#include "MimicRefiner.h"
 #include "rigs/MimicRig.h"
 
 #include <optional>
@@ -16,8 +17,10 @@
 //   2. The picture: the recording's loudness, where the note starts, settles and is let go, the stretch its tone is
 //      taken from, and its pitch. Beside it, what was found.
 //   3. TONE, LOUDNESS, VIBRATO, SWOOP, UNISON, NOISE: what to take (the ones not found are greyed).
-//   4. MAKE THIS SOUND puts it in place (one undo takes it back). PLAY ORIGINAL and PLAY RESULT (the note it was
-//      recorded at, held as long) to compare.
+//   4. MAKE THIS SOUND puts it in place (one undo takes it back), its MATCH shown (part 2: played offline and compared
+//      with the recording, its volume matched). PLAY ORIGINAL and PLAY RESULT (the note it was recorded at, held as
+//      long) to compare. REFINE nudges what was estimated, keeping what brings it closer (MimicRefiner.h): a few
+//      seconds; the result is put in place (one undo step) and its loudness drawn over the recording's.
 class MimicPanel final : public juce::Component,
                          public juce::FileDragAndDropTarget,
                          private juce::Timer
@@ -36,6 +39,10 @@ public:
     mimic::Choices getChoices() const;
     void makeSound();
     void playResult();
+    void refine();                                     // starts refining (the timer carries it on)
+    void finishRefining();                             // the rest at once (tests, the snapshot)
+    MimicRefiner& getRefiner() noexcept { return refiner; }
+    const std::optional<synth::mimic::Score>& getScore() const noexcept { return score; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -55,11 +62,16 @@ private:
     std::optional<synth::mimic::Analysis> analysis;
     juce::String busyWith;            // the file being analysed (empty: none)
     bool dragging = false, made = false;
+    MimicRefiner refiner;
+    Rig madeRig;                      // the sound in place
+    std::optional<synth::mimic::Score> score, scoreBefore;   // its match (and before refining)
+    void installRefined();
     int playingNote = -1;
     double noteOffAt = 0.0;
 
     juce::TextButton load { "LOAD SOUND..." }, playOriginal { "PLAY ORIGINAL" }, playMade { "PLAY RESULT" },
-                     make { "MAKE THIS SOUND" }, close { "CLOSE" };
+                     make { "MAKE THIS SOUND" }, refineButton { "REFINE" },
+                     close { "CLOSE" };
     juce::ToggleButton tone { "TONE" }, envelope { "LOUDNESS" }, vibrato { "VIBRATO" }, swoop { "SWOOP" },
                        unison { "UNISON" }, noise { "NOISE" };
     std::unique_ptr<juce::FileChooser> chooser;

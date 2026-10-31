@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.45.0
+
+**MIMIC, part 2: the MATCH and REFINE.** MIMIC now plays what it made and compares it with your recording, then improves it on its own.
+
+- **MATCH:** when you MAKE THIS SOUND, MIMIC plays the made sound in the background (on a private copy of the synth, so what you're playing isn't touched), the note it was recorded at, held as long, and compares it with the recording: the **tone** (the spectrum, moment by moment, as a shape) and the **loudness** over time, each as how many dB apart on average. The MATCH percentage sums them up (1 dB apart is 90%, 3 dB 74%, 6 dB 55%: our own scale). The volume is matched for you (the made sound's LEVEL is set so it's as loud as the recording), so PLAY ORIGINAL and PLAY RESULT compare fairly.
+- **The picture** draws the made sound's loudness (dashed, white) over the recording's, so you can see where they part.
+- **REFINE:** nudges, one at a time, what MIMIC had to estimate (the attack, decay, sustain and release and the shapes of their falls, the noise's level, unison's detune, vibrato's depth, how fast the tone moves), each up and down, keeping a nudge only if the match improves; three passes, finer each time (about 30 to 50 plays, a few seconds). The refined sound is put in place (one undo takes you back to the first one), the match shown before and after.
+- **Honest limits:** REFINE improves the sound, not necessarily each setting: some settings can trade off against each other (a slightly lower sustain making up for a different decay shape). The match is our own measure, not your ears: trust what you hear over the number. Tested on sounds PR7-K made with known settings: the match rose (82% to 87% on a straight-line envelope MIMIC first guessed as natural curves), the attack and release came nearer the truth, and the volume matched within 1.5 dB.
+
 ## 0.44.0
 
 **MIMIC**: make a sound from a recording of one (your ask and name, like the "preset cloners" for other synths). On the PRESETS page: **MIMIC A SOUND...** in the right column. Load a recording of one note (or drop it on the panel) and MIMIC listens to it, then builds a sound for PR7-K from what it heard. Our own design: it measures, nothing is learned from other people's presets.

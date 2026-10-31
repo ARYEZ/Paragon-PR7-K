@@ -90,6 +90,7 @@ target_sources(ParagonX1
         source/ui/Logo.cpp
         source/ui/RigBrowser.cpp
         source/ui/MimicPanel.cpp
+        source/MimicRefiner.cpp
         source/ui/Icons.cpp
         source/ui/DockPanels.cpp
         source/ui/SynthControls.cpp

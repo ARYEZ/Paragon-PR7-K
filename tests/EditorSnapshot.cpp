@@ -564,6 +564,13 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         processor.setMimicReference (note, rate);
         browser->showMimic();
         browser->getMimicPanel().setAnalysis (synth::mimic::analyse (note, rate, "Breathy Lead G3"));
+        // MIMIC=1: made and refined (part 2): the match, and the made sound's loudness over the recording's.
+        if (env ("PARAGON_SNAPSHOT_MIMIC") == "1")
+        {
+            browser->getMimicPanel().makeSound();
+            browser->getMimicPanel().refine();
+            browser->getMimicPanel().finishRefining();
+        }
     }
 
     const auto width = juce::jmax (960, juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", "1600").getIntValue());

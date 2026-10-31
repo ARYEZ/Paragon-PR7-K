@@ -619,8 +619,121 @@ namespace synth::mimic
             }
         }
 
+        a.audio = std::make_shared<const std::vector<float>> (std::move (x));
         a.valid = true;
         return a;
+    }
+
+    //==================================================================================================================
+    Fingerprint fingerprint (const std::vector<float>& audio, double sampleRate, double start, double seconds)
+    {
+        Fingerprint f;
+        const auto first = (size_t) juce::jmax (0.0, start * sampleRate);
+        const auto last = seconds > 0.0 ? juce::jmin (audio.size(), first + (size_t) (seconds * sampleRate)) : audio.size();
+        if (first >= last)
+            return f;
+        // 40 ms windows (Hann), every 10 ms, an FFT a power of two long enough.
+        const auto window = juce::jmax (64, (int) (0.04 * sampleRate));
+        auto order = 6;
+        while ((1 << order) < window)
+            ++order;
+        const auto size = 1 << order;
+        juce::dsp::FFT fft (order);
+        std::vector<float> buffer ((size_t) size * 2);
+        // The bands' edges, log-spaced 60 Hz to 16 kHz, as FFT bins.
+        std::array<int, Fingerprint::numBands + 1> edges {};
+        for (int b = 0; b <= Fingerprint::numBands; ++b)
+        {
+            const auto hz = 60.0 * std::pow (16000.0 / 60.0, (double) b / Fingerprint::numBands);
+            edges[(size_t) b] = juce::jlimit (1, size / 2 - 1, (int) std::round (hz / sampleRate * size));
+        }
+        const auto hop = juce::jmax (1, (int) (Analysis::hopSeconds * sampleRate));
+        for (auto at = first; at + (size_t) hop <= last; at += (size_t) hop)
+        {
+            std::fill (buffer.begin(), buffer.end(), 0.0f);
+            double power = 0.0;
+            for (int i = 0; i < window; ++i)
+            {
+                const auto index = at + (size_t) i - (size_t) window / 2 + (size_t) hop / 2;
+                const auto s = index < last && index >= first ? audio[index] : 0.0f;
+                power += (double) s * s;
+                buffer[(size_t) i] = s * (0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / (float) window));
+            }
+            f.levels.push_back ((float) juce::jmax (-120.0, 10.0 * std::log10 (power / window + 1.0e-14) + 3.01));
+            fft.performFrequencyOnlyForwardTransform (buffer.data());
+            std::array<float, Fingerprint::numBands> bands {};
+            for (int b = 0; b < Fingerprint::numBands; ++b)
+            {
+                double sum = 0.0;
+                for (int k = edges[(size_t) b]; k <= juce::jmax (edges[(size_t) b], edges[(size_t) b + 1] - 1); ++k)
+                    sum += (double) buffer[(size_t) k] * buffer[(size_t) k];
+                bands[(size_t) b] = (float) juce::jmax (-140.0, 10.0 * std::log10 (sum + 1.0e-14));
+            }
+            f.bands.push_back (bands);
+        }
+        return f;
+    }
+
+    Score compare (const Fingerprint& recording, const Fingerprint& candidate)
+    {
+        Score s;
+        const auto frames = juce::jmin (recording.levels.size(), candidate.levels.size());
+        if (frames == 0)
+            return s;
+        const auto peak = *std::max_element (recording.levels.begin(), recording.levels.begin() + (std::ptrdiff_t) frames);
+        // The volume: the difference in level, weighted by how loud the recording is there.
+        double weighted = 0.0, weights = 0.0;
+        for (size_t i = 0; i < frames; ++i)
+            if (recording.levels[i] > peak - 40.0f && candidate.levels[i] > -110.0f)
+            {
+                const auto w = std::pow (10.0, (recording.levels[i] - peak) / 20.0);
+                weighted += w * (recording.levels[i] - candidate.levels[i]);
+                weights += w;
+            }
+        s.gainDb = weights > 0.0 ? weighted / weights : 0.0;
+        // The loudness, moment by moment (each side no lower than 60 dB under the loudest: below that is silence).
+        double loudness = 0.0, tone = 0.0;
+        int loudFrames = 0, toneFrames = 0;
+        s.levels.resize (frames);
+        for (size_t i = 0; i < frames; ++i)
+        {
+            const auto r = juce::jmax (recording.levels[i], peak - 60.0f);
+            const auto c = juce::jmax ((float) (candidate.levels[i] + s.gainDb), peak - 60.0f);
+            s.levels[i] = c - peak;
+            if (recording.levels[i] > peak - 60.0f || candidate.levels[i] + s.gainDb > peak - 60.0f)
+            {
+                loudness += std::abs (r - c);
+                ++loudFrames;
+            }
+            // The tone where the recording is clearly sounding: each spectrum as a shape (its own level out), bands
+            // within 40 dB of that moment's loudest band in either.
+            if (recording.levels[i] > peak - 30.0f)
+            {
+                const auto& rb = recording.bands[i];
+                const auto& cb = candidate.bands[i];
+                const auto rTop = *std::max_element (rb.begin(), rb.end()), cTop = *std::max_element (cb.begin(), cb.end());
+                double sum = 0.0;
+                int used = 0;
+                for (int b = 0; b < Fingerprint::numBands; ++b)
+                {
+                    const auto rv = juce::jmax (rb[(size_t) b] - rTop, -40.0f), cv = juce::jmax (cb[(size_t) b] - cTop, -40.0f);
+                    if (rv > -40.0f || cv > -40.0f)
+                    {
+                        sum += std::abs (rv - cv);
+                        ++used;
+                    }
+                }
+                if (used > 0)
+                {
+                    tone += sum / used;
+                    ++toneFrames;
+                }
+            }
+        }
+        s.loudnessDb = loudFrames > 0 ? loudness / loudFrames : 0.0;
+        s.toneDb = toneFrames > 0 ? tone / toneFrames : 0.0;
+        s.match = 100.0 * std::exp (-0.5 * (s.loudnessDb + s.toneDb) / 10.0);
+        return s;
     }
 
     Analysis analyseFile (const juce::File& file)

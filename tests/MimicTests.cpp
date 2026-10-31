@@ -377,3 +377,107 @@ TEST_CASE ("MIMIC's panel: what wasn't found can't be taken; MAKE THIS SOUND put
     CHECK (p.processor.getCurrentRig().name == "Mimic Plain");
     CHECK (p.processor.getSynthSettings().oscillators[0].wave == synth::OscWave::wavetable);
 }
+
+//==============================================================================
+// MIMIC part 2: the match score, the refiner.
+#include "MimicRefiner.h"
+#include "rigs/RigBuilder.h"
+
+namespace
+{
+    std::vector<float> mono (const juce::AudioBuffer<float>& b)
+    {
+        return { b.getReadPointer (0), b.getReadPointer (0) + b.getNumSamples() };
+    }
+}
+
+TEST_CASE ("MIMIC's match: the same sound scores 100% at any volume; a different loudness or tone scores lower", "[mimic][match]")
+{
+    const auto reference = mono (note (1.5, steady (220.0), adsr (0.02, 0.1, 0.6, 1.0, 80.0), saw));
+    const auto target = synth::mimic::fingerprint (reference, rate);
+
+    const auto same = synth::mimic::compare (target, synth::mimic::fingerprint (reference, rate));
+    CHECK (same.match > 99.9);
+    CHECK_THAT (same.gainDb, Catch::Matchers::WithinAbs (0.0, 0.01));
+
+    auto quieter = reference;
+    for (auto& s : quieter)
+        s *= 0.5f;
+    const auto q = synth::mimic::compare (target, synth::mimic::fingerprint (quieter, rate));
+    CHECK (q.match > 99.0);
+    CHECK_THAT (q.gainDb, Catch::Matchers::WithinAbs (6.02, 0.1));
+
+    const auto slow = synth::mimic::compare (target, synth::mimic::fingerprint (mono (note (1.5, steady (220.0), adsr (0.4, 0.1, 0.6, 1.0, 80.0), saw)), rate));
+    const auto hollow = synth::mimic::compare (target, synth::mimic::fingerprint (
+        mono (note (1.5, steady (220.0), adsr (0.02, 0.1, 0.6, 1.0, 80.0), [] (int k, double) { return k % 2 == 1 ? 1.0 / k : 0.0; })), rate));
+    WARN ("match: same " << same.match << "%, a slow attack " << slow.match << "% (loudness " << slow.loudnessDb
+          << " dB apart), a hollow tone " << hollow.match << "% (tone " << hollow.toneDb << " dB apart)");
+    CHECK (slow.match < 95.0);
+    CHECK (slow.loudnessDb > slow.toneDb);
+    CHECK (hollow.match < 90.0);
+    CHECK (hollow.toneDb > hollow.loudnessDb);
+}
+
+TEST_CASE ("MIMIC's refiner: a sound PR7-K made with known settings, rebuilt and refined: the match rises, the envelope nears the truth", "[mimic][match]")
+{
+    // The truth: a saw, a slow attack, a straight-line decay to 40% and release (curves 0, where MIMIC guesses -1).
+    rigbuilder::Builder truth ("Truth", 1, {}, {});
+    truth.ampEnvelope (250.0f, 600.0f, 0.4f, 700.0f);
+    MimicRefiner refiner;
+    synth::mimic::Analysis shape;   // only what play() needs: the note, how long it's held, how long to record
+    shape.rootNote = 57;
+    shape.start = 0.0;
+    shape.releaseStart = 1.4;
+    shape.seconds = 2.6;
+    const auto recording = refiner.play (truth.rig, shape);
+    juce::AudioBuffer<float> buffer (1, (int) recording.size());
+    buffer.copyFrom (0, 0, recording.data(), (int) recording.size());
+    const auto a = synth::mimic::analyse (buffer, MimicRefiner::renderRate, "Truth");
+    REQUIRE (a.valid);
+    CHECK (a.rootNote == 57);
+
+    const auto made = mimic::makeRig (a);
+    refiner.begin (made, a, {});
+    REQUIRE (refiner.isRefining());
+    while (refiner.step()) {}
+    const auto before = refiner.getFirstScore().match, after = refiner.getBestScore().match;
+    const auto& best = refiner.getBest();
+    const auto value = [] (const Rig& rig, const char* id) { return rig.parameters.at (id); };
+    WARN ("match " << before << "% -> " << after << "% in " << refiner.getDone() << " plays; attack " << value (made, ParamIDs::ampAttack)
+          << " -> " << value (best, ParamIDs::ampAttack) << " ms (truth 250), sustain " << value (made, ParamIDs::ampSustain) << " -> "
+          << value (best, ParamIDs::ampSustain) << " (truth 0.4), release " << value (made, ParamIDs::ampRelease) << " -> "
+          << value (best, ParamIDs::ampRelease) << " ms (truth 700, straight)");
+    CHECK (after >= before);
+    CHECK (after > 85.0);
+    CHECK (refiner.getDone() <= refiner.getPlanned());
+    // It refines the sound, not each setting: the attack and release come nearer the truth; the sustain can trade off
+    // against the falls' shapes (MIMIC's natural curves against this sound's straight lines) and wander a little.
+    CHECK (std::abs (value (best, ParamIDs::ampAttack) - 250.0f) <= std::abs (value (made, ParamIDs::ampAttack) - 250.0f));
+    CHECK (std::abs (value (best, ParamIDs::ampRelease) - 700.0f) < std::abs (value (made, ParamIDs::ampRelease) - 700.0f));
+    // Its LEVEL matches the recording's volume: what's left to make up is next to nothing.
+    CHECK (std::abs (refiner.getBestScore().gainDb) < 1.5);
+}
+
+TEST_CASE ("MIMIC's panel, part 2: MAKE shows a match; REFINE puts the refined sound in place, one undo from the made one", "[mimic][match]")
+{
+    const auto sound = note (1.6, steady (196.0), adsr (0.12, 0.15, 0.5, 1.2, 60.0), saw);
+    const auto a = synth::mimic::analyse (sound, rate, "Panel");
+    REQUIRE (a.valid);
+    MimicPlugin p;
+    MimicPanel panel (p.processor);
+    panel.setSize (1000, 640);
+    panel.setAnalysis (a);
+    panel.makeSound();
+    p.processor.flushUndoStep();
+    REQUIRE (panel.getScore().has_value());
+    const auto first = panel.getScore()->match;
+    const auto madeLevel = p.processor.getCurrentRig().name;
+    panel.refine();
+    panel.finishRefining();
+    p.processor.flushUndoStep();
+    REQUIRE (panel.getScore().has_value());
+    WARN ("panel: match " << first << "% -> " << panel.getScore()->match << "%");
+    CHECK (panel.getScore()->match >= first);
+    CHECK (p.processor.getCurrentRig().name == "Mimic Panel");
+    CHECK (p.processor.canUndo());
+}

@@ -4,6 +4,8 @@
 
 #include "Wavetable.h"
 
+#include <array>
+#include <memory>
 #include <vector>
 
 // MIMIC (0.44.0, the owner's ask and name): makes a sound from a recording of one, as the "preset cloners" for other
@@ -63,6 +65,9 @@ namespace synth::mimic
         // none) every 10 ms through the recording.
         std::vector<float> levels, pitches;
         static constexpr double hopSeconds = 0.01;
+
+        // The recording itself, mono, at `sampleRate` (part 2 compares the made sound with it).
+        std::shared_ptr<const std::vector<float>> audio;
     };
 
     // Analyses a recording (any number of channels). Message thread or a worker: takes a fraction of a second for a
@@ -75,4 +80,30 @@ namespace synth::mimic
 
     // The note name for a MIDI note ("C3": middle C is C4).
     juce::String noteName (int note);
+
+    //==================================================================================================================
+    // THE MATCH (part 2, 0.45.0): how close a sound is to the recording, by ear's measure as far as we can make one:
+    //   - its TONE: the spectrum in 32 bands a third of an octave or so wide (60 Hz to 16 kHz) every 10 ms, each moment
+    //     compared as a shape (its own loudness taken out), where the recording is within 30 dB of its loudest;
+    //   - its LOUDNESS: the level every 10 ms, compared over the whole note and its tail.
+    // The overall volume is taken out first (the same sound quieter is the same sound) and reported as `gainDb`, what
+    // the candidate needs to match. Both errors are average dB; MATCH = 100 x e^(-error / 10), error the mean of the two
+    // (1 dB off: 90%, 3 dB: 74%, 6 dB: 55%). Our own measure.
+    struct Fingerprint
+    {
+        static constexpr int numBands = 32;
+        std::vector<std::array<float, numBands>> bands;   // dB, every 10 ms
+        std::vector<float> levels;                        // dB, every 10 ms
+    };
+    // From `start` seconds into `audio` (mono), `seconds` long (0: to the end).
+    Fingerprint fingerprint (const std::vector<float>& audio, double sampleRate, double start = 0.0, double seconds = 0.0);
+
+    struct Score
+    {
+        double match = 0.0;            // 0 to 100
+        double toneDb = 0.0, loudnessDb = 0.0;
+        double gainDb = 0.0;           // add this much to the candidate to be as loud as the recording
+        std::vector<float> levels;     // the candidate's level every 10 ms, gain-matched, dB from the recording's loudest
+    };
+    Score compare (const Fingerprint& recording, const Fingerprint& candidate);
 }

@@ -14,7 +14,7 @@ namespace
 
 MimicPanel::MimicPanel (ParagonX1AudioProcessor& p) : processor (p)
 {
-    for (auto* button : { &load, &playOriginal, &playMade, &make, &close })
+    for (auto* button : { &load, &playOriginal, &playMade, &make, &refineButton, &close })
         addAndMakeVisible (*button);
     for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise })
     {
@@ -48,6 +48,7 @@ MimicPanel::MimicPanel (ParagonX1AudioProcessor& p) : processor (p)
     };
     playMade.onClick = [this] { playResult(); };
     make.onClick = [this] { makeSound(); };
+    refineButton.onClick = [this] { refine(); };
     close.onClick = [this]
     {
         processor.stopMimicReference();
@@ -88,6 +89,8 @@ void MimicPanel::setAnalysis (const synth::mimic::Analysis& a)
 {
     analysis = a;
     made = false;
+    score.reset();
+    scoreBefore.reset();
     // What wasn't found can't be taken.
     vibrato.setEnabled (a.vibratoCents > 0.0f);
     swoop.setEnabled (! a.swoop.empty());
@@ -115,9 +118,43 @@ void MimicPanel::makeSound()
 {
     if (! analysis.has_value() || ! analysis->valid)
         return;
-    processor.applyMimic (mimic::makeRig (*analysis, getChoices()));
+    madeRig = mimic::makeRig (*analysis, getChoices());
+    // Played offline and compared: its MATCH, and its LEVEL set to the recording's volume.
+    score = refiner.score (madeRig, *analysis);
+    scoreBefore.reset();
+    processor.applyMimic (madeRig);
     made = true;
     updateButtons();
+    repaint();
+}
+
+void MimicPanel::refine()
+{
+    if (! made || ! analysis.has_value() || refiner.isRefining())
+        return;
+    refiner.begin (madeRig, *analysis, getChoices());
+    scoreBefore = refiner.getFirstScore();
+    if (! refiner.isRefining())
+        installRefined();   // nothing to nudge
+    else
+        startTimerHz (60);
+    updateButtons();
+    repaint();
+}
+
+void MimicPanel::finishRefining()
+{
+    while (refiner.step()) {}
+    installRefined();
+}
+
+void MimicPanel::installRefined()
+{
+    madeRig = refiner.getBest();
+    score = refiner.getBestScore();
+    processor.applyMimic (madeRig);   // one undo step back to before
+    updateButtons();
+    repaint();
 }
 
 void MimicPanel::playResult()
@@ -136,13 +173,20 @@ void MimicPanel::playResult()
 
 void MimicPanel::timerCallback()
 {
+    if (refiner.isRefining())
+    {
+        if (! refiner.step())
+            installRefined();
+        repaint();
+        return;
+    }
     if (playingNote >= 0 && juce::Time::getMillisecondCounterHiRes() >= noteOffAt)
     {
         processor.getKeyboardState().noteOff (1, playingNote, 0.0f);
         playingNote = -1;
     }
     updateButtons();
-    if (playingNote < 0 && ! processor.isPlayingMimicReference())
+    if (playingNote < 0 && ! processor.isPlayingMimicReference() && ! refiner.isRefining())
         stopTimer();
 }
 
@@ -153,7 +197,10 @@ void MimicPanel::updateButtons()
     playOriginal.setButtonText (processor.isPlayingMimicReference() ? "STOP" : "PLAY ORIGINAL");
     make.setEnabled (ready);
     make.setButtonText (made ? "MAKE IT AGAIN" : "MAKE THIS SOUND");
-    playMade.setEnabled (ready && made);
+    playMade.setEnabled (ready && made && ! refiner.isRefining());
+    refineButton.setEnabled (ready && made && ! refiner.isRefining());
+    refineButton.setButtonText (refiner.isRefining() ? "REFINING..." : "REFINE");
+    make.setEnabled (ready && ! refiner.isRefining());
     load.setEnabled (busyWith.isEmpty());
     if (processor.isPlayingMimicReference() && ! isTimerRunning())
         startTimerHz (30);
@@ -223,6 +270,22 @@ void MimicPanel::paintPicture (juce::Graphics& g, juce::Rectangle<int> area) con
     g.fillPath (filled);
     g.setColour (ParagonColours::accent);
     g.strokePath (level, juce::PathStrokeType (1.6f));
+
+    // The made sound's loudness over it (part 2), as played offline from the note's start, its volume matched.
+    if (score.has_value() && ! score->levels.empty())
+    {
+        juce::Path made;
+        for (size_t h = 0; h < score->levels.size(); ++h)
+        {
+            const auto point = juce::Point<float> (xAt (a.start + (double) h * synth::mimic::Analysis::hopSeconds), yAt (score->levels[h]));
+            h == 0 ? made.startNewSubPath (point) : made.lineTo (point);
+        }
+        g.setColour (juce::Colours::white.withAlpha (0.85f));
+        juce::Path dashed;
+        const float dashes[] = { 5.0f, 3.0f };
+        juce::PathStrokeType (1.4f).createDashedStroke (dashed, made, dashes, 2);
+        g.fillPath (dashed);
+    }
 
     // Where it starts, settles and is let go.
     g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
@@ -323,6 +386,45 @@ void MimicPanel::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (12.5f));
         g.drawFittedText (line.fromFirstOccurrenceOf ("|", false, false), row, juce::Justification::centredLeft, 1);
     }
+
+    // THE MATCH (part 2).
+    area.removeFromTop (14);
+    if (refiner.isRefining())
+    {
+        g.setColour (ParagonColours::text);
+        g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
+        g.drawText ("REFINING... " + juce::String (refiner.getDone()) + " / " + juce::String (refiner.getPlanned())
+                    + "   MATCH " + juce::String (juce::roundToInt (refiner.getBestScore().match)) + "%",
+                    area.removeFromTop (24), juce::Justification::centredLeft, false);
+        auto bar = area.removeFromTop (6).toFloat();
+        g.setColour (ParagonColours::panelEdge);
+        g.fillRoundedRectangle (bar, 3.0f);
+        g.setColour (ParagonColours::accent);
+        g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * (float) refiner.getDone() / (float) juce::jmax (1, refiner.getPlanned())), 3.0f);
+    }
+    else if (score.has_value())
+    {
+        g.setColour (ParagonColours::textDim);
+        g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+        g.drawText ("MATCH", area.removeFromTop (16), juce::Justification::centredLeft, false);
+        g.setColour (ParagonColours::accent);
+        g.setFont (juce::FontOptions (30.0f, juce::Font::bold));
+        auto row = area.removeFromTop (36);
+        const auto text = juce::String (juce::roundToInt (score->match)) + "%";
+        g.drawText (text, row, juce::Justification::centredLeft, false);
+        if (scoreBefore.has_value())
+        {
+            g.setColour (ParagonColours::textDim);
+            g.setFont (juce::FontOptions (13.0f));
+            g.drawText ("refined from " + juce::String (juce::roundToInt (scoreBefore->match)) + "%",
+                        row.withTrimmedLeft (90), juce::Justification::centredLeft, false);
+        }
+        g.setColour (ParagonColours::textDim);
+        g.setFont (juce::FontOptions (11.5f));
+        g.drawFittedText ("Tone " + juce::String (score->toneDb, 1) + " dB apart, loudness " + juce::String (score->loudnessDb, 1)
+                          + " dB apart (on average). The dashed line: the made sound's loudness. REFINE to bring it closer.",
+                          area.removeFromTop (34), juce::Justification::topLeft, 2);
+    }
 }
 
 void MimicPanel::resized()
@@ -333,6 +435,8 @@ void MimicPanel::resized()
 
     auto buttons = area.removeFromBottom (32);
     close.setBounds (buttons.removeFromRight (90));
+    buttons.removeFromRight (8);
+    refineButton.setBounds (buttons.removeFromRight (110));
     buttons.removeFromRight (8);
     make.setBounds (buttons.removeFromRight (170));
     buttons.removeFromRight (8);
