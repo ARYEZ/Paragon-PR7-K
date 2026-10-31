@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.47.0
+
+**SUPERPOSITION**, the twentieth expansion: a bank of its own under EXPANSIONS (SP01 to SP15), named by you. Inspired by the score of a 2024 science-fiction series about a physicist thrown into other versions of his own life, searching for the way home: cold, cerebral and quietly dreadful, the same sound in many versions (copies drifting apart, notes never the same twice, patterns that never repeat), and under it the warm thread of home. Our own sounds; no title, characters, places, terms or music from the series.
+
+- **MACRO 3 is SPLIT on every preset**: the sound pulled into more, and more different, versions of itself (copies further out of tune, a second voice, more unison, a wider roll). MACRO 1 brightens, MACRO 2 is SPACE as in every expansion.
+- **Leads:** Other Self (a second voice arriving a moment late, nine cents apart, on the other side), Collapse Lead (hard sync rolled at random on every note: never the same twice), Lucid Line (a hand-drawn wave, clean and close).
+- **Pads:** Interference (a chord flickering between two colours), Quantum Fog (breath sung through VOICE, its vowel drifting), Infinite Echo (trailing off into echoes of itself).
+- **Basses:** Probability Bass (TRAVEL changing its colour beat by beat, with your song), Event Horizon (a deep FM growl; each note falls an octave when you let go), Fracture Bass (crushed and gritty).
+- **Keys:** Home Piano (the warm felt piano), Many Worlds Keys (each key three copies, a little out of tune, spread wide), Lab Glass (a cold struck-glass tone).
+- **Arps:** Branching Paths (a new pattern every pass), Countdown Pulse (a ticking sixteenth pulse), Threshold (a slow heartbeat on the drums, C2 to B2, under a dark throb, with your song).
+- **Levels** were balanced by measurement, not by ear: listen and adjust to taste. Countdown Pulse sits a few dB quieter, so its sharp ticks stay under the peak limit.
+
+**Fixed: clicks when the FFT editor's LP or HP moves with SLOPE turned up.** The cutoff blends two of the wave's levels; with SLOPE above 0 that pair moved one level at a time, so a sweeping cutoff jumped each time it crossed one (heard as faint clicking or zipper noise, in DUSTFALL's Searchlight for one). The pair now moves so the sound changes smoothly. With SLOPE at 0 nothing changes; with SLOPE up, a cutoff sitting still sounds very slightly different from before.
+
 ## 0.46.0
 
 **DUSTFALL**, the nineteenth expansion: a bank of its own under EXPANSIONS (DF01 to DF15), named by you. Inspired by the score of a 2017 science-fiction film, a sequel set thirty years on: colder, bigger and more brutal, with colossal distorted brass blasts and crushing sub drones, orange dust and grey snow over empty cities, machines at work, and, in between, fragile, lonely beauty. Our own sounds; no title, characters, places, terms or music from the film.
