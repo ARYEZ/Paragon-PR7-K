@@ -54,6 +54,7 @@ target_sources(ParagonX1
         source/dsp/synth/Engine.cpp
         source/dsp/synth/Drums.cpp
         source/dsp/synth/Wavetable.cpp
+        source/dsp/synth/Mimic.cpp
         # PR7-E's effects, kept for the effects rack (a later stage): built and tested, not yet in the sound.
         source/dsp/dominion/Dominion.cpp
         source/dsp/effects/Compressor.cpp
@@ -81,6 +82,7 @@ target_sources(ParagonX1
         source/rigs/Rig.cpp
         source/rigs/FactoryRigs.cpp
         source/rigs/ExpansionRigs.cpp
+        source/rigs/MimicRig.cpp
         source/rigs/CompPresets.cpp
         source/rigs/DominionPresets.cpp
         source/rigs/RigLibrary.cpp
