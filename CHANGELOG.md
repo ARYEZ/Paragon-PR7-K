@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.40.0
+
+**ASCENSION**, the fifteenth expansion: a bank of its own under EXPANSIONS (AS01 to AS15), named by you. Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant growing into a vast, epic choir, heroic strings and brass, big drums, mystery and awe. Our own sounds; no title, characters, factions, places, terms or music from the game.
+
+- **Built on the new VOICE filter** (0.39.0) for choirs that sound human: buzzy sources sung into vowels whose resonances stay fixed whatever note is sung, each section's voices with their own vibrato drifting against each other, every chord opening from a hummed "oo" into the vowel, a breath of air through it. In **Grand Choir** and **Choir Stabs** the singer's size follows the keys: low notes sung by basses, high notes by sopranos, so a wide chord sounds like a four-part choir.
+- Leads: **Monk Solo** (a single low chanting voice), **Soprano Call** (a soaring soprano with an operatic vibrato), **Hero Theme** (brass and strings together, a horn's body from the VOICE filter).
+- Pads: **Monk Chant** (low voices in slow unison), **Grand Choir** (the full four-part choir), **Angel Choir** (airy, breathy sopranos).
+- Basses: **Low Chant** (a dark "oo" voice over a clean sub), **Battle Strings** (a driving sixteenth-note ostinato with your song: hold a note), **Deep Brass** (a low swell: press into the keys to push it).
+- Keys: **Choir Stabs** (short "ah!" shouts), **Ancient Bells** (built from a real church bell's partials, each fading at its own pace), **Lament Piano** (a sad piano far back in a hall).
+- Arps: **String Charge** (a racing string ostinato), **Sacred Drums** (huge slow drums under a chanting choir: play above C3, the kit is on C2 to B2), **Signal Pulse** (a pulsing electronic arp).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character (mostly VOWEL on the choirs, so they can "speak"; POWER, BITE, BLARE, AIR, HUM, ECHO, GLOW on the others). Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Choir Stabs, Ancient Bells and Sacred Drums by their peaks). Synthesis, not a recorded choir: made without listening here, so your ears decide.
+
 ## 0.39.0
 
 **The VOICE filter**, for choirs and voices that sound human (your ask, before the ASCENSION expansion). A new tab, **VOICE**, beside FILTER and SHP 1-4.
