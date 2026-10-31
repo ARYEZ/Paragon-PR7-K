@@ -7169,7 +7169,7 @@ namespace
         delay (blade, "1/8 dotted", 0.35f, 0.18f, true, 5.0f);
         reverb (blade, RT::plate, 0.5f, 0.12f);
         space (blade);
-        blade.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        blade.set (ParamIDs::patchLevel, 0.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (blade);
 
         auto fever = x.make ("Fever Lead", 2, { "Lead", "Tape", "Wobble", "Lo-Fi" },
@@ -7197,7 +7197,7 @@ namespace
         delay (fever, "1/4", 0.35f, 0.15f, true, 3.5f);
         reverb (fever, RT::hall, 0.7f, 0.2f);
         space (fever);
-        fever.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        fever.set (ParamIDs::patchLevel, -0.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (fever);
 
         auto siren = x.make ("Siren Scream", 3, { "Lead", "Rabid", "Pitch", "Dive" },
@@ -7214,7 +7214,7 @@ namespace
              .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 12.0f)
              .set (ParamIDs::pitchEnvMode, (float) synth::mod::EnvelopeMode::sustain);
         siren.rig.modulation.pitchEnvelope = { { SP17 { 0.0f, 0.5f, 0.0f }, SP17 { 0.05f, 0.5f, 0.5f }, SP17 { 0.7f, 0.0f, 0.0f } }, 1, -1, -1 };
-        drive (siren, 0, DM::rabid, 5.0f, 5.0f, -4.0f, 0.3f, 0.3f);
+        drive (siren, 0, DM::rabid, 5.0f, 5.0f, 2.0f, 0.3f, 0.3f);
         route (siren, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.3f);
         route (siren, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (siren, "macro3", ParamIDs::shp (0, "Drive"), 0.35f);
@@ -7222,7 +7222,7 @@ namespace
         delay (siren, "1/8", 0.3f, 0.12f, true, 4.5f);
         reverb (siren, RT::plate, 0.6f, 0.15f);
         space (siren);
-        siren.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        siren.set (ParamIDs::patchLevel, 0.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (siren);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -7247,7 +7247,7 @@ namespace
         reverb (haze, RT::hall, 0.85f, 0.3f);
         eqBand (haze, 0, eq::Shape::lowCut, 70.0f, 0.0f);
         space (haze);
-        haze.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        haze.set (ParamIDs::patchLevel, -6.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (haze);
 
         auto staticPad = x.make ("Night Static", 5, { "Pad", "Lo-Fi", "Telephone", "Eerie" },
@@ -7272,7 +7272,7 @@ namespace
         macros (staticPad, "BRIGHT", "SPACE", "RAGE");
         reverb (staticPad, RT::room, 0.6f, 0.2f);
         space (staticPad);
-        staticPad.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        staticPad.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (staticPad);
 
         auto comedown = x.make ("Comedown", 6, { "Pad", "Drone", "Pitch", "Dark" },
@@ -7295,7 +7295,7 @@ namespace
         macros (comedown, "BRIGHT", "SPACE", "RAGE");
         reverb (comedown, RT::hall, 0.95f, 0.3f, 50.0f, 3.5f);
         space (comedown);
-        comedown.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        comedown.set (ParamIDs::patchLevel, -12.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (comedown);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -7331,7 +7331,7 @@ namespace
         macros (pump, "BRIGHT", "SPACE", "RAGE");
         reverb (pump, RT::room, 0.4f, 0.08f);
         space (pump);
-        pump.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        pump.set (ParamIDs::patchLevel, -2.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (pump);
 
         auto grinder = x.make ("Darkgrind Bass", 8, { "Bass", "Abyss", "LFO", "Darksynth" },
@@ -7356,7 +7356,7 @@ namespace
         macros (grinder, "BRIGHT", "SPACE", "RAGE");
         reverb (grinder, RT::room, 0.4f, 0.06f);
         space (grinder);
-        grinder.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        grinder.set (ParamIDs::patchLevel, -0.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (grinder);
 
         auto thump = x.make ("Sub Thump", 9, { "Bass", "Sub", "Pitch", "808" },
@@ -7376,7 +7376,7 @@ namespace
         macros (thump, "BRIGHT", "SPACE", "RAGE");
         reverb (thump, RT::room, 0.3f, 0.05f);
         space (thump);
-        thump.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        thump.set (ParamIDs::patchLevel, -4.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (thump);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -7402,7 +7402,7 @@ namespace
         chorus (woozy, ParamIDs::modIds, MT::chorus, 0.5f, 0.4f, 0.4f);
         reverb (woozy, RT::plate, 0.5f, 0.18f);
         space (woozy);
-        woozy.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        woozy.set (ParamIDs::patchLevel, -10.3f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (woozy);
 
         auto vhs = x.make ("VHS Bells", 11, { "Keys", "FM", "Bell", "Lo-Fi" },
@@ -7426,7 +7426,7 @@ namespace
         delay (vhs, "1/8 dotted", 0.4f, 0.2f, true, 4.0f);
         reverb (vhs, RT::hall, 0.6f, 0.18f);
         space (vhs);
-        vhs.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        vhs.set (ParamIDs::patchLevel, -2.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (vhs);
 
         auto stabs = x.make ("Club Stabs", 12, { "Keys", "Chorder", "Stab", "House" },
@@ -7449,7 +7449,7 @@ namespace
         delay (stabs, "1/4", 0.25f, 0.12f, true, 4.0f);
         reverb (stabs, RT::room, 0.5f, 0.15f);
         space (stabs);
-        stabs.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        stabs.set (ParamIDs::patchLevel, 1.9f);   // LEVEL: set by its peaks: short stabs (measured, not by ear)
         x.add (stabs);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -7474,7 +7474,7 @@ namespace
         delay (rampage, "1/8 dotted", 0.25f, 0.1f, true, 5.0f);
         reverb (rampage, RT::plate, 0.5f, 0.1f);
         space (rampage);
-        rampage.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        rampage.set (ParamIDs::patchLevel, 2.3f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (rampage);
 
         auto hypno = x.make ("Hypno Loop", 14, { "Arp", "Delay", "Flanger", "Hypnotic" },
@@ -7505,7 +7505,7 @@ namespace
         delay (hypno, "1/8 dotted", 0.55f, 0.28f, true, 4.5f);
         reverb (hypno, RT::hall, 0.6f, 0.18f);
         space (hypno);
-        hypno.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        hypno.set (ParamIDs::patchLevel, -2.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (hypno);
 
         auto machine = x.make ("Drum Machine Run", 15, { "Arp", "Drums", "Bass", "Club" },
@@ -7555,7 +7555,7 @@ namespace
         macros (machine, "BRIGHT", "SPACE", "RAGE");
         reverb (machine, RT::room, 0.5f, 0.12f);
         space (machine);
-        machine.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        machine.set (ParamIDs::patchLevel, 1.1f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
         x.add (machine);
     }
 }
