@@ -6678,7 +6678,7 @@ namespace
         leader.rig.modulation.lfoShapes[0] = { { SP16 { 0.0f, 0.5f, -0.6f }, SP16 { 0.25f, 0.0f, -0.6f }, SP16 { 0.5f, 1.0f, -0.6f },
                                                  SP16 { 0.75f, 0.5f, -0.6f } }, -1, -1, -1 };
         voice (leader, 0.45f, 0.1f, 0.5f);
-        route (leader, "lfo1", ParamIDs::voiceVowel, 0.2f, 20.0f);
+        route (leader, "lfo1", ParamIDs::voiceVowel, 0.2f, 40.0f);
         route (leader, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
         route (leader, "macro1", ParamIDs::voiceSharp, 0.3f);
         route (leader, "macro3", ParamIDs::shp (0, "Drive"), 0.35f);
@@ -6687,7 +6687,7 @@ namespace
         delay (leader, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
         reverb (leader, RT::hall, 0.75f, 0.25f, 30.0f, 4.5f);
         space (leader);
-        leader.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        leader.set (ParamIDs::patchLevel, -3.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (leader);
 
         auto trail = x.make ("Tail Light Streak", 2, { "Lead", "Pitch", "Unison", "Delay" },
@@ -6747,7 +6747,7 @@ namespace
         delay (scream, "1/4", 0.35f, 0.15f, true, 4.0f);
         reverb (scream, RT::hall, 0.8f, 0.25f);
         space (scream);
-        scream.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        scream.set (ParamIDs::patchLevel, -1.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (scream);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -6772,7 +6772,7 @@ namespace
         reverb (requiem, RT::cathedral, 0.85f, 0.32f, 40.0f, 4.0f);
         eqBand (requiem, 0, eq::Shape::lowCut, 55.0f, 0.0f);
         space (requiem);
-        requiem.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        requiem.set (ParamIDs::patchLevel, -12.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (requiem);
 
         auto ruins = x.make ("Ruined City", 5, { "Pad", "FM", "Noise", "Lo-Fi" },
@@ -6803,7 +6803,7 @@ namespace
         reverb (ruins, RT::hall, 0.9f, 0.3f, 50.0f, 4.0f);
         eqBand (ruins, 0, eq::Shape::lowCut, 80.0f, 0.0f);
         space (ruins);
-        ruins.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        ruins.set (ParamIDs::patchLevel, -6.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (ruins);
 
         auto surge = x.make ("Power Surge", 6, { "Pad", "Shaper", "Unison", "Swell" },
@@ -6831,7 +6831,7 @@ namespace
         reverb (surge, RT::hall, 0.85f, 0.28f);
         eqBand (surge, 0, eq::Shape::lowCut, 60.0f, 0.0f);
         space (surge);
-        surge.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        surge.set (ParamIDs::patchLevel, -13.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (surge);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -6853,7 +6853,7 @@ namespace
         macros (bamboo, "BRIGHT", "SPACE", "POWER");
         reverb (bamboo, RT::room, 0.6f, 0.12f);
         space (bamboo);
-        bamboo.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        bamboo.set (ParamIDs::patchLevel, -3.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (bamboo);
 
         auto ride = x.make ("Night Ride", 8, { "Bass", "Arp", "Octaves", "Drive" },
@@ -6891,7 +6891,7 @@ namespace
         macros (ride, "BRIGHT", "SPACE", "POWER");
         reverb (ride, RT::room, 0.5f, 0.08f);
         space (ride);
-        ride.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        ride.set (ParamIDs::patchLevel, 0.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (ride);
 
         auto flesh = x.make ("Mutant Flesh", 9, { "Bass", "Wavetable", "Shaper", "Wobble" },
@@ -6923,7 +6923,7 @@ namespace
         macros (flesh, "BRIGHT", "SPACE", "POWER");
         reverb (flesh, RT::room, 0.5f, 0.1f);
         space (flesh);
-        flesh.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        flesh.set (ParamIDs::patchLevel, -9.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (flesh);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -6943,7 +6943,7 @@ namespace
         macros (gamelan, "BRIGHT", "SPACE", "POWER");
         reverb (gamelan, RT::hall, 0.6f, 0.22f);
         space (gamelan);
-        gamelan.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        gamelan.set (ParamIDs::patchLevel, -8.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (gamelan);
 
         auto gong = x.make ("Temple Gong", 11, { "Keys", "FM", "Gong", "Pitch" },
@@ -6969,7 +6969,7 @@ namespace
         macros (gong, "BRIGHT", "SPACE", "POWER");
         reverb (gong, RT::cathedral, 0.7f, 0.25f);
         space (gong);
-        gong.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        gong.set (ParamIDs::patchLevel, -3.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (gong);
 
         auto marimba = x.make ("Bamboo Marimba", 12, { "Keys", "Additive", "Wood", "Mallet" },
@@ -6994,7 +6994,7 @@ namespace
         macros (marimba, "BRIGHT", "SPACE", "POWER");
         reverb (marimba, RT::room, 0.6f, 0.15f);
         space (marimba);
-        marimba.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        marimba.set (ParamIDs::patchLevel, -0.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (marimba);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -7072,7 +7072,7 @@ namespace
         delay (chant, "1/8 dotted", 0.25f, 0.12f, true, 4.5f);
         reverb (chant, RT::hall, 0.6f, 0.18f);
         space (chant);
-        chant.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        chant.set (ParamIDs::patchLevel, -0.5f);   // LEVEL: set by its peaks: short shouts (measured, not by ear)
         x.add (chant);
 
         auto festival = x.make ("Festival Drums", 15, { "Arp", "Drums", "Gamelan", "Taiko" },
@@ -7117,7 +7117,7 @@ namespace
         macros (festival, "BRIGHT", "SPACE", "POWER");
         reverb (festival, RT::hall, 0.75f, 0.22f);
         space (festival);
-        festival.set (ParamIDs::patchLevel, -3.0f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        festival.set (ParamIDs::patchLevel, -4.0f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
         x.add (festival);
     }
 }
