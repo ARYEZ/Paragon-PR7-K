@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "ui/Finish.h"
 #include "ui/LedDisplay.h"
+#include "ui/PedalBody.h"
 #include "ui/ParagonLookAndFeel.h"
 
 namespace
@@ -50,37 +51,57 @@ void FaceWheel::mouseDrag (const juce::MouseEvent& e)
 
 void FaceWheel::paint (juce::Graphics& g)
 {
-    // The slot: a dark well cut into the metal, a chrome lip round it.
+    // The slot: a dark well cut into the face, a chrome lip round it.
     const auto slot = slotArea();
     g.setColour (juce::Colours::black.withAlpha (0.55f));
     g.fillRoundedRectangle (slot.translated (0.0f, 2.0f), 7.0f);
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xffb9a8b1), slot.getX(), slot.getY(), juce::Colour (0xff3a3036), slot.getX(), slot.getBottom(), false));
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xffe9dde3), slot.getX(), slot.getY(), juce::Colour (0xff3e3238), slot.getX(), slot.getBottom(), false));
     g.fillRoundedRectangle (slot, 7.0f);
     const auto well = slot.reduced (3.0f);
     g.setColour (juce::Colour (0xff050405));
     g.fillRoundedRectangle (well, 5.0f);
 
-    // The wheel: a black cylinder seen side on, shaded round its curve, its ridges rolling with the value, lit
-    // orange from below by as much as it's turned.
+    // The wheel (0.50.0, the owner's ask): the tread of PR7-G's expression pedal wrapped round a wheel. Its rubber
+    // is the unit's neon, pink to red to orange across (black rubber on the pearl white unit), ribbed across like
+    // the pedal's pads, each rib a lit top edge over a shadow. Seen side on, so the ribs bunch up and darken
+    // towards the top and bottom where the wheel curves away, and they roll as it's turned.
     const auto wheel = well.reduced (4.0f, 6.0f);
-    juce::ColourGradient body (juce::Colour (0xff060506), wheel.getX(), wheel.getY(), juce::Colour (0xff060506), wheel.getX(), wheel.getBottom(), false);
-    body.addColour (0.5, juce::Colour (0xff2c272d));
-    g.setGradientFill (body);
-    g.fillRoundedRectangle (wheel, 4.0f);
-    g.saveState();
-    g.reduceClipRegion (wheel.toNearestInt());
-    const auto spacing = 7.0f;
-    const auto roll = std::fmod (value * wheel.getHeight() * 1.6f, spacing);
-    for (auto y = wheel.getY() - spacing + roll; y < wheel.getBottom() + spacing; y += spacing)
+    juce::Path tread;
+    tread.addRoundedRectangle (wheel, 4.0f);
+    const auto neon = Finish::neonKeys();
+    if (neon)
+        g.setGradientFill (Finish::neonGradient (wheel.getX(), wheel.getRight()));
+    else
+        g.setColour (juce::Colour (0xff1a1618));
+    g.fillPath (tread);
     {
-        // Ridges bunch up towards the top and bottom edges (the curve turning away).
-        const auto t = (y - wheel.getCentreY()) / (wheel.getHeight() * 0.5f);
-        const auto curved = wheel.getCentreY() + wheel.getHeight() * 0.5f * std::sin (juce::jlimit (-1.0f, 1.0f, t) * 1.2f) / std::sin (1.2f);
-        const auto light = 1.0f - std::abs (t);
-        g.setColour (juce::Colour (0xff4a4249).withAlpha (0.25f + 0.6f * light));
-        g.fillRect (wheel.getX() + 2.0f, curved, wheel.getWidth() - 4.0f, 1.2f);
+        juce::Graphics::ScopedSaveState clip (g);
+        g.reduceClipRegion (tread);
+        const auto spacing = juce::jmax (2.5f, wheel.getHeight() * 0.025f);   // fine, as the pedal's (its ribs are 1.25% of its height)
+        const auto roll = std::fmod (value * wheel.getHeight() * 1.6f, spacing);
+        for (auto y = wheel.getY() - spacing + roll; y < wheel.getBottom() + spacing; y += spacing)
+        {
+            const auto t = juce::jlimit (-1.0f, 1.0f, (y - wheel.getCentreY()) / (wheel.getHeight() * 0.5f));
+            const auto curved = wheel.getCentreY() + wheel.getHeight() * 0.5f * std::sin (t * 1.2f) / std::sin (1.2f);
+            const auto pitch = spacing * std::cos (t * 1.2f);   // narrower where the curve turns away
+            g.setColour (juce::Colours::white.withAlpha (neon ? 0.07f : 0.08f));
+            g.fillRect (wheel.getX(), curved, wheel.getWidth(), pitch * 0.18f);
+            g.setColour (juce::Colours::black.withAlpha (neon ? 0.35f : 0.45f));
+            g.fillRect (wheel.getX(), curved + pitch * 0.18f, wheel.getWidth(), pitch * 0.3f);
+        }
+
+        // Round its curve: shaded to near black at the top and bottom, a soft sheen just above the middle.
+        juce::ColourGradient shade (juce::Colours::black.withAlpha (0.6f), 0.0f, wheel.getY(), juce::Colours::black.withAlpha (0.65f), 0.0f, wheel.getBottom(), false);
+        shade.addColour (0.18, juce::Colours::black.withAlpha (0.08f));
+        shade.addColour (0.4, juce::Colours::white.withAlpha (0.06f));
+        shade.addColour (0.6, juce::Colours::black.withAlpha (0.0f));
+        shade.addColour (0.85, juce::Colours::black.withAlpha (0.2f));
+        g.setGradientFill (shade);
+        g.fillPath (tread);
     }
-    g.restoreState();
+    // The unit's red glow caught along its edge, as on the pedal's pads.
+    g.setColour (ParagonColours::glow.withAlpha (0.28f));
+    g.strokePath (tread, juce::PathStrokeType (1.2f));
 
     // The light: a neon line along the slot's side, as high as the wheel is turned.
     const auto lit = well.withTrimmedTop (well.getHeight() * (1.0f - value));
@@ -89,7 +110,7 @@ void FaceWheel::paint (juce::Graphics& g)
     g.setColour (ParagonColours::accent);
     g.fillRect (juce::Rectangle<float> (well.getRight() - 2.0f, lit.getY(), 1.5f, lit.getHeight()));
 
-    g.setColour (ParagonColours::text);
+    g.setColour (Finish::ink());
     g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
     g.drawText (name, getLocalBounds().removeFromBottom (18), juce::Justification::centred, false);
 }
@@ -186,18 +207,18 @@ void SynthFace::resized()
     next.setBounds (at (1052.0f, 126.0f, 44.0f, 52.0f));
 
     // The three macros under the screen, the hero knobs either side, lower down, all the same size.
-    constexpr float knobW = 140.0f, knobH = 146.0f, macroY = 218.0f, heroY = 196.0f;
+    constexpr float knobW = 140.0f, knobH = 146.0f, macroY = 205.0f, heroY = 190.0f;   // 0.50.0: up a little, clear of the rim
     for (int k = 0; k < 3; ++k)
         macros[(size_t) k]->setBounds (at (screenBox.getX() + 30.0f + (float) k * 200.0f, macroY, knobW, knobH));
     cutoff.setBounds (at (146.0f, heroY, knobW, knobH));
     resonance.setBounds (at (290.0f, heroY, knobW, knobH));
-    modWheel.setBounds (at (34.0f, 196.0f, 44.0f, 156.0f));
-    exprWheel.setBounds (at (88.0f, 196.0f, 44.0f, 156.0f));
+    modWheel.setBounds (at (34.0f, 192.0f, 44.0f, 152.0f));
+    exprWheel.setBounds (at (88.0f, 192.0f, 44.0f, 152.0f));
     attack.setBounds (at (1106.0f, heroY, knobW, knobH));
     release.setBounds (at (1276.0f, heroY, knobW, knobH));
 
     if (getWidth() > 0 && getHeight() > 0)
-        grain = Finish::makeSatinGrain (getWidth(), getHeight(), 49);
+        grain = Finish::makeSatinGrain (getWidth() * 2, getHeight() * 2, 49);   // twice the size: fine on high-resolution screens, as PR7-G's
 }
 
 void SynthFace::paint (juce::Graphics& g)
@@ -206,56 +227,30 @@ void SynthFace::paint (juce::Graphics& g)
     const auto sx = bounds.getWidth() / faceWidth, sy = bounds.getHeight() / faceHeight;
     const auto at = [&] (float x, float y, float w, float h) { return juce::Rectangle<float> (x * sx, y * sy, w * sx, h * sy); };
 
-    // The unit's face: dark pearl metal with its satin grain, a soft red glow along the bottom edge (the light
-    // under a PR7 unit) and a fine chrome edge, set in a rounded case.
-    const auto face = bounds.reduced (1.0f);
-    juce::Path shape;
-    shape.addRoundedRectangle (face, 12.0f);
-    juce::DropShadow (juce::Colours::black.withAlpha (0.7f), 14, { 0, 4 }).drawForPath (g, shape);
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff1d1a1f), 0.0f, face.getY(), juce::Colour (0xff0b090c), 0.0f, face.getBottom(), false));
-    g.fillPath (shape);
-    if (grain.isValid())
-    {
-        g.saveState();
-        g.reduceClipRegion (shape);
-        g.setOpacity (0.35f);
-        g.drawImageAt (grain, 0, 0);
-        g.restoreState();
-    }
-    {
-        juce::ColourGradient glow (juce::Colour (0x00ff2a3a), 0.0f, face.getBottom() - face.getHeight() * 0.35f,
-                                   juce::Colour (0x40ff2a3a), 0.0f, face.getBottom(), false);
-        g.saveState();
-        g.reduceClipRegion (shape);
-        g.setGradientFill (glow);
-        g.fillRect (face);
-        g.restoreState();
-    }
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xffb9a8b1), 0.0f, face.getY(), juce::Colour (0xff3a3036), 0.0f, face.getBottom(), false));
-    g.strokePath (shape, juce::PathStrokeType (1.5f));
+    // The unit (0.50.0): drawn by PR7-G's own code (PedalBody::paintUnit, ported), so its pearl black is PR7-G's
+    // exactly: the light spilling round it, the thick pearl rim with its front edge, the satin face plate sunk
+    // into it with its sheen and vignette. Smaller than PR7-G's floor unit, so a thinner rim and less glow.
+    const auto chassis = bounds.reduced (5.0f);
+    const auto plate = chassis.reduced (9.0f).withTrimmedBottom (5.0f);
+    PedalBody::paintUnit (g, chassis, plate, [this] (juce::Graphics& gg)
+                          {
+                              if (grain.isValid())
+                                  gg.drawImage (grain, getLocalBounds().toFloat());
+                          },
+                          { 16.0f, 10.0f, 6.0f, 0.35f });
 
-    // The name plate, top left: PARAGON in heavy italic, PR7-K in the red to pink to orange gradient, what it is
-    // stamped underneath, as on the other units.
-    {
-        auto plate = at (40.0f, 26.0f, 360.0f, 100.0f);
-        g.setFont (juce::FontOptions (40.0f * sy, juce::Font::bold | juce::Font::italic));
-        ParagonLookAndFeel::drawStampedText (g, "PARAGON", plate.removeFromTop (44.0f * sy), juce::Justification::bottomLeft, ParagonColours::text);
-        const auto model = plate.removeFromTop (40.0f * sy);
-        g.setGradientFill (ParagonLookAndFeel::menuHighlight (model.withWidth (170.0f * sx)));
-        g.setFont (juce::FontOptions (36.0f * sy, juce::Font::bold | juce::Font::italic));
-        g.drawText ("PR7-K", model, juce::Justification::centredLeft, false);
-        g.setFont (juce::FontOptions (10.5f * sy, juce::Font::bold));
-        ParagonLookAndFeel::drawStampedText (g, "WAVETABLE SYNTHESIZER", plate, juce::Justification::topLeft, Finish::printedRed());
-    }
+    // The badge, top left: PR7-G's (PARAGON stamped in heavy italic over the PR7-K mark in its slanted, speed-cut
+    // letters, the 7 in red), what it is printed in red under it.
+    PedalBody::paintBadge (g, at (40.0f, 30.0f, 360.0f, 104.0f), "WAVETABLE SYNTHESIZER");
 
     // A thin red line under the screen's row and the knobs' captions.
     g.setColour (Finish::printedRed().withAlpha (0.5f));
-    g.fillRect (at (438.0f, 212.0f, 600.0f, 1.2f));
+    g.fillRect (at (438.0f, 204.0f, 600.0f, 1.2f));
     g.setFont (juce::FontOptions (10.0f * sy, juce::Font::bold));
-    ParagonLookAndFeel::drawStampedText (g, "WHEELS", at (30.0f, 170.0f, 106.0f, 14.0f), juce::Justification::centred, ParagonColours::textDim);
-    ParagonLookAndFeel::drawStampedText (g, "FILTER", at (146.0f, 170.0f, 284.0f, 14.0f), juce::Justification::centred, ParagonColours::textDim);
-    ParagonLookAndFeel::drawStampedText (g, "AMP", at (1106.0f, 170.0f, 310.0f, 14.0f), juce::Justification::centred, ParagonColours::textDim);
-    g.setColour (ParagonColours::panelEdge);
+    ParagonLookAndFeel::drawStampedText (g, "WHEELS", at (30.0f, 170.0f, 106.0f, 14.0f), juce::Justification::centred, Finish::inkDim());
+    ParagonLookAndFeel::drawStampedText (g, "FILTER", at (146.0f, 170.0f, 284.0f, 14.0f), juce::Justification::centred, Finish::inkDim());
+    ParagonLookAndFeel::drawStampedText (g, "AMP", at (1106.0f, 170.0f, 310.0f, 14.0f), juce::Justification::centred, Finish::inkDim());
+    g.setColour (Finish::inkDim().withAlpha (0.35f));
     g.fillRect (at (30.0f, 186.0f, 106.0f, 1.0f));
     g.fillRect (at (146.0f, 186.0f, 284.0f, 1.0f));
     g.fillRect (at (1106.0f, 186.0f, 310.0f, 1.0f));

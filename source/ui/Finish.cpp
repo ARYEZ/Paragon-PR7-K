@@ -22,13 +22,15 @@ namespace Finish
         {
             State()
             {
-                // Read once, the first time anything is drawn.
+                // PR7-K (0.50.0) is a pearl black unit, as PR7-G's pearl black (the owner's reference): it has no
+                // finish chooser, so it used to fall back to pearl white, which drew the front panel's knobs black.
+                // A finish someone saves later (Finish::set) still wins.
                 juce::PropertiesFile file (settingsOptions());
-                const auto saved = file.getIntValue (settingKey, 0);
-                type = saved == (int) Type::pearlBlack || saved == (int) Type::pearlWhiteNeon ? (Type) saved : Type::pearlWhite;
+                const auto saved = file.getIntValue (settingKey, (int) Type::pearlBlack);
+                type = saved == (int) Type::pearlWhite || saved == (int) Type::pearlWhiteNeon ? (Type) saved : Type::pearlBlack;
             }
 
-            Type type = Type::pearlWhite;
+            Type type = Type::pearlBlack;
             juce::ChangeBroadcaster broadcaster;
         };
 
