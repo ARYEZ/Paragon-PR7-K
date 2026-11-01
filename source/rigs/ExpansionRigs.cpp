@@ -4606,19 +4606,28 @@ namespace
         x.add (net);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
-        auto ritual = x.make ("Ritual Choir", 13, { "Arp", "Choir", "Ritual", "Slow" },
-            "A slow ritual: a chord you hold sings as a soft choir. MACROS: BRIGHT, SPACE, VOWEL (the choir towards "
-            "\"oo\").");
-        ritual.osc (0, "Wave", wavetable).osc (0, "Table", table ("Vowels")).osc (0, "WtIndex", 0.0f).osc (0, "Volume", 0.9f)
+        auto ritual = x.make ("Ritual Choir", 13, { "Arp", "Choir", "Ritual", "Cascade" },
+            "A slow ritual: ARP 1 sings the chord you hold one voice at a time, a note a beat, up and down over two "
+            "octaves, each sung note swelling in from \"oo\" to \"ah\" (an envelope through the Vowels table) and "
+            "left to ring over the next, so the choir builds as it climbs. MACROS: BRIGHT, SPACE, VOWEL (the choir "
+            "towards \"oo\").");
+        ritual.osc (0, "Wave", wavetable).osc (0, "Table", table ("Vowels")).osc (0, "WtIndex", 0.0f).osc (0, "Volume", 1.3f)
               .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.08f).osc (0, "UniSpread", 0.8f)
+              .osc (0, "Arp", 1.0f)
               .filter (FilterType::lp12, 3500.0f, 0.1f, 0.0f)
-              .ampEnvelope (600.0f, 1500.0f, 0.9f, 1500.0f);
+              .ampEnvelope (220.0f, 1500.0f, 0.8f, 1800.0f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+              .set (ParamIDs::arp (0, "Division"), division ("1/4")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+              .set (ParamIDs::arp (0, "Gate"), 1.0f)
+              .set (ParamIDs::env (0, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+        ritual.rig.modulation.envelopes[0] = { { SP11 { 0.0f, 0.0f, 0.3f }, SP11 { 0.6f, 1.0f, 0.0f } }, -1, -1, -1 };
+        route (ritual, "env1", ParamIDs::osc (0, "WtIndex"), 0.35f);
         route (ritual, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (ritual, "macro3", ParamIDs::osc (0, "WtIndex"), 0.8f);
         macros (ritual, "BRIGHT", "SPACE", "VOWEL");
         reverb (ritual, RT::hall, 0.8f, 0.25f, 30.0f, 4.0f);
         space (ritual);
-        ritual.set (ParamIDs::patchLevel, 2.2f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        ritual.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: re-measured as an arp (0.55.0; measured, not by ear)
         x.add (ritual);
 
         auto ghost = x.make ("Signal Ghost", 14, { "Arp", "Randomizer", "FM", "Delay" },
@@ -5447,21 +5456,36 @@ namespace
         x.add (stabs);
 
         // ---- ARPS (2) ----------------------------------------------------------------------------------------
-        auto drums = x.make ("Battle Cry", 14, { "Arp", "Chord", "Drive", "Saw" },
-            "A battle cry that never lets up: a held chord of driven saws (BANSHEE on insert bus A). MACROS: BRIGHT, "
-            "SPACE, FURY (more grit on the chord, through SHAPER 1).");
+        auto drums = x.make ("Battle Cry", 14, { "Arp", "Ratchet", "Drive", "Saw" },
+            "A battle cry that never lets up: ARP 1 hammers the chord you hold in sixteenths over two octaves, up and "
+            "down, on driven saws (BANSHEE on insert bus A), accents on the beat and bursts of ratchets (2 and 3 hits in "
+            "a step) before each bar turns. MACROS: BRIGHT, SPACE, FURY (more grit, through SHAPER 1).");
         drums.osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.15f).osc (0, "UniSpread", 0.9f)
-             .osc (0, "Volume", 0.4f).osc (0, "Insert", 1.0f)
+             .osc (0, "Volume", 0.4f).osc (0, "Insert", 1.0f).osc (0, "Arp", 1.0f)
              .shaper (0, synth::ShaperModel::soft, 0.1f)
-             .filter (FilterType::lp24, 2500.0f, 0.15f, 0.0f)
-             .ampEnvelope (300.0f, 1000.0f, 1.0f, 1000.0f);
+             .filter (FilterType::lp24, 2500.0f, 0.15f, 0.35f).filterEnvelope (0.0f, 120.0f, 0.2f, 80.0f)
+             .ampEnvelope (2.0f, 160.0f, 0.5f, 90.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+             .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.55f);
+        {
+            auto& p = drums.rig.modulation.arps[0].patterns[0];
+            p = {};
+            for (int k = 0; k < 16; ++k)
+            {
+                auto& block = p.blocks[(size_t) k];
+                block.on = true;
+                block.velocity = k % 4 == 0 ? 1.0f : 0.62f;
+                block.ratchet = k == 7 ? 2 : k == 14 ? 3 : k == 15 ? 2 : 1;
+            }
+        }
         drive (drums, 0, DM::screamer, 6.0f, 5.0f, -4.0f, 0.2f, 0.3f);
         route (drums, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (drums, "macro3", ParamIDs::shp (0, "Drive"), 0.5f);
         macros (drums, "BRIGHT", "SPACE", "FURY");
         reverb (drums, RT::hall, 0.7f, 0.2f);
         space (drums);
-        drums.set (ParamIDs::patchLevel, 3.0f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        drums.set (ParamIDs::patchLevel, 6.9f);   // LEVEL: re-measured as an arp (0.55.0; measured, not by ear)
         x.add (drums);
 
         auto pursuit = x.make ("Pursuit", 15, { "Arp", "Ostinato", "Strings", "Shaper" },
@@ -5839,20 +5863,36 @@ namespace
         x.add (charge);
 
         auto sacred = x.make ("Sacred Chant", 14, { "Arp", "Choir", "Voice", "Chant" },
-            "A chanting choir: a chord you hold is sung by the choir (the VOICE filter, \"oh\" opening to \"ah\"). "
-            "MACROS: BRIGHT, SPACE, VOWEL.");
-        sacred.osc (0, "Volume", 0.5f)
-              .ampEnvelope (500.0f, 1500.0f, 0.95f, 2000.0f);
+            "A monks' chant: ARP 1 walks up the notes you hold in eighths, its pattern leaping a fifth and an octave "
+            "in a repeating figure, every syllable sung through the VOICE filter, opening from a hum to \"ah\" (so each "
+            "note is a new word), in a cathedral. Hold one note for a plain chant. MACROS: BRIGHT, SPACE, VOWEL.");
+        sacred.osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f).osc (1, "Arp", 1.0f)
+              .ampEnvelope (15.0f, 220.0f, 0.3f, 180.0f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+              .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.7f).set (ParamIDs::arp (0, "Length"), 8.0f);
+        {
+            auto& p = sacred.rig.modulation.arps[0].patterns[0];
+            p = {};
+            constexpr int figure[8] = { 0, 0, 7, 0, 12, 7, 0, 7 };
+            for (int k = 0; k < 8; ++k)
+            {
+                auto& block = p.blocks[(size_t) k];
+                block.on = true;
+                block.transpose = figure[k];
+                block.velocity = k % 4 == 0 ? 1.0f : 0.7f;
+            }
+        }
         ensemble (sacred, 0, 5, 0.08f, 9.0f, 4.6f);
         breath (sacred, 1, 0.05f);
         voice (sacred, 0.25f, 0.2f, 0.45f);
-        hum (sacred, 0, 0.35f, 500.0f);
+        hum (sacred, 0, 0.35f, 200.0f);   // each syllable open inside an eighth at 80 BPM
         route (sacred, "macro1", ParamIDs::voiceSharp, 0.3f);
         route (sacred, "macro3", ParamIDs::voiceVowel, 0.25f);
         macros (sacred, "BRIGHT", "SPACE", "VOWEL");
         reverb (sacred, RT::cathedral, 0.8f, 0.3f);
         space (sacred);
-        sacred.set (ParamIDs::patchLevel, -8.7f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        sacred.set (ParamIDs::patchLevel, 2.0f);   // LEVEL: re-measured as an arp (0.55.0; measured, not by ear)
         x.add (sacred);
 
         auto pulse8 = x.make ("Signal Pulse", 15, { "Arp", "Electronic", "Pulse", "Delay" },
@@ -6814,10 +6854,26 @@ namespace
         x.add (chant);
 
         auto festival = x.make ("Festival Bronze", 15, { "Arp", "Gamelan", "Bronze", "Festival" },
-            "A festival in bronze: the chord you hold rings out on a shimmering gamelan pair. MACROS: BRIGHT, SPACE, "
-            "POWER (a harder clang).");
-        bronze (festival, 0, 0, 0.4f, 8.0f);
-        festival.ampEnvelope (1.0f, 3000.0f, 0.0f, 1500.0f).set (ParamIDs::ampDecayCurve, -0.3f);
+            "A festival in bronze: ARP 1 rings the chord you hold out as a fast gamelan figure in sixteenths, leaping "
+            "an octave up and back (its pattern's transposes), a few strikes left out so the figure breathes, every "
+            "strike on a shimmering bronze pair left to ring over the next. MACROS: BRIGHT, SPACE, POWER (a harder clang).");
+        bronze (festival, 0, 0, 0.4f, 8.0f, 1.0f);
+        festival.ampEnvelope (1.0f, 1400.0f, 0.0f, 900.0f).set (ParamIDs::ampDecayCurve, -0.3f)
+                .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+                .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+                .set (ParamIDs::arp (0, "Gate"), 0.9f);
+        {
+            auto& p = festival.rig.modulation.arps[0].patterns[0];
+            p = {};
+            constexpr int leaps[16] = { 0, 12, 0, 0, 12, 0, 12, 24, 0, 12, 0, 0, 12, 24, 12, 0 };
+            for (int k = 0; k < 16; ++k)
+            {
+                auto& block = p.blocks[(size_t) k];
+                block.on = k != 3 && k != 11;
+                block.transpose = leaps[k];
+                block.velocity = k % 4 == 0 ? 1.0f : k % 2 == 0 ? 0.75f : 0.55f;
+            }
+        }
         route (festival, "macro1", ParamIDs::osc (0, "FmAmount"), 0.05f);
         route (festival, "macro1", ParamIDs::osc (1, "FmAmount"), 0.05f);
         route (festival, "macro3", ParamIDs::osc (0, "FmAmount"), 0.08f);
@@ -6825,7 +6881,7 @@ namespace
         macros (festival, "BRIGHT", "SPACE", "POWER");
         reverb (festival, RT::hall, 0.75f, 0.22f);
         space (festival);
-        festival.set (ParamIDs::patchLevel, -0.7f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        festival.set (ParamIDs::patchLevel, -1.3f);   // LEVEL: re-measured as an arp (0.55.0; measured, not by ear)
         x.add (festival);
     }
 
