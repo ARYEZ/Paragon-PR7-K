@@ -63,6 +63,15 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
     // The built-in expansions, a bank each, under their own heading.
     for (int bank = Rig::numBanks; bank < Rig::numBanksWithExpansions(); ++bank)
         addRadio (bankButtons, Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
+    // ...in a scrolling list of their own (0.48.0).
+    for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
+        expansionHolder.addAndMakeVisible (bankButtons[index]);
+    expansionView.setViewedComponent (&expansionHolder, false);
+    expansionView.setScrollBarsShown (true, false);
+    expansionView.setScrollBarThickness (8);
+    expansionView.getVerticalScrollBar().setColour (juce::ScrollBar::thumbColourId, ParagonColours::accentDim);
+    expansionView.setSingleStepSizes (10, 22);
+    addAndMakeVisible (expansionView);
     filterButtons[0]->setToggleState (true, juce::dontSendNotification);
     bankButtons[0]->setToggleState (true, juce::dontSendNotification);
 
@@ -336,12 +345,25 @@ void RigBrowser::saveDetails()
     refreshList();
 }
 
+void RigBrowser::showExpansionButton (int index)
+{
+    if (index <= Rig::numBanks || index >= bankButtons.size())
+        return;
+    const auto row = bankButtons[index]->getBounds();
+    const auto view = expansionView.getViewArea();
+    if (row.getY() < view.getY())
+        expansionView.setViewPosition (0, row.getY());
+    else if (row.getBottom() > view.getBottom())
+        expansionView.setViewPosition (0, row.getBottom() - view.getHeight());
+}
+
 void RigBrowser::showFilter (int newFilter, int bank)
 {
     const auto filterIndex = juce::jlimit (0, filterButtons.size() - 1, newFilter);
     const auto bankIndex = juce::jlimit (0, bankButtons.size() - 1, bank + 1);
     filterButtons[filterIndex]->setToggleState (true, juce::dontSendNotification);
     bankButtons[bankIndex]->setToggleState (true, juce::dontSendNotification);
+    showExpansionButton (bankIndex);
     filter = (Filter) filterIndex;
     bankFilter = bank;
     refreshList();
@@ -417,7 +439,7 @@ void RigBrowser::paint (juce::Graphics& g)
     if (bankButtons.size() > 0)
         g.drawText ("BANKS", bankButtons[0]->getBounds().translated (0, -22).withHeight (16), juce::Justification::centredLeft, false);
     if (bankButtons.size() > Rig::numBanks + 1)
-        g.drawText ("EXPANSIONS", bankButtons[Rig::numBanks + 1]->getBounds().translated (0, -22).withHeight (16), juce::Justification::centredLeft, false);
+        g.drawText ("EXPANSIONS", expansionsHeading, juce::Justification::centredLeft, false);
 }
 
 void RigBrowser::resized()
@@ -435,8 +457,7 @@ void RigBrowser::resized()
     if (bankButtons.size() > Rig::numBanks)
     {
         // ALL BANKS, then the user's banks A-E side by side on one row (they were a column of five: with nine
-        // expansions under them the list ran off the bottom), then the expansions, a row each, made a little
-        // shorter (down to 20 px) when there are too many for 28 px rows.
+        // expansions under them the list ran off the bottom), then the expansions in their scrolling list.
         bankButtons[0]->setBounds (sidebar.removeFromTop (28));
         sidebar.removeFromTop (4);
         auto row = sidebar.removeFromTop (28);
@@ -451,18 +472,20 @@ void RigBrowser::resized()
         const auto expansions = bankButtons.size() - Rig::numBanks - 1;
         if (expansions > 0)
         {
-            sidebar.removeFromTop (24);   // room for EXPANSIONS
-            // With many expansions (17 in 0.42.0) the gaps close up to 2 px and the rows go down to 16 px, so
-            // about 21 still fit before the list would run off the bottom.
-            const auto each = sidebar.getHeight() / expansions;
-            const auto gap = each >= 26 ? 4 : 2;
-            const auto height = juce::jlimit (16, 28, each - gap);
+            // EXPANSIONS, then the expansions in a list that scrolls (0.48.0: with 21 of them the rows had shrunk to
+            // 16 px and there was room for one more). Rows of 22 px; the scroll bar only when they don't all fit.
+            expansionsHeading = sidebar.removeFromTop (24).withTrimmedTop (2).withHeight (16);
+            expansionView.setBounds (sidebar);
+            constexpr int height = 22, gap = 3;
+            const auto total = expansions * (height + gap) - gap;
+            const auto width = sidebar.getWidth() - (total > sidebar.getHeight() ? expansionView.getScrollBarThickness() + 2 : 0);
+            expansionHolder.setSize (width, total);
             for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
-            {
-                bankButtons[index]->setBounds (sidebar.removeFromTop (height));
-                sidebar.removeFromTop (gap);
-            }
+                bankButtons[index]->setBounds (0, (index - Rig::numBanks - 1) * (height + gap), width, height);
         }
+        for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
+            if (bankButtons[index]->getToggleState())
+                showExpansionButton (index);   // the chosen one in view
     }
 
     area.removeFromLeft (12);

@@ -30,6 +30,9 @@ public:
     // MIMIC (0.44.0): its panel, over the preset list.
     void showMimic (bool show = true);
     MimicPanel& getMimicPanel() noexcept { return mimicPanel; }
+    // The expansions' scrolling list (0.48.0), for tests: its view, and the button for expansion `index` (0 the first).
+    const juce::Viewport& getExpansionView() const noexcept { return expansionView; }
+    const juce::Component* getExpansionButton (int index) const { return bankButtons[Rig::numBanks + 1 + index]; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -66,6 +69,12 @@ private:
     juce::String selectedFactoryName;
 
     juce::OwnedArray<juce::TextButton> filterButtons, bankButtons;
+    // 0.48.0: the expansions scroll (the owner's choice: a scrolling list), so any number of banks fits. Their
+    // buttons live in `expansionHolder`, shown through `expansionView`; `expansionsHeading` is where EXPANSIONS is drawn.
+    juce::Viewport expansionView;
+    juce::Component expansionHolder;
+    juce::Rectangle<int> expansionsHeading;
+    void showExpansionButton (int index);   // scrolls the list so bankButtons[index] is in view
     juce::TextEditor search;
     juce::ListBox list { "Rigs", this };
 

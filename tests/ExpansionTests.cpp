@@ -10,6 +10,7 @@
 #include "PluginProcessor.h"
 #include "rigs/Expansions.h"
 #include "rigs/FactoryRigs.h"
+#include "ui/RigBrowser.h"
 #include "dsp/synth/Arpeggiator.h"
 
 #include <chrono>
@@ -331,8 +332,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto blood = rig.bank == Rig::numBanks + 17;     // BLOODWAVE: 120 BPM in F minor, darksynth
         const auto dust = rig.bank == Rig::numBanks + 18;      // DUSTFALL: 70 BPM in D minor, vast and cold
         const auto super = rig.bank == Rig::numBanks + 19;     // SUPERPOSITION: 90 BPM in C minor, cold and cerebral
+        const auto sev = rig.bank == Rig::numBanks + 20;       // SEVERED: 96 BPM, D minor slipping into bright F major
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -382,6 +384,57 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (sev && type == "Lead")
+        {
+            // A cheerful phrase in F major, then the same shape turned to D minor, ending on a held note.
+            line ({ { 0, 0.5, 65 }, { 0.5, 0.5, 69 }, { 1, 0.5, 72 }, { 1.5, 0.5, 69 }, { 2, 1, 70 }, { 3, 1, 67 },
+                    { 4, 0.5, 62 }, { 4.5, 0.5, 65 }, { 5, 0.5, 69 }, { 5.5, 0.5, 65 }, { 6, 1, 64 }, { 7, 1, 61 },
+                    { 8, 1, 62 }, { 9, 1, 65 }, { 10, 2, 64 }, { 12, 4, 62 } }, 100);
+            wheel (12.0, 16.0, 100);
+            length = 20.0 * beat;
+        }
+        else if (sev && type == "Pad")
+        {
+            // F major, then D minor: the bright surface and what's under it.
+            chord (e, at (0), at (7.8), { 41, 53, 57, 60, 65 }, 90);
+            chord (e, at (8), at (15.8), { 38, 50, 57, 62, 65 }, 90);
+            wheel (10.0, 15.0, 100);
+            length = 22.0 * beat;
+        }
+        else if (sev && type == "Bass")
+        {
+            // Held notes (the step sequencer and GLITCH make the rhythm), then the plain ones re-struck: D, Bb, F, A.
+            if (rig.name == "Break Room Bass")
+            {
+                constexpr int roots[] = { 38, 34, 41, 33 };
+                for (int k = 0; k < 16; ++k)
+                    if (k % 4 != 3)
+                        line ({ { k * 1.0, 0.6, roots[k / 4] } }, k % 2 == 0 ? 110 : 90);
+            }
+            else
+                line ({ { 0, 3.9, 38 }, { 4, 3.9, 34 }, { 8, 3.9, 41 }, { 12, 3.9, 33 } }, 105);
+            wheel (8.0, 15.0, 90);
+            length = 19.0 * beat;
+        }
+        else if (sev && type == "Keys")
+        {
+            // The melancholy piano figure: Dm, Bb, F, A, with a high answer.
+            const std::initializer_list<int> chords[] = { { 50, 57, 62, 65 }, { 46, 58, 62, 65 }, { 53, 57, 60, 65 }, { 45, 57, 61, 64 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4.0), at (c * 4.0 + 3.0), notes, 90);
+                ++c;
+            }
+            line ({ { 1, 1, 74 }, { 2, 1, 72 }, { 5, 1, 74 }, { 6, 1, 70 }, { 9, 1, 72 }, { 13, 2, 73 } }, 80);
+            length = 20.0 * beat;
+        }
+        else if (sev)
+        {
+            chord (e, at (0), at (7.9), { 50, 53, 57 }, 100);
+            chord (e, at (8), at (15.9), { 53, 57, 60 }, 100);
+            length = 19.0 * beat;
         }
         else if (super && type == "Lead")
         {
@@ -1560,3 +1613,23 @@ TEST_CASE ("The arp randomizer's added scales: Phrygian dominant, double harmoni
     CHECK (synth::arp::scaleNames.size() == (int) synth::arp::scaleMasks.size());
     CHECK (synth::arp::scaleNames.indexOf ("Whole Tone") == 13);   // the old ones keep their places
 }
+
+TEST_CASE ("Expansions: the browser's list scrolls, so every bank can be reached however many there are", "[expansions][rigs]")
+{
+    ParagonX1AudioProcessor processor;
+    RigBrowser browser (processor);
+    browser.setSize (1576, 670);   // as on the PRESETS page
+
+    const auto& view = browser.getExpansionView();
+    const auto count = (int) expansions::list.size();
+    REQUIRE (view.getHeight() > 100);
+    // Every button a full row, none squeezed.
+    for (int k = 0; k < count; ++k)
+        CHECK (browser.getExpansionButton (k)->getHeight() >= 20);
+
+    // Choosing the last bank scrolls it into view.
+    browser.showFilter (0, Rig::numBanks + count - 1);
+    const auto last = browser.getExpansionButton (count - 1)->getBounds();
+    CHECK (view.getViewArea().contains (last));
+}
+
