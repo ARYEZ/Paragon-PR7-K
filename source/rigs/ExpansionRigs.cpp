@@ -8410,8 +8410,8 @@ namespace
         // ---- LEADS -------------------------------------------------------------------------------------------
         auto memo = x.make ("Cheerful Memo", 1, { "Lead", "Freeform", "Bright", "Office" },
             "A chipper office-jingle lead with a smile that doesn't reach the eyes: a hand-drawn wave (DRAW: a bright, "
-            "lopsided cycle) mirrored into perfect symmetry by EDGE's SYMMETRY mode (so it's hollow and clean: only odd "
-            "harmonics), a quick pluck of the filter, a short room. MACROS: BRIGHT, SPACE, DREAD (a tritone creeps in "
+            "lopsided cycle) evened out by EDGE's SYMMETRY mode, blending it with its own mirror image, so it's rounder "
+            "and cleaner), a quick pluck of the filter, a short room. MACROS: BRIGHT, SPACE, DREAD (a tritone creeps in "
             "underneath and the pitch wavers). MOD WHEEL: vibrato.");
         {
             synth::FreeformDrawing d;
@@ -8485,8 +8485,8 @@ namespace
         auto hum = x.make ("Fluorescent Hum", 4, { "Pad", "FFT", "Pulsing", "Office" },
             "Office lights buzzing overhead: a saw whose harmonics swell and fade at a fast, uneven flicker (the FFT "
             "editor's VSPEED and VSTRENGTH), a quiet mains-like hum an octave down, and ECHELON's dynamic band pulling "
-            "the low-mids back whenever they bloom. MACROS: BRIGHT, SPACE, DREAD (a faster, harsher flicker and a "
-            "tritone). MOD WHEEL: more flicker.");
+            "the low-mids back whenever they bloom. MACROS: BRIGHT, SPACE, DREAD (a tritone and the filter's "
+            "grit). MOD WHEEL: opens the filter.");
         hum.osc (0, "Volume", 0.5f).osc (0, "FftVSpeed", 0.55f).osc (0, "FftVStrength", 0.5f)
            .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.06f).osc (0, "UniSpread", 0.7f)
            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.2f)
@@ -8495,9 +8495,9 @@ namespace
         clash (hum, 2, synth::OscWave::saw, 6.0f, 0.15f);
         eqBand (hum, 0, eq::Shape::bell, 300.0f, 0.0f, 1.0f);
         hum.set (ParamIDs::eqBand (0, "Dyn"), -6.0f).set (ParamIDs::eqBand (0, "DynAuto"), 1.0f);
-        route (hum, "modWheel", ParamIDs::osc (0, "FftVStrength"), 0.3f);
+        route (hum, "modWheel", ParamIDs::fltCutoff, 0.2f);
         route (hum, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (hum, "macro3", ParamIDs::osc (0, "FftVSpeed"), 0.25f);
+        route (hum, "macro3", ParamIDs::fltDrive, 0.4f);
         macros (hum, "BRIGHT", "SPACE", "DREAD");
         reverb (hum, RT::room, 0.6f, 0.2f);
         space (hum);
@@ -8606,8 +8606,8 @@ namespace
         auto breakRoom = x.make ("Break Room Bass", 9, { "Bass", "Sync", "Snap", "Hard" },
             "A bass with a hard, unfriendly snap: a saw hard-synced high at the start of each note and falling back over "
             "a quarter second (SYNC's own envelope), so every note barks then settles, a low filter, a clean sine "
-            "underneath. MACROS: BRIGHT (a longer bark), SPACE, DREAD (a harsher sync and the filter's grit). MOD WHEEL: "
-            "opens the filter.");
+            "underneath. MACROS: BRIGHT, SPACE, DREAD (a harsher sync and the filter's grit). MOD WHEEL: opens the "
+            "filter.");
         breakRoom.osc (0, "Volume", 0.5f).osc (0, "SyncAmount", 0.1f).osc (0, "SyncEnv", 0.55f).osc (0, "SyncEnvTime", 250.0f)
                  .osc (0, "SyncEnvCurve", -0.4f)
                  .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
@@ -8616,7 +8616,7 @@ namespace
                  .mono (10.0f);
         clean (breakRoom, 1);
         route (breakRoom, "modWheel", ParamIDs::fltCutoff, 0.15f);
-        route (breakRoom, "macro1", ParamIDs::osc (0, "SyncEnvTime"), 0.25f);
+        route (breakRoom, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (breakRoom, "macro3", ParamIDs::osc (0, "SyncAmount"), 0.2f);
         route (breakRoom, "macro3", ParamIDs::fltDrive, 0.4f);
         macros (breakRoom, "BRIGHT", "SPACE", "DREAD");
