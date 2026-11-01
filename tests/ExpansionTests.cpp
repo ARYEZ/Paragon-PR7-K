@@ -240,7 +240,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     REQUIRE (p.processor.saveCurrentRigAs ("My Brass"));
     const auto& saved = p.entryNamed ("My Brass");
     CHECK (saved.rig.bank == 0);
-    CHECK (saved.rig.getSlotName() == "A44");
+    CHECK (saved.rig.getSlotName() == "A41");
 
     Rig details = saved.rig;
     details.bank = Rig::numBanks;   // asked for an expansion's bank
@@ -1497,7 +1497,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         {
             if (rig.name == "Sand Ripple")
                 chord (e, at (0), at (15.9), { 62 }, 100);
-            else if (rig.name == "War Drums")
+            else if (rig.name == "War Pulse")
                 chord (e, at (0), at (15.9), { 50, 57 }, 105);
             else
                 chord (e, at (0), at (15.9), { 50, 54, 57 }, 100);

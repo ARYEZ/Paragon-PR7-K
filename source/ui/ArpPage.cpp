@@ -780,7 +780,7 @@ ArpPage::ArpPage (ParagonX1AudioProcessor& p)
       humanize (state, ParamIDs::arp (0, "Humanize"), "HUMANIZE", "Each block a little late, at random (up to a quarter of a step): less machine-like."),
       strum (state, ParamIDs::arp (0, "Strum"), "STRUM", "POLY: the chord's notes one after another, low to high, over up to half a step, as a strummed guitar."),
       trigger (state, ParamIDs::arp (0, "Trigger"), "TRIGGER", "SONG: in step with your song while it plays (from the first key when it's stopped). KEY: from the first key, always."),
-      shuffle (state, ParamIDs::shuffle, "SHUFFLE", "Swing: every second step late, up to half a step. The synth's own: shared with the step sequencer (and the drums later)."),
+      shuffle (state, ParamIDs::shuffle, "SHUFFLE", "Swing: every second step late, up to half a step. The synth's own: shared with the step sequencer."),
       chain (state, ParamIDs::arp (0, "Chain"), "CHAIN", "Play the patterns with blocks one after another (A, B, C, D), rather than just the one chosen.")
 {
     for (int k = 0; k < synth::arp::numArps; ++k)

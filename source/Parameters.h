@@ -192,7 +192,7 @@ namespace ParamIDs
     inline constexpr auto seqDelay    = "seqDelay";      // ms
     inline constexpr auto seqLowKey   = "seqLowKey";     // the key zone
     inline constexpr auto seqHighKey  = "seqHighKey";
-    inline constexpr auto shuffle     = "shuffle";       // the synth's SHUFFLE (the arpeggiator and drums will share it)
+    inline constexpr auto shuffle     = "shuffle";       // the synth's SHUFFLE (the step sequencer and arpeggiator share it)
 
     // How the keyboard plays it.
     inline constexpr auto playMode  = "playMode";     // choice: Poly, Mono, Mono Low, Mono High
@@ -206,33 +206,8 @@ namespace ParamIDs
     // ARPS TOGETHER (stage 5b, 0.16.0): every arp's steps counted from the first key held, so they stay in step.
     inline constexpr auto arpsTogether = "arpsTogether";
 
-    // THE DRUMS (stage 6a, version hint 20): the kit's own settings, then each slot's, "drum1".."drum12" plus a setting.
-    inline constexpr auto drumsOn       = "drumsOn";
-    inline constexpr auto drumsRoot     = "drumsRoot";       // the kit's C: a MIDI note
-    inline constexpr auto drumsLevel    = "drumsLevel";      // dB
-    inline constexpr auto drumsVelocity = "drumsVelocity";   // 0 to 1
-    inline constexpr int numDrums = 12;
-    inline juce::String drum (int slot, const char* what) { return "drum" + juce::String (slot + 1) + what; }
-    inline constexpr const char* drumSettings[] = { "Model", "Level", "Pan", "Pitch", "Decay", "Tone", "Snap", "Mute", "Solo",
-                                                    "Choke", "Insert", "SendDelay", "SendReverb",
-                                                    "SampleStart", "SampleEnd",     // 0.21.1 (version hint 21): appended
-                                                    "Gain", "Mono", "Delay", "LowPass", "HighPass" };   // 6c (hint 23)
-    consteval int drumSetting (std::string_view what)
-    {
-        for (int i = 0; i < (int) std::size (drumSettings); ++i)
-            if (std::string_view (drumSettings[i]) == what)
-                return i;
-        throw "not a drum setting";
-    }
-
-    // THE DRUM SEQUENCER (stage 6b, version hint 22): the kit's beat. Its notes are preset data (ModMatrix::drumPatterns).
-    inline constexpr auto dseqOn       = "dseqOn";
-    inline constexpr auto dseqTrigger  = "dseqTrigger";    // choice: Song, Key (drumseq::triggerNames)
-    inline constexpr auto dseqPattern  = "dseqPattern";    // choice: A-D (SONG plays it; KEY: the key held chooses)
-    inline constexpr auto dseqDivision = "dseqDivision";   // SPEED: seq::divisionNames
-    inline constexpr auto dseqTiming   = "dseqTiming";     // seq::timingNames
-    inline constexpr auto dseqLength   = "dseqLength";     // beats, 1 to 16
-    inline constexpr auto dseqVelocity = "dseqVelocity";   // VELOCITY AMOUNT: how much the key's velocity counts (KEY)
+    // 0.54.0: THE DRUMS (6a-6c: drumsOn, drumsRoot, drumsLevel, drumsVelocity, drum1-12..., dseq*) were removed at the
+    // owner's word (PR7-D is the family's drum plugin): never reuse those IDs.
 
     // CONTROLLER TO MOD WHEEL (stage 4f, 0.14.0): these controllers drive the mod wheel too (the "mw" switches).
     inline constexpr auto mwBreath     = "mwBreath";

@@ -11,7 +11,6 @@
 #include "ui/RigBrowser.h"
 #include "ui/ModPage.h"
 #include "ui/ArpPage.h"
-#include "ui/DrumPage.h"
 #include "ui/FxPage.h"
 #include "ui/ModSourceStrip.h"
 #include "ui/SynthPanels.h"
@@ -44,33 +43,6 @@ private:
 //   keyboard: the on-screen keyboard, always there (play it with the mouse)
 //
 // MOD, PRESETS and SETTINGS cover the synth panels; the keyboard stays.
-// The on-screen keyboard, with THE DRUMS' 12 keys tinted while the kit is on (stage 6a).
-class KitKeyboard final : public juce::MidiKeyboardComponent
-{
-public:
-    KitKeyboard (ParagonX1AudioProcessor&, juce::MidiKeyboardState&, Orientation);
-    bool isKitKey (int note) const noexcept { return kitOn && note >= kitRoot && note < kitRoot + 12; }
-    void paint (juce::Graphics&) override;
-
-private:
-    void drawWhiteNote (int note, juce::Graphics&, juce::Rectangle<float> area, bool isDown, bool isOver,
-                        juce::Colour lineColour, juce::Colour textColour) override;
-    void drawBlackNote (int note, juce::Graphics&, juce::Rectangle<float> area, bool isDown, bool isOver,
-                        juce::Colour noteFillColour) override;
-    void followKit();
-
-    // Its own timer (the keyboard already has one for scrolling).
-    struct Poll final : juce::Timer
-    {
-        std::function<void()> callback;
-        void timerCallback() override { callback(); }
-    };
-    ParagonX1AudioProcessor& processor;
-    bool kitOn = false;
-    int kitRoot = 36;
-    Poll poll;
-};
-
 class MainView final : public juce::Component,
                        public juce::DragAndDropContainer,
                        public ControlHost,
@@ -84,7 +56,7 @@ public:
     static constexpr int width = 1600;
     static constexpr int height = 900;
 
-    enum class Page { synth, presets, settings, modulation, arp, fx, drums };
+    enum class Page { synth, presets, settings, modulation, arp, fx };
     void showPage (Page);
 
     // For snapshots and tests: the oscillator tabs.
@@ -96,7 +68,6 @@ public:
     ModPage& getModPage() noexcept { return modPage; }
     ArpPage& getArpPage() noexcept { return arpPage; }
     FxPage& getFxPage() noexcept { return fxPage; }
-    DrumPage& getDrumPage() noexcept { return drumPage; }
     ModSourceStrip& getSourceStrip() noexcept { return sources; }
     SettingsPage& getSettingsPage() noexcept { return settingsPage; }
 
@@ -127,7 +98,6 @@ private:
     IconButton synthTab { "The synth", Icons::Type::processor, "SYNTH" },
                modTab { "Modulation: LFOs, macros and the mod matrix", Icons::Type::modulation, "MOD" },
                arpTab { "The arpeggiators", Icons::Type::arpeggio, "ARP" },
-               drumsTab { "The drums: a kit of 12, on 12 keys", Icons::Type::drums, "DRUMS" },
                fxTab { "The rack: ECHELON, DOMINION, CONSTRICTOR and the LIMITER after the synth", Icons::Type::rack, "FX" },
                presetsTab { "Browse, save and organise presets", Icons::Type::presets, "PRESETS" },
                settingsTab { "Tuning and other settings", Icons::Type::settings, "SETTINGS" };
@@ -152,7 +122,7 @@ private:
     std::vector<juce::Component*> synthPage;
 
     ModSourceStrip sources;
-    KitKeyboard keyboard;
+    juce::MidiKeyboardComponent keyboard;
     // What the knobs show (routes, links, learning), as last drawn: a change repaints them.
     std::vector<ModRouteData> shownRoutes;
     MidiLinks shownLinks;
@@ -162,7 +132,6 @@ private:
     ModPage modPage;
     ArpPage arpPage;
     FxPage fxPage;
-    DrumPage drumPage;
     RigBrowser rigBrowser;
     SettingsPage settingsPage;
     Page page = Page::synth;

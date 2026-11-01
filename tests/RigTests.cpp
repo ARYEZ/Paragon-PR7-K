@@ -275,7 +275,7 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
     CHECK (library.step (&entries.front(), -1) == &entries.back());
     CHECK (library.step (nullptr, 1) == &entries.front());
 
-    CHECK (library.nextFreeNumber (0) == 44);   // the factory presets fill A01 to A43
+    CHECK (library.nextFreeNumber (0) == 41);   // the factory presets fill A01 to A40
 }
 
 TEST_CASE ("Saving and loading a preset restores the sound but not the global settings", "[rigs]")
@@ -368,10 +368,10 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
 {
     RigRig r;
     r.processor.loadRig (r.entryNamed ("Init"));
-    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A44
-    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A45
-    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A44");
-    r.processor.loadRig (r.entryNamed ("Sung Vowels"));   // A43
+    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A41
+    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A42
+    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A41");
+    r.processor.loadRig (r.entryNamed ("Sung Vowels"));   // A40
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Second");
     r.processor.stepRig (1);
@@ -466,4 +466,47 @@ TEST_CASE ("Only .pr7rig files are rigs: the old Paragon X1 .x1rig files aren't 
     RigLibrary library (temp.folder);
     CHECK (std::none_of (library.getEntries().begin(), library.getEntries().end(),
                          [] (const auto& entry) { return entry.rig.name == "From X1"; }));
+}
+
+// 0.54.0: THE DRUMS were removed (PR7-D is the family's drum plugin). A project or preset saved with them (drum
+// settings, a sample in a DrumSamples child, drum patterns in the matrix) still loads: the synth's own settings come
+// back, the drum parts are dropped and not saved again.
+TEST_CASE ("A project saved with the old drums loads without them", "[rigs]")
+{
+    ParagonX1AudioProcessor source;
+    auto* cutoff = source.getParameters().getParameter (ParamIDs::fltCutoff);
+    REQUIRE (cutoff != nullptr);
+    cutoff->setValueNotifyingHost (0.3f);
+    juce::MemoryBlock saved;
+    source.getStateInformation (saved);
+    auto xml = juce::AudioProcessor::getXmlFromBinary (saved.getData(), (int) saved.getSize());
+    REQUIRE (xml != nullptr);
+    // What 0.53.0 wrote for a kit that was on, with a sample.
+    auto* on = xml->createNewChildElement ("PARAM");
+    on->setAttribute ("id", "drumsOn");
+    on->setAttribute ("value", 1.0);
+    auto* samples = xml->createNewChildElement ("DrumSamples");
+    auto* sample = samples->createNewChildElement ("DrumSample");
+    sample->setAttribute ("slot", 1);
+    sample->setAttribute ("name", "kick");
+    sample->setAttribute ("data", "not audio");
+    juce::MemoryBlock old;
+    juce::AudioProcessor::copyXmlToBinary (*xml, old);
+
+    ParagonX1AudioProcessor loaded;
+    loaded.setStateInformation (old.getData(), (int) old.getSize());
+    CHECK (std::abs (loaded.getParameters().getParameter (ParamIDs::fltCutoff)->getValue() - 0.3f) < 1.0e-4f);
+    juce::MemoryBlock again;
+    loaded.getStateInformation (again);
+    auto back = juce::AudioProcessor::getXmlFromBinary (again.getData(), (int) again.getSize());
+    REQUIRE (back != nullptr);
+    CHECK (back->getChildByName ("DrumSamples") == nullptr);
+    CHECK (loaded.getParameters().getParameter ("drumsOn") == nullptr);
+
+    // A preset file with a drum sample and drum patterns: read, the drum parts skipped.
+    juce::XmlElement rigXml (*makeFactoryRigs().front().toXml());
+    auto* drum = rigXml.createNewChildElement ("DrumSample");
+    drum->setAttribute ("slot", 1);
+    auto rig = Rig::fromXml (rigXml);
+    CHECK (rig.has_value());
 }

@@ -25,7 +25,7 @@ namespace expansions
           "distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds." },
         { "STARCOURT", "SC",
           "Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor "
-          "chords, chorused polysynth pads, haunting leads, cassette wobble and big '80s drums. Our own sounds." },
+          "chords, chorused polysynth pads, haunting leads, and cassette wobble. Our own sounds." },
         { "SANDSEA", "SS",
           "Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices, "
           "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Our own sounds." },
@@ -50,27 +50,27 @@ namespace expansions
           "sounds." },
         { "NIGHTDRIVE", "ND",
           "Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro "
-          "synthwave, all the way up: lush chorused polysynths, glassy '80s keys, pulsing octave basses, drum-machine "
-          "beats, dreamy romantic leads, big reverbs and echoes. Our own sounds." },
+          "synthwave, all the way up: lush chorused polysynths, glassy '80s keys, pulsing octave basses, "
+          "dreamy romantic leads, big reverbs and echoes. Our own sounds." },
         { "UNSPOKEN", "UN",
           "Inspired by the score of a 2016 film about first contact and a language that changes how you see time: "
           "human voices breathing, murmuring and stuttering in eerie layers, vast swelling drones, circular phrases "
           "that run forwards and back, cold fog, quiet awe and grief. Our own sounds." },
         { "CYBERSHRINE", "CS",
           "Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an "
-          "ancient chorus of women's voices in close, clashing harmony, huge slow ritual drums, deep temple bells, and "
+          "ancient chorus of women's voices in close, clashing harmony, a huge, slow temple drum played as a bass, deep temple bells, and "
           "a cold, rainy, reverberant machine world. Our own sounds." },
         { "STOWAWAY", "SW",
           "Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship "
           "in deep space: echoing woodwinds, primitive horns, trembling string harmonics, low brass clusters, the "
           "ship's hum, hiss, chatter and alarms, and dread that never resolves. Our own sounds." },
         { "CHROMEFURY", "CF",
-          "Inspired by the score of a 2015 post-apocalyptic chase film: relentless war drums, sawing string ostinatos, "
+          "Inspired by the score of a 2015 post-apocalyptic chase film: relentless drive, sawing string ostinatos, "
           "guitar-like screaming leads stacked with distortion over growling low synths, engines, speed, dust and "
           "fire. Lead-heavy: 6 leads. Our own sounds." },
         { "ASCENSION", "AS",
           "Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant "
-          "growing into a vast, epic choir, heroic strings and brass, big drums, mystery and awe. Built on the VOICE "
+          "growing into a vast, epic choir, heroic strings and brass, mystery and awe. Built on the VOICE "
           "filter for choirs that sound human. Our own sounds." },
         { "REFRACTION", "RF",
           "Inspired by the score of a 2018 science-fiction film about an expedition into a zone where everything is "
@@ -82,7 +82,7 @@ namespace expansions
           "city at night, light trails, and power swelling out of control. Our own sounds." },
         { "BLOODWAVE", "BW",
           "Inspired by the soundtrack of a 2012 top-down action game set in a neon-soaked 1989 city: the dark, dirty "
-          "side of the '80s, with driving distorted synths at club tempos, basses pumping under a drum machine, hazy, "
+          "side of the '80s, with driving distorted synths at club tempos, pumping basses, hazy, "
           "feverish detuned loops, worn tape and bit-crushed grit. Our own sounds." },
         { "DUSTFALL", "DF",
           "Inspired by the score of a 2017 science-fiction film, the sequel to a classic set thirty years on: colder, "

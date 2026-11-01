@@ -1,6 +1,5 @@
 #include "Parameters.h"
 
-#include "dsp/synth/Drums.h"
 #include "dsp/synth/SynthSettings.h"
 #include "dsp/synth/OscModulation.h"
 #include "dsp/synth/Wavetable.h"
@@ -29,10 +28,7 @@ namespace
     constexpr int stage5b = 15;  // 0.16.0 (16, 0.17.0: the rack, in RackParameters.cpp)
     constexpr int stage7b = 17;  // 0.18.0 (18, 0.19.0: MOD / LO-FI, in RackParameters.cpp)
     constexpr int stage7d = 19;  // 0.20.0
-    constexpr int stage6a = 20;  // 0.21.0
-    constexpr int stage6aStart = 21;   // 0.21.1: SAMPLE's START and END
-    constexpr int stage6b = 22;  // 0.22.0
-    constexpr int stage6c = 23;  // 0.23.0
+    // 20 to 23 were THE DRUMS (0.21.0 to 0.23.0), removed in 0.54.0: never reuse them.
     constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
     constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
 
@@ -497,71 +493,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         addChoice (layout, arp (k, "NoteSource"), name + "Note Source", synth::arp::noteSourceNames, (int) arpDefaults.noteSource, stage5b);
     }
     addSwitch (layout, arpsTogether, "Arps Together", synth::Settings{}.arpsTogether, stage5b);
-
-    // THE DRUMS (stage 6a). Off by default, so the keys play the synth until the kit is switched on.
-    {
-        const ToText asPitch = [] (float value, int)
-        {
-            const auto rounded = std::round (value);
-            const auto text = std::abs (value - rounded) < 0.005f ? juce::String ((int) rounded) : juce::String (value, 2);
-            return (value > 0.004f ? "+" : "") + text + " st";
-        };
-        const ToText asLevel = [] (float db, int) { return db <= -47.95f ? juce::String ("-inf") : juce::String (db, 1) + " dB"; };
-        const ToText asShare = [] (float value, int) { return juce::String (value * 100.0f, 2) + "%"; };   // of the sample
-        // DELAY: later to the right; to the left, the anchor (how far into the hit lands on the step), ms either way.
-        juce::NormalisableRange<float> delayRange (-1000.0f, 1000.0f, 0.1f, 0.35f, true);
-        const ToText asDrumDelay = [] (float ms, int)
-        {
-            if (std::abs (ms) < 0.05f)
-                return juce::String ("0 ms");
-            const auto text = juce::String (std::abs (ms), std::abs (ms) < 10.0f ? 1 : 0) + " ms";
-            return ms > 0.0f ? "+" + text : "Anchor " + text;
-        };
-        const ToText asLowPass = [] (float hz, int) { return hz >= 19999.0f ? juce::String ("Off") : asFrequency (hz, 0); };
-        const ToText asHighPass = [] (float hz, int) { return hz <= 20.01f ? juce::String ("Off") : asFrequency (hz, 0); };
-        addSwitch (layout, drumsOn, "Drums On", false, stage6a);
-        add (layout, drumsRoot, "Drums Root Key", { 0.0f, 116.0f, 1.0f }, 36.0f, asNote, stage6a);
-        add (layout, drumsLevel, "Drums Level", { -24.0f, 12.0f, 0.1f }, 0.0f, asDb, stage6a);
-        add (layout, drumsVelocity, "Drums Velocity", { 0.0f, 1.0f }, 1.0f, asPercent, stage6a);
-        for (int k = 0; k < numDrums; ++k)
-        {
-            const auto& d = synth::drums::slotDefaults[(size_t) k];
-            const auto name = "Drum " + juce::String (k + 1) + " ";
-            addChoice (layout, drum (k, "Model"), name + "Model", synth::drums::modelNames, (int) d.model, stage6a);
-            add (layout, drum (k, "Level"), name + "Volume", { -48.0f, 12.0f, 0.1f }, 0.0f, asLevel, stage6a);
-            add (layout, drum (k, "Pan"), name + "Pan", { -1.0f, 1.0f }, 0.0f, asPan, stage6a);
-            add (layout, drum (k, "Pitch"), name + "Pitch", { -24.0f, 24.0f, 0.01f }, d.pitch, asPitch, stage6a);
-            add (layout, drum (k, "Decay"), name + "Decay", { 0.0f, 1.0f }, d.decay, asPercent, stage6a);
-            add (layout, drum (k, "Tone"), name + "Tone", { 0.0f, 1.0f }, d.tone, asPercent, stage6a);
-            add (layout, drum (k, "Snap"), name + "Snap", { 0.0f, 1.0f }, d.snap, asPercent, stage6a);
-            addSwitch (layout, drum (k, "Mute"), name + "Mute", false, stage6a);
-            addSwitch (layout, drum (k, "Solo"), name + "Solo", false, stage6a);
-            addChoice (layout, drum (k, "Choke"), name + "Choke", synth::drums::chokeNames, d.choke, stage6a);
-            addChoice (layout, drum (k, "Insert"), name + "Insert", insertBusNames, 0, stage6a);
-            add (layout, drum (k, "SendDelay"), name + "Send Delay", { 0.0f, 1.0f }, 1.0f, asPercent, stage6a);
-            add (layout, drum (k, "SendReverb"), name + "Send Reverb", { 0.0f, 1.0f }, 1.0f, asPercent, stage6a);
-            add (layout, drum (k, "SampleStart"), name + "Sample Start", { 0.0f, 1.0f }, 0.0f, asShare, stage6aStart);
-            add (layout, drum (k, "SampleEnd"), name + "Sample End", { 0.0f, 1.0f }, 1.0f, asShare, stage6aStart);
-            // THE SAMPLE EDITOR (6c).
-            add (layout, drum (k, "Gain"), name + "Gain", { -24.0f, 24.0f, 0.1f }, 0.0f, asDb, stage6c);
-            addSwitch (layout, drum (k, "Mono"), name + "Mono", false, stage6c);
-            add (layout, drum (k, "Delay"), name + "Delay", delayRange, 0.0f, asDrumDelay, stage6c);
-            add (layout, drum (k, "LowPass"), name + "Low Pass", logRange (20.0, 20000.0), 20000.0f, asLowPass, stage6c);
-            add (layout, drum (k, "HighPass"), name + "High Pass", logRange (20.0, 20000.0), 20.0f, asHighPass, stage6c);
-        }
-
-        // THE DRUM SEQUENCER (stage 6b).
-        const synth::drumseq::Settings sequencer;
-        addSwitch (layout, dseqOn, "Drum Seq On", sequencer.on, stage6b);
-        addChoice (layout, dseqTrigger, "Drum Seq Trigger", synth::drumseq::triggerNames, (int) sequencer.trigger, stage6b);
-        addChoice (layout, dseqPattern, "Drum Seq Pattern", synth::drumseq::patternNames, sequencer.pattern, stage6b);
-        addChoice (layout, dseqDivision, "Drum Seq Speed", synth::seq::divisionNames, sequencer.division, stage6b);
-        addChoice (layout, dseqTiming, "Drum Seq Timing", synth::seq::timingNames, (int) sequencer.timing, stage6b);
-        add (layout, dseqLength, "Drum Seq Length", { 1.0f, (float) synth::drumseq::maxBeats, 1.0f }, (float) sequencer.lengthBeats,
-             [] (float value, int) { return juce::String (juce::roundToInt (value)) + (juce::roundToInt (value) == 1 ? " beat" : " beats"); },
-             stage6b);
-        add (layout, dseqVelocity, "Drum Seq Velocity Amount", { 0.0f, 1.0f }, sequencer.velocityAmount, asPercent, stage6b);
-    }
 
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);

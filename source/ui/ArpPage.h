@@ -95,7 +95,7 @@ class MidiExportButton final : public juce::TextButton
 public:
     explicit MidiExportButton (ParagonX1AudioProcessor&);
     int arp = 0;
-    // Another source (THE DRUMS' sequencer): the file name offered, and what makes the file to drag or save.
+    // Another source: the file name offered, and what makes the file to drag or save (unset: the arp's own).
     juce::String fileName;
     std::function<juce::File()> makeDragFile;
     std::function<bool (const juce::File&)> exportTo;

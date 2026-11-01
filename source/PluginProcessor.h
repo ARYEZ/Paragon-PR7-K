@@ -209,7 +209,6 @@ public:
         rack->delay.seedRandom (seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
-        drumKit.seedRandom ((std::uint32_t) seed);
     }
 
     //==========================================================================
@@ -225,50 +224,6 @@ public:
     bool isPlayingMimicReference() const noexcept { return referencePosition.load() >= 0; }
     double getMimicReferenceSeconds() const noexcept;
 
-    //==========================================================================
-    // THE DRUMS (stage 6a). While DRUMS is on, the 12 keys from its ROOT play the kit instead of the synth.
-    // Samples (message thread): a slot's loaded file, kept in the preset; loading one sets the slot to SAMPLE.
-    bool loadDrumSample (int slot, const juce::File&);
-    void setDrumSample (int slot, std::shared_ptr<const synth::drums::Sample>);
-    void clearDrumSample (int slot);
-    std::shared_ptr<const synth::drums::Sample> getDrumSample (int slot) const;
-    // The kit's settings now (any thread; the samples as the audio thread plays them).
-    synth::drums::KitSettings getKitSettings() const noexcept;
-    // The page's preview: a hit in the next block (whether DRUMS is on or not).
-    void previewDrum (int slot) noexcept;
-    const synth::drums::Kit& getDrumKit() const noexcept { return drumKit; }
-
-    // THE DRUM SEQUENCER (stage 6b). Its settings now (without the patterns, which the audio thread takes from the
-    // compiled matrix). Reversed synth drums play a rendered copy of their hit, made here when a reversed note needs
-    // one or the drum's sound changes (the timer; tests call it).
-    synth::drumseq::Settings getDrumSeqSettings() const noexcept;
-    void updateDrumReverses();   // and the drum synths' hit lengths for their envelopes (6c)
-    // KITS AND SEQUENCES (6c part 2): files in the presets folder's "Drum Kits" (.pr7kit: every drum's settings,
-    // samples and envelope, the kit's LEVEL and VELOCITY) and "Drum Sequences" (.pr7seq: the four patterns and the
-    // sequencer's SPEED, TIMING, LENGTH, VEL AMOUNT). With LINK on, loading or saving one takes the other of the same
-    // name too. Loading is one undo step.
-    juce::File drumKitsFolder() const;
-    juce::File drumSequencesFolder() const;
-    std::unique_ptr<juce::XmlElement> captureDrumKit() const;
-    std::unique_ptr<juce::XmlElement> captureDrumSequence() const;
-    bool applyDrumKit (const juce::XmlElement&);
-    bool applyDrumSequence (const juce::XmlElement&);
-    bool saveDrumKit (const juce::String& name);
-    bool saveDrumSequence (const juce::String& name);
-    bool loadDrumKit (const juce::File&);
-    bool loadDrumSequence (const juce::File&);
-    juce::Array<juce::File> listDrumKits() const;
-    juce::Array<juce::File> listDrumSequences() const;
-    std::atomic<bool> drumLink { true };
-    juce::String getDrumKitName() const { return drumKitName; }
-    juce::String getDrumSequenceName() const { return drumSequenceName; }
-    // < > (6c part 2): the next or previous audio file in the slot's sample's folder (by name), loaded into the slot.
-    bool loadNeighbourSample (int slot, int direction);
-
-    // MIDI EXPORT: one pass of a pattern on the kit's keys, at the song's tempo; click saves, drag makes a file.
-    juce::MidiFile drumPatternToMidi (int pattern) const;
-    bool exportDrumMidi (int pattern, const juce::File&) const;
-    juce::File drumMidiDragFile (int pattern) const;
     // How many routes the audio thread is playing (on, with a source and a known destination). For tests and the display.
     int getNumPlayingRoutes() const noexcept;
 
@@ -367,8 +322,7 @@ public:
     }
 
 private:
-    void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, const juce::MidiBuffer& drums,
-                       const synth::drums::KitSettings& kit, int start, int numSamples);
+    void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples);
     void processModFx (juce::dsp::AudioBlock<float> block);
     void processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady, double ppq);
     effects::Modulation::Settings modSettingsFor (const ParamIDs::ModIds&) const noexcept;
@@ -398,7 +352,6 @@ private:
         bool operator== (const Snapshot& other) const
         {
             return rig.parameters == other.rig.parameters && rig.wavetables == other.rig.wavetables && rig.spectra == other.rig.spectra
-                && rig.drumSamples == other.rig.drumSamples
                 && rig.drawings == other.rig.drawings && rig.modulation == other.rig.modulation && current == other.current;
         }
     };
@@ -426,32 +379,13 @@ private:
     std::array<EnvelopeParameters, ParamIDs::numEnvelopes> envelopeParameters {};
     struct ArpParameters { std::atomic<float>* values[std::size (ParamIDs::arpSettings)] {}; };
     std::array<ArpParameters, ParamIDs::numArps> arpParameters {};
-    struct DrumParameters { std::atomic<float>* values[std::size (ParamIDs::drumSettings)] {}; };
-    std::array<DrumParameters, ParamIDs::numDrums> drumParameters {};
 
-    // THE DRUMS: the kit, the samples (the audio thread gets plain pointers; replaced ones are kept a while, as the
-    // wavetables are), the page's preview hits, and the block's MIDI split between the synth and the kit.
-    synth::drums::Kit drumKit;
-    std::array<std::shared_ptr<const synth::drums::Sample>, ParamIDs::numDrums> drumSamples;
-    std::array<std::atomic<const synth::drums::Sample*>, ParamIDs::numDrums> samplesForAudio {};
-    std::vector<std::pair<std::shared_ptr<const synth::drums::Sample>, double>> retiredSamples;
     // MIMIC's recording, played by the audio thread from `referencePosition` (-1: not playing); a replaced one is kept
     // 2 s, as the tables are, so a block still playing it can't read freed memory.
     std::shared_ptr<const juce::AudioBuffer<float>> mimicReference;
     std::atomic<const juce::AudioBuffer<float>*> referenceForAudio { nullptr };
     std::atomic<int> referencePosition { -1 };
     std::vector<std::pair<std::shared_ptr<const juce::AudioBuffer<float>>, double>> retiredReferences;
-    std::array<std::atomic<bool>, ParamIDs::numDrums> pendingPreview {};
-    juce::MidiBuffer synthMidi, drumMidi;
-    // Reversed synth drums' rendered hits (by slot), what each was made from, and the audio thread's pointers.
-    std::array<std::shared_ptr<const synth::drums::Sample>, ParamIDs::numDrums> reverseHits;
-    std::array<juce::String, ParamIDs::numDrums> reverseKeys;
-    std::array<std::atomic<const synth::drums::Sample*>, ParamIDs::numDrums> reversesForAudio {};
-    // A drum synth's hit length, which its drawn envelope spans (6c); what each was measured from.
-    std::array<std::atomic<float>, ParamIDs::numDrums> hitLengths {};
-    std::array<juce::String, ParamIDs::numDrums> hitLengthKeys;
-    juce::String drumKitName, drumSequenceName;   // the last loaded or saved (shown on the page)
-    bool saveDrumSequenceOnly (const juce::String& cleanName);
 
     // WAVETABLES: tables loaded from files (null: the factory's), what each
     // oscillator plays now, the same for the audio thread (a plain pointer it
@@ -558,8 +492,6 @@ private:
         std::array<synth::travel::Pattern, synth::numOscillators> travelPatterns {};
         std::array<synth::arp::Patterns, synth::arp::numArps> arpPatterns {};
         std::array<synth::arp::Randomizer, synth::arp::numArps> arpRandomizers {};
-        synth::drumseq::Patterns drumPatterns {};
-        std::array<synth::mod::Shape, synth::drums::numSlots> drumEnvelopes {};
         std::uint32_t usedSources = 0;
     };
     std::shared_ptr<const CompiledMatrix> compiledMatrix;

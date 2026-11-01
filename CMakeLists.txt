@@ -52,7 +52,6 @@ target_sources(ParagonX1
         source/PluginEditor.cpp
         source/dsp/synth/WaveTables.cpp
         source/dsp/synth/Engine.cpp
-        source/dsp/synth/Drums.cpp
         source/dsp/synth/Wavetable.cpp
         source/dsp/synth/Mimic.cpp
         # PR7-E's effects, kept for the effects rack (a later stage): built and tested, not yet in the sound.
@@ -108,8 +107,6 @@ target_sources(ParagonX1
         source/ui/TravelPatternEditor.cpp
         source/ui/ModSourceStrip.cpp
         source/ui/ArpPage.cpp
-        source/ui/DrumPage.cpp
-        source/ui/DrumSeqPage.cpp
         source/ui/FxPage.cpp
         source/ui/SendPages.cpp
         source/ui/ModFxPages.cpp

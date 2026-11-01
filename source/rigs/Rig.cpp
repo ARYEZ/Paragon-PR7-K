@@ -18,7 +18,6 @@ namespace
     const juce::Identifier wavetableTag { "Wavetable" };
     const juce::Identifier spectrumTag { "Spectrum" };
     const juce::Identifier freeformTag { "Freeform" };
-    const juce::Identifier drumSampleTag { "DrumSample" };
 }
 
 int Rig::numBanksWithExpansions()
@@ -71,17 +70,6 @@ std::unique_ptr<juce::XmlElement> Rig::toXml() const
         element->setAttribute ("frameSize", table.frameSize);
         element->addTextElement (synth::wavetableFiles::encode (table));
     }
-    for (const auto& [slot, sample] : drumSamples)
-    {
-        if (sample == nullptr || sample->length() < 2)
-            continue;
-        auto* element = xml->createNewChildElement (drumSampleTag);
-        element->setAttribute ("slot", slot + 1);
-        element->setAttribute ("name", sample->name);
-        if (sample->path.isNotEmpty())
-            element->setAttribute ("path", sample->path);
-        element->addTextElement (synth::drums::sampleFiles::encode (*sample));
-    }
     for (const auto& [oscillator, edit] : spectra)
     {
         if (edit.isFlat())
@@ -133,16 +121,6 @@ std::optional<Rig> Rig::fromXml (const juce::XmlElement& xml)
                                                     element->getAllSubText());
         if (oscillator >= 0 && oscillator < 8 && table.isValid())
             rig.wavetables[oscillator] = std::move (table);
-    }
-    for (const auto* element : xml.getChildWithTagNameIterator (drumSampleTag))
-    {
-        const auto slot = element->getIntAttribute ("slot") - 1;
-        if (slot >= 0 && slot < synth::drums::numSlots)
-            if (auto sample = synth::drums::sampleFiles::decode (element->getStringAttribute ("name"), element->getAllSubText()))
-            {
-                std::const_pointer_cast<synth::drums::Sample> (sample)->path = element->getStringAttribute ("path");
-                rig.drumSamples[slot] = std::move (sample);
-            }
     }
     for (const auto* element : xml.getChildWithTagNameIterator (spectrumTag))
     {

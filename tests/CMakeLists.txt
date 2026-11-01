@@ -23,12 +23,6 @@ add_executable(ParagonX1Tests
     ModRoutingTests.cpp
     ArpTests.cpp
     ArpChordTests.cpp
-    DrumTests.cpp
-    DrumKitTests.cpp
-    DrumSeqTests.cpp
-    DrumEditorTests.cpp
-    DrumKitFileTests.cpp
-    DrumSeqPluginTests.cpp
     StackSizeTests.cpp
     ParameterIdTests.cpp
     ProcessorTests.cpp
