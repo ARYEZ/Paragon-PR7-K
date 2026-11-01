@@ -165,6 +165,7 @@ TEST_CASE ("PRESETS and SETTINGS cover the synth panels; the keyboard stays", "[
     Window w;
     auto* keyboard = inside<juce::MidiKeyboardComponent> (*w.view);
     REQUIRE (keyboard != nullptr);
+    w.view->setRackShownForTest (true);   // (the front panel, 0.49.0, is tested below)
     CHECK (w.view->getOscillatorPanel().isVisible());
 
     w.view->showPage (MainView::Page::presets);
@@ -514,3 +515,33 @@ TEST_CASE ("The MOD page: LFOs, macros and the matrix; adding and editing a rout
     row->remove.onClick();
     CHECK (w.processor.getModMatrix().routes.empty());
 }
+
+TEST_CASE ("The front panel: SHOW RACK swaps it with the OSCILLATORS and FILTER panels; it shows the preset", "[ui]")
+{
+    Window w;
+    auto& face = w.view->getFace();
+
+    // The front panel: the face, not the panels; everything in place.
+    w.view->setRackShownForTest (false);
+    CHECK (face.isVisible());
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    CHECK_FALSE (w.view->getFilterPanel().isVisible());
+    checkLayout (*w.view, "face");
+
+    // The rack in its place, in the same space.
+    w.view->setRackShownForTest (true);
+    CHECK_FALSE (face.isVisible());
+    CHECK (w.view->getOscillatorPanel().isVisible());
+    CHECK (w.view->getFilterPanel().isVisible());
+    CHECK (face.getBounds() == w.view->getOscillatorPanel().getBounds().getUnion (w.view->getFilterPanel().getBounds()));
+    checkLayout (*w.view, "rack");
+
+    // Other pages hide both.
+    w.view->showPage (MainView::Page::presets);
+    CHECK_FALSE (face.isVisible());
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    w.view->setRackShownForTest (false);
+    w.view->showPage (MainView::Page::synth);
+    CHECK (face.isVisible());
+}
+

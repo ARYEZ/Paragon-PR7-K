@@ -26,6 +26,11 @@ namespace Finish
     // Told whenever the finish changes, to repaint.
     juce::ChangeBroadcaster& changes();
 
+    // 0.49.0: whether the SYNTH page shows the rack (the OSCILLATORS and FILTER panels) or the front panel,
+    // remembered in the same settings file, for every PR7-K window.
+    bool rackShown();
+    void setRackShown (bool);
+
     // Colours that follow the finish.
     juce::Colour ink();          // lettering printed on the unit: near black on white, pearl white on black
     juce::Colour inkDim();

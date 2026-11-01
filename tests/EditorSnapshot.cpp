@@ -21,6 +21,8 @@
 //   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
 //   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
 //   PARAGON_SNAPSHOT_FILTERPAGE=n     the FILTER panel's SHP n tab (shaper n's page)
+//   PARAGON_SNAPSHOT_RACKVIEW=1      the SYNTH page with the rack shown (the OSCILLATORS and FILTER panels; 0.49.0);
+//                                    on by itself for OSC, OSCPAGE, FILTERPAGE, FFT and TRAVEL. Otherwise the front panel.
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
 //   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
 //   PARAGON_SNAPSHOT_PAGE=drums      THE DRUMS (PARAGON_SNAPSHOT_DRUM=n: slot n chosen; PARAGON_SNAPSHOT_DRUMS=1: a beat just played, its rows lit;
@@ -198,6 +200,9 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         if (fx == "limiter")
             fxPage.getLimiterPage().refresh();
     }
+    view->setRackShownForTest (env ("PARAGON_SNAPSHOT_RACKVIEW") == "1" || env ("PARAGON_SNAPSHOT_OSC").isNotEmpty()
+                               || env ("PARAGON_SNAPSHOT_OSCPAGE").isNotEmpty() || env ("PARAGON_SNAPSHOT_FILTERPAGE").isNotEmpty()
+                               || env ("PARAGON_SNAPSHOT_FFT").isNotEmpty() || env ("PARAGON_SNAPSHOT_TRAVEL").isNotEmpty());
     if (const auto osc = env ("PARAGON_SNAPSHOT_OSC").getIntValue(); osc > 0)
         view->getOscillatorPanel().selectOscillator (osc - 1);
     if (env ("PARAGON_SNAPSHOT_TRAVEL") == "1")

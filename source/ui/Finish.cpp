@@ -43,6 +43,19 @@ namespace Finish
 
     Type get() { return state().type; }
 
+    bool rackShown()
+    {
+        juce::PropertiesFile file (settingsOptions());
+        return file.getBoolValue ("rackShown", false);
+    }
+
+    void setRackShown (bool shown)
+    {
+        juce::PropertiesFile file (settingsOptions());
+        file.setValue ("rackShown", shown);
+        file.saveIfNeeded();
+    }
+
     void set (Type type, bool remember)
     {
         if (remember)

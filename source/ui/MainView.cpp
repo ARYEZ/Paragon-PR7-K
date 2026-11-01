@@ -1,5 +1,7 @@
 #include "MainView.h"
 
+#include "ui/Finish.h"
+
 #include "ModDestinations.h"
 
 #include "Parameters.h"
@@ -127,6 +129,7 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
     : audioProcessor (processorToShow),
       oscillators (processorToShow),
       filter (processorToShow.getParameters()),
+      face (processorToShow),
       filterEnvelope (processorToShow.getParameters(), "FILTER ENVELOPE",
                       { ParamIDs::fltAttack, ParamIDs::fltHold, ParamIDs::fltDecay, ParamIDs::fltSustain, ParamIDs::fltRelease,
                         ParamIDs::fltAttackCurve, ParamIDs::fltDecayCurve, ParamIDs::fltReleaseCurve }),
@@ -185,9 +188,23 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
                                                                       &outputColumn })
         addAndMakeVisible (component);
 
-    synthPage = { &oscillators, &filter, &filterEnvelope, &ampEnvelope, &amp, &play };
+    synthPage = { &filterEnvelope, &ampEnvelope, &amp, &play, &rackButton };
     for (auto* component : synthPage)
         addAndMakeVisible (component);
+
+    // 0.49.0: the front panel, or the rack (OSCILLATORS and FILTER) in its place; the key swaps them, and the choice
+    // is remembered.
+    addChildComponent (oscillators);
+    addChildComponent (filter);
+    addChildComponent (face);
+    face.onPrevious = [this] { audioProcessor.stepRig (-1); };
+    face.onNext = [this] { audioProcessor.stepRig (1); };
+    face.onScreenClicked = [this] { showPage (Page::presets); };
+    rackButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff151217));
+    rackButton.setColour (juce::TextButton::textColourOffId, ParagonColours::text);
+    rackButton.setTooltip ("Shows the full OSCILLATORS and FILTER panels (the rack), or the front panel in their place.");
+    rackButton.onClick = [this] { showRack (! rackShown); };
+    rackShown = Finish::rackShown();
 
     // The keyboard, in the plugin's colours: dark keys lit red-orange as they're played.
     keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffdcd7da));
@@ -213,6 +230,7 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
     addChildComponent (rigBrowser);
     addChildComponent (settingsPage);
 
+    showPage (page);   // the front panel or the rack, as last left
     audioProcessor.rigBroadcaster.addChangeListener (this);
     refreshRig();
     startTimerHz (5);
@@ -232,6 +250,10 @@ void MainView::showPage (Page newPage)
     tab.setToggleState (true, juce::dontSendNotification);
     for (auto* component : synthPage)
         component->setVisible (newPage == Page::synth);
+    oscillators.setVisible (newPage == Page::synth && rackShown);
+    filter.setVisible (newPage == Page::synth && rackShown);
+    face.setVisible (newPage == Page::synth && ! rackShown);
+    rackButton.setButtonText (rackShown ? "HIDE RACK" : "SHOW RACK");
     modPage.setVisible (newPage == Page::modulation);
     arpPage.setVisible (newPage == Page::arp);
     fxPage.setVisible (newPage == Page::fx);
@@ -240,12 +262,36 @@ void MainView::showPage (Page newPage)
     settingsPage.setVisible (newPage == Page::settings);
 }
 
+void MainView::showRack (bool shown, bool remember)
+{
+    rackShown = shown;
+    if (remember)
+        Finish::setRackShown (shown);
+    showPage (page);
+}
+
 void MainView::refreshRig()
 {
     const auto rig = audioProcessor.getCurrentRig();
     const auto headerText = rig.name + (audioProcessor.isRigModified() ? " *" : "");
     if (rigNameButton.getButtonText() != headerText)
         rigNameButton.setButtonText (headerText);
+
+    // The front panel's screen: the preset's slot, bank and notes (looked up in the library), and its macros' names.
+    SynthFace::Screen screen;
+    screen.name = rig.name;
+    screen.modified = audioProcessor.isRigModified();
+    for (const auto& entry : audioProcessor.getRigLibrary().getEntries())
+        if ((rig.isUserRig() && entry.file == rig.file) || (! rig.isUserRig() && entry.isFactory && entry.rig.name == rig.factoryName))
+        {
+            screen.slot = entry.rig.getSlotName();
+            screen.bank = Rig::bankName (entry.rig.bank);
+            screen.notes = entry.rig.notes;
+            break;
+        }
+    face.setScreen (screen);
+    const auto& matrix = audioProcessor.getModMatrix();
+    face.setMacroNames ({ matrix.macroName (0), matrix.macroName (1), matrix.macroName (2) });
 }
 
 void MainView::timerCallback()
@@ -442,11 +488,14 @@ void MainView::resized()
 
     oscillators.setBounds (oscillatorArea);
     filter.setBounds (filterArea);
+    face.setBounds (oscillatorArea.getUnion (filterArea));
     filterEnvelope.setBounds (filterEnvelopeArea);
     ampEnvelope.setBounds (ampEnvelopeArea);
     amp.setBounds (ampArea);
     play.setBounds (playArea);
-    outputColumn.setBounds (outputArea);
+    // OUTPUT, with the rack key under it (on the SYNTH page).
+    outputColumn.setBounds (outputArea.withTrimmedBottom (44));
+    rackButton.setBounds (outputArea.withTop (outputArea.getBottom() - 38));
 
     // Seven octaves from C1, filling the strip (the width first: changing it moves the view).
     auto keys = keyboardArea.reduced (8, 6);
