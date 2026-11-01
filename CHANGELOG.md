@@ -2,6 +2,28 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.53.0
+
+**PARADOX**, a new expansion (PX01-PX15), and **ECHOES**, the effect it's built round.
+
+### ECHOES (new effect)
+Your own playing comes back from the past, in time with your song. ECHOES keeps a running recording of what you play (up to 32 seconds) and plays it back under what you're playing now, from a set distance in the song: 1 beat to 8 bars. Four modes:
+- **ECHO:** the sound from that distance ago, exactly (a long, bar-synced echo). FEEDBACK gives echoes of echoes.
+- **REVERSE:** each stretch comes back backwards while the next plays, so it swells into its own start.
+- **TAPE:** the start of each phrase comes back at half speed, an octave down.
+- **LOOP:** a stretch is caught and repeated 1 to 8 times (or forever) while you play on over it.
+
+AGE wears each pass down (darker, a little saturated), so older echoes sound older. It's the fourth unit on the FX page's MOD / LO-FI tab, with its own page showing the recording and the part coming back. The mod matrix can move MIX, FEEDBACK and AGE. Switched off it changes nothing; it uses about 0.2% of a core. Our own design.
+
+### PARADOX (expansion)
+Inspired by the score of a German series about a small town where time runs in a loop: crushing sub drones, walls of noise, bowed strings, a choir, ticking clocks and rain, rumbling underground passages, melancholy glitchy electronica. Our own sounds; nothing from the series on the plugin.
+
+Every preset hears its own past come back through ECHOES, each in its own way: Yesterday's Voice (answered backwards), Caught In The Loop, Slow Tape Ghost, Wall Of Static, Bowed In Reverse, Choir Of Ages, Pressure Below, Decay Pulse, Underground Rumble, Worn Upright, Music Box Memory, Chapel Organ, Second Hand, Rain On The Window and Bootstrap Sequence (with a drum beat; the kit on C2 to B2).
+
+**MACRO 3 is ERA** on every preset, and loads in the middle: the present. Turn it left to go back in time (a worn cassette, a slow tape wobble, older, darker echoes) and right to go forward (crushed, colder, sharper, a glassy edge). The left end plays a few dB quieter, as an old tape does.
+
+Levels are measured, not set by ear.
+
 ## 0.52.0
 
 **A switch for the EXPR wheel's volume** (your ask). In SETTINGS, under TUNE, there's a new **EXPR WHEEL** section with a **CONTROLS VOLUME** switch.
