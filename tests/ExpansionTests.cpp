@@ -309,7 +309,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
     const auto overrides = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_PARAMS", {}), ",", {});
     for (const auto& rig : makeExpansionRigs())
     {
-        if (only.isNotEmpty() && ! rig.name.containsIgnoreCase (only))
+        if (only.isNotEmpty() && ! rig.name.containsIgnoreCase (only) && ! rig.tags.contains (only, true))   // a name, or a bank (its tag)
             continue;
         p.load (rig.name);
         // NEON RAIN at 85 BPM in A minor; HELLFORGE at 140 in D, heavier and rhythmic.
@@ -333,8 +333,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto dust = rig.bank == Rig::numBanks + 18;      // DUSTFALL: 70 BPM in D minor, vast and cold
         const auto super = rig.bank == Rig::numBanks + 19;     // SUPERPOSITION: 90 BPM in C minor, cold and cerebral
         const auto sev = rig.bank == Rig::numBanks + 20;       // SEVERED: 96 BPM, D minor slipping into bright F major
+        const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -384,6 +385,104 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (sling)
+        {
+            // The EXPR wheel rocked heel to toe and back (controller 11), for the presets whose wah it works.
+            const auto rock = [&] (double from, double to)
+            {
+                for (int k = 0; k <= 24; ++k)
+                {
+                    const auto t = from + (to - from) * k / 24.0;
+                    const auto v = (int) std::round (127.0 * std::sin (juce::MathConstants<double>::pi * k / 24.0));
+                    e.push_back ({ at (t), juce::MidiMessage::controllerEvent (1, 11, v) });
+                }
+            };
+            const auto onExpr = rig.name == "Drillbit Scream" || rig.name == "Dawnbreaker" || rig.name == "Fleet Assault";
+            // The pedal at the heel for those; for the rest all the way up (unrouted, controller 11 is the volume swell,
+            // and the clip before may have left it down).
+            e.push_back ({ 0.0, juce::MidiMessage::controllerEvent (1, 11, onExpr ? 0 : 127) });
+            if (type == "Lead")
+            {
+                // A defiant line in C minor: a riff, its answer climbing, a long held note with the wah rocked.
+                line ({ { 0, 0.5, 60 }, { 0.5, 0.5, 63 }, { 1, 0.5, 65 }, { 1.5, 0.5, 67 }, { 2, 1.5, 70 }, { 3.5, 0.5, 67 },
+                        { 4, 0.5, 68 }, { 4.5, 0.5, 67 }, { 5, 0.5, 65 }, { 5.5, 0.5, 63 }, { 6, 2, 65 },
+                        { 8, 0.5, 67 }, { 8.5, 0.5, 70 }, { 9, 0.5, 72 }, { 9.5, 0.5, 74 }, { 10, 2, 75 }, { 12, 4, 72 } }, 105);
+                if (onExpr)
+                {
+                    rock (0.0, 4.0);
+                    rock (6.0, 8.0);
+                    rock (12.0, 14.0);
+                    rock (14.0, 16.0);
+                }
+                else
+                    wheel (12.0, 16.0, 100);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                // C minor, A flat, E flat, then G major: the long climb.
+                chord (e, at (0), at (3.9), { 36, 48, 55, 60, 63 }, 90);
+                chord (e, at (4), at (7.9), { 32, 48, 56, 60, 63 }, 90);
+                chord (e, at (8), at (11.9), { 39, 51, 55, 58, 63 }, 90);
+                chord (e, at (12), at (15.8), { 31, 50, 55, 59, 62 }, 90);
+                wheel (8.0, 15.0, 100);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                constexpr int roots[] = { 36, 32, 39, 31 };
+                if (rig.name == "Pick And Hammer")   // re-struck eighths, harder on the beat: each opens the auto-wah
+                {
+                    for (int k = 0; k < 32; ++k)
+                        if (k % 8 != 7)
+                            line ({ { k * 0.5, 0.4, roots[k / 8] } }, k % 2 == 0 ? 120 : 80);
+                }
+                else
+                    line ({ { 0, 3.9, roots[0] }, { 4, 3.9, roots[1] }, { 8, 3.9, roots[2] }, { 12, 3.9, roots[3] } }, 105);
+                wheel (8.0, 15.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                const std::initializer_list<int> chords[] = { { 48, 55, 60, 63 }, { 44, 56, 60, 63 }, { 51, 55, 58, 63 }, { 43, 55, 59, 62 } };
+                if (rig.name == "Victory Bells")   // single strikes, then the chord at the end
+                {
+                    line ({ { 0, 2, 60 }, { 2, 2, 67 }, { 4, 2, 63 }, { 6, 2, 72 }, { 8, 2, 55 }, { 10, 2, 62 } }, 100);
+                    chord (e, at (12), at (15), { 48, 55, 59, 62 }, 110);
+                }
+                else
+                {
+                    int k = 0;
+                    for (const auto& notes : chords)
+                    {
+                        chord (e, at (k * 4.0), at (k * 4.0 + 3.0), notes, 90);
+                        ++k;
+                    }
+                    line ({ { 1, 1, 75 }, { 2, 1, 74 }, { 5, 1, 72 }, { 6, 1, 68 }, { 9, 1, 70 }, { 13, 2, 71 } }, 85);
+                }
+                length = 20.0 * beat;
+            }
+            else
+            {
+                // Arps: a C minor chord, then A flat (Siege Clock holds just the root).
+                if (rig.name == "Siege Clock")
+                {
+                    chord (e, at (0), at (7.9), { 60 }, 100);
+                    chord (e, at (8), at (15.9), { 56 }, 100);
+                }
+                else
+                {
+                    chord (e, at (0), at (7.9), { 60, 63, 67 }, 100);
+                    chord (e, at (8), at (15.9), { 56, 60, 63 }, 100);
+                }
+                if (onExpr)
+                {
+                    rock (0.0, 4.0);
+                    rock (8.0, 12.0);
+                }
+                length = 19.0 * beat;
+            }
         }
         else if (sev && type == "Lead")
         {
