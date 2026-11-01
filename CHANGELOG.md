@@ -2,6 +2,30 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.54.0
+
+**PR7-K is now purely a synth.** The drums have moved out: PR7-D is the family's drum plugin.
+
+### Removed
+- The DRUMS tab and page: the 12-slot kit, the drum sequencer, the sample editor, kit and sequence files, and MIDI export of beats. The other tabs now share its space in the header.
+- The on-screen keyboard no longer tints the kit's keys.
+
+### Your songs and presets
+- Anything saved with the drums still opens: the synth part loads as before, and the drum settings and samples are simply left out (and not saved again).
+
+### Presets
+- Bank A's three drum presets (Kit And Bass, Beat And Bass, Tight Kit) are gone. **Sung Vowels moves from A43 to A40.**
+- The 18 expansion presets that played a beat keep their synth part, without the beat. Their descriptions are rewritten and their levels re-measured. Six were renamed:
+  - War Drums is now **War Pulse** (SANDSEA)
+  - Ritual Drums is now **Ritual Choir** (CYBERSHRINE)
+  - Battle Drums is now **Battle Cry** (CHROMEFURY)
+  - Sacred Drums is now **Sacred Chant** (ASCENSION)
+  - Festival Drums is now **Festival Bronze** (PSI STORM)
+  - Drum Machine Run is now **Offbeat Run** (BLOODWAVE)
+- The others keep their names: Alarm Pulse, Bootstrap Sequence, System Breach, Machine City, Ticking Clock, Cold Corridor, Countdown, Steady Rows, Midnight Run, Night Runner, Machine Shift and Threshold.
+
+Levels are measured, not set by ear.
+
 ## 0.53.0
 
 **PARADOX**, a new expansion (PX01-PX15), and **ECHOES**, the effect it's built round.
