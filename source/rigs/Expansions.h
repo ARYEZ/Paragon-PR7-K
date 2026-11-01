@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 22> list
+    inline constexpr std::array<Expansion, 23> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -103,5 +103,11 @@ namespace expansions
           "opulence of a gilded court at war (brass fanfares, glass, a harpsichord), and the soaring dawn of a "
           "rebellion (anthems, a rising choir, victory bells). Built round the WAH: work it with the EXPR wheel. Our own "
           "sounds." },
+        { "PARADOX", "PX",
+          "Inspired by the score of a German series about four families in a small town where time runs in a loop, and "
+          "past, present and future are tied together: crushing sub drones, walls of noise, bowed strings, a choir, "
+          "ticking clocks and rain, rumbling underground passages, melancholy glitchy electronica. Built round ECHOES "
+          "(your own playing coming back from the past) and MACRO 3, ERA: left the past (worn tape), right the future "
+          "(cold and digital). Our own sounds." },
     }};
 }

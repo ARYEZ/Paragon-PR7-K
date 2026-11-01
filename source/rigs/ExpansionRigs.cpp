@@ -5,6 +5,7 @@
 #include "dsp/eq/EqDesign.h"
 #include "dsp/effects/Delay.h"
 #include "dsp/effects/Drive.h"
+#include "dsp/effects/Echoes.h"
 #include "dsp/effects/Glitch.h"
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Modulation.h"
@@ -9280,6 +9281,478 @@ namespace
         fleet.set (ParamIDs::patchLevel, -0.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (fleet);
     }
+
+    // PARADOX (the owner's name): inspired by the score of a German series about four families in a small town where
+    // time runs in a loop and the past, present and future are tied together: crushing sub drones, walls of noise,
+    // bowed strings, a choir, ticking clocks and rain, rumbling underground passages, melancholy glitchy
+    // indie-electronic. No title, characters, places, phrases or music from the series: our own sounds. Built round
+    // ECHOES (0.53.0): every preset hears its own past come back (as an echo bars later, backwards, at half speed or
+    // caught in a loop). MACRO 3 is ERA on every preset, starting in the middle (the present): left goes back (worn
+    // tape, a wobble, the echoes older and darker), right goes forward (cold, digital: crushed and brighter).
+    void paradox (Expansion x)
+    {
+        using SPx = synth::mod::ShapePoint;
+        using EM = effects::Echoes::Mode;
+        const auto oneShot = [] (Builder& b, int env, std::vector<SPx> points)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { std::move (points), -1, -1, -1 };
+        };
+        const auto clean = [] (Builder& b, int o)   // off the filter, shapers and buses
+        {
+            b.osc (o, "Filter", 0.0f).osc (o, "Insert", 0.0f).osc (o, "Voice", 0.0f);
+            for (const auto* shp : { "Shp1", "Shp2", "Shp3", "Shp4" })
+                b.osc (o, shp, 0.0f);
+        };
+        const auto ratio = [] (float r) { return 0.5f + std::log2 (r) / 8.0f; };   // FM RATE for a ratio
+        // ECHOES: `distance` by distanceNames (0 a beat ... 2 a bar ... 5 eight bars).
+        const auto echoes = [] (Builder& b, EM mode, int distance, float mix, float feedback, float age)
+        {
+            b.set (ParamIDs::echoOn, 1.0f).set (ParamIDs::echoMode, (float) (int) mode).set (ParamIDs::echoDistance, (float) distance)
+             .set (ParamIDs::echoMix, mix).set (ParamIDs::echoFeedback, feedback).set (ParamIDs::echoAge, age);
+        };
+        // ERA (MACRO 3), loaded at the middle: the present. `slide` sets a knob to `past` with the macro at the left and
+        // `present` in the middle (and on in a straight line to the right); `span` is the knob's range (Volume: 2,
+        // vibrato: 100 cents). `future` adds `amount` of a knob's travel, coming in only towards the right (curve: the
+        // macro to the 4th power, so 6% of it in the middle).
+        const auto slide = [] (Builder& b, const juce::String& id, float past, float present, float span = 1.0f)
+        {
+            b.set (id, past);
+            b.rig.modulation.routes.push_back ({ true, "macro3", id, 2.0f * (present - past) / span, false, 0.0f, 0.0f });
+        };
+        const auto future = [] (Builder& b, const juce::String& id, float amount)
+        {
+            b.rig.modulation.routes.push_back ({ true, "macro3", id, amount, false, 0.0f, 1.0f });
+        };
+        // The past's worn tape: the LO-FI's cassette (no hiss: the presets must go silent), all there at the left, gone by
+        // the middle; the echoes older; a tape wobble on `wobbly` oscillators.
+        const auto era = [slide] (Builder& b, float tape, float agePast, float agePresent, std::initializer_list<int> wobbly, float wobbleCents = 9.0f)
+        {
+            b.set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) effects::LoFi::Type::cassette)
+             .set (ParamIDs::lofiNoise, 0.0f).set (ParamIDs::lofiAmount, 6.0f).set (ParamIDs::macros[2], 0.5f);
+            slide (b, ParamIDs::lofiMix, tape, 0.0f);
+            slide (b, ParamIDs::echoAge, agePast, agePresent);
+            for (const auto o : wobbly)
+            {
+                b.osc (o, "VibRate", 0.7f);
+                slide (b, ParamIDs::osc (o, "VibAmount"), wobbleCents, 0.0f, 100.0f);
+            }
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto voice = x.make ("Yesterday's Voice", 1, { "Lead", "Echoes", "Reverse", "Melancholy" },
+            "A lonely, hollow lead that answers itself from the past: ECHOES in REVERSE, so each bar you play comes back "
+            "backwards under the next, swelling into its own beginning. A narrow pulse and a quiet saw an octave down, a "
+            "soft filter, a slow vibrato. MACROS: BRIGHT, SPACE, ERA (left: worn tape, a wobble, older echoes; right: "
+            "cold and crushed). MOD WHEEL: vibrato.");
+        voice.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.18f)
+             .filter (FilterType::lp24, 2200.0f, 0.2f, 0.2f).filterEnvelope (40.0f, 600.0f, 0.5f, 400.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (30.0f, 600.0f, 0.85f, 500.0f)
+             .mono (40.0f);
+        echoes (voice, EM::reverse, 2, 0.5f, 0.15f, 0.3f);
+        era (voice, 0.6f, 0.8f, 0.3f, { 1 });   // the wobble on the octave below (the mod wheel's vibrato is on the pulse)
+        future (voice, ParamIDs::osc (0, "Crush"), 0.45f);
+        future (voice, ParamIDs::fltRes, 0.25f);
+        route (voice, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (voice, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        voice.osc (0, "VibRate", 5.2f);
+        macros (voice, "BRIGHT", "SPACE", "ERA");
+        reverb (voice, RT::hall, 0.7f, 0.18f);
+        space (voice);
+        voice.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (voice);
+
+        auto loop = x.make ("Caught In The Loop", 2, { "Lead", "Echoes", "Loop", "Wavetable" },
+            "A lead that gets caught in time: ECHOES in LOOP grabs the bar you just played and repeats it twice under "
+            "you while you play on, then grabs the next. The Analog Morph table, three voices wide, gliding. MACROS: "
+            "BRIGHT, SPACE, ERA (left: worn tape and a duller wave; right: further through the table, cold and crushed). "
+            "MOD WHEEL: through the table.");
+        loop.osc (0, "Wave", wavetable).osc (0, "Table", table ("Analog Morph")).osc (0, "Volume", 0.55f)
+            .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.6f)
+            .filter (FilterType::lp24, 3500.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+            .ampEnvelope (8.0f, 400.0f, 0.8f, 300.0f)
+            .mono (60.0f);
+        echoes (loop, EM::loop, 2, 0.45f, 0.15f, 0.25f);
+        era (loop, 0.5f, 0.7f, 0.25f, { 0 });
+        slide (loop, ParamIDs::osc (0, "WtIndex"), 0.0f, 0.3f);
+        future (loop, ParamIDs::osc (0, "Crush"), 0.4f);
+        route (loop, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (loop, "modWheel", ParamIDs::osc (0, "WtIndex"), 0.3f);
+        macros (loop, "BRIGHT", "SPACE", "ERA");
+        reverb (loop, RT::plate, 0.6f, 0.15f);
+        space (loop);
+        loop.set (ParamIDs::patchLevel, -0.5f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (loop);
+
+        auto ghost = x.make ("Slow Tape Ghost", 3, { "Lead", "Echoes", "Tape", "FM" },
+            "A glassy FM lead with a ghost: ECHOES in TAPE plays the start of each phrase back at half speed, an "
+            "octave down and slurred, under the next. A sine pushed by a sine an octave up, the push fading after each "
+            "note starts. MACROS: BRIGHT, SPACE, ERA (left: worn tape and a wobble; right: a colder, harder FM edge, "
+            "crushed). MOD WHEEL: vibrato.");
+        ghost.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", 0.0f).osc (0, "ModRate", ratio (2.0f)).osc (0, "FmAmount", 0.12f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Volume", 0.25f).osc (1, "Fine", 6.0f)
+             .ampEnvelope (10.0f, 800.0f, 0.75f, 450.0f)
+             .mono (35.0f);
+        oneShot (ghost, 0, { SPx { 0.0f, 1.0f, -0.4f }, SPx { 0.6f, 0.0f, 0.0f } });
+        route (ghost, "env1", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        echoes (ghost, EM::tape, 1, 0.45f, 0.1f, 0.35f);
+        era (ghost, 0.6f, 0.8f, 0.35f, { 1 });
+        future (ghost, ParamIDs::osc (0, "FmAmount"), 0.3f);
+        future (ghost, ParamIDs::osc (1, "Crush"), 0.5f);
+        route (ghost, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (ghost, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        ghost.osc (0, "VibRate", 5.0f);
+        macros (ghost, "BRIGHT", "SPACE", "ERA");
+        delay (ghost, "1/4 dotted", 0.25f, 0.1f, true, 4.0f);
+        reverb (ghost, RT::hall, 0.75f, 0.2f);
+        space (ghost);
+        ghost.set (ParamIDs::patchLevel, -4.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (ghost);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto wall = x.make ("Wall Of Static", 4, { "Pad", "Echoes", "Noise", "Drone" },
+            "A wall of sound: seven wide saws under a roar of filtered noise, slowly breathing (an LFO on the filter), and "
+            "ECHOES bringing back what was here a bar ago, worn darker each time round. MACROS: BRIGHT, SPACE, ERA "
+            "(left: worn tape and older echoes; right: the saws crushed, the noise harsher). MOD WHEEL: opens the filter.");
+        wall.osc (0, "Volume", 0.45f).osc (0, "UniVoices", 7.0f).osc (0, "UniMix", 0.8f).osc (0, "UniDetune", 0.15f).osc (0, "UniSpread", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 1.0f).osc (1, "NoiseColour", 0.3f).osc (1, "NoiseWidth", 2.0f).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp24, 1100.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.2f)
+            .ampEnvelope (1800.0f, 2000.0f, 1.0f, 2500.0f)
+            .set (ParamIDs::lfo (0, "Rate"), 0.08f).set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (wall, "lfo1", ParamIDs::fltCutoff, 0.08f);
+        echoes (wall, EM::echo, 2, 0.35f, 0.1f, 0.5f);
+        era (wall, 0.7f, 0.85f, 0.5f, { 0 }, 6.0f);
+        future (wall, ParamIDs::osc (0, "Crush"), 0.35f);
+        future (wall, ParamIDs::osc (1, "NoiseColour"), -0.3f);
+        route (wall, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (wall, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        macros (wall, "BRIGHT", "SPACE", "ERA");
+        reverb (wall, RT::hall, 0.9f, 0.25f, 30.0f, 3.5f);
+        eqBand (wall, 0, eq::Shape::lowCut, 50.0f, 0.0f);
+        space (wall);
+        wall.set (ParamIDs::patchLevel, -10.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (wall);
+
+        auto bowed = x.make ("Bowed In Reverse", 5, { "Pad", "Echoes", "Strings", "Reverse" },
+            "Bowed strings that breathe backwards: a string section (saws in two sections, each player's vibrato its own, "
+            "a slow bow) with ECHOES in REVERSE, so every bar swells back in reverse under the next. MACROS: BRIGHT, "
+            "SPACE, ERA (left: worn tape, a warble; right: a cold glassy layer joins, crushed). MOD WHEEL: opens the "
+            "filter.");
+        bowed.osc (0, "Volume", 0.45f).osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.8f).osc (0, "UniDetune", 0.08f).osc (0, "UniSpread", 0.8f)
+             .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 8.0f).osc (0, "VibRate", 5.2f).osc (0, "VibFade", 600.0f)
+             .osc (1, "On", 1.0f).osc (1, "Volume", 0.35f).osc (1, "Transpose", -12.0f).osc (1, "UniVoices", 3.0f).osc (1, "UniMix", 0.8f)
+             .osc (1, "UniDetune", 0.07f).osc (1, "UniSpread", 0.6f)
+             .osc (1, "VibMode", (float) synth::VibratoMode::independent).osc (1, "VibAmount", 7.0f).osc (1, "VibRate", 4.8f).osc (1, "VibFade", 600.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", wavetable).osc (2, "Table", table ("Harmonic Rise")).osc (2, "WtIndex", 0.8f).osc (2, "Transpose", 12.0f)
+             .osc (2, "Volume", 0.0f)
+             .filter (FilterType::lp12, 2600.0f, 0.1f, 0.2f).filterEnvelope (600.0f, 1500.0f, 0.7f, 1200.0f).set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (700.0f, 1500.0f, 0.9f, 1500.0f);
+        echoes (bowed, EM::reverse, 2, 0.5f, 0.05f, 0.35f);
+        era (bowed, 0.5f, 0.75f, 0.35f, { 1 }, 12.0f);
+        future (bowed, ParamIDs::osc (2, "Volume"), 0.15f);
+        future (bowed, ParamIDs::osc (2, "Crush"), 0.5f);
+        route (bowed, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (bowed, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (bowed, "BRIGHT", "SPACE", "ERA");
+        reverb (bowed, RT::hall, 0.85f, 0.25f, 30.0f, 4.0f);
+        space (bowed);
+        bowed.set (ParamIDs::patchLevel, -9.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (bowed);
+
+        auto choir = x.make ("Choir Of Ages", 6, { "Pad", "Echoes", "Choir", "Voice" },
+            "A choir singing across time: two sections through the VOICE filter (an \"oh\" opening towards \"ah\", basses "
+            "below middle C and sopranos above), and ECHOES in TAPE bringing the start of each bar back at half speed, an "
+            "octave down: a second, older choir under the first. MACROS: BRIGHT, SPACE, ERA (left: worn tape, a softer, older "
+            "choir; right: a colder, sharper choir, crushed). MOD WHEEL: the vowel towards \"ee\".");
+        choir.osc (0, "Volume", 0.5f).osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.85f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.9f)
+             .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 10.0f).osc (0, "VibRate", 5.0f).osc (0, "VibFade", 700.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Volume", 0.3f)
+             .osc (1, "UniVoices", 4.0f).osc (1, "UniMix", 0.85f).osc (1, "UniDetune", 0.08f).osc (1, "UniSpread", 0.9f)
+             .osc (1, "VibMode", (float) synth::VibratoMode::independent).osc (1, "VibAmount", 12.0f).osc (1, "VibRate", 5.4f).osc (1, "VibFade", 700.0f)
+             .ampEnvelope (600.0f, 1500.0f, 0.95f, 2000.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceSize, 0.0f).set (ParamIDs::voiceVowel, 0.25f);
+        for (int k = 0; k < 2; ++k)   // SIZE by the keys: 2 x (note / 127)^2
+            choir.rig.modulation.routes.push_back ({ true, "keytrack", ParamIDs::voiceSize, 1.0f, false, 0.0f, 0.5f });
+        oneShot (choir, 0, { SPx { 0.0f, 0.0f, 0.3f }, SPx { 0.8f, 1.0f, 0.0f } });
+        route (choir, "env1", ParamIDs::voiceVowel, 0.25f);
+        route (choir, "modWheel", ParamIDs::voiceVowel, 0.4f, 100.0f);
+        echoes (choir, EM::tape, 1, 0.4f, 0.05f, 0.4f);
+        era (choir, 0.5f, 0.8f, 0.4f, {});
+        slide (choir, ParamIDs::voiceSharp, 0.15f, 0.45f);
+        future (choir, ParamIDs::osc (1, "Crush"), 0.45f);
+        route (choir, "macro1", ParamIDs::voiceSharp, 0.25f);
+        macros (choir, "BRIGHT", "SPACE", "ERA");
+        reverb (choir, RT::cathedral, 0.85f, 0.3f, 40.0f, 4.5f);
+        eqBand (choir, 0, eq::Shape::lowCut, 70.0f, 0.0f);
+        space (choir);
+        choir.set (ParamIDs::patchLevel, -12.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (choir);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto pressure = x.make ("Pressure Below", 7, { "Bass", "Echoes", "Sub", "Drone" },
+            "A crushing sub drone, the weight of the ground overhead: a clean sine sub under a growling saw through a tube "
+            "shaper and a low filter, and ECHOES bringing each note back a beat later, darker, a low rumble under the "
+            "next. MACROS: BRIGHT, SPACE, ERA (left: worn tape; right: the growl harder and crushed). MOD WHEEL: opens "
+            "the filter.");
+        pressure.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Volume", 0.4f).osc (1, "UniVoices", 2.0f).osc (1, "UniMix", 1.0f).osc (1, "UniDetune", 0.1f)
+                .filter (FilterType::lp24, 320.0f, 0.25f, 0.2f).filterEnvelope (5.0f, 500.0f, 0.4f, 300.0f).set (ParamIDs::fltKey, 0.4f)
+                .shaper (0, synth::ShaperModel::tube, 0.3f, true)
+                .ampEnvelope (15.0f, 800.0f, 1.0f, 400.0f)
+                .mono (30.0f);
+        clean (pressure, 0);
+        echoes (pressure, EM::echo, 0, 0.2f, 0.15f, 0.6f);
+        era (pressure, 0.5f, 0.85f, 0.6f, {});
+        future (pressure, ParamIDs::shp (0, "Drive"), 0.4f);
+        future (pressure, ParamIDs::osc (1, "Crush"), 0.4f);
+        route (pressure, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (pressure, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (pressure, "BRIGHT", "SPACE", "ERA");
+        reverb (pressure, RT::room, 0.4f, 0.06f);
+        space (pressure);
+        pressure.set (ParamIDs::patchLevel, -7.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (pressure);
+
+        auto pulseBass = x.make ("Decay Pulse", 8, { "Bass", "Echoes", "Step Seq", "Pulse" },
+            "A nervous, pulsing bass: a held note chopped by the STEP SEQUENCER in sixteenths with your song, a snappy "
+            "filter, a clean sine under it, and ECHOES bringing the pulse back two beats later, a shadow out of step. "
+            "MACROS: BRIGHT, SPACE, ERA (left: worn tape and a wobble; right: crushed, with a sharper resonance). MOD "
+            "WHEEL: opens the filter.");
+        pulseBass.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.5f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
+                 .filter (FilterType::lp24, 700.0f, 0.3f, 0.45f).filterEnvelope (0.0f, 150.0f, 0.2f, 100.0f).set (ParamIDs::fltKey, 0.5f)
+                 .ampEnvelope (2.0f, 400.0f, 1.0f, 150.0f)
+                 .mono (10.0f)
+                 .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 1.0f).set (ParamIDs::seqGate, 0.55f)
+                 .set (ParamIDs::seqContour, 0.15f).set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 16.0f);
+        clean (pulseBass, 1);
+        for (int row = 0; row < 2; ++row)
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = pulseBass.rig.modulation.stepPattern.rows[(size_t) row][(size_t) k];
+                const auto at = k % 16;
+                step.on = at != 3 && at != 7 && at != 11 && at != 13;
+                step.level = at % 4 == 0 ? 1.0f : 0.6f;
+            }
+        echoes (pulseBass, EM::echo, 1, 0.25f, 0.15f, 0.4f);
+        era (pulseBass, 0.5f, 0.75f, 0.4f, { 0 });
+        future (pulseBass, ParamIDs::osc (0, "Crush"), 0.4f);
+        future (pulseBass, ParamIDs::fltRes, 0.3f);
+        route (pulseBass, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (pulseBass, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        macros (pulseBass, "BRIGHT", "SPACE", "ERA");
+        reverb (pulseBass, RT::room, 0.35f, 0.05f);
+        space (pulseBass);
+        pulseBass.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (pulseBass);
+
+        auto rumble = x.make ("Underground Rumble", 9, { "Bass", "Echoes", "Reese", "Reverse" },
+            "Deep underground: a slow, churning bass (two saws drifting in and out of tune with each other), a clean sine "
+            "beneath, and ECHOES in REVERSE, so each half bar rumbles back in reverse under the next. MACROS: BRIGHT, "
+            "SPACE, ERA (left: worn tape; right: folded and crushed, cold). MOD WHEEL: opens the filter.");
+        rumble.osc (0, "Volume", 0.45f).osc (0, "UniVoices", 2.0f).osc (0, "UniMix", 1.0f).osc (0, "UniDetune", 0.12f)
+              .osc (1, "On", 1.0f).osc (1, "Volume", 0.4f).osc (1, "Fine", -9.0f)
+              .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Volume", 0.4f).osc (2, "PhaseRand", 0.0f)
+              .filter (FilterType::lp24, 400.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.5f)
+              .shaper (0, synth::ShaperModel::sineFold, 0.0f, true)
+              .ampEnvelope (10.0f, 800.0f, 1.0f, 300.0f)
+              .mono (25.0f)
+              .set (ParamIDs::lfo (0, "Rate"), 0.12f).set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        clean (rumble, 2);
+        route (rumble, "lfo1", ParamIDs::osc (1, "Fine"), 0.05f);
+        echoes (rumble, EM::reverse, 1, 0.3f, 0.1f, 0.5f);
+        era (rumble, 0.5f, 0.85f, 0.5f, {});
+        future (rumble, ParamIDs::shp (0, "Drive"), 0.35f);
+        future (rumble, ParamIDs::osc (0, "Crush"), 0.35f);
+        route (rumble, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (rumble, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        macros (rumble, "BRIGHT", "SPACE", "ERA");
+        reverb (rumble, RT::room, 0.4f, 0.06f);
+        space (rumble);
+        rumble.set (ParamIDs::patchLevel, -7.5f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (rumble);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto upright = x.make ("Worn Upright", 10, { "Keys", "Echoes", "Piano", "Felt" },
+            "A soft, felted upright in an empty house, and what you played a bar ago coming back to you through ECHOES, "
+            "a little more worn each time. MACROS: BRIGHT, SPACE, ERA (left: an old cassette of it, wobbling, the echoes "
+            "faded; right: a colder, metallic strike, crushed). MOD WHEEL: more of the felt's noise.");
+        feltPiano (upright);
+        upright.rig.modulation.routes.erase (std::remove_if (upright.rig.modulation.routes.begin(), upright.rig.modulation.routes.end(),
+            [] (const ModRouteData& r) { return r.source == "macro3"; }), upright.rig.modulation.routes.end());   // ERA's instead
+        echoes (upright, EM::echo, 2, 0.3f, 0.15f, 0.45f);
+        era (upright, 0.6f, 0.9f, 0.45f, { 1, 2 }, 7.0f);
+        future (upright, ParamIDs::osc (0, "FmAmount"), 0.2f);
+        future (upright, ParamIDs::osc (2, "Crush"), 0.5f);
+        macros (upright, "BRIGHT", "SPACE", "ERA");
+        reverb (upright, RT::room, 0.6f, 0.18f);
+        space (upright);
+        upright.set (ParamIDs::patchLevel, -3.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (upright);
+
+        auto musicBox = x.make ("Music Box Memory", 11, { "Keys", "Echoes", "Music Box", "Reverse" },
+            "A music box found in an attic: a sine struck with a bright FM tine fading in half a second, a quiet sine two "
+            "octaves up, and ECHOES in REVERSE, each bar coming back backwards, as if the tune were rewinding. MACROS: "
+            "BRIGHT, SPACE, ERA (left: worn tape and a wobble; right: a colder chime, crushed). MOD WHEEL: vibrato.");
+        musicBox.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Transpose", 12.0f)
+                .osc (0, "FmSource", 0.0f).osc (0, "ModRate", ratio (4.0f)).osc (0, "FmAmount", 0.02f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.12f).osc (1, "PhaseRand", 0.0f)
+                .ampEnvelope (1.0f, 1800.0f, 0.0f, 600.0f).set (ParamIDs::ampVel, 0.4f);
+        oneShot (musicBox, 0, { SPx { 0.0f, 1.0f, -0.4f }, SPx { 0.5f, 0.0f, 0.0f } });
+        route (musicBox, "env1", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        echoes (musicBox, EM::reverse, 2, 0.45f, 0.15f, 0.3f);
+        era (musicBox, 0.6f, 0.8f, 0.3f, { 1 }, 12.0f);
+        future (musicBox, ParamIDs::osc (1, "Crush"), 0.5f);
+        future (musicBox, ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (musicBox, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (musicBox, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        musicBox.osc (0, "VibRate", 5.0f);
+        macros (musicBox, "BRIGHT", "SPACE", "ERA");
+        reverb (musicBox, RT::room, 0.5f, 0.18f);
+        space (musicBox);
+        musicBox.set (ParamIDs::patchLevel, -6.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (musicBox);
+
+        auto organ = x.make ("Chapel Organ", 12, { "Keys", "Echoes", "Organ", "Tape" },
+            "A small chapel organ (four sines: the note, an octave, a twelfth and two octaves up, as drawbars) through a "
+            "slow rotary speaker, and ECHOES in TAPE: the start of each phrase comes back at half speed, an octave down, "
+            "like a memory of the hymn. MACROS: BRIGHT (more of the upper drawbars), SPACE, ERA (left: worn tape and a "
+            "wow; right: cold, crushed). MOD WHEEL: the rotary's fast speed.");
+        constexpr std::array<float, 4> bars { 0.0f, 12.0f, 19.0f, 24.0f };
+        constexpr std::array<float, 4> barLevels { 0.5f, 0.35f, 0.18f, 0.12f };
+        for (int k = 0; k < 4; ++k)
+            organ.osc (k, "On", 1.0f).osc (k, "Wave", sine).osc (k, "Transpose", bars[(size_t) k]).osc (k, "Volume", barLevels[(size_t) k])
+                 .osc (k, "PhaseRand", 0.0f);
+        organ.ampEnvelope (8.0f, 300.0f, 1.0f, 200.0f);
+        chorus (organ, ParamIDs::modIds, MT::rotary, 0.2f, 0.6f, 0.6f);
+        echoes (organ, EM::tape, 1, 0.35f, 0.05f, 0.4f);
+        era (organ, 0.6f, 0.8f, 0.4f, { 0, 1 }, 8.0f);
+        future (organ, ParamIDs::osc (0, "Crush"), 0.45f);
+        future (organ, ParamIDs::osc (1, "Crush"), 0.45f);
+        route (organ, "macro1", ParamIDs::osc (2, "Volume"), 0.1f);
+        route (organ, "macro1", ParamIDs::osc (3, "Volume"), 0.08f);
+        route (organ, "modWheel", ParamIDs::modRate, 0.4f);
+        macros (organ, "BRIGHT", "SPACE", "ERA");
+        reverb (organ, RT::cathedral, 0.6f, 0.25f);
+        space (organ);
+        organ.set (ParamIDs::patchLevel, -5.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (organ);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto tick = x.make ("Second Hand", 13, { "Arp", "Echoes", "Loop", "Clock" },
+            "A ticking clock that loses its place: ARP 1 plays the chord you hold in sixteenths as short wooden ticks (a "
+            "triangle with a click of noise), and ECHOES in LOOP catches two beats and repeats them twice under the next, "
+            "so time stutters. MACROS: BRIGHT, SPACE, ERA (left: worn tape; right: cold FM ticks, crushed). MOD WHEEL: "
+            "opens the filter.");
+        tick.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "Arp", 1.0f)
+            .osc (0, "FmSource", 0.0f).osc (0, "ModRate", ratio (3.0f)).osc (0, "FmAmount", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.5f).osc (1, "NoiseColour", 0.15f).osc (1, "Volume", 0.12f).osc (1, "Arp", 1.0f)
+            .filter (FilterType::lp12, 2800.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 80.0f, 0.0f, 60.0f).set (ParamIDs::fltKey, 0.5f)
+            .ampEnvelope (1.0f, 140.0f, 0.0f, 70.0f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+            .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.5f);
+        echoes (tick, EM::loop, 1, 0.45f, 0.15f, 0.25f);
+        era (tick, 0.6f, 0.75f, 0.25f, {});
+        future (tick, ParamIDs::osc (0, "FmAmount"), 0.35f);
+        future (tick, ParamIDs::osc (0, "Crush"), 0.4f);
+        route (tick, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (tick, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (tick, "BRIGHT", "SPACE", "ERA");
+        reverb (tick, RT::room, 0.5f, 0.12f);
+        space (tick);
+        tick.set (ParamIDs::patchLevel, 4.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (tick);
+
+        auto rain = x.make ("Rain On The Window", 14, { "Arp", "Echoes", "Randomizer", "Rain" },
+            "Rain on a window at night: hold a chord and ARP 1 plays notes the RANDOMIZER rolled from the minor scale, "
+            "soft glassy drops (a sine with a quick FM ping) scattered across two octaves and the stereo field, and "
+            "ECHOES bringing back what fell two beats ago. MACROS: BRIGHT, SPACE, ERA (left: worn tape; right: colder, "
+            "harder drops, crushed). MOD WHEEL: brighter drops.");
+        rain.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f).osc (0, "Random", 0.5f)
+            .osc (0, "FmSource", 0.0f).osc (0, "ModRate", ratio (3.5f)).osc (0, "FmAmount", 0.0f)
+            .ampEnvelope (1.0f, 400.0f, 0.0f, 250.0f).set (ParamIDs::ampVel, 0.5f)
+            .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sampleHold).set (ParamIDs::lfo (0, "Rate"), 6.0f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+            .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        oneShot (rain, 0, { SPx { 0.0f, 1.0f, -0.5f }, SPx { 0.08f, 0.0f, 0.0f } });
+        route (rain, "env1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (rain, "lfo1", ParamIDs::ampPan, 0.6f);
+        {
+            auto& r = rain.rig.modulation.arpRandomizers[0];
+            r.scale = synth::arp::scaleNames.indexOf ("Minor");
+            r.restChance = 0.35f;
+            r.lengthChances = { 1.0f, 0.3f, 0.0f, 0.0f };
+            r.octaveChances = { 0.0f, 0.3f, 1.0f, 0.6f, 0.0f };
+            r.velocityLow = 0.4f;
+            r.velocityHigh = 0.9f;
+            r.seed = 33;
+            auto& p = rain.rig.modulation.arps[0].patterns[0];
+            p = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
+        }
+        echoes (rain, EM::echo, 1, 0.3f, 0.2f, 0.4f);
+        era (rain, 0.6f, 0.8f, 0.4f, {});
+        future (rain, ParamIDs::osc (0, "Crush"), 0.4f);
+        future (rain, ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (rain, "macro1", ParamIDs::osc (0, "FmAmount"), 0.08f);
+        route (rain, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        macros (rain, "BRIGHT", "SPACE", "ERA");
+        reverb (rain, RT::hall, 0.7f, 0.25f);
+        space (rain);
+        rain.set (ParamIDs::patchLevel, 2.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        x.add (rain);
+
+        auto boot = x.make ("Bootstrap Sequence", 15, { "Arp", "Echoes", "Drums", "Glitch" },
+            "Melancholy, glitchy electronica: the drum sequencer plays a soft, broken beat with your song (a muffled kick, "
+            "a brushed snare, ticking hats) while ARP 1 plays the chord you hold as a plucked, filtered pulse, GLITCH "
+            "stuttering it now and then on insert bus A, and ECHOES in REVERSE bringing every two beats back backwards. "
+            "The kit is on C2 to B2. MACROS: BRIGHT, SPACE, ERA (left: worn tape; right: cold, crushed). MOD WHEEL: "
+            "opens the filter.");
+        boot.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f).osc (0, "Insert", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f).osc (1, "Arp", 1.0f).osc (1, "Insert", 1.0f)
+            .filter (FilterType::lp24, 1500.0f, 0.25f, 0.4f).filterEnvelope (0.0f, 200.0f, 0.1f, 120.0f).set (ParamIDs::fltKey, 0.5f)
+            .ampEnvelope (1.0f, 300.0f, 0.0f, 150.0f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+            .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.6f)
+            .set (ParamIDs::drumsOn, 1.0f).set (ParamIDs::dseqOn, 1.0f)
+            .set (ParamIDs::drum (0, "Tone"), 0.3f).set (ParamIDs::drum (2, "Tone"), 0.3f).set (ParamIDs::drum (2, "Snap"), 0.3f)
+            .set (ParamIDs::drum (2, "SendReverb"), 0.25f);
+        glitch (boot, 0, effects::Glitch::Mode::sequence, "1/16", 0.25f, 0.3f, 0.6f);
+        {
+            auto& a = boot.rig.modulation.drumPatterns[0];
+            const auto note = [&a] (int row, double start, float velocity)
+            {
+                synth::drumseq::Note n;
+                n.row = row;
+                n.start = start;
+                n.velocity = velocity;
+                a.notes.push_back (n);
+            };
+            for (const auto s : { 0.0, 7.0, 10.0 })
+                note (0, s, s == 0.0 ? 0.9f : 0.7f);   // a broken kick
+            note (2, 4.0, 0.7f);
+            note (2, 12.0, 0.7f);
+            note (2, 15.0, 0.35f);                     // a ghost before the bar
+            for (int k = 0; k < 16; ++k)
+                if (k % 4 != 1)
+                    note (6, k, k % 2 == 0 ? 0.45f : 0.3f);
+        }
+        echoes (boot, EM::reverse, 1, 0.35f, 0.15f, 0.35f);
+        era (boot, 0.6f, 0.75f, 0.35f, { 1 });
+        future (boot, ParamIDs::osc (0, "Crush"), 0.4f);
+        future (boot, ParamIDs::fltRes, 0.25f);
+        route (boot, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (boot, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (boot, "BRIGHT", "SPACE", "ERA");
+        reverb (boot, RT::room, 0.55f, 0.15f);
+        space (boot);
+        boot.set (ParamIDs::patchLevel, 0.2f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        x.add (boot);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -9307,5 +9780,6 @@ std::vector<Rig> makeExpansionRigs()
     superposition ({ Rig::numBanks + 19, rigs });
     severed ({ Rig::numBanks + 20, rigs });
     slingblade ({ Rig::numBanks + 21, rigs });
+    paradox ({ Rig::numBanks + 22, rigs });
     return rigs;
 }

@@ -334,8 +334,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto super = rig.bank == Rig::numBanks + 19;     // SUPERPOSITION: 90 BPM in C minor, cold and cerebral
         const auto sev = rig.bank == Rig::numBanks + 20;       // SEVERED: 96 BPM, D minor slipping into bright F major
         const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
+        const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -482,6 +483,47 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     rock (8.0, 12.0);
                 }
                 length = 19.0 * beat;
+            }
+        }
+        else if (para)
+        {
+            // Each phrase followed by room for ECHOES to bring it back (a bar or two later, backwards, slowed, looped).
+            if (type == "Lead")
+            {
+                // A sad line in E minor, a bar's rest, its answer, a held note.
+                line ({ { 0, 1, 64 }, { 1, 1, 67 }, { 2, 1.5, 71 }, { 3.5, 0.5, 69 }, { 4, 2, 67 }, { 6, 2, 66 },
+                        { 12, 1, 64 }, { 13, 1, 62 }, { 14, 2, 60 }, { 16, 4, 59 } }, 95);
+                wheel (16.0, 20.0, 90);
+                length = 28.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                // E minor, C major, then held while the past comes back.
+                chord (e, at (0), at (7.8), { 40, 52, 59, 64, 67 }, 90);
+                chord (e, at (8), at (15.8), { 36, 52, 55, 60, 64 }, 90);
+                wheel (8.0, 15.0, 90);
+                length = 26.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                line ({ { 0, 3.9, 28 }, { 4, 3.9, 24 }, { 8, 3.9, 31 }, { 12, 3.9, 30 } }, 105);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // Broken chords, a bar's rest, then two chords held.
+                line ({ { 0, 1, 52 }, { 1, 1, 59 }, { 2, 1, 64 }, { 3, 1, 67 }, { 4, 1, 48 }, { 5, 1, 55 }, { 6, 1, 60 }, { 7, 1, 64 } }, 85);
+                chord (e, at (12), at (15.5), { 43, 55, 59, 62 }, 85);
+                chord (e, at (16), at (19.5), { 47, 54, 59, 63 }, 85);
+                length = 28.0 * beat;
+            }
+            else
+            {
+                // Arps: E minor, then C major, a bar's rest.
+                chord (e, at (0), at (7.9), { 64, 67, 71 }, 100);
+                chord (e, at (8), at (15.9), { 60, 64, 67 }, 100);
+                length = 24.0 * beat;
             }
         }
         else if (sev && type == "Lead")
