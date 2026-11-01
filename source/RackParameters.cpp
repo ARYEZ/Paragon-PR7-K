@@ -9,6 +9,7 @@
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/Glitch.h"
 #include "dsp/effects/LoFi.h"
+#include "dsp/effects/Wah.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -446,5 +447,27 @@ void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
 
         layout.add (makeFloat (id ("SendDelay"), name + "Send Delay", { 0.0f, 1.0f, 0.01f }, 1.0f, v, asPercent));
         layout.add (makeFloat (id ("SendReverb"), name + "Send Reverb", { 0.0f, 1.0f, 0.01f }, 1.0f, v, asPercent));
+    }
+
+    // 0.51.0: each bus's WAH (effects::Wah, our own design; first on the bus, before the DRIVE). Off by default, so
+    // projects and presets from before are unchanged.
+    constexpr int wahVersion = 25;
+    for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
+    {
+        const auto id = [b] (const char* what) { return ParamIDs::ins (b, what); };
+        const auto name = "Insert " + ParamIDs::insertBusNames[b + 1] + " ";
+        const auto w = wahVersion;
+        layout.add (makeSwitch (id ("WahOn"), name + "Wah On", w, false));
+        layout.add (makeChoice (id ("WahMode"), name + "Wah Mode", w, effects::Wah::modeNames, (int) effects::Wah::Mode::pedal));
+        layout.add (makeChoice (id ("WahRange"), name + "Wah Range", w, effects::Wah::rangeNames, (int) effects::Wah::Range::classic));
+        layout.add (makeFloat (id ("WahPosition"), name + "Wah Pedal", { 0.0f, 1.0f, 0.001f }, 0.5f, w, asPercent));
+        layout.add (makeFloat (id ("WahResonance"), name + "Wah Resonance", { 0.0f, 10.0f, 0.1f }, 5.0f, w, asKnob));
+        layout.add (makeFloat (id ("WahSensitivity"), name + "Wah Sensitivity", { 0.0f, 10.0f, 0.1f }, 5.0f, w, asKnob));
+        layout.add (makeFloat (id ("WahSpeed"), name + "Wah Speed", { 0.0f, 10.0f, 0.1f }, 5.0f, w, asKnob));
+        layout.add (makeFloat (id ("WahDepth"), name + "Wah Depth", { 0.0f, 1.0f, 0.01f }, 1.0f, w, asPercent));
+        layout.add (makeFloat (id ("WahRate"), name + "Wah Rate", skewed (0.05f, 10.0f, 1.0f, 0.01f), 1.0f, w, asHz));
+        layout.add (makeChoice (id ("WahSync"), name + "Wah Sync", w, effects::Delay::syncNames, 0));
+        layout.add (makeFloat (id ("WahMix"), name + "Wah Mix", { 0.0f, 1.0f, 0.01f }, 1.0f, w, asPercent));
+        layout.add (makeFloat (id ("WahLevel"), name + "Wah Level", { -12.0f, 12.0f, 0.1f }, 0.0f, w, asDb));
     }
 }

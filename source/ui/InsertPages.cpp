@@ -288,6 +288,24 @@ InsertEffectPage::InsertEffectPage (ParagonX1AudioProcessor& p, Kind k, int b) :
         make (controls, "DriveMidFreq", "MID FREQ", "Abyss's MID FREQ: where MIDDLE works.");
         make (controls, "DriveLevel", "LEVEL", "The level after it.");
     }
+    else if (kind == Kind::wah)
+    {
+        display = std::make_unique<WahPreview> (p, b);
+        make (top, "WahOn", "ON", "WAH on or off. It's first on the bus, before the DRIVE, as on a pedalboard.");
+        make (top, "WahMode", "MODE", "PEDAL: PEDAL rocks it, heel to toe (route EXPRESSION to this bus's Wah Pedal in the MOD matrix and the EXPR "
+                                     "wheel or your keyboard's pedal works it); AUTO: it opens with how loud you play; LFO: it sweeps by itself.");
+        make (controls, "WahRange", "RANGE", "CLASSIC: the classic pedal's 350 Hz to 2.2 kHz; WIDE: 220 Hz to 3.5 kHz, further into the bite; "
+                                             "LOW: 90 to 900 Hz with more of the bottom kept, for basses.");
+        make (controls, "WahPosition", "PEDAL", "The pedal: heel (0%, dark) to toe (100%, bright). In AUTO and LFO, where the sweep starts.");
+        make (controls, "WahResonance", "RESONANCE", "How sharp and vocal the peak is (Q 2 to 12).");
+        make (controls, "WahSensitivity", "SENS", "AUTO: how little it takes to open it fully.");
+        make (controls, "WahSpeed", "SPEED", "AUTO: how fast it falls back after each note (slow 0.6 s to fast 40 ms).");
+        make (controls, "WahDepth", "DEPTH", "AUTO and LFO: how far it sweeps up from the PEDAL.");
+        make (controls, "WahSync", "SYNC", "LFO: OFF for RATE in Hz, or a note length at the song's tempo.");
+        make (controls, "WahRate", "RATE", "LFO: sweeps a second, when SYNC is off.");
+        make (controls, "WahMix", "MIX", "The wah against the straight sound.");
+        make (controls, "WahLevel", "LEVEL", "The level after it.");
+    }
     else
     {
         display = std::make_unique<GlitchPreview> (p, b);
@@ -324,6 +342,16 @@ bool InsertEffectPage::shows (const ParamControl& control) const
         if (is ("DriveHigh") || is ("DriveLow") || is ("DriveMiddle") || is ("DriveMidFreq")) return model == Model::abyss;
         return true;
     }
+    if (kind == Kind::wah)
+    {
+        const auto wah = processor.getInsertWahSettings (bus);
+        using WahMode = effects::Wah::Mode;
+        if (is ("WahSensitivity") || is ("WahSpeed")) return wah.mode == WahMode::autoWah;
+        if (is ("WahDepth"))   return wah.mode != WahMode::pedal;
+        if (is ("WahSync"))    return wah.mode == WahMode::lfo;
+        if (is ("WahRate"))    return wah.mode == WahMode::lfo && wah.sync == 0;
+        return true;
+    }
     const auto synced = processor.getInsertGlitchSettings (bus).sync;
     if (is ("GlitchTime"))     return ! synced;
     if (is ("GlitchDivision")) return synced;
@@ -357,12 +385,12 @@ void InsertEffectPage::paint (juce::Graphics& g)
     DockStyle::drawPanel (g, getLocalBounds().toFloat());
     g.setFont (juce::FontOptions (15.0f, juce::Font::bold));
     g.setGradientFill (ParagonLookAndFeel::menuHighlight (juce::Rectangle<float> (24.0f, 18.0f, 120.0f, 24.0f)));
-    g.drawText (kind == Kind::drive ? "DRIVE" : "GLITCH", juce::Rectangle<int> (24, 14, 160, 26), juce::Justification::centredLeft, false);
+    g.drawText (kind == Kind::drive ? "DRIVE" : kind == Kind::wah ? "WAH" : "GLITCH", juce::Rectangle<int> (24, 14, 160, 26), juce::Justification::centredLeft, false);
     g.setColour (ParagonColours::textDim);
     g.setFont (juce::FontOptions (10.5f));
     const auto busName = ParamIDs::insertBusNames[bus + 1];
-    g.drawText (kind == Kind::drive ? "Bus " + busName + ": first" : "Bus " + busName + ": after DRIVE", juce::Rectangle<int> (24, 38, 200, 16),
-                juce::Justification::centredLeft, false);
+    g.drawText (kind == Kind::drive ? "Bus " + busName + ": after WAH" : kind == Kind::wah ? "Bus " + busName + ": first, before DRIVE" : "Bus " + busName + ": after DRIVE",
+                juce::Rectangle<int> (24, 38, 200, 16), juce::Justification::centredLeft, false);
 }
 
 void InsertEffectPage::resized()
@@ -390,6 +418,102 @@ void InsertEffectPage::resized()
 }
 
 //==============================================================================
+WahPreview::WahPreview (ParagonX1AudioProcessor& p, int b) : processor (p), bus (b)
+{
+    setTooltip ("The WAH's filter: where it is now (bright), at the heel and the toe (dim). The peak is the \"wah\"; the "
+                "low end under it is what keeps it throaty rather than thin.");
+    startTimerHz (30);
+}
+
+float WahPreview::xFor (float hz) const noexcept
+{
+    const auto area = getLocalBounds().toFloat().reduced (40.0f, 14.0f);
+    return area.getX() + area.getWidth() * std::log (hz / 50.0f) / std::log (10000.0f / 50.0f);
+}
+
+float WahPreview::yFor (float db) const noexcept
+{
+    const auto area = getLocalBounds().toFloat().reduced (40.0f, 14.0f);
+    return area.getY() + area.getHeight() * (18.0f - db) / 42.0f;   // +18 dB at the top, -24 at the bottom
+}
+
+void WahPreview::timerCallback()
+{
+    const auto s = processor.getInsertWahSettings (bus);
+    const auto sweep = s.on ? processor.getInsertWahSweep (bus) : s.position;
+    if (std::abs (sweep - shownSweep) > 0.002f)
+    {
+        shownSweep = sweep;
+        repaint();
+    }
+}
+
+void WahPreview::paint (juce::Graphics& g)
+{
+    const auto bounds = getLocalBounds().toFloat();
+    g.setColour (juce::Colour (0xff070507));
+    g.fillRoundedRectangle (bounds, 6.0f);
+    g.setColour (ParagonColours::panelEdge);
+    g.drawRoundedRectangle (bounds.reduced (0.5f), 6.0f, 1.0f);
+    const auto area = bounds.reduced (40.0f, 14.0f);
+    const auto s = processor.getInsertWahSettings (bus);
+    const auto voicing = effects::Wah::voicingFor (s.range);
+
+    // The range the pedal sweeps, shaded; the grid.
+    g.setColour (ParagonColours::accent.withAlpha (0.07f));
+    g.fillRect (juce::Rectangle<float>::leftTopRightBottom (xFor (voicing.heelHz), area.getY(), xFor (voicing.toeHz), area.getBottom()));
+    g.setFont (juce::FontOptions (10.0f));
+    for (const auto hz : { 100.0f, 200.0f, 500.0f, 1000.0f, 2000.0f, 5000.0f, 10000.0f })
+    {
+        g.setColour (ParagonColours::panelEdge.withAlpha (0.6f));
+        g.drawVerticalLine (juce::roundToInt (xFor (hz)), area.getY(), area.getBottom());
+        g.setColour (ParagonColours::textDim);
+        g.drawText (hz >= 1000.0f ? juce::String (juce::roundToInt (hz / 1000.0f)) + "k" : juce::String (juce::roundToInt (hz)),
+                    juce::Rectangle<float> (xFor (hz) - 20.0f, area.getBottom() - 14.0f, 40.0f, 14.0f), juce::Justification::centred, false);
+    }
+    for (const auto db : { 12.0f, 0.0f, -12.0f })
+    {
+        g.setColour (ParagonColours::panelEdge.withAlpha (db == 0.0f ? 1.0f : 0.5f));
+        g.drawHorizontalLine (juce::roundToInt (yFor (db)), area.getX(), area.getRight());
+        g.setColour (ParagonColours::textDim);
+        g.drawText ((db > 0.0f ? "+" : "") + juce::String (juce::roundToInt (db)), juce::Rectangle<float> (area.getX() - 36.0f, yFor (db) - 7.0f, 30.0f, 14.0f),
+                    juce::Justification::centredRight, false);
+    }
+
+    const auto curve = [&] (float sweep)
+    {
+        juce::Path path;
+        for (int i = 0; i <= 240; ++i)
+        {
+            const auto hz = 50.0f * std::pow (200.0f, (float) i / 240.0f);
+            const auto db = juce::jlimit (-26.0f, 20.0f, effects::Wah::responseDb (s.range, sweep, s.resonance, hz));
+            const juce::Point<float> point { xFor (hz), yFor (db) };
+            i == 0 ? path.startNewSubPath (point) : path.lineTo (point);
+        }
+        return path;
+    };
+    g.setColour (ParagonColours::textDim.withAlpha (0.45f));
+    for (const auto end : { 0.0f, 1.0f })
+        g.strokePath (curve (end), juce::PathStrokeType (1.0f));
+    const auto sweep = juce::jlimit (0.0f, 1.0f, shownSweep < 0.0f ? s.position : shownSweep);
+    const auto now = curve (sweep);
+    g.setColour (ParagonColours::accent.withAlpha (s.on ? 0.25f : 0.1f));
+    g.strokePath (now, juce::PathStrokeType (6.0f));
+    g.setColour (s.on ? ParagonColours::accent : ParagonColours::textDim);
+    g.strokePath (now, juce::PathStrokeType (2.0f));
+
+    // Where the peak is, named.
+    const auto hz = effects::Wah::frequencyFor (s.range, sweep);
+    g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    g.drawText (hz >= 1000.0f ? juce::String (hz / 1000.0f, 2) + " kHz" : juce::String (juce::roundToInt (hz)) + " Hz",
+                juce::Rectangle<float> (xFor (hz) - 50.0f, area.getY(), 100.0f, 16.0f), juce::Justification::centred, false);
+    g.setColour (ParagonColours::textDim);
+    g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+    g.drawText ("HEEL", juce::Rectangle<float> (xFor (voicing.heelHz) - 30.0f, area.getBottom() - 30.0f, 60.0f, 14.0f), juce::Justification::centred, false);
+    g.drawText ("TOE", juce::Rectangle<float> (xFor (voicing.toeHz) - 30.0f, area.getBottom() - 30.0f, 60.0f, 14.0f), juce::Justification::centred, false);
+}
+
+//==============================================================================
 InsertBusStrip::InsertBusStrip (ParagonX1AudioProcessor& p) : processor (p)
 {
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -402,7 +526,7 @@ InsertBusStrip::InsertBusStrip (ParagonX1AudioProcessor& p) : processor (p)
         button.setColour (juce::TextButton::buttonOnColourId, ParagonColours::accentDim.withAlpha (0.6f));
         button.setColour (juce::TextButton::textColourOffId, ParagonColours::textDim);
         button.setColour (juce::TextButton::textColourOnId, ParagonColours::accent);
-        button.setTooltip ("Insert bus " + ParamIDs::insertBusNames[b + 1] + ": its DRIVE, GLITCH, MOD and LO-FI, on the oscillators routed to it");
+        button.setTooltip ("Insert bus " + ParamIDs::insertBusNames[b + 1] + ": its WAH, DRIVE, GLITCH, MOD and LO-FI, on the oscillators routed to it");
         button.onClick = [this, b] { setBus (b); };
         addAndMakeVisible (button);
     }

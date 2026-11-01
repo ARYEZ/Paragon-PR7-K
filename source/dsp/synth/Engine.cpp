@@ -60,10 +60,15 @@ namespace synth
             int lo = 0, hi = 0;
             float t = 0.0f;
         };
+        // FFT LP / HP's cutoff `position` among the levels, `width` (SLOPE) levels wide: two levels `span` apart,
+        // blended so that on average the cutoff sits at `position`. The pair steps along a grid `span` levels apart
+        // (0.47.0): as the cutoff moves past a grid line the blend is all one level on both sides, so a moving cutoff
+        // never jumps. Before, the pair moved one level at a time, and with SLOPE above 0 the sound jumped (a click)
+        // each time the cutoff crossed a level. With SLOPE at 0 (span 1) it's the same as before.
         LevelBlend blendFor (float position, float width, int minimum) noexcept
         {
             const auto span = juce::jmax (1, juce::roundToInt (width));
-            auto lo = (int) std::floor (position - 0.5f * (float) (span - 1));
+            auto lo = span * (int) std::floor (position / (float) span);
             auto hi = lo + span;
             const auto t = juce::jlimit (0.0f, 1.0f, (position - (float) lo) / (float) span);
             lo = juce::jlimit (minimum, tables::numLevels - 1, lo);
@@ -354,6 +359,7 @@ namespace synth
         pedalDown = false;
         lastPitch = -1.0f;
         modWheel = breath = expression = channelPressure = 0.0f;
+        expressionHeard = false;
         smoothedBend = 0.0f;
         seqClock = 0.0;
         travelClock.fill (0.0);
@@ -459,7 +465,10 @@ namespace synth
         else if (message.isController() && message.getControllerNumber() == 2)
             breath = (float) message.getControllerValue() / 127.0f;
         else if (message.isController() && message.getControllerNumber() == 11)
+        {
             expression = (float) message.getControllerValue() / 127.0f;
+            expressionHeard = true;
+        }
         else if (message.isChannelPressure())
             channelPressure = (float) message.getChannelPressureValue() / 127.0f;
         else if (message.isAftertouch())
@@ -994,7 +1003,7 @@ namespace synth
                     smoothedBend += (bend - smoothedBend) * (1.0f - std::exp (-(float) n / (settings.pitch.bendLagMs * 0.001f * (float) sampleRate)));
                 bendValues[(size_t) i] = smoothedBend;
             }
-            if (modulation.numRoutes > 0)
+            if (modulation.numRoutes > 0 || modulation.effectSources != 0)
             {
                 // The LFOs running once for the whole synth: their value for each interval.
                 const auto secondsPerSample = 1.0 / sampleRate;
@@ -1016,6 +1025,7 @@ namespace synth
                             state.phase = position - std::floor (position);
                         }
                         globalLfoValues[(size_t) k][(size_t) i] = state.next (lfo, cycles, n * secondsPerSample, random, modulation.lfoShapes);
+                        lastGlobalLfo[(size_t) k] = globalLfoValues[(size_t) k][(size_t) i];
                     }
                 }
                 // ...and the envelopes set to FIRST NOTE or LAST NOTE.
@@ -1026,9 +1036,12 @@ namespace synth
                         || ! modulation.uses ((mod::Source) ((int) mod::Source::env1 + k)))
                         continue;
                     for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
                         globalEnvelopeValues[(size_t) k][(size_t) i] = globalEnvelopes[(size_t) k].next (modulation.envelopeShapes[k], envelope,
                                                                                                              juce::jmin (controlInterval, length - at) * secondsPerSample,
                                                                                                              modulation.bpm);
+                        lastGlobalEnvelope[(size_t) k] = globalEnvelopeValues[(size_t) k][(size_t) i];
+                    }
                 }
             }
             // The STEP SEQUENCER (unless each note runs its own): its value at each sample.
@@ -1079,6 +1092,44 @@ namespace synth
         voice.lagFresh = true;
     }
 
+    float Engine::wholeSynthValue (mod::Source source, const Settings& settings) const noexcept
+    {
+        using S = mod::Source;
+        const auto& modulation = settings.modulation;
+        if (source >= S::lfo1 && source <= S::lfo4)
+        {
+            const auto k = (size_t) source - (size_t) S::lfo1;
+            return modulation.lfos[k].trigger == mod::LfoTrigger::voice ? std::numeric_limits<float>::quiet_NaN() : lastGlobalLfo[k];
+        }
+        if (source >= S::env1 && source <= S::env8)
+        {
+            const auto k = (size_t) source - (size_t) S::env1;
+            return modulation.envelopes[k].trigger == mod::EnvelopeTrigger::voice ? std::numeric_limits<float>::quiet_NaN() : lastGlobalEnvelope[k];
+        }
+        switch (source)
+        {
+            case S::macro1: case S::macro2: case S::macro3: return modulation.macros[(size_t) source - (size_t) S::macro1];
+            case S::button1: return modulation.buttons[0] ? 1.0f : 0.0f;
+            case S::button2: return modulation.buttons[1] ? 1.0f : 0.0f;
+            case S::modWheel:
+            {
+                auto wheel = modWheel;
+                const auto& toWheel = modulation.toModWheel;
+                if (toWheel[0]) wheel = juce::jmax (wheel, breath);
+                if (toWheel[1]) wheel = juce::jmax (wheel, expression);
+                if (toWheel[2]) wheel = juce::jmax (wheel, channelPressure);
+                if (toWheel[3] && pedalDown) wheel = 1.0f;
+                return wheel;
+            }
+            case S::pitchBend: return bend;
+            case S::aftertouch: return channelPressure;
+            case S::breath: return breath;
+            case S::expression: return expressionSource();
+            case S::sustain: return pedalDown ? 1.0f : 0.0f;
+            default: return std::numeric_limits<float>::quiet_NaN();   // each note has its own
+        }
+    }
+
     const Settings& Engine::modulate (Voice& voice, int n, const Settings& settings, int interval) noexcept
     {
         const auto& modulation = settings.modulation;
@@ -1123,7 +1174,7 @@ namespace synth
         values[(size_t) mod::Source::aftertouch] = juce::jmax (channelPressure, voice.pressure);
         values[(size_t) mod::Source::keytrack] = (float) voice.note / 127.0f;
         values[(size_t) mod::Source::breath] = breath;
-        values[(size_t) mod::Source::expression] = expression;
+        values[(size_t) mod::Source::expression] = expressionSource();
         values[(size_t) mod::Source::sustain] = pedalDown ? 1.0f : 0.0f;
         values[(size_t) mod::Source::random] = voice.randomValue;
         values[(size_t) mod::Source::pitchEnvelope] = voice.pitchEnvelopeValue;
@@ -1266,6 +1317,23 @@ namespace synth
             filterTarget = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
         }
 
+        // The VOICE filter's resonators for this note and its LEVELLING, worked out again when the note has moved
+        // a quarter tone or its VOWEL, SIZE or SHARP have changed (by the knobs or the matrix).
+        if (settings.voice.on)
+        {
+            const auto& v = settings.voice;
+            const std::array<float, 3> wanted { v.vowel, v.size, v.sharp };
+            if (wanted != voice.vocalFor || std::abs (voice.pitch - voice.vocalPitch) > 0.5f)
+            {
+                const auto noteHz = 440.0 * std::exp2 ((voice.pitch - 69.0) / 12.0);
+                voice.vocalCoefficients = vocal::Coefficients::make (v.vowel, v.size, v.sharp, sampleRate, noteHz);
+                voice.vocalLevel = vocal::levelling (voice.vocalCoefficients, noteHz, sampleRate);
+                voice.vocalPitch = voice.pitch;
+                voice.vocalFor = wanted;
+            }
+        }
+        const auto& vocalTarget = voice.vocalCoefficients;
+
         // Each path through its shapers and filter, then all of them together (and, 7b, into the sends at each path's amount).
         std::fill (mixLeft.begin(), mixLeft.begin() + n, 0.0f);
         std::fill (mixRight.begin(), mixRight.begin() + n, 0.0f);
@@ -1291,7 +1359,7 @@ namespace synth
         {
             if (! pathUsed[p])
                 continue;
-            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, filterTarget);
+            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, filterTarget, vocalTarget, voice.vocalLevel);
             if (const auto bus = busOf (voice.paths[p].key); bus > 0)
             {
                 for (int i = 0; i < n; ++i)
@@ -1411,13 +1479,20 @@ namespace synth
             st.lastVelocity = velocity;
             if (! wasEmpty)
                 continue;
-            // The first key: it starts. In step with a playing song, it waits for the next step;
+            // The first key: it starts. In step with a playing song, it waits for the next step, unless it came
+            // on a step or just after it (up to 30 ms, or a quarter of a step if that's shorter: a chord written on
+            // the beat in the DAW, or played a hair late), when it plays that step now;
             // otherwise it starts now, from the first step.
             st.firstVelocity = velocity;
             st.running = true;
             st.noteCounter = 0;
             if (arpFollowsSong (a, settings))
-                st.lastStep = arpStepAt (a, sampleClock, settings);
+            {
+                const auto step = arpStepAt (a, sampleClock, settings);
+                const auto late = (double) (sampleClock - arpStepTime (a, step, settings));
+                const auto samplesPerStep = settings.arps[(size_t) a].beatsPerStep() * 60.0 / juce::jmax (1.0, settings.modulation.bpm) * sampleRate;
+                st.lastStep = step >= 0 && late <= juce::jmin (0.03 * sampleRate, 0.25 * samplesPerStep) ? step - 1 : step;
+            }
             else if (settings.arpsTogether && numKeysDown > 1)
             {
                 // ARPS TOGETHER: on the clock the first key started; in at its next step.
@@ -1752,6 +1827,10 @@ namespace synth
             case Field::pitchEnvRange: s.pitch.rangeSemitones = value; break;
             case Field::pitchKeytrack: s.pitch.keytrack = value; break;
             case Field::stepSeqVolMix: s.stepSeq.volMix = value; break;
+            case Field::voiceVowel: s.voice.vowel = value; break;
+            case Field::voiceSize: s.voice.size = value; break;
+            case Field::voiceSharp: s.voice.sharp = value; break;
+            case Field::voiceMix: s.voice.mix = value; break;
         }
     }
 
@@ -1768,6 +1847,8 @@ namespace synth
             if (! s.on || ! voice.oscillators[i].active)
                 continue;
             auto key = s.toFilter && settings.filter.on ? 1 : 0;
+            if (s.toVoice && settings.voice.on)
+                key |= voiceBit;
             for (int k = 0; k < numShapers; ++k)
                 if (settings.shapers[(size_t) k].on && s.toShaper[(size_t) k])
                     key |= 2 << k;
@@ -1825,7 +1906,8 @@ namespace synth
     }
 
     void Engine::processPath (Voice& voice, Path& path, float* left, float* right, int n, const Settings& settings,
-                              const FilterChannel::Coefficients& filterTarget) noexcept
+                              const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget,
+                              float vocalLevel) noexcept
     {
         const auto velocityDown = 1.0f - voice.velocity;
         // SHAPERs placed before the FILTER, in order...
@@ -1860,6 +1942,25 @@ namespace synth
                 right[i] = path.filterRight.process (r, type, c);
             }
             path.coefficients = filterTarget;
+        }
+
+        // ...the VOICE filter (0.39.0): the vowel's formants at fixed frequencies, MIX against what went in...
+        if ((path.key & voiceBit) != 0)
+        {
+            const auto from = path.vocalFresh ? vocalTarget : path.vocalCoefficients;
+            path.vocalFresh = false;
+            const auto fromLevel = path.vocalLevel > 0.0f ? path.vocalLevel : vocalLevel;
+            const auto wet = settings.voice.mix, dry = 1.0f - wet;
+            for (int i = 0; i < n; ++i)
+            {
+                const auto t = (float) (i + 1) / (float) n;
+                const auto c = vocal::Coefficients::lerp (from, vocalTarget, t);
+                const auto w = wet * (fromLevel + (vocalLevel - fromLevel) * t);
+                left[i] = path.vocalLeft.process (left[i], c) * w + left[i] * dry;
+                right[i] = path.vocalRight.process (right[i], c) * w + right[i] * dry;
+            }
+            path.vocalCoefficients = vocalTarget;
+            path.vocalLevel = vocalLevel;
         }
 
         // ...and the ones after it.

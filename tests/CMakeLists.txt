@@ -13,6 +13,8 @@ add_executable(ParagonX1Tests
     FftTests.cpp
     FreeformTests.cpp
     ShaperTests.cpp
+    VoiceFilterTests.cpp
+    MimicTests.cpp
     MatrixTests.cpp
     EnvelopeModTests.cpp
     PitchModuleTests.cpp
@@ -31,6 +33,8 @@ add_executable(ParagonX1Tests
     ParameterIdTests.cpp
     ProcessorTests.cpp
     RigTests.cpp
+    ExpansionTests.cpp
+    EffectModTests.cpp
     UiTests.cpp
     UndoTests.cpp
     EffectTests.cpp
@@ -41,6 +45,8 @@ add_executable(ParagonX1Tests
     DelayReverbTests.cpp
     ModFxTests.cpp
     ModFxStereoTests.cpp
+    WahTests.cpp
+    WahPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp
     SendTests.cpp

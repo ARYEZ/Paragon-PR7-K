@@ -27,7 +27,7 @@ public:
     enum class View { rack, eq, dominion, comp, limiter,   // rack: the MASTER view
                       sends, delay, reverb,                // stage 7b
                       modFx, mod, mod2, loFi,              // stage 7c
-                      inserts, insertDrive, insertGlitch, insertMod, insertLoFi };   // stage 7d (the strip's bus)
+                      inserts, insertDrive, insertGlitch, insertMod, insertLoFi, insertWah };   // stage 7d (the strip's bus)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -42,7 +42,7 @@ public:
     juce::TextButton& getInsertsTab() noexcept { return insertsTab; }
     InsertBusStrip& getInsertStrip() noexcept { return insertStrip; }
     RackUnit& getInsertUnit (int bus, int index) noexcept { return *insertUnits[(size_t) bus][(size_t) index]; }
-    InsertEffectPage& getInsertEffectPage (int bus, int index) noexcept { return *insertEffectPages[(size_t) bus][(size_t) index]; }   // DRIVE, GLITCH
+    InsertEffectPage& getInsertEffectPage (int bus, int index) noexcept { return *insertEffectPages[(size_t) bus][(size_t) index]; }   // DRIVE, GLITCH, WAH
     ModFxPage& getInsertModFxPage (int bus, int index) noexcept { return *insertModFxPages[(size_t) bus][(size_t) index]; }       // MOD, LO-FI
     juce::TextButton& getSendsTab() noexcept { return sendsTab; }
     juce::TextButton& getMasterTab() noexcept { return masterTab; }
@@ -62,8 +62,8 @@ private:
     std::array<std::unique_ptr<ModFxPage>, 3> modFxPages;
     juce::TextButton insertsTab { "INSERTS" }, sendsTab { "SENDS" }, modFxTab { "MOD / LO-FI" }, masterTab { "MASTER" };
     InsertBusStrip insertStrip;
-    std::array<std::array<std::unique_ptr<RackUnit>, 4>, ParamIDs::numInsertBuses> insertUnits;
-    std::array<std::array<std::unique_ptr<InsertEffectPage>, 2>, ParamIDs::numInsertBuses> insertEffectPages;
+    std::array<std::array<std::unique_ptr<RackUnit>, 5>, ParamIDs::numInsertBuses> insertUnits;   // DRIVE, GLITCH, MOD, LO-FI, WAH (drawn first)
+    std::array<std::array<std::unique_ptr<InsertEffectPage>, 3>, ParamIDs::numInsertBuses> insertEffectPages;   // DRIVE, GLITCH, WAH
     std::array<std::array<std::unique_ptr<ModFxPage>, 2>, ParamIDs::numInsertBuses> insertModFxPages;
     SendMatrix matrix;
     SendPage delayPage, reverbPage;

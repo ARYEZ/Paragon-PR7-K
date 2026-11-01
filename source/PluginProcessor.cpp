@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "dsp/synth/Mimic.h"
 
 #include "ModDestinations.h"
 
@@ -147,6 +148,7 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
         for (size_t s = 0; s < bus.drive_.size(); ++s) bus.drive_[s] = find (ParamIDs::insDriveSettings[s]);
         for (size_t s = 0; s < bus.glitch_.size(); ++s) bus.glitch_[s] = find (ParamIDs::insGlitchSettings[s]);
         for (size_t s = 0; s < bus.lofi_.size(); ++s) bus.lofi_[s] = find (ParamIDs::insLofiSettings[s]);
+        for (size_t s = 0; s < bus.wah_.size(); ++s) bus.wah_[s] = find (ParamIDs::insWahSettings[s]);
         bus.sends_ = { find ("SendDelay"), find ("SendReverb") };
     }
     for (int k = 0; k < ParamIDs::numLfos; ++k)
@@ -179,6 +181,8 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
             shaperParameters[(size_t) k].values[s] = parameters.getRawParameterValue (ParamIDs::shp (k, ParamIDs::shaperSettings[s]));
             jassert (shaperParameters[(size_t) k].values[s] != nullptr);
         }
+    for (auto& position : effectPositions)
+        position = std::numeric_limits<float>::quiet_NaN();   // no route moves an effect yet
     compileMatrix();   // the PITCH envelope's points, ready from the start
 
     playingFactoryTable.fill (-1);
@@ -246,6 +250,8 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
 {
     preparedBlockSize = juce::jmax (1, samplesPerBlock);
     engine.prepare (sampleRate);
+    for (auto& position : effectPositions)
+        position = std::numeric_limits<float>::quiet_NaN();   // effects moved by the matrix: straight to their values
     if (juce::MessageManager::existsAndIsCurrentThread())
         updateWavetables();
     keyboardMidi.ensureSize (2048);
@@ -255,6 +261,8 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     drumKit.prepare (sampleRate, 512);   // the pieces processChunk renders in
 
     outputGain.reset (sampleRate, gainRampSeconds);
+    expressionGain.reset (sampleRate, 0.03);
+    expressionGain.setCurrentAndTargetValue (expressionGain.getTargetValue());
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));
     bypassAmount.reset (sampleRate, gainRampSeconds);
     bypassAmount.setCurrentAndTargetValue (isOn (ParamIDs::bypass) ? 1.0f : 0.0f);
@@ -281,6 +289,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
         }
         bus.modulation.prepare (sampleRate, preparedBlockSize);
         bus.loFi.prepare (sampleRate, preparedBlockSize);
+        bus.wah.prepare (sampleRate, preparedBlockSize);
         bus.buffer.setSize (2, preparedBlockSize);
     }
     rack->loFi.prepare (sampleRate, preparedBlockSize);
@@ -431,9 +440,9 @@ effects::Delay::Settings ParagonX1AudioProcessor::getDelaySettings() const noexc
     s.on = isOn (ParamIDs::delayOn);
     s.timeMs = param (ParamIDs::delayTime);
     s.syncIndex = juce::jlimit (0, effects::Delay::syncNames.size() - 1, juce::roundToInt (param (ParamIDs::delaySync)));
-    s.feedback = param (ParamIDs::delayFeedback);
-    s.tone = param (ParamIDs::delayTone);
-    s.mix = param (ParamIDs::delayMix);
+    s.feedback = effectParam (ModDestinations::effect ("delayFeedback"), ParamIDs::delayFeedback);
+    s.tone = effectParam (ModDestinations::effect ("delayTone"), ParamIDs::delayTone);
+    s.mix = effectParam (ModDestinations::effect ("delayMix"), ParamIDs::delayMix);
     s.pingPong = isOn (ParamIDs::delayPingPong);
     s.type = (effects::Delay::Type) juce::jlimit (0, effects::Delay::typeNames.size() - 1, juce::roundToInt (param (ParamIDs::delayType)));
     s.duck = param (ParamIDs::delayDuck);
@@ -446,10 +455,10 @@ effects::Reverb::Settings ParagonX1AudioProcessor::getReverbSettings() const noe
     effects::Reverb::Settings s;
     s.on = isOn (ParamIDs::reverbOn);
     s.type = (effects::Reverb::Type) juce::jlimit (0, effects::Reverb::typeNames.size() - 1, juce::roundToInt (param (ParamIDs::reverbType)));
-    s.size = param (ParamIDs::reverbSize);
-    s.tone = param (ParamIDs::reverbTone);
-    s.mix = param (ParamIDs::reverbMix);
-    s.preDelayMs = param (ParamIDs::reverbPreDelay);
+    s.size = effectParam (ModDestinations::effect ("reverbSize"), ParamIDs::reverbSize);
+    s.tone = effectParam (ModDestinations::effect ("reverbTone"), ParamIDs::reverbTone);
+    s.mix = effectParam (ModDestinations::effect ("reverbMix"), ParamIDs::reverbMix);
+    s.preDelayMs = effectParam (ModDestinations::effect ("reverbPreDelay"), ParamIDs::reverbPreDelay);
     s.duck = param (ParamIDs::reverbDuck);
     s.returnOnly = true;
     return s;
@@ -464,7 +473,7 @@ void ParagonX1AudioProcessor::processSends (juce::dsp::AudioBlock<float> block)
     juce::dsp::AudioBlock<float> delayReturn (r.sends[0].getArrayOfWritePointers(), 2, (size_t) numSamples);
     juce::dsp::AudioBlock<float> reverbReturn (r.sends[1].getArrayOfWritePointers(), 2, (size_t) numSamples);
     r.delay.process (delayReturn, getDelaySettings(), juce::jmax (1.0, hostBpm.load()));
-    if (const auto feed = param (ParamIDs::delayToReverb); feed > 0.0f)
+    if (const auto feed = effectParam (ModDestinations::effect ("delayToReverb"), ParamIDs::delayToReverb); feed > 0.0f)
         for (int c = 0; c < 2; ++c)
             r.sends[1].addFrom (c, 0, r.sends[0], c, 0, numSamples, feed);
     r.reverb.process (reverbReturn, getReverbSettings());
@@ -492,11 +501,14 @@ effects::Modulation::Settings ParagonX1AudioProcessor::modSettingsFor (const Par
     s.on = isOn (ids.on);
     s.type = (effects::Modulation::Type) juce::jlimit (0, effects::Modulation::typeNames.size() - 1, juce::roundToInt (param (ids.type)));
     // SYNC: one LFO cycle per note length at the song's tempo.
-    s.rateHz = param (ids.rate);
+    // 0.25.0: MOD's and MOD 2's (not a bus's) RATE, DEPTH and MIX as the matrix moves them.
+    const auto first = &ids == &ParamIDs::modIds ? ModDestinations::effect ("modMix") : &ids == &ParamIDs::mod2Ids ? ModDestinations::effect ("mod2Mix") : -1;
+    const auto value = [&] (int offset, const char* id) { return first >= 0 ? effectParam (first + offset, id) : param (id); };
+    s.rateHz = value (2, ids.rate);
     if (const auto sync = juce::roundToInt (param (ids.sync)); sync > 0 && sync < (int) std::size (effects::Delay::syncBeats))
         s.rateHz = juce::jlimit (0.02f, 40.0f, (float) (juce::jmax (1.0, hostBpm.load()) / 60.0) / effects::Delay::syncBeats[sync]);   // 1/32 at 300 BPM
-    s.depth = param (ids.depth);
-    s.mix = param (ids.mix);
+    s.depth = value (1, ids.depth);
+    s.mix = value (0, ids.mix);
     s.eq = param (ids.eq);
     s.stereoOutputs = isOn (ids.stereo);
     s.manual = param (ids.manual);
@@ -515,7 +527,11 @@ effects::LoFi::Settings ParagonX1AudioProcessor::loFiSettingsFor (int bus) const
     // The whole sound's lofi* (bus -1), or a bus's "ins<n>Lofi*": the same settings in the same order.
     const auto value = [this, bus] (const char* whole, int index)
     {
-        return bus < 0 ? param (whole) : rack->buses[(size_t) bus].lofi_[(size_t) index]->load();
+        if (bus >= 0)
+            return rack->buses[(size_t) bus].lofi_[(size_t) index]->load();
+        if (index == 2 || index == 4)   // 0.25.0: AMOUNT and MIX as the matrix moves them
+            return effectParam (index == 2 ? ModDestinations::effect ("lofiAmount") : ModDestinations::effect ("lofiMix"), whole);
+        return param (whole);
     };
     effects::LoFi::Settings s;
     s.on = value (ParamIDs::lofiOn, 0) > 0.5f;
@@ -563,16 +579,46 @@ effects::Glitch::Settings ParagonX1AudioProcessor::getInsertGlitchSettings (int 
     return s;
 }
 
+effects::Wah::Settings ParagonX1AudioProcessor::getInsertWahSettings (int bus) const noexcept
+{
+    bus = juce::jlimit (0, synth::numInsertBuses - 1, bus);
+    const auto& v = rack->buses[(size_t) bus].wah_;   // insWahSettings' order
+    const auto value = [&v] (int index) { return v[(size_t) index]->load(); };
+    effects::Wah::Settings s;
+    s.on = value (0) > 0.5f;
+    s.mode = (effects::Wah::Mode) juce::jlimit (0, effects::Wah::modeNames.size() - 1, juce::roundToInt (value (1)));
+    s.range = (effects::Wah::Range) juce::jlimit (0, effects::Wah::rangeNames.size() - 1, juce::roundToInt (value (2)));
+    // The pedal, or where the mod matrix has moved it (the EXPR wheel, routed): its range is 0 to 1, so the matrix's
+    // position is the value itself.
+    const auto moved = effectPositions[(size_t) (ModDestinations::effect ("ins1WahPosition") + bus)].load (std::memory_order_relaxed);
+    s.position = std::isnan (moved) ? value (3) : moved;
+    s.resonance = value (4);
+    s.sensitivity = value (5);
+    s.speed = value (6);
+    s.depth = value (7);
+    s.rateHz = value (8);
+    s.sync = juce::roundToInt (value (9));
+    s.mix = value (10);
+    s.levelDb = value (11);
+    return s;
+}
+
+float ParagonX1AudioProcessor::getInsertWahSweep (int bus) const noexcept
+{
+    return rack->buses[(size_t) juce::jlimit (0, synth::numInsertBuses - 1, bus)].wah.getSweep();
+}
+
 std::array<float, synth::numSends> ParagonX1AudioProcessor::getInsertSends (int bus) const noexcept
 {
     const auto& v = rack->buses[(size_t) juce::jlimit (0, synth::numInsertBuses - 1, bus)].sends_;
     return { v[0]->load(), v[1]->load() };
 }
 
-void ParagonX1AudioProcessor::processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady)
+void ParagonX1AudioProcessor::processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady, double ppq)
 {
-    // Each bus an oscillator plays into: DRIVE and GLITCH (one a side: PR7-G's are mono), MOD, LO-FI, as on PR7-G's
-    // chain (GLITCH POST, after the drive); then into the mix, and into the sends at the bus's amounts.
+    // Each bus an oscillator plays into: the WAH (0.51.0: before the drive, as on a pedalboard), DRIVE and GLITCH (one
+    // a side: PR7-G's are mono), MOD, LO-FI, as on PR7-G's chain (GLITCH POST, after the drive); then into the mix, and
+    // into the sends at the bus's amounts.
     const auto numSamples = (int) block.getNumSamples();
     const auto bpm = juce::jmax (1.0, hostBpm.load());
     for (int b = 0; b < synth::numInsertBuses; ++b)
@@ -584,6 +630,7 @@ void ParagonX1AudioProcessor::processInsertBuses (juce::dsp::AudioBlock<float> b
             continue;
         }
         auto busBlock = juce::dsp::AudioBlock<float> (bus.buffer).getSubBlock (0, (size_t) numSamples);
+        bus.wah.process (busBlock, getInsertWahSettings (b), bpm, ppq);
         const auto drive = getInsertDriveSettings (b);
         const auto glitch = getInsertGlitchSettings (b);
         // After the DRIVE, a DC blocker (5 Hz): RABID's circuit can leave its coupling capacitor charged, a steady
@@ -741,6 +788,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.subOctave = choice (get (oscSetting ("SubOct")), synth::subOctaveNames.size());
         o.subInvert = get (oscSetting ("SubInvert")) > 0.5f;
         o.toFilter = get (oscSetting ("Filter")) > 0.5f;
+        o.toVoice = get (oscSetting ("Voice")) > 0.5f;
         o.voiceLimit = juce::jlimit (1, synth::maxVoices, juce::roundToInt (get (oscSetting ("Voices"))));
         for (int k = 0; k < synth::numShapers; ++k)
             o.toShaper[(size_t) k] = get (oscSetting ("Shp1") + k) > 0.5f;
@@ -843,6 +891,13 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
     f.envelopeAmount = param (fltEnv);
     f.envelopeVelocity = param (fltEnvVel);
     f.envelope = envelope (fltAttack, fltHold, fltDecay, fltSustain, fltRelease, fltAttackCurve, fltDecayCurve, fltReleaseCurve);
+
+    auto& v = s.voice;
+    v.on = isOn (voiceOn);
+    v.vowel = param (voiceVowel);
+    v.size = param (voiceSize);
+    v.sharp = param (voiceSharp);
+    v.mix = param (voiceMix);
 
     static_assert (synth::numShapers == ParamIDs::numShapers);
     for (size_t k = 0; k < s.shapers.size(); ++k)
@@ -1033,6 +1088,22 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     keyboardState.processNextMidiBuffer (keyboardMidi, 0, numSamples, true);
     if (const auto wheel = pendingModWheel.exchange (-1.0f); wheel >= 0.0f)
         keyboardMidi.addEvent (juce::MidiMessage::controllerEvent (1, 1, juce::roundToInt (wheel * 127.0f)), 0);
+    if (const auto pedal = pendingExpression.exchange (-1.0f); pedal >= 0.0f)
+        keyboardMidi.addEvent (juce::MidiMessage::controllerEvent (1, 11, juce::roundToInt (pedal * 127.0f)), 0);
+    // Where the wheels are, for the front panel; controller 11 is also the swell (see expressionGain).
+    for (const auto metadata : keyboardMidi)
+    {
+        const auto message = metadata.getMessage();
+        if (! message.isController())
+            continue;
+        if (message.getControllerNumber() == 1)
+            modWheelPosition = (float) message.getControllerValue() / 127.0f;
+        else if (message.getControllerNumber() == 11)
+        {
+            expressionPosition = (float) message.getControllerValue() / 127.0f;
+            expressionTarget = expressionPosition.load();
+        }
+    }
 
     // THE DRUMS: while they're on, a note-on in the kit's 12 keys plays the kit, not the synth. Note-offs go to the
     // synth either way (the kit's hits are one-shots), so a note held as DRUMS was switched on still ends. With the
@@ -1067,6 +1138,17 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // prepareToPlay; work through an oversized block in promised-size pieces.
     for (int start = 0; start < numSamples; start += preparedBlockSize)
         processChunk (buffer, synthMidi, drumMidi, kit, start, juce::jmin (preparedBlockSize, numSamples - start));
+
+    // MIMIC's recording, beside the synth, through the OUTPUT knob as the synth is.
+    if (const auto* reference = referenceForAudio.load(); reference != nullptr && referencePosition.load() >= 0)
+    {
+        const auto position = referencePosition.load();
+        const auto count = juce::jmin (numSamples, reference->getNumSamples() - position);
+        const auto gain = juce::Decibels::decibelsToGain (param (ParamIDs::outputGain));
+        for (int c = 0; c < buffer.getNumChannels() && count > 0; ++c)
+            buffer.addFrom (c, 0, *reference, juce::jmin (c, reference->getNumChannels() - 1), position, count, gain);
+        referencePosition = position + count >= reference->getNumSamples() ? -1 : position + count;
+    }
 
     activeVoices = engine.getNumActiveVoices();
     midi.clear();   // an instrument: nothing goes on down the MIDI chain
@@ -1153,9 +1235,11 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             settings.modulation.envelopeShapes = compiled->envelopes.data();
             settings.modulation.lfoShapes = compiled->lfoShapes.data();
             settings.modulation.usedSources = compiled->usedSources;
+            settings.modulation.effectSources = compiled->effectSources;
         }
         settings.modulation.ppq = hostPpq >= 0.0 ? hostPpq + (start + done) / getSampleRate() * settings.modulation.bpm / 60.0 : -1.0;
         engine.process (left + done, right, n, midi, start + done, settings);
+        updateEffectModulation (settings, n);
         // THE DRUMS, added after the synth (which fills the mix, sends and buses afresh).
         if (kit.on || drumKit.getNumActiveVoices() > 0)
         {
@@ -1193,15 +1277,26 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
                                                             .getSubsetChannelBlock (0, (size_t) juce::jmin (numChannels, 2));
     if (sendsReady)
     {
-        processInsertBuses (block, true);
+        // The song position at this piece's start (for the WAH's synced LFO): -1 while it's stopped.
+        const auto piecePpq = hostPpq >= 0.0 ? hostPpq + (double) start / getSampleRate() * juce::jmax (1.0, hostBpm.load()) / 60.0 : -1.0;
+        processInsertBuses (block, true, piecePpq);
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));
+    // The expression swell (0.49.0): controller 11 sets the volume (squared, so it swells evenly to the ear), unless
+    // the preset routes EXPRESSION itself or sends it to the mod wheel, or (0.52.0) SETTINGS' EXPR WHEEL CONTROLS
+    // VOLUME is off; then it's left at full.
+    {
+        const auto* compiled = matrixForAudio.load();
+        const auto routed = (compiled != nullptr && (compiled->usedSources & (1u << (int) synth::mod::Source::expression)) != 0)
+                         || isOn (ParamIDs::mwExpression) || ! isOn (ParamIDs::exprVolume);   // 0.52.0: or switched off in SETTINGS
+        expressionGain.setTargetValue (routed ? 1.0f : expressionTarget * expressionTarget);
+    }
     for (int i = 0; i < numSamples; ++i)
     {
-        const auto gain = outputGain.getNextValue();
+        const auto gain = outputGain.getNextValue() * expressionGain.getNextValue();
         for (int channel = 0; channel < juce::jmin (numChannels, 2); ++channel)
             buffer.getWritePointer (channel, start)[i] *= gain;
     }
@@ -1268,6 +1363,56 @@ void ParagonX1AudioProcessor::updateWavetables()
     std::erase_if (retiredTables, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredMatrices, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredSamples, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
+    std::erase_if (retiredReferences, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
+}
+
+void ParagonX1AudioProcessor::updateEffectModulation (const synth::Settings& settings, int numSamples) noexcept
+{
+    // The effects' amounts the matrix moves (0.25.0): each knob's position plus its routes, from the whole synth's
+    // sources as they are now, smoothed (30 ms, or the route's LAG if longer) so a macro or LFO sweeps without steps.
+    const auto* compiled = matrixForAudio.load();
+    std::array<float, ModDestinations::numEffects> target;
+    std::array<float, ModDestinations::numEffects> lagMs {};
+    target.fill (std::numeric_limits<float>::quiet_NaN());
+    if (compiled != nullptr)
+        for (const auto& r : compiled->effectRoutes)
+        {
+            const auto value = engine.wholeSynthValue (r.source, settings);
+            if (std::isnan (value))
+                continue;   // an LFO or envelope set to VOICE: a note's, not the whole synth's
+            auto& position = target[(size_t) r.effect];
+            if (std::isnan (position))
+                position = r.parameter->getValue();
+            position = synth::mod::combine (position, r.amount * synth::mod::bend (value, r.curve), r.percent);
+            lagMs[(size_t) r.effect] = juce::jmax (lagMs[(size_t) r.effect], r.lagMs);
+        }
+    for (int k = 0; k < ModDestinations::numEffects; ++k)
+    {
+        auto& smoothed = effectSmoothed[(size_t) k];
+        const auto was = effectPositions[(size_t) k].load (std::memory_order_relaxed);
+        if (std::isnan (target[(size_t) k]))
+        {
+            effectPositions[(size_t) k].store (std::numeric_limits<float>::quiet_NaN(), std::memory_order_relaxed);
+            continue;
+        }
+        const auto goal = juce::jlimit (0.0f, 1.0f, target[(size_t) k]);
+        if (std::isnan (was))
+            smoothed = goal;   // just routed (or a preset loaded): straight there
+        else
+        {
+            const auto seconds = juce::jmax (0.03f, lagMs[(size_t) k] * 0.001f);
+            smoothed += (goal - smoothed) * (1.0f - std::exp (-(float) numSamples / (seconds * (float) getSampleRate())));
+        }
+        effectPositions[(size_t) k].store (smoothed, std::memory_order_relaxed);
+    }
+}
+
+float ParagonX1AudioProcessor::effectParam (int effect, const char* id) const
+{
+    const auto position = effectPositions[(size_t) effect].load (std::memory_order_relaxed);
+    if (std::isnan (position))
+        return param (id);
+    return parameters.getParameterRange (id).convertFrom0to1 (position);
 }
 
 void ParagonX1AudioProcessor::compileMatrix()
@@ -1282,6 +1427,17 @@ void ParagonX1AudioProcessor::compileMatrix()
         auto* parameter = destination != nullptr ? parameters.getParameter (destination->parameterId) : nullptr;
         if (! r.on || source == synth::mod::Source::none || parameter == nullptr || juce::exactlyEqual (r.amount, 0.0f))
             continue;
+        if (destination->effect >= 0)
+        {
+            // An effect follows the whole synth: a source only a note has can't move it. (An LFO or envelope can,
+            // unless it's set to VOICE: that's checked as it plays, Engine::wholeSynthValue.)
+            if (ModDestinations::isNoteOnly (source))
+                continue;
+            compiled->effectRoutes.push_back ({ source, destination->effect, parameter, r.amount, r.lagMs, r.curve, r.percent });
+            compiled->effectSources |= 1u << (int) source;
+            compiled->usedSources |= 1u << (int) source;
+            continue;
+        }
         compiled->routes.push_back ({ source, destination->target, parameter, r.amount, r.lagMs, r.curve, r.percent });
         compiled->usedSources |= 1u << (int) source;
         if ((int) compiled->routes.size() == synth::mod::maxRoutes)
@@ -1305,6 +1461,8 @@ void ParagonX1AudioProcessor::compileMatrix()
     static_assert (ModMatrix::numDrumSlots == synth::drums::numSlots);
     for (size_t k = 0; k < compiled->drumEnvelopes.size() && k < matrix.drumEnvelopes.size(); ++k)
         compiled->drumEnvelopes[k] = matrix.drumEnvelopes[k].toShape();
+    std::stable_sort (compiled->effectRoutes.begin(), compiled->effectRoutes.end(),
+                      [] (const EffectRoute& a, const EffectRoute& b) { return a.effect < b.effect; });
     std::stable_sort (compiled->routes.begin(), compiled->routes.end(), [] (const CompiledRoute& a, const CompiledRoute& b)
     {
         return std::pair ((int) a.target.field, a.target.index) < std::pair ((int) b.target.field, b.target.index);
@@ -1491,6 +1649,70 @@ void ParagonX1AudioProcessor::chooseFactoryWavetable (int osc, int index)
     markModified();
     updateWavetables();
     requestCheckpoint();
+}
+
+//==============================================================================
+// MIMIC (0.44.0).
+void ParagonX1AudioProcessor::applyMimic (const Rig& rig)
+{
+    currentRig = { rig.name, {}, {} };
+    applyRig (rig);
+    rigModified = true;   // new, not saved anywhere yet
+    requestCheckpoint();
+    rigBroadcaster.sendChangeMessage();
+}
+
+bool ParagonX1AudioProcessor::setMimicReference (const juce::File& file)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->sampleRate <= 0.0 || reader->lengthInSamples <= 0)
+        return false;
+    const auto length = (int) juce::jmin (reader->lengthInSamples, (juce::int64) (synth::mimic::maxSeconds * reader->sampleRate));
+    juce::AudioBuffer<float> audio ((int) juce::jlimit (1u, 2u, reader->numChannels), length);
+    reader->read (&audio, 0, length, 0, true, audio.getNumChannels() > 1);
+    return setMimicReference (audio, reader->sampleRate);
+}
+
+bool ParagonX1AudioProcessor::setMimicReference (const juce::AudioBuffer<float>& audio, double sampleRate)
+{
+    if (audio.getNumSamples() == 0 || sampleRate <= 0.0)
+        return false;
+    // At the host's rate (or 48 kHz before it's playing), stereo.
+    const auto hostRate = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
+    const auto ratio = sampleRate / hostRate;
+    const auto length = (int) std::floor (audio.getNumSamples() / ratio);
+    auto resampled = std::make_shared<juce::AudioBuffer<float>> (2, juce::jmax (1, length));
+    for (int c = 0; c < 2; ++c)
+    {
+        const auto* from = audio.getReadPointer (juce::jmin (c, audio.getNumChannels() - 1));
+        if (juce::approximatelyEqual (ratio, 1.0))
+            resampled->copyFrom (c, 0, from, length);
+        else
+        {
+            juce::LagrangeInterpolator interpolator;
+            interpolator.process (ratio, from, resampled->getWritePointer (c), length, audio.getNumSamples(), 0);
+        }
+    }
+    stopMimicReference();
+    if (mimicReference != nullptr)
+        retiredReferences.emplace_back (mimicReference, juce::Time::getMillisecondCounterHiRes());
+    mimicReference = std::move (resampled);
+    referenceForAudio = mimicReference.get();
+    return true;
+}
+
+void ParagonX1AudioProcessor::playMimicReference() noexcept
+{
+    if (referenceForAudio.load() != nullptr)
+        referencePosition = 0;
+}
+
+double ParagonX1AudioProcessor::getMimicReferenceSeconds() const noexcept
+{
+    const auto hostRate = getSampleRate() > 0.0 ? getSampleRate() : 48000.0;
+    return mimicReference != nullptr ? mimicReference->getNumSamples() / hostRate : 0.0;
 }
 
 //==============================================================================
@@ -2037,6 +2259,9 @@ Rig ParagonX1AudioProcessor::captureRig() const
 void ParagonX1AudioProcessor::applyRig (const Rig& rig)
 {
     applyingRig = true;
+    // A new sound: effects the matrix moves go straight to its values, not gliding from the last sound's.
+    for (auto& position : effectPositions)
+        position = std::numeric_limits<float>::quiet_NaN();
 
     for (auto* parameter : AudioProcessor::getParameters())
     {
@@ -2134,7 +2359,7 @@ bool ParagonX1AudioProcessor::saveCurrentRigAs (const juce::String& name)
     // File it next to the preset it came from, in the first free slot.
     if (const auto* entry = findCurrentRigEntry())
     {
-        rig.bank = entry->rig.bank;
+        rig.bank = Rig::isExpansionBank (entry->rig.bank) ? 0 : entry->rig.bank;   // a copy of an expansion's goes in A
         rig.tags = entry->rig.tags;
         rig.notes = entry->rig.notes;
     }
@@ -2166,7 +2391,7 @@ bool ParagonX1AudioProcessor::updateRigDetails (const RigLibrary::Entry& entry, 
 
     auto rig = entry.rig;
     rig.name = newDetails.name.trim().isEmpty() ? rig.name : newDetails.name.trim();
-    rig.bank = newDetails.bank;
+    rig.bank = juce::jlimit (0, Rig::numBanks - 1, newDetails.bank);
     rig.number = newDetails.number;
     rig.tags = newDetails.tags;
 

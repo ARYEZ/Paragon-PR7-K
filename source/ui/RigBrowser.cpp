@@ -26,14 +26,15 @@ namespace
     // One line describing a preset: how many oscillators it uses, and whether the filter's on.
     juce::String describeBlocks (const Rig& rig)
     {
-        const auto isOn = [&rig] (const juce::String& id)
+        // A setting the preset doesn't hold is at its default (oscillator 1 alone is on by default).
+        const auto isOn = [&rig] (const juce::String& id, bool byDefault = false)
         {
             const auto found = rig.parameters.find (id);
-            return found != rig.parameters.end() && found->second > 0.5f;
+            return found != rig.parameters.end() ? found->second > 0.5f : byDefault;
         };
         int oscillators = 0;
         for (int i = 0; i < ParamIDs::numOscillators; ++i)
-            oscillators += isOn (ParamIDs::osc (i, "On")) ? 1 : 0;
+            oscillators += isOn (ParamIDs::osc (i, "On"), i == 0) ? 1 : 0;
         return juce::String (oscillators) + (oscillators == 1 ? " oscillator" : " oscillators")
              + (isOn (ParamIDs::fltOn) ? ", filter" : "");
     }
@@ -58,7 +59,19 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
     addRadio (filterButtons, "Factory Presets", 1, [this] { filter = Filter::factory; refreshList(); });
     addRadio (bankButtons, "All Banks", 2, [this] { bankFilter = -1; refreshList(); });
     for (int bank = 0; bank < Rig::numBanks; ++bank)
-        addRadio (bankButtons, "Bank " + Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
+        addRadio (bankButtons, Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });   // A-E, one row
+    // The built-in expansions, a bank each, under their own heading.
+    for (int bank = Rig::numBanks; bank < Rig::numBanksWithExpansions(); ++bank)
+        addRadio (bankButtons, Rig::bankName (bank), 2, [this, bank] { bankFilter = bank; refreshList(); });
+    // ...in a scrolling list of their own (0.48.0).
+    for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
+        expansionHolder.addAndMakeVisible (bankButtons[index]);
+    expansionView.setViewedComponent (&expansionHolder, false);
+    expansionView.setScrollBarsShown (true, false);
+    expansionView.setScrollBarThickness (8);
+    expansionView.getVerticalScrollBar().setColour (juce::ScrollBar::thumbColourId, ParagonColours::accentDim);
+    expansionView.setSingleStepSizes (10, 22);
+    addAndMakeVisible (expansionView);
     filterButtons[0]->setToggleState (true, juce::dontSendNotification);
     bankButtons[0]->setToggleState (true, juce::dontSendNotification);
 
@@ -91,8 +104,10 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
     addAndMakeVisible (nameEditor);
     addAndMakeVisible (tagsEditor);
 
-    for (int bank = 0; bank < Rig::numBanks; ++bank)
+    for (int bank = 0; bank < Rig::numBanksWithExpansions(); ++bank)
         bankBox.addItem (Rig::bankName (bank), bank + 1);
+    for (int bank = Rig::numBanks; bank < Rig::numBanksWithExpansions(); ++bank)
+        bankBox.setItemEnabled (bank + 1, false);   // shown for an expansion's presets; nothing can be filed there
     for (int number = 1; number <= Rig::maxNumber; ++number)
         numberBox.addItem (juce::String (number).paddedLeft ('0', 3), number);
     for (auto* box : { &bankBox, &numberBox })
@@ -121,14 +136,27 @@ RigBrowser::RigBrowser (ParagonX1AudioProcessor& p) : processor (p)
         folder.createDirectory();
         folder.revealToUser();
     };
-    for (auto* button : { &loadButton, &saveDetailsButton, &saveAsButton, &deleteButton, &folderButton })
+    mimicButton.onClick = [this] { showMimic (! mimicPanel.isVisible()); };
+    for (auto* button : { &loadButton, &saveDetailsButton, &saveAsButton, &deleteButton, &folderButton, &mimicButton })
         addAndMakeVisible (*button);
+    mimicPanel.onClose = [this] { showMimic (false); };
+    addChildComponent (mimicPanel);
 
     processor.rigBroadcaster.addChangeListener (this);
 
     if (const auto* current = processor.findCurrentRigEntry())
         selectEntry (current);
     refreshList();
+}
+
+void RigBrowser::showMimic (bool show)
+{
+    mimicPanel.setVisible (show);
+    search.setVisible (! show);
+    list.setVisible (! show);
+    mimicButton.setButtonText (show ? "BACK TO PRESETS" : "MIMIC A SOUND...");
+    if (show)
+        mimicPanel.toFront (false);
 }
 
 RigBrowser::~RigBrowser()
@@ -317,12 +345,25 @@ void RigBrowser::saveDetails()
     refreshList();
 }
 
+void RigBrowser::showExpansionButton (int index)
+{
+    if (index <= Rig::numBanks || index >= bankButtons.size())
+        return;
+    const auto row = bankButtons[index]->getBounds();
+    const auto view = expansionView.getViewArea();
+    if (row.getY() < view.getY())
+        expansionView.setViewPosition (0, row.getY());
+    else if (row.getBottom() > view.getBottom())
+        expansionView.setViewPosition (0, row.getBottom() - view.getHeight());
+}
+
 void RigBrowser::showFilter (int newFilter, int bank)
 {
     const auto filterIndex = juce::jlimit (0, filterButtons.size() - 1, newFilter);
     const auto bankIndex = juce::jlimit (0, bankButtons.size() - 1, bank + 1);
     filterButtons[filterIndex]->setToggleState (true, juce::dontSendNotification);
     bankButtons[bankIndex]->setToggleState (true, juce::dontSendNotification);
+    showExpansionButton (bankIndex);
     filter = (Filter) filterIndex;
     bankFilter = bank;
     refreshList();
@@ -397,6 +438,8 @@ void RigBrowser::paint (juce::Graphics& g)
     g.drawText ("PRESET BROWSER", sidebarArea.reduced (12, 8).withHeight (16), juce::Justification::centredLeft, false);
     if (bankButtons.size() > 0)
         g.drawText ("BANKS", bankButtons[0]->getBounds().translated (0, -22).withHeight (16), juce::Justification::centredLeft, false);
+    if (bankButtons.size() > Rig::numBanks + 1)
+        g.drawText ("EXPANSIONS", expansionsHeading, juce::Justification::centredLeft, false);
 }
 
 void RigBrowser::resized()
@@ -411,16 +454,45 @@ void RigBrowser::resized()
         sidebar.removeFromTop (4);
     }
     sidebar.removeFromTop (28);
-    for (auto* button : bankButtons)
+    if (bankButtons.size() > Rig::numBanks)
     {
-        button->setBounds (sidebar.removeFromTop (28));
+        // ALL BANKS, then the user's banks A-E side by side on one row (they were a column of five: with nine
+        // expansions under them the list ran off the bottom), then the expansions in their scrolling list.
+        bankButtons[0]->setBounds (sidebar.removeFromTop (28));
         sidebar.removeFromTop (4);
+        auto row = sidebar.removeFromTop (28);
+        const auto gap = 4;
+        const auto width = (row.getWidth() - gap * (Rig::numBanks - 1)) / Rig::numBanks;
+        for (int bank = 0; bank < Rig::numBanks; ++bank)
+        {
+            bankButtons[bank + 1]->setBounds (bank == Rig::numBanks - 1 ? row : row.removeFromLeft (width));
+            row.removeFromLeft (gap);
+        }
+        sidebar.removeFromTop (4);
+        const auto expansions = bankButtons.size() - Rig::numBanks - 1;
+        if (expansions > 0)
+        {
+            // EXPANSIONS, then the expansions in a list that scrolls (0.48.0: with 21 of them the rows had shrunk to
+            // 16 px and there was room for one more). Rows of 22 px; the scroll bar only when they don't all fit.
+            expansionsHeading = sidebar.removeFromTop (24).withTrimmedTop (2).withHeight (16);
+            expansionView.setBounds (sidebar);
+            constexpr int height = 22, gap = 3;
+            const auto total = expansions * (height + gap) - gap;
+            const auto width = sidebar.getWidth() - (total > sidebar.getHeight() ? expansionView.getScrollBarThickness() + 2 : 0);
+            expansionHolder.setSize (width, total);
+            for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
+                bankButtons[index]->setBounds (0, (index - Rig::numBanks - 1) * (height + gap), width, height);
+        }
+        for (int index = Rig::numBanks + 1; index < bankButtons.size(); ++index)
+            if (bankButtons[index]->getToggleState())
+                showExpansionButton (index);   // the chosen one in view
     }
 
     area.removeFromLeft (12);
     detailsArea = area.removeFromRight (detailsWidth);
     area.removeFromRight (12);
 
+    mimicPanel.setBounds (area);
     search.setBounds (area.removeFromTop (30));
     area.removeFromTop (8);
     list.setBounds (area);
@@ -445,6 +517,8 @@ void RigBrowser::resized()
     details.removeFromTop (10);
 
     folderButton.setBounds (details.removeFromBottom (26));
+    details.removeFromBottom (6);
+    mimicButton.setBounds (details.removeFromBottom (30));
     details.removeFromBottom (6);
     saveAsButton.setBounds (details.removeFromBottom (30));
     details.removeFromBottom (6);

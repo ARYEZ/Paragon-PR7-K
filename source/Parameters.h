@@ -52,7 +52,9 @@ namespace ParamIDs
         // Stage 7b: how much it sends to DELAY and to REVERB.
         "SendDelay", "SendReverb",
         // Stage 7d: the insert bus it plays into (NONE, A to D).
-        "Insert" };
+        "Insert",
+        // 0.39.0: whether it goes through the VOICE filter (when that's on).
+        "Voice" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)
@@ -66,6 +68,12 @@ namespace ParamIDs
     // The FILTER and AMP. Numbered from 1: Avenger has four of each, and
     // more may come in a later stage (an oscillator's Filter switch, now on or
     // off for filter 1, can become a choice of filters without breaking presets).
+    // The VOICE filter (0.39.0): vowel formants at fixed frequencies, after the FILTER.
+    inline constexpr auto voiceOn     = "voiceOn";
+    inline constexpr auto voiceVowel  = "voiceVowel";     // 0 OO to 1 EE
+    inline constexpr auto voiceSize   = "voiceSize";      // 0 bass to 1 soprano
+    inline constexpr auto voiceSharp  = "voiceSharp";     // 0 wide to 1 narrow
+    inline constexpr auto voiceMix    = "voiceMix";       // 0 to 1
     inline constexpr auto fltOn       = "flt1On";
     inline constexpr auto fltType     = "flt1Type";
     inline constexpr auto fltCutoff   = "flt1Cutoff";     // Hz
@@ -229,6 +237,9 @@ namespace ParamIDs
     // CONTROLLER TO MOD WHEEL (stage 4f, 0.14.0): these controllers drive the mod wheel too (the "mw" switches).
     inline constexpr auto mwBreath     = "mwBreath";
     inline constexpr auto mwExpression = "mwExpression";
+    // 0.52.0 (the owner's ask): whether controller 11 (the EXPR wheel, an expression pedal) swells the volume of a
+    // preset that doesn't route EXPRESSION (0.49.0). Off: it does nothing there. Global, not in presets.
+    inline constexpr auto exprVolume = "exprVolume";
     inline constexpr auto mwAftertouch = "mwAftertouch";
     inline constexpr auto mwSustain    = "mwSustain";
 
@@ -397,6 +408,9 @@ namespace ParamIDs
     inline constexpr const char* insModSettings[] = { "ModOn", "ModType", "ModRate", "ModDepth", "ModMix", "ModSync", "ModEq", "ModStereo",
                                                       "ModManual", "ModRes", "ModHadron", "ModWave" };   // ModIds' order
     inline constexpr const char* insLofiSettings[] = { "LofiOn", "LofiType", "LofiAmount", "LofiNoise", "LofiMix", "LofiLevel" };
+    // 0.51.0 (version hint 25): the bus's WAH, first on it, before the DRIVE (effects::Wah).
+    inline constexpr const char* insWahSettings[] = { "WahOn", "WahMode", "WahRange", "WahPosition", "WahResonance", "WahSensitivity",
+                                                      "WahSpeed", "WahDepth", "WahRate", "WahSync", "WahMix", "WahLevel" };
     // A bus's MOD as ModIds (the strings made once and kept).
     inline const ModIds& insModIds (int bus)
     {
@@ -424,7 +438,7 @@ namespace ParamIDs
 
     // Global settings: kept when switching presets. Everything else is part of a preset.
     // The LIMITER's UNITY and DELTA are for listening while you set it, not part of a sound.
-    inline const juce::StringArray notInRigs { outputGain, bypass, tune, mwBreath, mwExpression, mwAftertouch, mwSustain, limitUnity, limitDelta };
+    inline const juce::StringArray notInRigs { outputGain, bypass, tune, mwBreath, mwExpression, mwAftertouch, mwSustain, limitUnity, limitDelta, exprVolume };
 }
 
 namespace ParamRanges

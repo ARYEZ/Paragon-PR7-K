@@ -63,16 +63,17 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     {
         auto specs = makeInsertSpecs (processor, b, [this] (int unit)
         {
-            constexpr View views[] = { View::insertDrive, View::insertGlitch, View::insertMod, View::insertLoFi };
-            show (views[juce::jlimit (0, 3, unit)]);
+            constexpr View views[] = { View::insertDrive, View::insertGlitch, View::insertMod, View::insertLoFi, View::insertWah };
+            show (views[juce::jlimit (0, 4, unit)]);
         });
-        for (size_t i = 0; i < 4; ++i)
+        for (size_t i = 0; i < specs.size(); ++i)
         {
             insertUnits[(size_t) b][i] = std::make_unique<RackUnit> (processor.getParameters(), std::move (specs[i]));
             addChildComponent (*insertUnits[(size_t) b][i]);
         }
         insertEffectPages[(size_t) b][0] = std::make_unique<InsertEffectPage> (processor, InsertEffectPage::Kind::drive, b);
         insertEffectPages[(size_t) b][1] = std::make_unique<InsertEffectPage> (processor, InsertEffectPage::Kind::glitch, b);
+        insertEffectPages[(size_t) b][2] = std::make_unique<InsertEffectPage> (processor, InsertEffectPage::Kind::wah, b);
         insertModFxPages[(size_t) b][0] = std::make_unique<ModFxPage> (processor, ModFxPage::Kind::mod, b);
         insertModFxPages[(size_t) b][1] = std::make_unique<ModFxPage> (processor, ModFxPage::Kind::loFi, b);
         for (auto& page : insertEffectPages[(size_t) b])
@@ -101,7 +102,7 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     sendsTab.setTooltip ("The SENDS: DELAY and REVERB, fed by each oscillator's send; they come back in before the MASTER rack");
     masterTab.setTooltip ("The MASTER rack: ECHELON, DOMINION, CONSTRICTOR and the LIMITER, on everything");
     modFxTab.setTooltip ("MOD, MOD 2 and LO-FI: PR7-G's modulation (twice) and lo-fi, on everything, the echoes and reverb too, before the MASTER rack");
-    insertsTab.setTooltip ("The INSERTS: buses A to D, each a DRIVE, GLITCH, MOD and LO-FI on the oscillators routed to it, before the sends");
+    insertsTab.setTooltip ("The INSERTS: buses A to D, each a WAH, DRIVE, GLITCH, MOD and LO-FI on the oscillators routed to it, before the sends");
     insertsTab.onClick = [this] { show (View::inserts); };
     sendsTab.onClick = [this] { show (View::sends); };
     modFxTab.onClick = [this] { show (View::modFx); };
@@ -134,6 +135,7 @@ void FxPage::show (View newView)
             unit->setVisible (view == View::inserts && b == bus);
         insertEffectPages[(size_t) b][0]->setVisible (view == View::insertDrive && b == bus);
         insertEffectPages[(size_t) b][1]->setVisible (view == View::insertGlitch && b == bus);
+        insertEffectPages[(size_t) b][2]->setVisible (view == View::insertWah && b == bus);
         insertModFxPages[(size_t) b][0]->setVisible (view == View::insertMod && b == bus);
         insertModFxPages[(size_t) b][1]->setVisible (view == View::insertLoFi && b == bus);
     }
@@ -186,18 +188,24 @@ void FxPage::resized()
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
                                                                 modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get() })
         page->setBounds (getLocalBounds());
-    // INSERTS: the strip, then the bus's four units, sized to fit what's left.
+    // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
+    // to fit what's left.
     {
         auto insertArea = rackArea;
         insertStrip.setBounds (insertArea.removeFromTop (ParamControl::knobHeight + 8));
-        insertArea.removeFromTop (gap);
-        const auto byHeightNow = (float) (insertArea.getHeight() - 3 * gap) / 4.0f;
+        constexpr int insertGap = 6;
+        insertArea.removeFromTop (insertGap);
+        const auto count = (float) insertUnits[0].size();
+        const auto byHeightNow = ((float) insertArea.getHeight() - (count - 1.0f) * insertGap) / count;
         const auto w = juce::jmin ((float) insertArea.getWidth(), byHeightNow * RackUnit::referenceWidth / RackUnit::referenceHeight);
         const auto h = w * RackUnit::referenceHeight / RackUnit::referenceWidth;
         for (auto& busUnits : insertUnits)
             for (size_t i = 0; i < busUnits.size(); ++i)
-                busUnits[i]->setBounds (juce::Rectangle<float> ((float) insertArea.getCentreX() - w * 0.5f, (float) insertArea.getY() + (float) i * (h + gap),
+            {
+                const auto row = (float) ((i + 1) % busUnits.size());   // the WAH (4) on row 0, DRIVE (0) on row 1...
+                busUnits[i]->setBounds (juce::Rectangle<float> ((float) insertArea.getCentreX() - w * 0.5f, (float) insertArea.getY() + row * (h + insertGap),
                                                                 w, h).toNearestInt());
+            }
         for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
         {
             for (auto& page : insertEffectPages[(size_t) b])

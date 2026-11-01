@@ -235,6 +235,15 @@ void ParamControl::setCompact (bool shouldBeCompact)
     resized();
 }
 
+void ParamControl::setPedal()
+{
+    if (slider != nullptr)
+        slider->getProperties().set (ParagonLookAndFeel::pedalKnobProperty, true);
+    label.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    label.setColour (juce::Label::textColourId, ParagonColours::text);
+    repaint();
+}
+
 void ParamControl::resized()
 {
     auto area = getLocalBounds();

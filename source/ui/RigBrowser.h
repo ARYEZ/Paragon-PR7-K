@@ -3,10 +3,11 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "PluginProcessor.h"
+#include "ui/MimicPanel.h"
 
 // The PRESETS page: browse, load, file and organise rigs.
 //
-//   left:   filters (all / favourites / mine / factory) and banks A-D
+//   left:   filters (all / favourites / mine / factory), banks A-E and the expansions (a bank each)
 //   middle: search box and the list of rigs (double-click to load)
 //   right:  the selected rig's details: name, favourite, bank, number,
 //           tags, what it uses, and the buttons to act on it
@@ -23,8 +24,15 @@ public:
     void promptSaveAs();
 
     // Shows only some rigs: `filter` 0 all, 1 favourites, 2 mine, 3 factory;
-    // `bank` -1 for every bank or 0-3 for A-D. (The dock's RIG BROWSER uses this.)
+    // `bank` -1 for every bank, 0-4 for A-E, then the expansions. (The dock's RIG BROWSER uses this.)
     void showFilter (int filter, int bank);
+
+    // MIMIC (0.44.0): its panel, over the preset list.
+    void showMimic (bool show = true);
+    MimicPanel& getMimicPanel() noexcept { return mimicPanel; }
+    // The expansions' scrolling list (0.48.0), for tests: its view, and the button for expansion `index` (0 the first).
+    const juce::Viewport& getExpansionView() const noexcept { return expansionView; }
+    const juce::Component* getExpansionButton (int index) const { return bankButtons[Rig::numBanks + 1 + index]; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -61,6 +69,12 @@ private:
     juce::String selectedFactoryName;
 
     juce::OwnedArray<juce::TextButton> filterButtons, bankButtons;
+    // 0.48.0: the expansions scroll (the owner's choice: a scrolling list), so any number of banks fits. Their
+    // buttons live in `expansionHolder`, shown through `expansionView`; `expansionsHeading` is where EXPANSIONS is drawn.
+    juce::Viewport expansionView;
+    juce::Component expansionHolder;
+    juce::Rectangle<int> expansionsHeading;
+    void showExpansionButton (int index);   // scrolls the list so bankButtons[index] is in view
     juce::TextEditor search;
     juce::ListBox list { "Rigs", this };
 
@@ -71,7 +85,8 @@ private:
     juce::Label bankLabel { {}, "BANK" }, numberLabel { {}, "NUMBER" }, tagsLabel { {}, "TAGS (comma separated)" };
     juce::TextButton loadButton { "LOAD" }, saveDetailsButton { "SAVE DETAILS" },
                      saveAsButton { "SAVE CURRENT SOUND AS NEW..." }, deleteButton { "DELETE" },
-                     folderButton { "OPEN PRESETS FOLDER" };
+                     folderButton { "OPEN PRESETS FOLDER" }, mimicButton { "MIMIC A SOUND..." };
+    MimicPanel mimicPanel { processor };
 
     juce::Rectangle<int> sidebarArea, detailsArea;
     std::unique_ptr<juce::AlertWindow> dialog;

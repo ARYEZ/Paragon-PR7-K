@@ -824,16 +824,28 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
       eq2Freq (s, ParamIDs::shp (0, "Eq2Freq"), "EQ2 FREQ", "Where band 2 is."),
       eq2Q (s, ParamIDs::shp (0, "Eq2Q"), "EQ2 Q", "How narrow band 2 is: higher is narrower."),
       eqSplit (s, ParamIDs::shp (0, "EqSplit"), "SPLIT", "Band 1 on the left channel only and band 2 on the right only: the two sides distort differently, "
-                                                         "which makes the sound much wider.")
+                                                         "which makes the sound much wider."),
+      voiceDisplay (s),
+      voiceOn (s, ParamIDs::voiceOn, "ON", "Switch the VOICE filter on: it shapes the sound into a sung vowel, after the filter. Feed it something "
+                                           "buzzy (a saw or a narrow pulse) and it sings. The oscillators ticked under the picture go through it."),
+      vowel (s, ParamIDs::voiceVowel, "VOWEL", "The vowel sung: OO, OH, AH, EH, EE, moving smoothly between them. Route the mod wheel or a macro "
+                                               "here to make it speak."),
+      size (s, ParamIDs::voiceSize, "SIZE", "Whose voice: a bass (left) through tenor and alto to a soprano (right). A real voice's vowel sits "
+                                            "at fixed frequencies whatever note it sings: so does this one."),
+      sharp (s, ParamIDs::voiceSharp, "SHARP", "How focused the vowel's resonances are: left softer and breathier, right sharper and more nasal."),
+      voiceMix (s, ParamIDs::voiceMix, "MIX", "The sung vowel against the sound going in.")
 {
     // The tabs, in place of the title.
     tabs.push_back (std::make_unique<PageTab> ("FILTER", [this] { return state.getRawParameterValue (ParamIDs::fltOn)->load() > 0.5f; }));
     for (int k = 0; k < ParamIDs::numShapers; ++k)
         tabs.push_back (std::make_unique<PageTab> ("SHP " + juce::String (k + 1),
                                                    [this, k] { return state.getRawParameterValue (ParamIDs::shp (k, "On"))->load() > 0.5f; }));
+    tabs.push_back (std::make_unique<PageTab> ("VOICE", [this] { return state.getRawParameterValue (ParamIDs::voiceOn)->load() > 0.5f; }));
     for (size_t i = 0; i < tabs.size(); ++i)
     {
-        tabs[i]->setTooltip (i == 0 ? "The filter" : "Shaper " + juce::String ((int) i) + ": a distortion on each note, with two EQ bands to colour it");
+        tabs[i]->setTooltip (i == 0 ? "The filter"
+                             : (int) i == voicePage ? juce::String ("The VOICE filter: shapes the sound into a sung vowel, for choirs and voices")
+                                                    : "Shaper " + juce::String ((int) i) + ": a distortion on each note, with two EQ bands to colour it");
         tabs[i]->onClick = [this, i] { showPage ((int) i); };
         addAndMakeVisible (*tabs[i]);
     }
@@ -865,25 +877,41 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
         routes.back()->setCompact (true);
         addChildComponent (*routes.back());
     }
+
+    addChildComponent (voiceDisplay);
+    for (auto* control : { &voiceOn, &vowel, &size, &sharp, &voiceMix })
+        addChildComponent (control);
+    voiceOn.setCompact (true);
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+    {
+        voiceRoutes.push_back (std::make_unique<ParamControl> (s, ParamIDs::osc (i, "Voice"), juce::String (i + 1),
+                                                               "Oscillator " + juce::String (i + 1) + " goes through the VOICE filter (when it's on)."));
+        voiceRoutes.back()->setCompact (true);
+        addChildComponent (*voiceRoutes.back());
+    }
     startTimerHz (8);
 }
 
 void FilterPanel::showPage (int newPage)
 {
-    page = juce::jlimit (0, ParamIDs::numShapers, newPage);
+    page = juce::jlimit (0, voicePage, newPage);
     tabs[(size_t) page]->setToggleState (true, juce::dontSendNotification);
-    const auto filterPage = page == 0;
+    const auto filterPage = page == 0, isVoicePage = page == voicePage, shaperPage = ! filterPage && ! isVoicePage;
     for (auto* control : std::initializer_list<juce::Component*> { &display, &on, &type, &cutoff, &resonance, &drive, &keytrack, &envelope,
                                                                    &velocity, &resonanceVelocity, &envelopeVelocity })
         control->setVisible (filterPage);
     for (auto* control : std::initializer_list<juce::Component*> { &shaperDisplay, &shaperOn, &model, &place, &shaperDrive, &driveVelocity,
-                                                                   &mix, &output, &eq1Gain, &eq1Freq, &eq1Q, &eq2Gain, &eq2Freq, &eq2Q,
-                                                                   &eqSplit, &routeLabel })
-        control->setVisible (! filterPage);
+                                                                   &mix, &output, &eq1Gain, &eq1Freq, &eq1Q, &eq2Gain, &eq2Freq, &eq2Q, &eqSplit })
+        control->setVisible (shaperPage);
     for (auto& route : routes)
-        route->setVisible (! filterPage);
+        route->setVisible (shaperPage);
+    routeLabel.setVisible (! filterPage);
+    for (auto* control : std::initializer_list<juce::Component*> { &voiceDisplay, &voiceOn, &vowel, &size, &sharp, &voiceMix })
+        control->setVisible (isVoicePage);
+    for (auto& route : voiceRoutes)
+        route->setVisible (isVoicePage);
 
-    if (! filterPage)
+    if (shaperPage)
     {
         // Point the shaper page's controls at this shaper.
         const auto k = page - 1;
@@ -932,6 +960,22 @@ void FilterPanel::resized()
         SynthPanel::layoutRow (area.removeFromTop (h), { &cutoff, &resonance, &drive, &keytrack, &envelope }, 86);
         area.removeFromTop (4);
         SynthPanel::layoutRow (area.removeFromTop (h), { &velocity, &resonanceVelocity, &envelopeVelocity }, 86);
+        return;
+    }
+
+    if (page == voicePage)
+    {
+        voiceOn.setBounds (right.removeFromRight (56));
+        auto area = getContentArea().withTrimmedTop (6);
+        voiceDisplay.setBounds (area.removeFromTop (130));
+        area.removeFromTop (6);
+        auto routeRow = area.removeFromTop (22);
+        routeLabel.setBounds (routeRow.removeFromLeft (84));
+        const auto routeWidth = juce::jmin (52, routeRow.getWidth() / ParamIDs::numOscillators);
+        for (auto& route : voiceRoutes)
+            route->setBounds (routeRow.removeFromLeft (routeWidth));
+        area.removeFromTop (8);
+        SynthPanel::layoutRow (area.removeFromTop (h), { &vowel, &size, &sharp, &voiceMix }, 86);
         return;
     }
 

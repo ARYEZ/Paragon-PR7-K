@@ -1,5 +1,7 @@
 #include "RackSpecs.h"
 
+#include "dsp/effects/Wah.h"
+
 #include "EqDisplay.h"
 #include "LedDisplay.h"
 #include "Parameters.h"
@@ -630,9 +632,9 @@ std::array<RackUnit::Spec, 3> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
 }
 
 //==============================================================================
-std::array<RackUnit::Spec, 4> makeInsertSpecs (ParagonX1AudioProcessor& p, int bus, std::function<void (int)> openPage)
+std::array<RackUnit::Spec, 5> makeInsertSpecs (ParagonX1AudioProcessor& p, int bus, std::function<void (int)> openPage)
 {
-    std::array<RackUnit::Spec, 4> specs;
+    std::array<RackUnit::Spec, 5> specs;
     const auto busName = ParamIDs::insertBusNames[bus + 1];
     const auto series = "PR7-K SERIES  BUS " + busName;
     const auto id = [bus] (const char* name) { return busId (bus, name); };
@@ -641,7 +643,7 @@ std::array<RackUnit::Spec, 4> makeInsertSpecs (ParagonX1AudioProcessor& p, int b
     {
         using Model = effects::Drive::Model;
         auto& s = specs[0];
-        s.number = 1;
+        s.number = 2;
         s.name = "DRIVE";
         s.kind = "OVERDRIVE / DISTORTION / FUZZ  7 MODELS";
         s.series = series;
@@ -689,7 +691,7 @@ std::array<RackUnit::Spec, 4> makeInsertSpecs (ParagonX1AudioProcessor& p, int b
     {
         using Mode = effects::Glitch::Mode;
         auto& s = specs[1];
-        s.number = 2;
+        s.number = 3;
         s.name = "GLITCH";
         s.kind = "GLITCH / STUTTER  5 MODES";
         s.series = series;
@@ -731,11 +733,62 @@ std::array<RackUnit::Spec, 4> makeInsertSpecs (ParagonX1AudioProcessor& p, int b
         s.onEdit = [openPage] { openPage (1); };
     }
 
-    specs[2] = makeModSpec (p, ParamIDs::insModIds (bus), 3, "MOD", series, "MOD on or off, on bus " + busName + ". Click POWER (the word) or EDIT for its page",
+    specs[2] = makeModSpec (p, ParamIDs::insModIds (bus), 4, "MOD", series, "MOD on or off, on bus " + busName + ". Click POWER (the word) or EDIT for its page",
                             [&p, bus] { return p.getInsertModSettings (bus); }, [&p, bus] { return p.getInsertModSweepPhase (bus); },
                             [openPage] { openPage (2); });
-    specs[3] = makeLoFiSpec (p, id, 4, series, [&p, bus] { return p.getInsertLoFiSettings (bus); }, "BUS",
+    specs[3] = makeLoFiSpec (p, id, 5, series, [&p, bus] { return p.getInsertLoFiSettings (bus); }, "BUS",
                              [&p, bus] { return p.getInsertPeakDb (bus); }, [openPage] { openPage (3); });
     specs[3].powerTooltip = "LO-FI on or off, on bus " + busName + ". Click POWER (the word) or EDIT for its page";
+
+    // THE WAH (0.51.0): first on the bus (drawn at the top, numbered 1; last in this list so the others keep their
+    // places). Where the filter is now in big digits (Hz), the mode and its settings beside it; the ladder is the pedal.
+    {
+        using Mode = effects::Wah::Mode;
+        auto& s = specs[4];
+        s.number = 1;
+        s.name = "WAH";
+        s.kind = "WAH / AUTO-WAH  3 MODES";
+        s.series = series;
+        s.onParameterIds = { id ("wahOn") };
+        s.powerTooltip = "WAH on or off, on bus " + busName + " (before the DRIVE). Click POWER (the word) or EDIT for its page";
+        const auto modeId = id ("wahMode");
+        const auto modeKey = [&p, modeId] (Mode mode, const char* tip)
+        {
+            return RackUnit::Key { effects::Wah::modeNames[(int) mode].toUpperCase(), tip,
+                                   [&p, modeId, mode] { return juce::roundToInt (valueOf (p, modeId)) == (int) mode; },
+                                   [&p, modeId, mode] { setValue (p, modeId, (float) (int) mode); } };
+        };
+        s.keys[0] = modeKey (Mode::pedal, "PEDAL: the PEDAL knob rocks it, heel to toe. Route EXPRESSION to it (the EXPR wheel or your pedal) in the MOD matrix");
+        s.keys[1] = modeKey (Mode::autoWah, "AUTO: it opens with how loud you play, up from the PEDAL by DEPTH");
+        s.keys[2] = modeKey (Mode::lfo, "LFO: it sweeps by itself, free or in time with the song, up from the PEDAL by DEPTH");
+        s.knobs = { RackUnit::Knob { id ("wahPosition"), "PEDAL" }, RackUnit::Knob { id ("wahResonance"), "RESONANCE" } };
+        s.ladderTitle = "PEDAL";
+        s.ladderMarks = { 0.9f, 0.7f, 0.5f, 0.3f, 0.1f };
+        s.ladderLabels = { "TOE", "", "", "", "HEEL" };
+        s.ladderReading = [&p, bus] { return p.getInsertWahSettings (bus).on ? p.getInsertWahSweep (bus) : -1.0f; };
+        s.paintReadout = [&p, bus, id] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto settings = p.getInsertWahSettings (bus);
+            const auto sweep = settings.on ? p.getInsertWahSweep (bus) : settings.position;
+            const auto hz = effects::Wah::frequencyFor (settings.range, sweep);
+            const auto h = left.getHeight() * 0.56f;
+            const auto end = drawNumber (g, hz >= 1000.0f ? juce::String (hz / 1000.0f, 2) : juce::String (juce::roundToInt (hz)), left.getTopLeft(), h);
+            line (g, hz >= 1000.0f ? "kHz" : "Hz", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "PEDAL " + juce::String (juce::roundToInt (sweep * 100.0f)) + "%", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            juce::StringArray rows { textOf (p, id ("wahMode")).toUpperCase() + "  " + textOf (p, id ("wahRange")).toUpperCase(),
+                                     "RESONANCE " + textOf (p, id ("wahResonance")) };
+            if (settings.mode == Mode::autoWah)
+                rows.add ("SENS " + textOf (p, id ("wahSensitivity")) + "  DEPTH " + textOf (p, id ("wahDepth")));
+            else if (settings.mode == Mode::lfo)
+                rows.add ((settings.sync > 0 ? textOf (p, id ("wahSync")) : textOf (p, id ("wahRate"))) + "  DEPTH " + textOf (p, id ("wahDepth")));
+            rows.add ("MIX " + textOf (p, id ("wahMix")) + "  " + textOf (p, id ("wahLevel")));
+            column (g, content, rows, content.getHeight() * 0.16f);
+        };
+        s.footTitle = "RANGE";
+        s.footText = [&p, rangeId = id ("wahRange")] { return textOf (p, rangeId); };
+        s.onEdit = [openPage] { openPage (4); };
+    }
     return specs;
 }

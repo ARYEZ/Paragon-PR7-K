@@ -138,6 +138,7 @@ TEST_CASE ("Every factory preset plays: a note sounds, stays clean, and fades aw
         INFO (rig.name);
         r.processor.loadRig (r.entryNamed (rig.name));
         r.processor.prepareToPlay (48000.0, 256);   // fresh
+        r.processor.seedRandomForTest (1);           // the same unison phases, humanising... on every run and computer
 
         juce::AudioBuffer<float> buffer (2, 256);
         juce::MidiBuffer midi;
@@ -258,7 +259,7 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
 
     Rig late;
     late.name = "Late";
-    late.bank = Rig::numBanks - 1;   // the last bank, after every factory rig
+    late.bank = Rig::numBanks - 1;   // the last user bank: after every factory rig in A, before the expansions
     late.number = 50;
     library.saveAsNew (late);
 
@@ -266,12 +267,15 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
     for (size_t i = 1; i < entries.size(); ++i)
         CHECK (entries[i - 1].rig.bank * 100 + entries[i - 1].rig.number <= entries[i].rig.bank * 100 + entries[i].rig.number);
 
-    CHECK (entries.back().rig.name == "Late");
+    // Late is the last of the user's banks; only the expansions' banks come after it.
+    const auto lateEntry = std::find_if (entries.begin(), entries.end(), [] (const RigLibrary::Entry& e) { return e.rig.name == "Late"; });
+    REQUIRE (lateEntry != entries.end());
+    CHECK (std::all_of (lateEntry + 1, entries.end(), [] (const RigLibrary::Entry& e) { return e.isFactory && Rig::isExpansionBank (e.rig.bank); }));
     CHECK (library.step (&entries.back(), 1) == &entries.front());
     CHECK (library.step (&entries.front(), -1) == &entries.back());
     CHECK (library.step (nullptr, 1) == &entries.front());
 
-    CHECK (library.nextFreeNumber (0) == 43);   // the factory presets fill A01 to A42
+    CHECK (library.nextFreeNumber (0) == 44);   // the factory presets fill A01 to A43
 }
 
 TEST_CASE ("Saving and loading a preset restores the sound but not the global settings", "[rigs]")
@@ -364,18 +368,19 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
 {
     RigRig r;
     r.processor.loadRig (r.entryNamed ("Init"));
-    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A43
-    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A44
-    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A43");
-    r.processor.loadRig (r.entryNamed ("Tight Kit"));   // A42
+    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A44
+    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A45
+    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A44");
+    r.processor.loadRig (r.entryNamed ("Sung Vowels"));   // A43
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Second");
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Third");
-    r.processor.stepRig (1);   // wraps round to the first
-    CHECK (r.processor.getCurrentRig().name == "Init");
-    r.processor.stepRig (-1);   // and back to the last
-    CHECK (r.processor.getCurrentRig().name == "Third");
+    r.processor.stepRig (1);   // on into the expansions' banks (NEON RAIN first)
+    CHECK (r.processor.getCurrentRig().name == "Brass Requiem");
+    r.processor.loadRig (r.entryNamed ("Init"));
+    r.processor.stepRig (-1);   // and from the first back round to the last
+    CHECK (r.processor.getCurrentRig().name == r.processor.getRigLibrary().getEntries().back().rig.name);   // the last expansion's last
 }
 
 TEST_CASE ("Deleting the loaded preset keeps the sound, now unsaved", "[rigs]")

@@ -2,11 +2,14 @@
 
 #include "Parameters.h"
 #include "PluginEditor.h"
+#include "dsp/effects/Wah.h"
 #include "PluginProcessor.h"
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Reverb.h"
 #include "ui/ParagonLookAndFeel.h"
+#include "ui/RigBrowser.h"
+#include "dsp/synth/Mimic.h"
 
 // Hidden test (the "[.]" tag): renders the editor to a PNG for reviewing the
 // UI without a DAW. Run with:
@@ -14,10 +17,13 @@
 // Options (environment variables):
 //   PARAGON_SNAPSHOT_WIDTH=n         the window's width (default 1600; 2560 for a sharp 2x look)
 //   PARAGON_SNAPSHOT_PAGE=presets    the preset browser (with two example user presets), or =settings
+//   PARAGON_SNAPSHOT_BANK=n          with PAGE=presets: showing bank n (5: the first expansion), its first preset loaded
 //   PARAGON_SNAPSHOT_PRESET=name     that factory preset loaded
 //   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
 //   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
 //   PARAGON_SNAPSHOT_FILTERPAGE=n     the FILTER panel's SHP n tab (shaper n's page)
+//   PARAGON_SNAPSHOT_RACKVIEW=1      the SYNTH page with the rack shown (the OSCILLATORS and FILTER panels; 0.49.0);
+//                                    on by itself for OSC, OSCPAGE, FILTERPAGE, FFT and TRAVEL. Otherwise the front panel.
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
 //   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
 //   PARAGON_SNAPSHOT_PAGE=drums      THE DRUMS (PARAGON_SNAPSHOT_DRUM=n: slot n chosen; PARAGON_SNAPSHOT_DRUMS=1: a beat just played, its rows lit;
@@ -44,6 +50,13 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         processor.loadRig (*processor.getRigLibrary().findFactory ("Warm Pad"));
         processor.saveCurrentRigAs ("My Pad");
         processor.saveCurrentRigAs ("Night Drive Lead");
+        if (const auto bank = env ("PARAGON_SNAPSHOT_BANK"); bank.isNotEmpty())
+            for (const auto& entry : processor.getRigLibrary().getEntries())
+                if (entry.rig.bank == bank.getIntValue())
+                {
+                    processor.loadRig (entry);
+                    break;
+                }
     }
 
     if (const auto name = env ("PARAGON_SNAPSHOT_PRESET"); name.isNotEmpty())
@@ -144,6 +157,12 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::ins (0, "DriveGain"), 7.0f);
             set (ParamIDs::ins (0, "GlitchOn"), 1.0f);
             set (ParamIDs::ins (0, "GlitchMix"), 0.6f);
+            // 0.51.0: its WAH in AUTO, opened by the chord.
+            set (ParamIDs::ins (0, "WahOn"), 1.0f);
+            set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
+            set (ParamIDs::ins (0, "WahPosition"), 0.15f);
+            set (ParamIDs::ins (0, "WahDepth"), 0.7f);
+            set (ParamIDs::ins (0, "WahResonance"), 7.0f);
             for (const auto note : { 48, 55, 60, 64, 67 })
                 processor.getKeyboardState().noteOn (1, note, 0.85f);
             juce::AudioBuffer<float> buffer (2, 256);
@@ -167,7 +186,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "reverb" ? FxPage::View::reverb : fx == "modfx" ? FxPage::View::modFx : fx == "mod" ? FxPage::View::mod
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
-                     : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi : FxPage::View::rack);
+                     : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
+                     : fx == "inswah" ? FxPage::View::insertWah : FxPage::View::rack);
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot
         // never is (as PR7-E's snapshots, refresh them by hand). ECHELON with its dynamic band 3 selected.
         if (fx == "eq")
@@ -188,6 +208,9 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         if (fx == "limiter")
             fxPage.getLimiterPage().refresh();
     }
+    view->setRackShownForTest (env ("PARAGON_SNAPSHOT_RACKVIEW") == "1" || env ("PARAGON_SNAPSHOT_OSC").isNotEmpty()
+                               || env ("PARAGON_SNAPSHOT_OSCPAGE").isNotEmpty() || env ("PARAGON_SNAPSHOT_FILTERPAGE").isNotEmpty()
+                               || env ("PARAGON_SNAPSHOT_FFT").isNotEmpty() || env ("PARAGON_SNAPSHOT_TRAVEL").isNotEmpty());
     if (const auto osc = env ("PARAGON_SNAPSHOT_OSC").getIntValue(); osc > 0)
         view->getOscillatorPanel().selectOscillator (osc - 1);
     if (env ("PARAGON_SNAPSHOT_TRAVEL") == "1")
@@ -496,9 +519,72 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         }
     }
     if (page == "presets")
+    {
         view->showPage (MainView::Page::presets);
+        // BANK=n: the browser showing bank n (5 is the first expansion, NEON RAIN), its first preset loaded.
+        if (const auto bank = env ("PARAGON_SNAPSHOT_BANK"); bank.isNotEmpty())
+        {
+            std::function<RigBrowser* (juce::Component&)> findBrowser = [&] (juce::Component& c) -> RigBrowser*
+            {
+                if (auto* b = dynamic_cast<RigBrowser*> (&c))
+                    return b;
+                for (auto* child : c.getChildren())
+                    if (auto* found = findBrowser (*child))
+                        return found;
+                return nullptr;
+            };
+            auto* browser = findBrowser (*view);
+            REQUIRE (browser != nullptr);
+            browser->showFilter (0, bank.getIntValue());
+        }
+    }
     else if (page == "settings")
         view->showPage (MainView::Page::settings);
+    else if (page == "mimic")
+    {
+        // MIMIC's panel, having heard a made note: G3, a held, darkening tone with vibrato from half a second, a
+        // little breath, stereo.
+        view->showPage (MainView::Page::presets);
+        std::function<RigBrowser* (juce::Component&)> findBrowser = [&] (juce::Component& c) -> RigBrowser*
+        {
+            if (auto* b = dynamic_cast<RigBrowser*> (&c))
+                return b;
+            for (auto* child : c.getChildren())
+                if (auto* found = findBrowser (*child))
+                    return found;
+            return nullptr;
+        };
+        auto* browser = findBrowser (*view);
+        REQUIRE (browser != nullptr);
+        constexpr double rate = 48000.0;
+        juce::AudioBuffer<float> note (2, (int) (2.6 * rate));
+        juce::Random random (5);
+        double phase = 0.0;
+        for (int i = 0; i < note.getNumSamples(); ++i)
+        {
+            const auto t = i / rate;
+            const auto hz = 196.0 * std::exp2 ((t > 0.5 ? 22.0 * std::sin (juce::MathConstants<double>::twoPi * 5.2 * t) : 0.0) / 1200.0);
+            phase += hz / rate;
+            double sum = 0.0;
+            for (int k = 1; k * hz < 20000.0 && k <= 40; ++k)
+                sum += std::sin (juce::MathConstants<double>::twoPi * k * phase) / k * std::exp (-(k - 1) * t * 0.6);
+            const auto level = t < 0.12 ? t / 0.12 : t < 1.9 ? 0.55 + 0.45 * std::exp (-(t - 0.12) / 0.15)
+                                                            : (0.55 + 0.45 * std::exp (-1.78 / 0.15)) * std::pow (10.0, -100.0 * (t - 1.9) / 20.0);
+            const auto breath = 0.5 * (random.nextDouble() * 2.0 - 1.0);
+            note.setSample (0, i, (float) (0.3 * level * (sum + breath)));
+            note.setSample (1, i, (float) (0.3 * level * (sum * 0.9 + breath)));
+        }
+        processor.setMimicReference (note, rate);
+        browser->showMimic();
+        browser->getMimicPanel().setAnalysis (synth::mimic::analyse (note, rate, "Breathy Lead G3"));
+        // MIMIC=1: made and refined (part 2): the match, and the made sound's loudness over the recording's.
+        if (env ("PARAGON_SNAPSHOT_MIMIC") == "1")
+        {
+            browser->getMimicPanel().makeSound();
+            browser->getMimicPanel().refine();
+            browser->getMimicPanel().finishRefining();
+        }
+    }
 
     const auto width = juce::jmax (960, juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", "1600").getIntValue());
     editor->setSize (width, width * 9 / 16);

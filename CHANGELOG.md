@@ -2,6 +2,362 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.51.0
+
+**The WAH** (your ask): a wah on every insert bus (FX > INSERTS, buses A to D), first in line, before the DRIVE, so a drive works on the swept peak like a wah into a distortion pedal.
+
+- **Our own design**, starting from PR7-G's wah but in stereo, and fuller: the resonant peak plus some of the low end under it, so the heel sounds dark and throaty rather than thin.
+- **Three modes:** PEDAL (you rock it), AUTO (it opens with how hard you play, then falls back), LFO (it sweeps by itself, free or in time with your song).
+- **Three ranges:** CLASSIC (350 Hz to 2.2 kHz, the classic pedal), WIDE (220 Hz to 3.5 kHz) and LOW (90 to 900 Hz, for basses).
+- **Knobs:** RESONANCE, plus SENS, SPEED and DEPTH for AUTO, RATE or a note length for the LFO, MIX and LEVEL.
+- **Works with the EXPR wheel:** each bus's wah pedal can be moved by the MOD matrix. Route EXPRESSION to "FX Insert A > Wah Pedal" and the EXPR wheel, or your keyboard's expression pedal, rocks it. While EXPRESSION is routed there, it no longer changes the volume. Until you first move the wheel or pedal, it counts as all the way up, as the wheel is drawn.
+- **Its page** shows the filter's curve where the wah is now (orange), and at the heel and the toe (grey), moving as you play.
+- **Nothing changes in your projects:** the wah is off by default.
+
+**New expansion: SLINGBLADE** (SB01 to SB15), your theme and name: brutal heaviness, soaring epicness and gilded opulence, in three acts. Every category has one sound from each act: the mines below, the gilded court at war, the dawn of the rebellion. MACRO 3 is **RISE** on every preset, taking each sound from held down to defiant. Our own sounds; nothing from the books on the plugin.
+
+- **Leads:** Drillbit Scream (a hard-synced saw through the wah on EXPR into a RAT-style drive), Gilded Fanfare (regal brass with the fifth stacked), Dawnbreaker (a supersaw anthem scooping into each note, the wah on EXPR).
+- **Pads:** Under The Crust (a dark drone, an FM rumble and tunnel wind), Glass Palace (a shimmering wavetable pad), Rising Tide Choir (the VOICE choir swelling from a hum to "ah").
+- **Basses:** Pick And Hammer (the AUTO wah opening on every note, into an overdrive), Warship Hull (a huge drifting reese), Uprising (a pumping step-sequenced bass).
+- **Keys:** Lullaby Below (a fragile FM music box), Ballroom Harpsichord, Victory Bells (bells built from a bell's partials, with a major third for triumph).
+- **Arps:** Machine Shift (a heavy drum beat and clanging metal through the LFO wah), Siege Clock (a ticking pattern rolled from the minor scale), Fleet Assault (three arps locked together, the wah on EXPR).
+
+## 0.50.0
+
+**The front panel now matches PR7-G** (your four tweaks, with PR7-G as the reference):
+
+- **PR7-G's pearl black.** The face was painted in a dark purple-grey of my own. It's now drawn by PR7-G's own code for the unit: the same pearl black rim and satin plate, its sheen and grain, and the red light around the edge.
+- **PR7-G's logo.** "PR7-K" was typed in an ordinary italic font. The badge is now PR7-G's: PARAGON stamped over the PR7-K mark in the slanted, speed-cut letters with the red 7.
+- **The wheels have the expression pedal's tread.** MOD and EXPR are now neon pink-to-orange rubber with fine ribs, as on PR7-G's pedal. They're shaded where the wheel curves away, and the ribs roll as you turn them.
+- **Gradient knobs.** PR7-K had no finish setting, so it fell back to pearl white with black knobs. It's now a pearl black unit, so the big knobs have PR7-G's neon gradient. The same finish lights the FX page's power switches, small keys and knobs neon, as on PR7-G's pearl black unit.
+
+The knobs and wheels also sit a little higher, so their values no longer touch the bottom rim.
+
+## 0.49.0
+
+**A new face for the SYNTH page: the PR7 front panel** (your design). Where the OSCILLATORS and FILTER panels were, PR7-K now opens on a PR7 unit's front panel, a cleaner look for playing:
+
+- **The LCD screen** in the middle (the floor unit's screen: chrome frame, black bezel, orange glow): the preset's slot and bank (SV01 · SEVERED), its name in big letters, and its notes scrolling along the bottom; EDITED lights when you've changed the sound. Click it to open the preset browser; the ▲ ▼ keys beside it step through the presets.
+- **The three macros** as big red pedal knobs under the screen, named after the preset's own macros (BRIGHT / SPACE / DREAD...).
+- **Four hero knobs:** CUTOFF and RESONANCE (FILTER) on the left, ATTACK and RELEASE (AMP) on the right. Like every knob, they take MIDI learn and dropped modulation, and show their modulation rings.
+- **Two wheels** at the far left: **MOD**, the mod wheel (MIDI controller 1, as your keyboard's), and **EXPR**, an expression pedal (controller 11). Drag them; double-click returns them to rest. They follow your keyboard's own wheel and pedal.
+- **SHOW RACK / HIDE RACK** (under OUTPUT) swaps the front panel for the full OSCILLATORS and FILTER panels in the same space, and back. PR7-K remembers which you left it on. The envelopes, AMP, PLAY and the keyboard stay as they are.
+
+**Expression now swells the volume.** Controller 11 (the EXPR wheel, or an expression pedal on your keyboard) sets the whole sound's volume, as on most synths, unless the preset routes EXPRESSION in its mod matrix (then it drives those routes) or EXPRESSION is sent to the mod wheel (SETTINGS). Full until any comes. Note: a DAW track or MIDI file that sends expression at 0 will now quiet the synth until it comes back up.
+
+## 0.48.0
+
+**SEVERED**, the twenty-first expansion: a bank of its own under EXPANSIONS (SV01 to SV15), named by you. Inspired by the score of a 2022 series about office workers whose work memories are split from their home lives: a cheerful, sterile corporate surface (muzak, chimes, retro screens, humming lights, long white corridors) over quiet dread and a melancholy piano. Our own sounds; no title, company, departments, characters, terms or music from the series.
+
+- **MACRO 3 is DREAD on every preset**: the cheerful surface turns uneasy (a tritone or half-step clash creeps in, the sound grits up, the tape wobbles). MACRO 1 brightens, MACRO 2 is SPACE as in every expansion.
+- **Each preset is built round a different part of the synth**, so no two are made alike:
+  - **Leads:** Cheerful Memo (a hand-drawn wave evened out by EDGE's SYMMETRY), Number Sorter (a stepped retro-screen lead: CRUSH in RATE mode), Hallway Whistle (FORMANT's X-FADE through a band-pass on the note, long echoes).
+  - **Pads:** Fluorescent Hum (harmonics flickering: the FFT editor's VSPEED / VSTRENGTH, with ECHELON's dynamic band), Wellness Room (soothing, but leaning out of shape: SKEW and PINCH moved by slow LFOs), Elevator Descent (the Organ Stack table through a rotary speaker, sinking slowly).
+  - **Basses:** Quarterly Bass (the step sequencer with tied steps), Severed Sub (a clean sub, and a saw above it chopped by GLITCH's KILLSWITCH), Break Room Bass (a bark at every note from SYNC's own envelope).
+  - **Keys:** Lobby Piano (the felt piano as muzak through LO-FI's AM RADIO), Incentive Marimba (a bright FM marimba), Memo Chimes (chimes whose colour changes as they ring: TRAVEL's strength curves).
+  - **Arps:** Data Refinement (two arps together: CHORDS-mode stabs and picked notes between them), Sorting Pulse (ratchets and slides), Cold Corridor (reversed drum hits swelling into each beat, kit on C2 to B2, under a cold pulse).
+- **Levels** were balanced by measurement, not by ear: listen and adjust to taste.
+
+**The expansions now scroll.** The EXPANSIONS list in the preset browser is a scrolling list (your choice), so there's room for any number of banks. The buttons are back to full-size rows (with 21 banks they had shrunk to 16 px), a thin scroll bar appears when they don't all fit, and the list keeps the bank you chose in view.
+
+## 0.47.0
+
+**SUPERPOSITION**, the twentieth expansion: a bank of its own under EXPANSIONS (SP01 to SP15), named by you. Inspired by the score of a 2024 science-fiction series about a physicist thrown into other versions of his own life, searching for the way home: cold, cerebral and quietly dreadful, the same sound in many versions (copies drifting apart, notes never the same twice, patterns that never repeat), and under it the warm thread of home. Our own sounds; no title, characters, places, terms or music from the series.
+
+- **MACRO 3 is SPLIT on every preset**: the sound pulled into more, and more different, versions of itself (copies further out of tune, a second voice, more unison, a wider roll). MACRO 1 brightens, MACRO 2 is SPACE as in every expansion.
+- **Leads:** Other Self (a second voice arriving a moment late, nine cents apart, on the other side), Collapse Lead (hard sync rolled at random on every note: never the same twice), Lucid Line (a hand-drawn wave, clean and close).
+- **Pads:** Interference (a chord flickering between two colours), Quantum Fog (breath sung through VOICE, its vowel drifting), Infinite Echo (trailing off into echoes of itself).
+- **Basses:** Probability Bass (TRAVEL changing its colour beat by beat, with your song), Event Horizon (a deep FM growl; each note falls an octave when you let go), Fracture Bass (crushed and gritty).
+- **Keys:** Home Piano (the warm felt piano), Many Worlds Keys (each key three copies, a little out of tune, spread wide), Lab Glass (a cold struck-glass tone).
+- **Arps:** Branching Paths (a new pattern every pass), Countdown Pulse (a ticking sixteenth pulse), Threshold (a slow heartbeat on the drums, C2 to B2, under a dark throb, with your song).
+- **Levels** were balanced by measurement, not by ear: listen and adjust to taste. Countdown Pulse sits a few dB quieter, so its sharp ticks stay under the peak limit.
+
+**Fixed: clicks when the FFT editor's LP or HP moves with SLOPE turned up.** The cutoff blends two of the wave's levels; with SLOPE above 0 that pair moved one level at a time, so a sweeping cutoff jumped each time it crossed one (heard as faint clicking or zipper noise, in DUSTFALL's Searchlight for one). The pair now moves so the sound changes smoothly. With SLOPE at 0 nothing changes; with SLOPE up, a cutoff sitting still sounds very slightly different from before.
+
+## 0.46.0
+
+**DUSTFALL**, the nineteenth expansion: a bank of its own under EXPANSIONS (DF01 to DF15), named by you. Inspired by the score of a 2017 science-fiction film, a sequel set thirty years on: colder, bigger and more brutal, with colossal distorted brass blasts and crushing sub drones, orange dust and grey snow over empty cities, machines at work, and, in between, fragile, lonely beauty. Our own sounds; no title, characters, places, terms or music from the film.
+
+- **MACRO 3 is WEIGHT on every preset**: more low end (a clean sub an octave down on most), more distortion or a bigger space. MACRO 1 brightens, MACRO 2 is SPACE as in every expansion.
+- **Leads:** Hologram Voice (sung by the VOICE filter, a glassy "ee" opening to "ah", flickering faintly), Warning Blast (an enormous distorted brass blare lurching up into each note), Memory Thread (a fragile sine wavering like an old recording, long echoes).
+- **Pads:** Orange Haze (the Analog Morph table drifting, worn by cassette dust), Grey Snowfall (a thin, glassy wave from the FFT editor with bright noise flakes falling through it), Monolith (a vast low distorted drone: play it low).
+- **Basses:** Sub Collapse (sags in pitch after each hit), Engine Throb (throbs like an idling machine, slower low and faster high), Iron Wall (a fuzzed wall through BANSHEE and a hard shaper).
+- **Keys:** Ghost Keys (a glassy FM electric piano, half there), Distant Piano (NEGATIVE SPACE's soft felt piano, darkened as if from far away), Cold Bells (a struck metal bar's own overtones: it rings, not sings).
+- **Arps:** Data Pulse (cold, precise sixteenths), Searchlight (slow swells with a sweep passing over them), Machine City (heavy low industrial drums on C2 to B2 under a pulsing low synth, with your song).
+- **Levels** were balanced by measurement, not by ear: listen and adjust to taste.
+
+## 0.45.0
+
+**MIMIC, part 2: the MATCH and REFINE.** MIMIC now plays what it made and compares it with your recording, then improves it on its own.
+
+- **MATCH:** when you MAKE THIS SOUND, MIMIC plays the made sound in the background (on a private copy of the synth, so what you're playing isn't touched), the note it was recorded at, held as long, and compares it with the recording: the **tone** (the spectrum, moment by moment, as a shape) and the **loudness** over time, each as how many dB apart on average. The MATCH percentage sums them up (1 dB apart is 90%, 3 dB 74%, 6 dB 55%: our own scale). The volume is matched for you (the made sound's LEVEL is set so it's as loud as the recording), so PLAY ORIGINAL and PLAY RESULT compare fairly.
+- **The picture** draws the made sound's loudness (dashed, white) over the recording's, so you can see where they part.
+- **REFINE:** nudges, one at a time, what MIMIC had to estimate (the attack, decay, sustain and release and the shapes of their falls, the noise's level, unison's detune, vibrato's depth, how fast the tone moves), each up and down, keeping a nudge only if the match improves; three passes, finer each time (about 30 to 50 plays, a few seconds). The refined sound is put in place (one undo takes you back to the first one), the match shown before and after.
+- **Honest limits:** REFINE improves the sound, not necessarily each setting: some settings can trade off against each other (a slightly lower sustain making up for a different decay shape). The match is our own measure, not your ears: trust what you hear over the number. Tested on sounds PR7-K made with known settings: the match rose (82% to 87% on a straight-line envelope MIMIC first guessed as natural curves), the attack and release came nearer the truth, and the volume matched within 1.5 dB.
+
+## 0.44.0
+
+**MIMIC**: make a sound from a recording of one (your ask and name, like the "preset cloners" for other synths). On the PRESETS page: **MIMIC A SOUND...** in the right column. Load a recording of one note (or drop it on the panel) and MIMIC listens to it, then builds a sound for PR7-K from what it heard. Our own design: it measures, nothing is learned from other people's presets.
+
+- **What it takes from the recording:**
+  - **its tone**: its own waves, cycle by cycle, as a wavetable (up to 64 frames from the start of the note to where it settles), walked by TRAVEL as the note plays, so a sound that brightens, darkens or changes as it goes does the same.
+  - **its loudness**: attack, decay, sustain and release fitted to how its level moves (held sounds and dying ones, like plucks and bells).
+  - **its movement**: vibrato (how fast, how deep, how late it starts), a swoop into the note (the PITCH envelope), unison (copies a little out of tune: heard from how its harmonics beat), noise or breath (oscillator 2), and stereo width.
+- **The panel** shows the recording's loudness with where the note starts, settles and is let go, the stretch its tone is taken from, its pitch, and what was found (the note to play it at, the envelope times, vibrato, swoop, unison, noise). Toggles choose what to take (TONE, LOUDNESS, VIBRATO, SWOOP, UNISON, NOISE; what wasn't found is greyed). **MAKE THIS SOUND** puts it in place as a new sound (one undo takes it back; save it like any other). **PLAY ORIGINAL** and **PLAY RESULT** let you compare (the result plays the note it was recorded at, held as long).
+- **Best on** one note, held, fairly dry: leads, basses, pads, plucks, keys. Chords, drums and whole mixes have no single pitch to follow (it says so). Reverb and echoes are taken as part of the sound. Play the result near the note it was recorded at: far from it, its tone moves with the keys.
+- **Honest limits:** it's close, not a copy (our oscillators and envelopes are our own), and some figures are estimates (how unison's beating maps to detune, how loud the noise should be). Checked by measurement on sounds made with known settings (pitch within 3 cents, tone within 1.5 dB harmonic by harmonic, sustain, release, vibrato, swoop, unison, noise); not by ear here. **MIMIC's second part** will play the result back, score how close it is, and refine it automatically.
+
+## 0.43.0
+
+**BLOODWAVE**, the eighteenth expansion: a bank of its own under EXPANSIONS (BW01 to BW15), named by you. Inspired by the soundtrack of a 2012 top-down action game set in a neon-soaked 1989 city: the dark, dirty side of the '80s, with driving distorted synths at club tempos, basses pumping under a drum machine, hazy, feverish detuned loops, worn tape and bit-crushed grit. Our own sounds; no title, characters, masks, the city, artists or music from the game.
+
+- **MACRO 3 is RAGE on every preset**: more drive, crush or wobble.
+- Leads: **Neon Blade** (a bit-crushed square through a screaming drive), **Fever Lead** (warbles like a stretched tape), **Siren Scream** (a distorted saw that dives an octave every time you let go of a note).
+- Pads: **Pink Haze** (a very wide, detuned haze on worn tape), **Night Static** (a chord heard down a crackling phone line), **Comedown** (a dark drone that sags flat and closes over eight seconds).
+- Basses: **Pump Bass** (ducks on every beat, the club's breathing: hold the notes), **Darkgrind Bass** (filthy and distorted, the filter chewing in sixteenths with your song), **Sub Thump** (a sine that drops into every hit, like a drum-machine bass).
+- Keys: **Woozy Keys** (an electric piano whose pitch swims), **VHS Bells** (glassy bells off a worn tape), **Club Stabs** (one key plays a whole minor-seventh chord).
+- Arps: **Rampage Arp** (fast and driven, the odd glitch stutter), **Hypno Loop** (two triangles pulled out of tune, spinning echoes), **Drum Machine Run** (four-on-the-floor kick, claps, hats and an offbeat bass: play above C3, the kit is on C2 to B2).
+- Levels balanced by measurement against the other expansions (Club Stabs set so a three-key chord, twelve notes, doesn't clip). Made without listening here, so your ears decide.
+
+## 0.42.0
+
+**PSI STORM**, the seventeenth expansion: a bank of its own under EXPANSIONS (PS01 to PS15), named by you. Inspired by the score of a 1988 animated cyberpunk film about a biker gang and a boy whose psychic power breaks loose: shimmering bronze gamelan and deep bamboo, hypnotic group chant and slow monks' chant, a neon city at night, light trails, and power swelling out of control. Our own sounds; no title, characters, the city, the band, terms or music from the film.
+
+- **MACRO 3 is POWER on every preset**: more drive, clang, swell or a sharper voice: the energy breaking loose.
+- Leads: **Chant Leader** (a man's voice calling out, its vowel stepping through syllables in time with your song), **Tail Light Streak** (drops into every note from an octave up, fast echoes trailing behind), **Psychic Scream** (grows the longer you hold it: the pitch climbs a whole step, it tears and distorts, then cracks at the top).
+- Pads: **Requiem Chant** (low monks chanting in parallel fifths), **Ruined City** (cold, shifting metal with wind through it), **Power Surge** (swells over six seconds into a bright, unstable roar).
+- Basses: **Bamboo Bass** (hollow struck tubes in beating pairs), **Night Ride** (a chase bass jumping octaves in sixteenths with your song: hold a note), **Mutant Flesh** (a bloated, uneven wobble).
+- Keys: **Bronze Gamelan** (each note on two instruments tuned slightly apart, so they shimmer, as gamelan pairs do), **Temple Gong** (blooms after the strike and sags in pitch: play low), **Bamboo Marimba** (woody and bright).
+- Arps: **Interlock** (two bronze parts filling each other's gaps in the pelog scale: hold just the root key), **Chant Rhythm** (barked shouts in a 3-3-2 rhythm), **Festival Drums** (big low drums with rolls under the bronze: play above C3, the kit is on C2 to B2).
+- **New scale for the arp's RANDOMIZER: Pelog**, the gamelan's own five notes (its common form, to the nearest semitones). Added at the end of the list, so no existing preset changes.
+- **The preset browser fits more expansions**: with 17, PSI STORM's button was cut off at the bottom; the rows now pack tighter when space runs short (about 21 fit).
+- Levels balanced by measurement against the other expansions. The gamelan, gong and bamboo are synthesized, not recorded instruments. Made without listening here, so your ears decide.
+
+## 0.41.0
+
+**REFRACTION**, the sixteenth expansion: a bank of its own under EXPANSIONS (RF01 to RF15), named by you. Inspired by the score of a 2018 science-fiction film about an expedition into a zone where everything is refracted and copied: a quiet fingerpicked string, light bending into colours, sounds that mutate and double as you hold them, and a vast, wailing alien swell. Otherworldly, as you asked. Our own sounds; no title, characters, places, terms or music from the film.
+
+- **MACRO 3 is MUTATE on every preset**: it pushes each sound from lovely to wrong in its own way (pitch pulled into microtones, a bent wave, a stranger voice, more crunch, more twinkles).
+- **Each preset is built round a different part of the synth**, so the leads and pads don't sound like the other banks'.
+- Leads: **Refraction** (one note splitting like light as you hold it: a fifth fading in on the left and an octave on the right, each sliding into tune from a little off), **Mirror Voice** (a double that copies you a moment late, sliding up from a half step under, sung as an inhuman "ee" by the VOICE filter), **Hollow Wail** (the vast alien swell: a saw whose SYNC opens as the note grows, scooping into every note and gliding slowly between them, through a drive).
+- Pads: **Prism Veil** (glass from the FFT editor, swinging slowly between two versions of itself so its overtones rise and fall), **Overgrowth** (a wavetable that keeps turning into something else over about twelve seconds, starting somewhere different on every note), **Spore Drift** (whispered noise drifting through vowels, high tones twinkling on and off at random).
+- Basses: **Mutation** (each note starts plain and turns strange over three seconds), **Root Rot** (a sub with a damp, off-pitch growl breathing in a hand-drawn, irregular shape), **Cell Division** (a pulse in eighths with your song that splits off an octave copy on every beat: hold a note).
+- Keys: **Folk Pluck** (a quiet fingerpicked string: guitar-like, not a sampled guitar), **Bloom Keys** (bells that open up after you strike them, into a reverse reverb that swells behind each note), **Crystal Trees** (brittle, grainy chimes, a little out of tune with each other).
+- Arps: **Doubling** (two arps mirroring each other, one climbing, one falling, a slow flanger through both), **Bioluminescence** (random blips in a dreamy whole-tone scale, each chirping down into its pitch, a new pattern every pass), **Pulse Garden** (a slow pulse that breathes a vowel on every note, with the odd flutter).
+- Levels balanced by measurement against the other expansions. Made without listening here, so your ears decide.
+
+## 0.40.0
+
+**ASCENSION**, the fifteenth expansion: a bank of its own under EXPANSIONS (AS01 to AS15), named by you. Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant growing into a vast, epic choir, heroic strings and brass, big drums, mystery and awe. Our own sounds; no title, characters, factions, places, terms or music from the game.
+
+- **Built on the new VOICE filter** (0.39.0) for choirs that sound human: buzzy sources sung into vowels whose resonances stay fixed whatever note is sung, each section's voices with their own vibrato drifting against each other, every chord opening from a hummed "oo" into the vowel, a breath of air through it. In **Grand Choir** and **Choir Stabs** the singer's size follows the keys: low notes sung by basses, high notes by sopranos, so a wide chord sounds like a four-part choir.
+- Leads: **Monk Solo** (a single low chanting voice), **Soprano Call** (a soaring soprano with an operatic vibrato), **Hero Theme** (brass and strings together, a horn's body from the VOICE filter).
+- Pads: **Monk Chant** (low voices in slow unison), **Grand Choir** (the full four-part choir), **Angel Choir** (airy, breathy sopranos).
+- Basses: **Low Chant** (a dark "oo" voice over a clean sub), **Battle Strings** (a driving sixteenth-note ostinato with your song: hold a note), **Deep Brass** (a low swell: press into the keys to push it).
+- Keys: **Choir Stabs** (short "ah!" shouts), **Ancient Bells** (built from a real church bell's partials, each fading at its own pace), **Lament Piano** (a sad piano far back in a hall).
+- Arps: **String Charge** (a racing string ostinato), **Sacred Drums** (huge slow drums under a chanting choir: play above C3, the kit is on C2 to B2), **Signal Pulse** (a pulsing electronic arp).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character (mostly VOWEL on the choirs, so they can "speak"; POWER, BITE, BLARE, AIR, HUM, ECHO, GLOW on the others). Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Choir Stabs, Ancient Bells and Sacred Drums by their peaks). Synthesis, not a recorded choir: made without listening here, so your ears decide.
+
+## 0.39.0
+
+**The VOICE filter**, for choirs and voices that sound human (your ask, before the ASCENSION expansion). A new tab, **VOICE**, beside FILTER and SHP 1-4.
+
+- **Why it was needed:** a real voice gets its vowel from resonances of the throat and mouth ("formants") that stay at the same frequencies whatever note is sung. Our choirs so far came from the Vowels wavetable, whose vowels move with the note: thin and chipmunky up high, muddy down low. That's the main thing that made them sound synthetic.
+- **What it does:** five resonances at a vowel's formants, fixed in frequency, shape whatever goes in (feed it something buzzy: a saw or a narrow pulse) into a sung vowel. **VOWEL** moves smoothly through OO, OH, AH, EH and EE; **SIZE** goes from a bass singer's voice through tenor and alto to a soprano's; **SHARP** makes the vowel softer and breathier or sharper and more nasal; **MIX** blends it with the sound going in. The oscillators ticked on the page go through it (all of them, unless you untick some). It comes after the FILTER, before the effects, so the reverb and echoes hear the sung vowel too.
+- **Made to sound even:** narrow formants make some notes jump out (when a harmonic lands right on one, up to 10 dB louder) and others drop away; as a sampled choir's notes are levelled, so is each note here, within a few dB. And as sopranos open a vowel on high notes (singers call it vowel modification), the first formant moves up when a note goes above it, so high notes on OO and OH don't vanish.
+- **Playable:** VOWEL, SIZE, SHARP and MIX are in the mod matrix: route the mod wheel or a macro to VOWEL and it speaks.
+- The formant data (each vowel's frequencies, levels and widths for a bass and a soprano) is the widely published table from sound-synthesis textbooks; the blending, levelling and vowel modification are our own. Synthesis, not a recorded choir: made without listening here, so your ears decide.
+- New starting preset **A43 Sung Vowels**: a small choir singing AH, the MOD WHEEL moving it towards EE.
+- About half a percent of one core more for a four-note unison chord.
+
+## 0.38.0
+
+**CHROMEFURY**, the fourteenth expansion: a bank of its own under EXPANSIONS (CF01 to CF15), named by you. Inspired by the score of a 2015 post-apocalyptic chase film: relentless war drums, sawing string ostinatos, guitar-like screaming leads over growling low synths, engines, speed, dust and fire. Our own sounds; no title, characters, vehicles, places, phrases or music from the film.
+
+- **Lead-heavy, as you asked: 6 leads** (and 3 pads, 3 basses, 1 keys, 2 arps), heavier than HELLFORGE's. Distortion is stacked like a guitar rig: in series (a gritty wave, a shaper before the filter and another after it, an insert drive) and in parallel (two layers through two different drive models on two buses, like two amps on one guitar), with a power chord inside each note and a clean sub kept out of the distortion so the low end stays solid. Every lead dives an octave on the pitch bend.
+- Leads: **Highway Scream** (a screaming, guitar-like solo lead: RABID and BANSHEE in parallel), **Chrome Howl** (a sync howl through two shapers and COSMONAUT's fuzz), **Fury Saw** (the thickest lead in the plugin: twelve saws over two octaves through CHIMERA and SKYLINE; plays chords too), **Nitro Wail** (a hard FM scream, wave-folded into RABID), **Iron Throat** (a distorted lead that talks: the MOD WHEEL moves the vowel like a talk box), **Thunder Octave** (an octave-fuzz snarl through COSMONAUT).
+- Pads: **Sand Storm** (a distorted, wind-blown pad), **Burning Horizon** (a heavy pad rising for four seconds), **Dust Choir** (a driven choir).
+- Basses: **Engine Growl** (the MOD WHEEL revs it), **Diesel Sub** (a clean sub with a distorted growl on top), **Piston Drive** (pumping eighths with your song: hold a note).
+- Keys: **Rust Stabs** (big driven chord stabs).
+- Arps: **Battle Drums** (pounding low toms under a driven chord: play above C3, the kit is on C2 to B2), **Pursuit** (a sawing string ostinato with a Phrygian bite).
+- Macros: 1 BRIGHT, **2 SPACE** and **3 FURY** (more gain) on every preset. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Battle Drums by its peaks); made without listening here, so your ears decide.
+
+## 0.37.0
+
+**STOWAWAY**, the thirteenth expansion: a bank of its own under EXPANSIONS (SW01 to SW15), named by you. Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship in deep space, leaning into suspense and tension as you asked: half-step clashes, pitches that creep and sag, uneven swells, and dread that never resolves. Our own sounds; no title, characters, ship, creature, company or music from the film.
+
+- **Leads and pads built differently**, as you asked: none is the mono glide-and-vibrato lead or the unison / choir pad the earlier banks lean on. Each is built round a part of the synth no expansion had used: a hand-drawn wave, the FFT editor, drawn LFO shapes and envelopes, band-pass and notch filters, ring-style AM.
+- Leads: **Echo Flute** (a breathy drawn-wave flute, played straight, into long dark repeating echoes), **Bone Horn** (a primitive rasping horn: a saw cut to its odd harmonics in the FFT editor, roughened by ring-style AM), **Cold Whistle** (a thin whistle through a narrow ringing band-pass, sagging a quarter-tone flat as you hold it).
+- Pads: **Hull Hum** (a ship's room tone: a notch filter wandering through a low buzz, vents breathing above), **Cluster Strings** (a half step inside every chord, swelling unevenly: the MOD WHEEL adds a tritone), **Harmonic Shiver** (only the high, glassy partials, trembling).
+- Basses: **Dread Brass** (a low half-step cluster that blasts, falls back and swells into a bigger blast), **Pressure Drone** (a sub that creeps up a semitone over twenty seconds of holding), **Steam Bass** (a bent square bass with a hiss of steam on every note).
+- Keys: **Bowed Metal** (a metal ring that flares, falls back, then swells as if bowed), **Data Chatter** (crushed computer blips, each at a random pitch), **Dread Piano** (a muffled piano with a buzzing rattle in its strings).
+- Arps: **Proximity Ping** (hold one note: the pings come faster and faster), **Vent Crawl** (random chromatic scratching in the walls), **Alarm Pulse** (a whooping tritone alarm over a ticking beat from the drum sequencer: play above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT, **2 SPACE** and **3 TENSION** on every preset: a clashing half step or tritone, a deeper creep or sag, or a rougher sound. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Vent Crawl, Dread Piano, Harmonic Shiver, Data Chatter and Alarm Pulse by their peaks); made without listening here, so your ears decide.
+
+## 0.36.0
+
+**CYBERSHRINE**, the twelfth expansion: a bank of its own under EXPANSIONS (CS01 to CS15), named by you. Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an ancient chorus of women's voices in close, clashing harmony, ornamented like a folk ritual, huge slow drums and deep temple bells, and a cold, rainy, reverberant machine world. Our own sounds; no title, characters, places, terms or music from the film.
+
+- Leads: **Folk Voice** (a keening "ah" voice flicking up into every note from just below, like a folk singer's ornament: the MOD WHEEL adds vibrato), **Wire Song** (a glassy synced digital lead), **Half There** (a lead that drifts in and out of hearing).
+- Pads: **Ancient Chorus** (the centrepiece: a choir with a fifth above each note and a second choir a whole step up rubbing against it), **Rain City** (a dark, wet pad with rain falling through it), **Deep Dive** (a pad that sinks from bright to dark over ten seconds of each chord: the MOD WHEEL brings it back up).
+- Basses: **Temple Drum** (a huge drum you play as a bass, dropping an octave into each note), **Cold Current** (a dark bass pulsing in sixteenths with your song: hold a note), **Machine Heart** (a slow, low heartbeat with your song).
+- Keys: **Temple Bell** (deep bells that beat and shimmer for eight seconds), **Silk Strings** (zither-like plucks, each pressed up a semitone just after it sounds), **Glass Net** (cold digital keys).
+- Arps: **Ritual Drums** (slow, booming low drums and a deep bell each bar from the drum sequencer, with your chord above C3 sung by a choir; the kit is on C2 to B2), **Signal Ghost** (random glassy blips with long echoes, a new pattern every pass), **Dive Sequence** (a rising, watery arpeggio).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: ORNAMENT, SYNC, SHIMMER, CLASH, RAIN, DEPTH, BOOM, PULSE, GROWL, BEAT, BEND, BITS, VOWEL, ECHO. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Silk Strings and Ritual Drums by their peaks); made without listening here, so your ears decide.
+
+## 0.35.0
+
+**UNSPOKEN**, the eleventh expansion: a bank of its own under EXPANSIONS (UN01 to UN15), named by you. Inspired by the score of a 2016 film about first contact and a language that changes how you see time: human voices breathing, murmuring and stuttering in eerie layers, vast swelling drones, circular phrases that run forwards and back, cold fog, quiet awe and grief. Our own sounds; no title, characters, terms or music from the film.
+
+- Leads: **Glass Voice** (a clear, wordless "eh" voice drifting on its own, with a slow glide: the MOD WHEEL adds vibrato), **Distant Call** (a long call like a whale's, bending up into every note and sliding between them: the MOD WHEEL adds a growl), **Signal Tone** (a pure tone that won't quite hold still, with a slow tremolo: the MOD WHEEL deepens it).
+- Pads: **Breathing Choir** (a vowel choir rocking between "oo" and "oh", breath swelling through it), **Circle Drone** (a drone whose colour keeps turning while it circles the room), **Low Mist** (a cold fog through a backwards reverb, so each chord seems to arrive before it's played).
+- Basses: **Vast Hull** (a low ring like a struck metal hull), **Tidal Swell** (strings and brass rising and sinking every two bars: press into the keys to push it), **Deep Murmur** (a sub with a dark "oo" voice on top).
+- Keys: **Ink Bells** (a bell strike with a soft tone blooming in after it), **Memory Loop** (NEGATIVE SPACE's felt piano, every note answered backwards), **Fog Glass** (cold, glassy keys in a cathedral).
+- Arps: **Stutter Choir** (vowel syllables broken into bursts of two, three and four: hold a chord), **Circular Time** (a pattern that reads the same forwards and backwards), **Breath Pulse** (voices and breath cut into a rhythm with your song).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: VOWEL, SCOOP, WOBBLE, BREATH, MOTION, FOG, METAL, BRASS, MOUTH, BLOOM, ECHO, SHINE, GLOW. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (Stutter Choir and Breath Pulse by their peaks); made without listening here, so your ears decide.
+
+## 0.34.0
+
+**NIGHTDRIVE**, the tenth expansion: a bank of its own under EXPANSIONS (ND01 to ND15), named by you. Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro synthwave, turned all the way up as you asked, with chorus on everything, big reverbs and long echoes. Our own sounds; no title, characters, songs or artists.
+
+- Leads: **Night Cruise** (a smooth, singing lead with a slow glide), **Chrome Whistle** (a glassy, whistling square: the MOD WHEEL deepens the vibrato), **Romance Sync** (a soaring sync lead for big hooks: the MOD WHEEL pushes the sync).
+- Pads: **Neon Haze** (a lush polysynth through two choruses), **Midnight Strings** (dreamy string-machine strings: press into the keys after playing to swell), **Afterglow** (a slow, warm swell with a gently gated shimmer).
+- Basses: **Octave Drive** (the classic synthwave octave bass in sixteenths with your song: hold a note), **Velvet Bass** (round and warm), **Rubber Pulse** (bouncy, with a resonant snap).
+- Keys: **Glass Tine** (the '80s digital electric piano: a glassy FM tine over a soft body), **Retro Stab** (a big, chorused chord stab), **Cassette Keys** (soft keys from an old tape).
+- Arps: **Highway Lights** (sixteenths streaming up three octaves with dotted echoes), **Night Runner** (a drum-machine beat under a driving saw arpeggio: hold notes above C3, the kit is on C2 to B2), **Heartline** (a slow, emotional arpeggio with ping-pong echoes).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: VIBRATO, OCTAVE, SOAR, LUSH, ENSEMBLE, GATE, SNAP, WARMTH, BOUNCE, BARK, PUNCH, WOBBLE, SPARKLE, ECHO. Each preset's notes say what they do.
+- Every factory and expansion preset now has a name of its own (a test checks it): the first draft of Night Runner shared STARCOURT's Pulse Runner name.
+- Levels balanced by measurement against the other expansions (Night Runner by its drum peaks); made without listening here, so your ears decide.
+
+## 0.33.0
+
+**NEGATIVE SPACE**, the ninth expansion: a bank of its own under EXPANSIONS (NS01 to NS15), named by you. Inspired by the modern dark-ambient film and TV scores of the 2010s: a fragile, intimate piano close up over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Cold, tense, quietly melancholy. Our own sounds; no titles, composers, products or music.
+
+- Keys, three pianos: **Soft Felt Piano** (the centrepiece: a soft, intimate felt piano heard up close; each note built harmonic by harmonic, the higher ones fading first as a real string's do, two strings a hair apart, the soft thump of felt, brighter and louder the harder you play, ringing on with the sustain pedal; the MOD WHEEL adds the keys' mechanical noise), **Broken Upright** (the same piano worn and out of tune, warbling like old tape, a distorted drone rising under each note), **Ghost Piano** (the same piano dissolving through a backwards reverb, a shimmer rising above it).
+- Leads: **Static Lead** (a buzzing, lonely lead), **Hollow Signal** (a thin, filtered line: the MOD WHEEL sweeps it), **Glass Tone** (a pure, cold tone).
+- Pads: **Low Hum** (a distorted drone rumbling under everything), **Cold Room** (a sterile, airy ambience), **Broken Signal** (a pad that keeps dropping out, in time with your song).
+- Basses: **Grit Rumble** (a distorted, rumbling low end), **Pulse Bass** (a hypnotic sequenced bass in sixteenths with your song: hold a note), **Sub Throb** (a deep sub pulsing in half notes).
+- Arps: **Hypnotic Motion** (a driving analog pulse building over four bars), **Glitch Pulse** (a chopped, stuttering pattern), **Steady Rows** (a metronomic beat from the drum sequencer under a rowing figure: hold notes above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: BUZZ, RESONANCE, FIFTH, GRIT, AIR, DROPOUT, SNAP, BODY, FELT, DRONE, SHIMMER, CRUSH, DRIVE. Each preset's notes say what they do.
+- The pianos are made by synthesis, not recorded: an impression of a soft felted upright, not a copy of any instrument; checked by measurement from soft to hard across six octaves.
+- **The preset browser:** banks A to E now sit on one row, and the expansion buttons shrink a little when there are many, so every expansion fits (the ninth had run off the bottom).
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.32.0
+
+**DREAMSTATE**, the eighth expansion: a bank of its own under EXPANSIONS (DR01 to DR15), named by you. Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy reverb-soaked guitar, sparse piano and ticking clocks. Our own sounds; no title, characters, places, terms or music from the film.
+
+- Leads: **Twang Guitar** (a twangy baritone-guitar-like pluck with a slow tremolo), **Fading Horn** (a soft, noble horn: press into the keys after playing for more brass), **Weightless** (a floating, breathy, hollow-voiced lead on a slow glide).
+- Pads: **Folding City** (the MOD WHEEL folds the tone and pulls the upper layer down an octave), **Time Dilation** (chords swelling in backwards and sinking as they hold), **Heavy Chords** (dark, massive brass and strings).
+- Basses: **Colossus Blast** (the huge, low brass blast: play one low note, C1 to C2, and let it ring; the MOD WHEEL adds grit), **Undertow** (a deep sub swelling up from nothing), **Ostinato Bass** (a driving low string bass in sixteenths with your song: hold a note).
+- Keys: **Echo Piano** (LAST LIGHT's felt piano, darker, with long echoes), **Slowed Chorale** (keys that sag and warble like a tape slowing down), **Glass Memory** (cold, glassy bells).
+- Arps: **Ostinato Strings** (relentless string sixteenths: push the MOD WHEEL to build), **Layers Deep** (three arpeggiators on one chord at three speeds at once), **Countdown** (a ticking clock from the drum sequencer under a pulsing figure: hold notes above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: TWANG, BRASS, VOICE, FOLD, DRAG, WEIGHT, SAG, SURGE, BITE, FELT, WARBLE, SHIMMER, DEPTH, TENSION. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.31.0
+
+**SIMULACRUM**, the seventh expansion: a bank of its own under EXPANSIONS (SM01 to SM15), named by you. Inspired by the score and soundtrack of a 1999 science-fiction film about a simulated world: a dark, atonal orchestra with brass in clashing keys, late-'90s industrial and big-beat basses and breaks, fast trance arpeggios, falling digital rain and time slowing down. Our own sounds; no title, characters, places, phrases or music from the film.
+
+- Leads: **Rooftop Chase** (a screaming hard-synced lead through drive; the MOD WHEEL pushes the sync), **Phantom Line** (a cold, hollow lead with long echoes), **Slow Time** (every note sags as it holds, smeared through a backwards reverb; the MOD WHEEL makes it sag further).
+- Pads: **Green Rain** (a tone falling over and over like digital rain, with random sparkles), **Brass Cluster** (a dark brass swell in two keys at once), **Endless Field** (a cold drone pumping slowly with your song).
+- Basses: **Industrial Pulse** (a distorted bass chugging in sixteenths with your song: hold a note), **Breakbeat Bass** (a growling bass wobbling in eighths; the MOD WHEEL opens it up), **Mainframe Sub** (a deep sub that stutters like a failing machine).
+- Keys: **Terminal** (cold digital chimes), **Glass Code** (brittle bit-crushed keys), **Warped Keys** (keys that melt out of shape on the MOD WHEEL).
+- Arps: **System Breach** (a big-beat breakbeat from the drum sequencer under a driven bass riff: hold notes above C3, the kit is on C2 to B2), **Rain Cascade** (fast falling runs in the dark Phrygian scale: hold one key), **Firefight** (a relentless trance arpeggio building over four bars).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: SCREAM, ECHO, SAG, GLITTER, CLASH, PUMP, DESTROY, GROWL, MALFUNCTION, RATIO, CRUSH, WARP, BITE. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions (System Breach by its drums' peaks); made without listening here, so your ears decide.
+
+## 0.30.0
+
+**LAST LIGHT**, the sixth expansion: a bank of its own under EXPANSIONS (LL01 to LL15), named by you. Inspired by the score of a film about space, time and leaving the people you love: sad, longing and melancholy, built round a soft, cinematic felt piano, with an enormous church organ, aching strings, a ticking clock and vast cold spaces. Our own sounds; no title, characters, places or music from the film.
+
+- Keys: **Felt Memory** (the felt piano: a dark, rounded tone, the bright strike of the hammer dying away, the soft thump of felt on each note, brighter and louder the harder you play, ringing on with the sustain pedal; the MOD WHEEL adds the keys' mechanical noise), **Distant Felt** (the felt piano far away and long ago, on worn cassette in a vast hall), **Music Box Elegy** (a fragile music box: play it high).
+- Leads: **Lonely Signal** (a pure, lonely lead with a slow glide and a late vibrato), **Cello Drift** (a slow, bowed cello-like lead: press into the keys after playing to bow harder), **Wordless Elegy** (a soft wordless voice).
+- Pads: **Cathedral Organ** (an enormous pipe organ: the MOD WHEEL is its swell), **Horizon Strings** (slow, aching string swells: press into the keys to swell louder), **Fading Light** (a dark, breathing pad drifting slowly).
+- Basses: **Organ Pedal** (deep organ pedal notes), **Gravity Well** (a sub rising slowly out of nothing), **Heartbeat** (a soft, low pulse: play two notes close together).
+- Arps: **Ticking Clock** (a clock ticking from the drum sequencer under a quiet felt-piano figure: hold notes above C3, the kit is on C2 to B2), **Docking** (an organ figure climbing in sixteenths, building over four bars), **Tesseract** (a slow felt-piano arpeggio through a backwards reverb).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: VIBRATO, BOW, VOWEL, STOPS, SWELL, DRIFT, RANKS, WARMTH, THUMP, FELT, WEAR, TINE. Each preset's notes say what they do.
+- The felt piano is made by synthesis, not recorded: an impression of a felt piano, not a copy of one. Checked by measurement from soft to hard across six octaves; your ears decide.
+- **0.29.0 was never published:** its Linux build passed every check, then crashed while closing (it didn't happen again in six runs here), so nothing went out. DATASTREAM was already inside 0.28.0; its notes are under 0.29.0 below, and everything in it is in this version.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.29.0 (not published: see 0.30.0)
+
+**DATASTREAM**, the fifth expansion: a bank of its own under EXPANSIONS (DS01 to DS15), named by you. Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses locked to the beat, huge throbbing basses, orchestral-electronic swells, clean leads with long glides, a robotic voice and crisp digital bleeps. Cold and exact: no tape, no wobble. Our own sounds; no title, characters, places, terms or music from the films.
+
+- Leads: **Light Trail** (a bright synced lead streaking between notes on a long glide), **Vector Voice** (a robotic, talk-box-like vowel lead, a little bit-crushed), **Data Burst** (a crisp square lead with a quick blip into each note).
+- Pads: **Grid Horizon** (a vast, cold orchestral-synth swell), **Neon Cathedral** (an organ-like pad slowly opening its harmonics), **Digital Sky** (a shimmering pad cut into exact sixteenths, bouncing left and right).
+- Basses: **Pulse Engine** (a huge bass throbbing in sixteenths with your song), **Bitfall Bass** (a digital bass that bit-crushes as you push the mod wheel), **Deep Lattice** (a deep, round octave bass).
+- Keys: **Glass Console** (cold, glassy FM keys), **Brass Protocol** (a big orchestral-synth brass stab), **Bit Chimes** (crisp, bit-crushed digital bleeps).
+- Arps: **Overclock** (a held chord driven up in tight sixteenths, its filter opening over four bars), **System Pulse** (whole chords chopped into sixteenths that bounce left and right), **Circuit Run** (fast random digital runs with ratchets and glitch stutters: hold one key).
+- Macros: 1 BRIGHT, **2 SPACE** on every preset, 3 its character: GLOW, ROBOT, BLIP, SWELL, HARMONICS, SMOOTH, GROWL, CRUSH, WEIGHT, SHIMMER, BITE, RESONANCE. Each preset's notes say what they do.
+- Also: a CPU test that failed on GitHub's slower Mac machines now allows for a machine's speed (it checks the same thing).
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.28.0
+
+**SANDSEA**, the fourth expansion: a bank of its own under EXPANSIONS (SS01 to SS15), named by you. Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices with wide ornamented vibrato, enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Our own sounds; no title, characters, places or music from the film.
+
+- Leads: **Desert Voice** (a keening vowel voice, scooping into each note; the MOD WHEEL widens its vibrato), **Sand Horn** (an enormous, gritty horn blast scooping up into pitch), **Bone Flute** (a breathy flute falling into each note like a grace note).
+- Pads: **Deep Desert** (a vast low drone with a wind of noise gusting through it), **Throat Chant** (a low chant whose vowel sweeps slowly, so its overtones sing), **Mirage** (a shimmering, trembling pad swelling in through a backwards reverb).
+- Basses: **Worm Sign** (a clean sub and a groaning saw rising out of the depths), **Quake Pulse** (a deep, dropping hit with a rumble), **Iron Ritual** (a distorted, metallic ostinato bass).
+- Keys: **Copper Bells** (dark, harsh metal bells), **Stone Harp** (a plucked, oud-like string), **Ritual Gong** (a deep, clanging gong: play low).
+- Arps: **War Drums** (tribal toms from the drum sequencer under a low pulse: hold notes above C3, the kit is on C2 to B2), **Sand Ripple** (fast random runs in the desert scale: hold one key), **Caravan** (a held chord walked in triplets, swaying left and right).
+- Macros: 1 BRIGHT (or METAL, CLANG), **2 SPACE** on every preset, 3 its character: VOWEL, GRIT, BREATH, WIND, GROWL, SHIMMER, GROAN, DESTROY, TWANG, PULSE, SPARKLE, WARMTH. Each preset's notes say what they do.
+- **The arp's randomizer has two new scales:** Phrygian Dominant and Double Harmonic (the desert scales: a flat second and a wide step up to the third). Your presets keep their scales.
+- NEON RAIN's **Rain Cathedral** and **Ion Mist** sound exactly as before; only their descriptions are corrected. Their vowel and comb sweeps follow your song's beat (they move within each quarter note), not the slow seconds-long sweeps the notes described.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.27.0
+
+**STARCOURT**, the third expansion: a bank of its own under EXPANSIONS (SC01 to SC15), named by you. Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor chords, detuned saws and squares, chorused polysynth pads, simple haunting leads, cassette and VHS wobble, big '80s drums. Our own sounds; no title, characters or music from the series.
+
+- Leads: **Arcade Hero** (a bright square lead with its pulse width slowly sweeping), **Static Wail** (a gliding saw-and-sine lead into tape echo and a worn cassette), **Phantom Sync** (a thin, eerie sync lead whose sync drifts).
+- Pads: **Basement Glow** (a warm, chorused '80s polysynth pad), **Other Side** (a dark pad whose second layer sinks out of tune over each chord, into a reverb that swells in backwards), **Cassette Choir** (a vowel pad on wobbling tape).
+- Basses: **Night Drive Sub** (a round analog-style bass with its sub), **Pulse Runner** (a plucky bass for eighth-note lines), **Gated Octave** (a bass and its octave chopped into sixteenths, in time with your song).
+- Keys: **VHS Piano** (an FM electric piano on worn video tape), **Lab Chimes** (cold, glassy FM chimes with ping-pong echoes), **Brass '84** (a punchy polysynth brass for chord stabs).
+- Arps: **Dark Ostinato** (a minor chord climbing in steady eighths while the filter opens over four bars), **Gated Sequence** (whole chords in a chopped sixteenth rhythm: our imitation of a gated '80s reverb), **Midnight Run** (a sixteenth-note bass line with an '80s beat from the drum sequencer under it: hold chords above C3, the kit is on C2 to B2).
+- Macros: 1 BRIGHT (or BARK, METAL), **2 SPACE** on every preset, 3 its character: WOBBLE (more tape: LO-FI and MOD), CHORUS, DRIFT, HOLLOW, HAUNT, GROWL, SNAP, SMOOTH, BITE, RESONANCE, SHIMMER, DRIVE. Each preset's notes say what they do.
+- Levels balanced by measurement against the other expansions; made without listening here, so your ears decide.
+
+## 0.26.0
+
+**HELLFORGE**, the second expansion: a bank of its own under EXPANSIONS (HF01 to HF15). Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through heavy distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds; no game, composer or music from the scores.
+
+- Leads: **Molten Riff** (a supersaw lead guitar through RABID, the pitch wheel set to dive an octave), **Warning Siren** (a sync lead winding up into each note), **Signal Scream** (a howling FM lead chopped by GLITCH).
+- Pads: **Ash Choir** (a dark, distorted vowel choir), **Furnace Drone** (a wall of detuned saws and noise through ABYSS), **Corrupted Signal** (a stepping, bit-crushed wavetable through GLITCH and LO-FI, in time with your song).
+- Basses: **Gut Chug** (a palm-muted chug: each hit dies inside its sixteenth), **Tectonic Drop** (a two-octave sub drop), **Grinder Bass** (a folding, chewing wavetable bass in sixteenths).
+- Keys: **Rust Organ** (an overdriven organ through a rotary speaker), **Ritual Bells** (dark, clanging FM bells), **Iron Riff** (one finger plays a whole power chord with a clean sub under it: Gatling Pulse played by hand).
+- Arps: **Gatling Pulse** (syncopated power-chord chugs: hold one low key), **Shrapnel Grid** (random ratcheted Phrygian fragments that never quite repeat), **War Machine** (a pumping root-octave-fifth sequence, ducked on every beat).
+- Macros: 1 BRIGHT (or METAL), **2 SPACE** on every preset, 3 DESTROY (more drive) or SCREAM, HEAT, CORRUPT. Each preset's notes say what its macros and mod wheel do.
+- Each uses at most one of the heavier drive models (none uses HALO), so they stay light on CPU. Levels are balanced by measurement against NEON RAIN; they were made without listening here, so your ears decide.
+
+## 0.25.0
+
+Expansions, and effects in the mod matrix.
+
+- **Expansions: themed preset banks.** The preset browser has a new **EXPANSIONS** section under Bank E. Each expansion is a bank of its own with 15 presets: 3 leads, 3 pads, 3 basses, 3 keys and 3 arps. Their slots are named by two letters (NR01 to NR15).
+  - You can't save into an expansion's bank: a copy you save goes into Bank A, so the built-in sounds stay as shipped.
+  - < > step on from your banks into the expansions, and round.
+- **NEON RAIN**, the first expansion: inspired by the 1982 neo-noir sci-fi film score. Polysynth brass, rain-soaked pads, smoky leads, glassy keys and slow neon pulses. Our own sounds; no names or music from the film.
+  - Leads: Brass Requiem, Smoke And Reeds, Wire Ribbon. Pads: Rain Cathedral, Ion Mist, Memory Strings. Basses: Undercity Pulse, Distant Thunder, Velvet Noir. Keys: Electric Rain Piano, Glass Chimes, Night Shift Keys. Arps: Neon Grid, Raindrop Machine, Skyline Sequence.
+  - Each uses a different mix of the synth: TRAVEL, FM from another oscillator, the PITCH envelope, shapers, aftertouch and mod-wheel routes, the arpeggiator (randomizer, chords), the step sequencer, insert buses, sends and the rack.
+  - Every preset's three macros: 1 brightness, **2 SPACE** (more reverb, and more and longer echoes where the preset has them), 3 its character. Each preset's notes say what its macros and mod wheel do.
+  - Levels are balanced by measurement (about the same loudness, peaks under -3 dBFS). They were made without listening here: your ears decide.
+- **The mod matrix can now move the effects.** New destinations, under FX in the destination menu: DELAY's MIX, FEEDBACK, TONE and TO REVERB; REVERB's MIX, SIZE, TONE and PRE-DELAY; MOD's and MOD 2's MIX, DEPTH and RATE; LO-FI's MIX and AMOUNT. On the FX page's DELAY, REVERB, MOD and LO-FI pages their knobs show the ring of how far the matrix moves them, and take a source dragged onto them, as the synth's knobs do.
+  - The effects are shared by every note, so the whole synth's sources move them: the macros and buttons, the mod wheel, pitch bend, aftertouch, breath, expression, the sustain pedal, and LFOs and envelopes not set to VOICE.
+  - A note's own source (velocity, keytrack, random, the pitch envelope, the step sequencer) can't, and a route from one is greyed out in the matrix.
+  - The moves are smoothed (30 ms, or the route's LAG if longer), so turning a macro doesn't step or click. Loading a preset sets them at once.
+  - An effect that's off stays off: switch it on (with its MIX at 0 if you want the macro to bring it in).
+  - Not yet: the insert buses' and the rack's settings.
+- **Arpeggiator fix:** with the song playing, a chord written exactly on the beat waited for the next step, so the arp lost its first note. A key on a step, or up to 30 ms late (a quarter of a step if that's shorter), now plays that step.
+- The browser's "n oscillators" line now counts oscillator 1 (it read one short for every preset).
+
 ## 0.24.0
 
 **This release also brings everything in 0.23.0** (the sample editor: drawn envelopes, GAIN, MONO / POLY, DELAY with the anchor, LP / HP; preset A42 Tight Kit; and MIDI export on whole ticks). 0.23.0 was never published: its build passed every test, but GitHub's Linux plugin check (pluginval) crashed twice in a row while shutting down after its last test. It passed 12 out of 12 runs here under a debugger, and the crash is in pluginval's own Linux host, so it was released as part of this one instead. Its notes are below.

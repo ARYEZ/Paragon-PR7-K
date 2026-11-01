@@ -880,3 +880,91 @@ void VoicesDisplay::paint (juce::Graphics& g)
                     + " = " + juce::String (perNote * notes) + " PER KEY",
                 footer, juce::Justification::centred, false);
 }
+
+//==============================================================================
+VoiceDisplay::VoiceDisplay (juce::AudioProcessorValueTreeState& s) : ParameterDisplay (s) {}
+
+std::vector<float> VoiceDisplay::snapshot() const
+{
+    return { value (ParamIDs::voiceOn), value (ParamIDs::voiceVowel), value (ParamIDs::voiceSize), value (ParamIDs::voiceSharp),
+             value (ParamIDs::voiceMix) };
+}
+
+void VoiceDisplay::paint (juce::Graphics& g)
+{
+    const auto bounds = getLocalBounds().toFloat();
+    DisplayStyle::drawScreen (g, bounds);
+    auto inner = bounds.reduced (10.0f, 8.0f);
+    const auto on = value (ParamIDs::voiceOn) > 0.5f;
+    const auto vowel = value (ParamIDs::voiceVowel), size = value (ParamIDs::voiceSize);
+    const auto sharp = value (ParamIDs::voiceSharp), mix = value (ParamIDs::voiceMix);
+
+    // The vowels along the bottom, the one set (or the two it's between) lit.
+    auto names = inner.removeFromBottom (14.0f);
+    inner.removeFromBottom (4.0f);
+    g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+    const auto position = juce::jlimit (0.0f, 1.0f, vowel) * (float) (synth::vocal::numVowels - 1);
+    for (int v = 0; v < synth::vocal::numVowels; ++v)
+    {
+        const auto near = juce::jmax (0.0f, 1.0f - std::abs (position - (float) v));
+        const auto cell = names.withWidth (names.getWidth() / synth::vocal::numVowels)
+                               .withX (names.getX() + names.getWidth() * (float) v / (float) synth::vocal::numVowels);
+        g.setColour (ParagonColours::textDim.interpolatedWith (ParagonColours::accent, on ? near : 0.0f));
+        g.drawText (synth::vocal::vowelNames[v], cell, juce::Justification::centred, false);
+    }
+
+    // The response: the five band-pass resonators summed (as the filter does), MIX against the dry sound.
+    constexpr double minHz = 50.0, maxHz = 8000.0, topDb = 18.0, bottomDb = -36.0;
+    const auto area = inner;
+    const auto xFor = [&area] (double hz) { return area.getX() + area.getWidth() * (float) (std::log (hz / minHz) / std::log (maxHz / minHz)); };
+    const auto yFor = [&area] (double db)
+    {
+        return area.getY() + area.getHeight() * (float) ((topDb - juce::jlimit (bottomDb, topDb, db)) / (topDb - bottomDb));
+    };
+    g.setFont (juce::FontOptions (9.5f));
+    for (const auto hz : { 100.0, 300.0, 1000.0, 3000.0 })
+    {
+        g.setColour (ParagonColours::panelEdge.withAlpha (0.6f));
+        g.drawVerticalLine (juce::roundToInt (xFor (hz)), area.getY(), area.getBottom());
+        g.setColour (ParagonColours::textDim.withAlpha (0.7f));
+        g.drawText (hz >= 1000.0 ? juce::String ((int) (hz / 1000.0)) + "k" : juce::String ((int) hz),
+                    juce::Rectangle<float> (xFor (hz) + 2.0f, area.getBottom() - 12.0f, 30.0f, 12.0f), juce::Justification::centredLeft, false);
+    }
+    g.setColour (ParagonColours::panelEdge.withAlpha (0.6f));
+    g.drawHorizontalLine (juce::roundToInt (yFor (0.0)), area.getX(), area.getRight());
+
+    constexpr double rate = 48000.0;
+    const auto c = synth::vocal::Coefficients::make (vowel, size, sharp, rate);
+    juce::Path curve;
+    const auto points = juce::jmax (2, (int) area.getWidth());
+    for (int i = 0; i < points; ++i)
+    {
+        const auto hz = minHz * std::pow (maxHz / minHz, (double) i / (points - 1));
+        // Each resonator's band-pass, as a complex response, summed (their phases matter where they overlap).
+        std::complex<double> sum {};
+        for (size_t f = 0; f < (size_t) synth::vocal::numFormants; ++f)
+        {
+            const std::complex<double> s { 0.0, hz / (double) c.hz[f] };
+            const auto q = (double) c.q[f];
+            sum += (double) c.gain[f] * (s / q) / (s * s + s / q + 1.0);
+        }
+        const auto wet = std::abs (sum) * synth::vocal::makeUp;
+        const auto total = wet * mix + (1.0 - mix);
+        const juce::Point<float> point ((float) area.getX() + (float) i, yFor (juce::Decibels::gainToDecibels (total, -100.0)));
+        if (i == 0) curve.startNewSubPath (point); else curve.lineTo (point);
+    }
+    DisplayStyle::drawCurve (g, curve, area, area.getBottom(), on);
+
+    // The vowel and the singer, top right.
+    const auto vowelText = [vowel]
+    {
+        const auto p = juce::jlimit (0.0f, 1.0f, vowel) * 4.0f;
+        const auto nearest = juce::roundToInt (p);
+        return std::abs (p - (float) nearest) < 0.05f ? synth::vocal::vowelNames[nearest]
+                                                      : synth::vocal::vowelNames[(int) p] + " > " + synth::vocal::vowelNames[juce::jmin (4, (int) p + 1)];
+    }();
+    const auto singer = size < 0.2f ? "BASS" : size < 0.45f ? "TENOR" : size < 0.75f ? "ALTO" : "SOPRANO";
+    g.setColour (on ? ParagonColours::text : ParagonColours::textDim);
+    g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    g.drawText (vowelText + "   " + singer, area.withHeight (16.0f).reduced (4.0f, 0.0f), juce::Justification::centredRight, false);
+}

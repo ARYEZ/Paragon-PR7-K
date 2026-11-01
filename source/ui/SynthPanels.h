@@ -128,7 +128,8 @@ public:
     explicit FilterPanel (juce::AudioProcessorValueTreeState&);
     void resized() override;
 
-    // 0: the FILTER; 1 to 4: SHAPER 1 to 4.
+    // 0: the FILTER; 1 to 4: SHAPER 1 to 4; 5: the VOICE filter (0.39.0).
+    static constexpr int voicePage = 5;
     void showPage (int);
     int getPage() const noexcept { return page; }
 
@@ -156,6 +157,11 @@ private:
                  eq1Gain, eq1Freq, eq1Q, eq2Gain, eq2Freq, eq2Q, eqSplit;
     juce::Label routeLabel;
     std::vector<std::unique_ptr<ParamControl>> routes;   // which oscillators go through it
+
+    // The VOICE page (0.39.0).
+    VoiceDisplay voiceDisplay;
+    ParamControl voiceOn, vowel, size, sharp, voiceMix;
+    std::vector<std::unique_ptr<ParamControl>> voiceRoutes;
 };
 
 // An envelope: its shape, and ATTACK HOLD DECAY SUSTAIN RELEASE with their curves.

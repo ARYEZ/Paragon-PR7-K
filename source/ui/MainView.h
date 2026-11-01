@@ -15,6 +15,7 @@
 #include "ui/FxPage.h"
 #include "ui/ModSourceStrip.h"
 #include "ui/SynthPanels.h"
+#include "ui/SynthFace.h"
 
 // A side strip: a title, a gain knob with its value underneath, and a level meter.
 class GainColumn final : public juce::Component
@@ -89,6 +90,9 @@ public:
     // For snapshots and tests: the oscillator tabs.
     OscillatorPanel& getOscillatorPanel() noexcept { return oscillators; }
     FilterPanel& getFilterPanel() noexcept { return filter; }
+    SynthFace& getFace() noexcept { return face; }
+    bool isRackShown() const noexcept { return rackShown; }
+    void setRackShownForTest (bool shown) { showRack (shown, false); }   // not remembered: tests mustn't touch the settings file
     ModPage& getModPage() noexcept { return modPage; }
     ArpPage& getArpPage() noexcept { return arpPage; }
     FxPage& getFxPage() noexcept { return fxPage; }
@@ -136,6 +140,11 @@ private:
     // The synth page
     OscillatorPanel oscillators;
     FilterPanel filter;
+    // 0.49.0: the front panel, and the key that swaps it with the rack (the two panels above).
+    SynthFace face;
+    juce::TextButton rackButton;
+    bool rackShown = false;
+    void showRack (bool, bool remember = true);
     EnvelopePanel filterEnvelope, ampEnvelope;
     AmpPanel amp;
     PlayPanel play;

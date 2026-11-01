@@ -1,4 +1,5 @@
 // The window: its layout, the oscillator tabs, the pages and the on-screen keyboard.
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -31,12 +32,16 @@ namespace
             // A list's rows are placed by JUCE beyond its visible part, for scrolling.
             if (dynamic_cast<juce::ListBox*> (&parent) != nullptr)
                 continue;
+            // A scrolling view's contents are taller (or wider) than its window, and move within it: their size isn't
+            // checked against it (0.48.0: the browser's expansion list). What's inside them still is.
+            const auto scrolled = dynamic_cast<juce::Viewport*> (parent.getParentComponent()) != nullptr;
 
             const auto name = path + "/" + (child->getName().isNotEmpty() ? child->getName()
                                                                           : juce::String (typeid (*child).name()));
             INFO (name << " at " << child->getBounds().toString() << " in " << parent.getLocalBounds().toString());
             CHECK_FALSE (child->getBounds().isEmpty());
-            CHECK (parent.getLocalBounds().expanded (1).contains (child->getBounds()));
+            if (! scrolled)
+                CHECK (parent.getLocalBounds().expanded (1).contains (child->getBounds()));
             checkLayout (*child, name);
         }
     }
@@ -161,6 +166,7 @@ TEST_CASE ("PRESETS and SETTINGS cover the synth panels; the keyboard stays", "[
     Window w;
     auto* keyboard = inside<juce::MidiKeyboardComponent> (*w.view);
     REQUIRE (keyboard != nullptr);
+    w.view->setRackShownForTest (true);   // (the front panel, 0.49.0, is tested below)
     CHECK (w.view->getOscillatorPanel().isVisible());
 
     w.view->showPage (MainView::Page::presets);
@@ -509,4 +515,127 @@ TEST_CASE ("The MOD page: LFOs, macros and the matrix; adding and editing a rout
     // X deletes it.
     row->remove.onClick();
     CHECK (w.processor.getModMatrix().routes.empty());
+}
+
+TEST_CASE ("The front panel: SHOW RACK swaps it with the OSCILLATORS and FILTER panels; it shows the preset", "[ui]")
+{
+    Window w;
+    auto& face = w.view->getFace();
+
+    // The front panel: the face, not the panels; everything in place.
+    w.view->setRackShownForTest (false);
+    CHECK (face.isVisible());
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    CHECK_FALSE (w.view->getFilterPanel().isVisible());
+    checkLayout (*w.view, "face");
+
+    // The rack in its place, in the same space.
+    w.view->setRackShownForTest (true);
+    CHECK_FALSE (face.isVisible());
+    CHECK (w.view->getOscillatorPanel().isVisible());
+    CHECK (w.view->getFilterPanel().isVisible());
+    CHECK (face.getBounds() == w.view->getOscillatorPanel().getBounds().getUnion (w.view->getFilterPanel().getBounds()));
+    checkLayout (*w.view, "rack");
+
+    // Other pages hide both.
+    w.view->showPage (MainView::Page::presets);
+    CHECK_FALSE (face.isVisible());
+    CHECK_FALSE (w.view->getOscillatorPanel().isVisible());
+    w.view->setRackShownForTest (false);
+    w.view->showPage (MainView::Page::synth);
+    CHECK (face.isVisible());
+}
+
+
+TEST_CASE ("The front panel's EXPR wheel swells the volume like an expression pedal, unless the preset routes EXPRESSION", "[ui]")
+{
+    Window w;
+    w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    w.processor.prepareToPlay (48000.0, 256);
+    w.processor.seedRandomForTest (1);
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+
+    const auto levelWith = [&] (float expression)
+    {
+        w.view->getFace().getExpressionWheel().setValue (expression, true);   // as dragging it does
+        double sum = 0.0;
+        int count = 0;
+        for (int block = 0; block < 60; ++block)   // the swell glides over 30 ms; measure after it settles
+        {
+            w.processor.processBlock (buffer, midi);
+            if (block >= 30)
+            {
+                sum += buffer.getRMSLevel (0, 0, 256);
+                ++count;
+            }
+        }
+        return sum / count;
+    };
+
+    w.processor.getKeyboardState().noteOn (1, 60, 0.9f);
+    const auto full = levelWith (1.0f);
+    const auto half = levelWith (0.5f);
+    const auto none = levelWith (0.0f);
+    CHECK (full > 0.02);
+    CHECK (half == Catch::Approx (full * 0.25).margin (full * 0.03));   // squared: half the wheel is -12 dB
+    CHECK (none < full * 0.001);
+    CHECK (w.view->getFace().getExpressionWheel().getValue() == Catch::Approx (0.0f));
+
+    // A preset that routes EXPRESSION itself: the wheel drives that route, the volume stays.
+    auto matrix = w.processor.getModMatrix();
+    ModRouteData route;
+    route.source = "expression";
+    route.destination = ParamIDs::fltCutoff;
+    route.amount = 0.3f;
+    matrix.routes.push_back (route);
+    w.processor.setModMatrix (matrix);
+    CHECK (levelWith (0.0f) > full * 0.3);
+}
+
+TEST_CASE ("SETTINGS' EXPR WHEEL CONTROLS VOLUME off: the wheel at the bottom doesn't silence a preset, and stays off across presets", "[ui]")
+{
+    Window w;
+    w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    w.processor.prepareToPlay (48000.0, 256);
+    w.processor.seedRandomForTest (1);
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    const auto levelWith = [&] (float expression)
+    {
+        w.view->getFace().getExpressionWheel().setValue (expression, true);
+        double sum = 0.0;
+        for (int block = 0; block < 60; ++block)
+        {
+            w.processor.processBlock (buffer, midi);
+            if (block >= 30)
+                sum += buffer.getRMSLevel (0, 0, 256);
+        }
+        return sum / 30.0;
+    };
+    auto* parameter = w.processor.getParameters().getParameter (ParamIDs::exprVolume);
+    REQUIRE (parameter != nullptr);
+    CHECK (parameter->getValue() > 0.5f);   // on by default: as 0.49.0 to 0.51.0
+    CHECK (ParamIDs::notInRigs.contains (ParamIDs::exprVolume));
+
+    w.processor.getKeyboardState().noteOn (1, 60, 0.9f);
+    const auto full = levelWith (1.0f);
+    CHECK (levelWith (0.0f) < full * 0.001);   // on: the bottom is silence
+
+    // Switched off on the page: the wheel at the bottom leaves the volume full.
+    w.view->showPage (MainView::Page::settings);
+    auto& toggle = w.view->getSettingsPage().getExprVolumeSwitch();
+    CHECK (toggle.isVisible());
+    CHECK (w.view->getSettingsPage().isVisible());
+    CHECK (! toggle.getBounds().isEmpty());
+    CHECK (w.view->getSettingsPage().getLocalBounds().contains (toggle.getBounds()));
+    parameter->setValueNotifyingHost (0.0f);
+    CHECK (levelWith (0.0f) == Catch::Approx (full).margin (full * 0.02));
+
+    // Loading a preset leaves it as it is (it's the player's setting, not the sound's).
+    w.processor.getKeyboardState().allNotesOff (1);
+    const auto entries = w.processor.getRigLibrary().getEntries();
+    REQUIRE (! entries.empty());
+    w.processor.loadRig (entries.front());
+    CHECK (parameter->getValue() < 0.5f);
 }

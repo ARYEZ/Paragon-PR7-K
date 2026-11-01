@@ -1,4 +1,5 @@
 #include "FactoryRigs.h"
+#include "RigBuilder.h"
 
 #include "dsp/eq/EqDesign.h"
 #include "dsp/effects/Drive.h"
@@ -17,70 +18,8 @@
 // recipes, not copies of anyone's presets, and not yet tuned by ear: the
 // full factory set comes in a later stage (presets), once the engine has
 // unison, wavetables, modulation and effects to build them with.
-namespace
-{
-    // A preset under construction: anything it doesn't set stays at its default.
-    struct Builder
-    {
-        Rig rig;
 
-        Builder (const juce::String& name, int number, const juce::StringArray& tags, const juce::String& notes)
-        {
-            rig.name = name;
-            rig.bank = 0;
-            rig.number = number;
-            rig.tags = tags;
-            rig.notes = notes;
-        }
-
-        Builder& set (const juce::String& id, float value) { rig.parameters[id] = value; return *this; }
-        Builder& osc (int index, const char* what, float value) { return set (ParamIDs::osc (index, what), value); }
-
-        Builder& filter (synth::FilterType type, float cutoffHz, float resonance, float envelope)
-        {
-            set (ParamIDs::fltOn, 1.0f);
-            set (ParamIDs::fltType, (float) type);
-            set (ParamIDs::fltCutoff, cutoffHz);
-            set (ParamIDs::fltRes, resonance);
-            return set (ParamIDs::fltEnv, envelope);
-        }
-
-        Builder& filterEnvelope (float attack, float decay, float sustain, float release)
-        {
-            set (ParamIDs::fltAttack, attack);
-            set (ParamIDs::fltDecay, decay);
-            set (ParamIDs::fltSustain, sustain);
-            return set (ParamIDs::fltRelease, release);
-        }
-
-        Builder& ampEnvelope (float attack, float decay, float sustain, float release)
-        {
-            set (ParamIDs::ampAttack, attack);
-            set (ParamIDs::ampDecay, decay);
-            set (ParamIDs::ampSustain, sustain);
-            return set (ParamIDs::ampRelease, release);
-        }
-
-        Builder& shaper (int k, synth::ShaperModel model, float drive, bool afterFilter = false)
-        {
-            set (ParamIDs::shp (k, "On"), 1.0f);
-            set (ParamIDs::shp (k, "Model"), (float) model);
-            set (ParamIDs::shp (k, "Drive"), drive);
-            return set (ParamIDs::shp (k, "Place"), afterFilter ? 1.0f : 0.0f);
-        }
-
-        Builder& mono (float glideMs)
-        {
-            set (ParamIDs::playMode, (float) synth::PlayMode::mono);
-            set (ParamIDs::legato, 1.0f);
-            set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
-            return set (ParamIDs::glide, glideMs);
-        }
-    };
-
-    constexpr auto saw = (float) synth::OscWave::saw, pulse = (float) synth::OscWave::pulse,
-                   sine = (float) synth::OscWave::sine;
-}
+using namespace rigbuilder;
 
 std::vector<Rig> makeFactoryRigs()
 {
@@ -728,6 +667,23 @@ std::vector<Rig> makeFactoryRigs()
         }
     }
     add (tight);
+
+    // The VOICE filter (0.39.0).
+    Builder sung ("Sung Vowels", 43, { "Pad", "Choir", "Voice" },
+                  "A small choir singing AH: three saws a few cents apart, each with its own slow vibrato, and a breath of noise, "
+                  "through the VOICE filter (a tenor's formants, fixed whatever note is sung). The MOD WHEEL moves the vowel from "
+                  "AH towards EE; MACRO 1 sings OO. Our own settings, not tuned by ear.");
+    sung.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.8f).osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.7f).osc (0, "Volume", 0.6f)
+        .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 14.0f).osc (0, "VibRate", 5.0f).osc (0, "VibFade", 600.0f)
+        .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.4f).osc (1, "NoiseColour", 0.1f).osc (1, "Volume", 0.12f)
+        .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.3f).set (ParamIDs::voiceSharp, 0.45f)
+        .ampEnvelope (350.0f, 1000.0f, 0.9f, 900.0f)
+        .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall)
+        .set (ParamIDs::reverbSize, 0.5f).set (ParamIDs::reverbMix, 0.25f);
+    route (sung, "modWheel", ParamIDs::voiceVowel, 0.4f);
+    route (sung, "macro1", ParamIDs::voiceVowel, -0.5f);
+    sung.rig.modulation.macroNames[0] = "OO";
+    add (sung);
 
     return rigs;
 }

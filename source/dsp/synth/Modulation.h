@@ -67,7 +67,9 @@ namespace synth
             // Stage 4f: the bends, the shapers' EQ, the PITCH module, TRAVEL and the step sequencer
             oscSkew, oscPinch, oscTravelStrength, oscTravelPhase,
             shaperEq1Gain, shaperEq1Freq, shaperEq1Q, shaperEq2Gain, shaperEq2Freq, shaperEq2Q,
-            pitchEnvRange, pitchKeytrack, stepSeqVolMix
+            pitchEnvRange, pitchKeytrack, stepSeqVolMix,
+            // 0.39.0: the VOICE filter
+            voiceVowel, voiceSize, voiceSharp, voiceMix
         };
         struct Target
         {
@@ -252,6 +254,9 @@ namespace synth
             // Which sources any route uses (bit per Source): the others aren't worked out.
             std::uint32_t usedSources = 0xffffffffu;
             bool uses (Source source) const noexcept { return (usedSources >> (int) source) & 1u; }
+            // 0.25.0: routes to the effects' amounts follow the whole synth (Engine::wholeSynthValue); their sources,
+            // so the whole-synth LFOs and envelopes run even with no route to a note's settings.
+            std::uint32_t effectSources = 0;
             double bpm = 120.0;
             double ppq = -1.0;                // the song position at the block's start, in beats (-1: stopped)
             // CONTROLLER TO MOD WHEEL (stage 4f): breath, expression, aftertouch, sustain also drive the mod wheel

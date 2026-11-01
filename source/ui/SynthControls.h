@@ -59,6 +59,9 @@ public:
     // Compact: no name above (for a strip beside a panel's title). A switch
     // shows its name beside its LED instead; a menu fills the space.
     void setCompact (bool);
+    // The front panel's big knobs (0.49.0): the PR7 unit's red pedal knob, its name a little larger.
+    void setPedal();
+    void setLabelText (const juce::String& text) { label.setText (text, juce::dontSendNotification); }
     const juce::String& getParameterId() const noexcept { return parameterId; }
 
     void resized() override;

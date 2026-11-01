@@ -6,6 +6,7 @@
 #include <optional>
 
 #include "LevelMeterSource.h"
+#include "ModDestinations.h"
 #include "Parameters.h"
 #include "Rack.h"
 #include "dsp/synth/Engine.h"
@@ -171,6 +172,14 @@ public:
     void modMatrixEditFinished() { requestCheckpoint(); }
     // The MOD page's on-screen mod wheel (0 to 1): sent to the synth as MIDI controller 1 in the next block.
     void setScreenModWheel (float value) noexcept { pendingModWheel = juce::jlimit (0.0f, 1.0f, value); }
+    // 0.49.0: the front panel's EXPR wheel (MIDI controller 11, expression), and where the wheels are now (from the
+    // keyboard's own wheel and pedal too), 0 to 1, for the panel to follow.
+    void setScreenExpression (float value) noexcept { pendingExpression = juce::jlimit (0.0f, 1.0f, value); }
+    float getModWheelPosition() const noexcept { return modWheelPosition.load(); }
+    float getExpressionPosition() const noexcept { return expressionPosition.load(); }
+    // EXPRESSION as a swell (0.49.0): with no route in the preset from EXPRESSION and EXPRESSION not sent to the mod
+    // wheel, controller 11 sets the whole sound's volume, as a keyboard's expression pedal does (full until one comes).
+    float getExpressionGainForTest() const noexcept { return expressionTarget; }
 
     // MIDI LEARN (stage 4f): controllers linked to knobs. A knob asks to learn;
     // the next controller moved is linked to it (from the timer).
@@ -197,8 +206,24 @@ public:
     {
         engine.seedRandom (seed);
         rack->loFi.seedRandom (seed);
+        rack->delay.seedRandom (seed);
+        for (auto& bus : rack->buses)
+            bus.loFi.seedRandom (seed);
         drumKit.seedRandom ((std::uint32_t) seed);
     }
+
+    //==========================================================================
+    // MIMIC (0.44.0): a sound made from a recording (rigs/MimicRig.h). Message thread.
+    // Puts a made sound in place as a new, unsaved one: one undo step.
+    void applyMimic (const Rig& rig);
+    // The recording, to play through the output beside the made sound (up to 20 s, at the host's rate, through the
+    // OUTPUT knob as the synth is). False if it can't be read.
+    bool setMimicReference (const juce::File&);
+    bool setMimicReference (const juce::AudioBuffer<float>& audio, double sampleRate);   // for tests and the snapshot
+    void playMimicReference() noexcept;
+    void stopMimicReference() noexcept { referencePosition = -1; }
+    bool isPlayingMimicReference() const noexcept { return referencePosition.load() >= 0; }
+    double getMimicReferenceSeconds() const noexcept;
 
     //==========================================================================
     // THE DRUMS (stage 6a). While DRUMS is on, the 12 keys from its ROOT play the kit instead of the synth.
@@ -309,6 +334,8 @@ public:
     effects::Glitch::Settings getInsertGlitchSettings (int bus) const noexcept;
     effects::Modulation::Settings getInsertModSettings (int bus) const noexcept { return modSettingsFor (ParamIDs::insModIds (bus)); }
     effects::LoFi::Settings getInsertLoFiSettings (int bus) const noexcept;
+    effects::Wah::Settings getInsertWahSettings (int bus) const noexcept;   // 0.51.0; the pedal as the matrix has moved it
+    float getInsertWahSweep (int bus) const noexcept;                       // where its sweep is now, 0 to 1 (the page)
     std::array<float, synth::numSends> getInsertSends (int bus) const noexcept;
     float getInsertPeakDb (int bus) const noexcept
     {
@@ -334,7 +361,7 @@ private:
     void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, const juce::MidiBuffer& drums,
                        const synth::drums::KitSettings& kit, int start, int numSamples);
     void processModFx (juce::dsp::AudioBlock<float> block);
-    void processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady);
+    void processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady, double ppq);
     effects::Modulation::Settings modSettingsFor (const ParamIDs::ModIds&) const noexcept;
     effects::LoFi::Settings loFiSettingsFor (int bus) const noexcept;   // -1: the whole sound's
     float param (const char* id) const;
@@ -399,6 +426,12 @@ private:
     std::array<std::shared_ptr<const synth::drums::Sample>, ParamIDs::numDrums> drumSamples;
     std::array<std::atomic<const synth::drums::Sample*>, ParamIDs::numDrums> samplesForAudio {};
     std::vector<std::pair<std::shared_ptr<const synth::drums::Sample>, double>> retiredSamples;
+    // MIMIC's recording, played by the audio thread from `referencePosition` (-1: not playing); a replaced one is kept
+    // 2 s, as the tables are, so a block still playing it can't read freed memory.
+    std::shared_ptr<const juce::AudioBuffer<float>> mimicReference;
+    std::atomic<const juce::AudioBuffer<float>*> referenceForAudio { nullptr };
+    std::atomic<int> referencePosition { -1 };
+    std::vector<std::pair<std::shared_ptr<const juce::AudioBuffer<float>>, double>> retiredReferences;
     std::array<std::atomic<bool>, ParamIDs::numDrums> pendingPreview {};
     juce::MidiBuffer synthMidi, drumMidi;
     // Reversed synth drums' rendered hits (by slot), what each was made from, and the audio thread's pointers.
@@ -472,6 +505,10 @@ private:
     std::atomic<double> hostBpm { 120.0 };
     double hostPpq = -1.0;   // the song position at this block's start (-1: stopped); audio thread
     std::atomic<float> pendingModWheel { -1.0f };   // -1: nothing new
+    std::atomic<float> pendingExpression { -1.0f };
+    std::atomic<float> modWheelPosition { 0.0f }, expressionPosition { 1.0f };
+    float expressionTarget = 1.0f;                   // audio thread: the swell's gain, from controller 11
+    juce::SmoothedValue<float> expressionGain { 1.0f };
     MidiLinks midiLinks;
     std::array<std::atomic<juce::RangedAudioParameter*>, 128> controllerTargets {};   // the audio thread's copy, by CC
     std::atomic<int> lastController { -1 }, controllerCount { 0 };
@@ -490,9 +527,20 @@ private:
         float amount, lagMs, curve;
         bool percent;
     };
+    // 0.25.0: a route to an effect's amount (ModDestinations::effectIds), from a whole-synth source.
+    struct EffectRoute
+    {
+        synth::mod::Source source;
+        int effect;
+        juce::RangedAudioParameter* parameter;
+        float amount, lagMs, curve;
+        bool percent;
+    };
     struct CompiledMatrix
     {
         std::vector<CompiledRoute> routes;
+        std::vector<EffectRoute> effectRoutes;   // sorted by effect
+        std::uint32_t effectSources = 0;
         std::array<synth::mod::Shape, synth::mod::numEnvelopes> envelopes {};
         std::array<synth::mod::Shape, synth::mod::numLfoShapes> lfoShapes {};
         synth::mod::Shape pitchEnvelope {};
@@ -510,6 +558,12 @@ private:
     std::vector<std::pair<std::shared_ptr<const CompiledMatrix>, double>> retiredMatrices;
     std::array<synth::mod::Route, synth::mod::maxRoutes> routeBuffer {};   // audio thread
     void compileMatrix();
+    // The effects' amounts as the matrix moves them (0.25.0): each a knob position, 0 to 1, smoothed; NaN where no
+    // route moves it (the knob itself). Written by the audio thread once per piece, read by the effects' settings.
+    std::array<std::atomic<float>, ModDestinations::numEffects> effectPositions;
+    std::array<float, ModDestinations::numEffects> effectSmoothed {};   // audio thread
+    void updateEffectModulation (const synth::Settings&, int numSamples) noexcept;
+    float effectParam (int effect, const char* id) const;   // param (id), or where the matrix has moved it
 
     LevelMeterSource outputMeter;
     void processRack (juce::dsp::AudioBlock<float> block);   // the rack's effects before OUTPUT

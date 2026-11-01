@@ -8,6 +8,7 @@
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/Glitch.h"
 #include "dsp/effects/LoFi.h"
+#include "dsp/effects/Wah.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -67,6 +68,7 @@ struct Rack
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.
     struct InsertBus
     {
+        effects::Wah wah;   // 0.51.0: first on the bus, before the DRIVE (stereo itself)
         std::array<effects::Drive, 2> drive;
         std::array<effects::Glitch, 2> glitch;
         effects::Modulation modulation;
@@ -79,6 +81,7 @@ struct Rack
         std::array<std::atomic<float>*, std::size (ParamIDs::insDriveSettings)> drive_ {};
         std::array<std::atomic<float>*, std::size (ParamIDs::insGlitchSettings)> glitch_ {};
         std::array<std::atomic<float>*, std::size (ParamIDs::insLofiSettings)> lofi_ {};
+        std::array<std::atomic<float>*, std::size (ParamIDs::insWahSettings)> wah_ {};
         std::array<std::atomic<float>*, synth::numSends> sends_ {};
     };
     std::array<InsertBus, synth::numInsertBuses> buses;
