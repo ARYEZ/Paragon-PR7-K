@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
 
-project(ParagonX1 VERSION 0.51.0 LANGUAGES C CXX)
+project(ParagonX1 VERSION 0.54.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,7 +52,6 @@ target_sources(ParagonX1
         source/PluginEditor.cpp
         source/dsp/synth/WaveTables.cpp
         source/dsp/synth/Engine.cpp
-        source/dsp/synth/Drums.cpp
         source/dsp/synth/Wavetable.cpp
         source/dsp/synth/Mimic.cpp
         # PR7-E's effects, kept for the effects rack (a later stage): built and tested, not yet in the sound.
@@ -68,6 +67,7 @@ target_sources(ParagonX1
         source/dsp/effects/Modulation.cpp
         source/dsp/effects/LoFi.cpp
         source/dsp/effects/Wah.cpp
+        source/dsp/effects/Echoes.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -98,6 +98,7 @@ target_sources(ParagonX1
         source/ui/SynthDisplays.cpp
         source/ui/SynthPanels.cpp
         source/ui/PedalBody.cpp
+        source/ui/EchoesPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
@@ -106,8 +107,6 @@ target_sources(ParagonX1
         source/ui/TravelPatternEditor.cpp
         source/ui/ModSourceStrip.cpp
         source/ui/ArpPage.cpp
-        source/ui/DrumPage.cpp
-        source/ui/DrumSeqPage.cpp
         source/ui/FxPage.cpp
         source/ui/SendPages.cpp
         source/ui/ModFxPages.cpp

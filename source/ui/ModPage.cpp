@@ -232,7 +232,7 @@ ModulatorPanel::ModulatorPanel (ParagonX1AudioProcessor& p)
       seqDecay (state, ParamIDs::seqDecay, "DECAY", "Each block falls away after it opens: the time it takes to fade out. OFF: it holds."),
       seqVolMix (state, ParamIDs::seqVolMix, "VOL MIX", "How deep the gate cuts the volume: 100% to silence between steps, 0% not at all (the matrix source still runs)."),
       seqWidth (state, ParamIDs::seqWidth, "WIDTH", "In STEREO: the two rows fully apart (100%) to the same, their mix (0%)."),
-      shuffle (state, ParamIDs::shuffle, "SHUFFLE", "Swing: every second step starts late, up to half a step (75% swing). Shared with the arpeggiator and drums when they come."),
+      shuffle (state, ParamIDs::shuffle, "SHUFFLE", "Swing: every second step starts late, up to half a step (75% swing). Shared with the arpeggiators."),
       seqDelay (state, ParamIDs::seqDelay, "DELAY", "How long after a note starts before the gate comes in."),
       seqFadeIn (state, ParamIDs::seqFadeIn, "FADE IN", "How long it takes to come in fully, after DELAY."),
       seqLowKey (state, ParamIDs::seqLowKey, "START NOTE", "The lowest note it plays on: notes outside START NOTE to END NOTE are left alone."),

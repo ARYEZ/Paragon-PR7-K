@@ -18,16 +18,12 @@ class MultiPointEditor final : public juce::Component,
 public:
     explicit MultiPointEditor (ParagonX1AudioProcessor&);
 
-    // travel: an oscillator's TRAVEL envelope (stage 4e); drumEnvelope: a drum slot's, across its hit (6c)
-    enum class Kind { envelope, lfoShape, pitchEnvelope, travel, drumEnvelope };
+    // travel: an oscillator's TRAVEL envelope (stage 4e)
+    enum class Kind { envelope, lfoShape, pitchEnvelope, travel };
     void setTarget (Kind, int index);
     Kind getKind() const noexcept { return kind; }
     // Across one cycle (x 0 to 1): a drawn LFO shape or a TRAVEL envelope.
-    bool isCycle() const noexcept { return kind == Kind::lfoShape || kind == Kind::travel || kind == Kind::drumEnvelope; }
-    // The drum envelope's shapes (its right-click menu, for the tests too): 1 flat, 2 back to front, 3 upside down,
-    // 4 fade in, 5 fade out, 6 gate (half, then nothing), 7 swell.
-    void applyDrumShape (int choice);
-    juce::String caption;   // written small in the top corner (the drum envelope's name)
+    bool isCycle() const noexcept { return kind == Kind::lfoShape || kind == Kind::travel; }
     int getIndex() const noexcept { return index; }
 
     void paint (juce::Graphics&) override;

@@ -68,7 +68,8 @@ namespace ModDestinations
                 { "FX Reverb", "Mix" }, { "FX Reverb", "Size" }, { "FX Reverb", "Tone" }, { "FX Reverb", "Pre-Delay" },
                 { "FX Mod", "Mix" }, { "FX Mod", "Depth" }, { "FX Mod", "Rate" }, { "FX Mod 2", "Mix" }, { "FX Mod 2", "Depth" },
                 { "FX Mod 2", "Rate" }, { "FX Lo-Fi", "Mix" }, { "FX Lo-Fi", "Amount" },
-                { "FX Insert A", "Wah Pedal" }, { "FX Insert B", "Wah Pedal" }, { "FX Insert C", "Wah Pedal" }, { "FX Insert D", "Wah Pedal" } };
+                { "FX Insert A", "Wah Pedal" }, { "FX Insert B", "Wah Pedal" }, { "FX Insert C", "Wah Pedal" }, { "FX Insert D", "Wah Pedal" },
+                { "FX Echoes", "Mix" }, { "FX Echoes", "Feedback" }, { "FX Echoes", "Age" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

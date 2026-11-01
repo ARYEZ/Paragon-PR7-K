@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,18 +46,24 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi };
-        show (views[juce::jlimit (0, 2, unit)]);
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes };
+        show (views[juce::jlimit (0, 3, unit)]);
     });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
     {
         modFxUnits[i] = std::make_unique<RackUnit> (processor.getParameters(), std::move (modFxSpecs[i]));
         addChildComponent (*modFxUnits[i]);
+    }
+    for (size_t i = 0; i < modFxPages.size(); ++i)
+    {
         modFxPages[i] = std::make_unique<ModFxPage> (processor, kinds[i]);
         modFxPages[i]->onClose = [this] { show (View::modFx); };
         addChildComponent (*modFxPages[i]);
     }
+    // ECHOES (0.53.0): its page.
+    echoesPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (echoesPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -101,7 +107,7 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     }
     sendsTab.setTooltip ("The SENDS: DELAY and REVERB, fed by each oscillator's send; they come back in before the MASTER rack");
     masterTab.setTooltip ("The MASTER rack: ECHELON, DOMINION, CONSTRICTOR and the LIMITER, on everything");
-    modFxTab.setTooltip ("MOD, MOD 2 and LO-FI: PR7-G's modulation (twice) and lo-fi, on everything, the echoes and reverb too, before the MASTER rack");
+    modFxTab.setTooltip ("MOD, MOD 2, LO-FI and ECHOES: PR7-G's modulation (twice) and lo-fi, and the past played back under the present, on everything, the echoes and reverb too, before the MASTER rack");
     insertsTab.setTooltip ("The INSERTS: buses A to D, each a WAH, DRIVE, GLITCH, MOD and LO-FI on the oscillators routed to it, before the sends");
     insertsTab.onClick = [this] { show (View::inserts); };
     sendsTab.onClick = [this] { show (View::sends); };
@@ -127,6 +133,7 @@ void FxPage::show (View newView)
     modFxPages[0]->setVisible (view == View::mod);
     modFxPages[1]->setVisible (view == View::mod2);
     modFxPages[2]->setVisible (view == View::loFi);
+    echoesPage.setVisible (view == View::echoes);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -186,7 +193,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get() })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.

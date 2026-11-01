@@ -23,12 +23,6 @@ add_executable(ParagonX1Tests
     ModRoutingTests.cpp
     ArpTests.cpp
     ArpChordTests.cpp
-    DrumTests.cpp
-    DrumKitTests.cpp
-    DrumSeqTests.cpp
-    DrumEditorTests.cpp
-    DrumKitFileTests.cpp
-    DrumSeqPluginTests.cpp
     StackSizeTests.cpp
     ParameterIdTests.cpp
     ProcessorTests.cpp
@@ -47,6 +41,8 @@ add_executable(ParagonX1Tests
     ModFxStereoTests.cpp
     WahTests.cpp
     WahPluginTests.cpp
+    EchoesTests.cpp
+    EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp
     SendTests.cpp

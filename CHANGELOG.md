@@ -2,6 +2,61 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.54.0
+
+**PR7-K is now purely a synth.** The drums have moved out: PR7-D is the family's drum plugin.
+
+### Removed
+- The DRUMS tab and page: the 12-slot kit, the drum sequencer, the sample editor, kit and sequence files, and MIDI export of beats. The other tabs now share its space in the header.
+- The on-screen keyboard no longer tints the kit's keys.
+
+### Your songs and presets
+- Anything saved with the drums still opens: the synth part loads as before, and the drum settings and samples are simply left out (and not saved again).
+
+### Presets
+- Bank A's three drum presets (Kit And Bass, Beat And Bass, Tight Kit) are gone. **Sung Vowels moves from A43 to A40.**
+- The 18 expansion presets that played a beat keep their synth part, without the beat. Their descriptions are rewritten and their levels re-measured. Six were renamed:
+  - War Drums is now **War Pulse** (SANDSEA)
+  - Ritual Drums is now **Ritual Choir** (CYBERSHRINE)
+  - Battle Drums is now **Battle Cry** (CHROMEFURY)
+  - Sacred Drums is now **Sacred Chant** (ASCENSION)
+  - Festival Drums is now **Festival Bronze** (PSI STORM)
+  - Drum Machine Run is now **Offbeat Run** (BLOODWAVE)
+- The others keep their names: Alarm Pulse, Bootstrap Sequence, System Breach, Machine City, Ticking Clock, Cold Corridor, Countdown, Steady Rows, Midnight Run, Night Runner, Machine Shift and Threshold.
+
+Levels are measured, not set by ear.
+
+## 0.53.0
+
+**PARADOX**, a new expansion (PX01-PX15), and **ECHOES**, the effect it's built round.
+
+### ECHOES (new effect)
+Your own playing comes back from the past, in time with your song. ECHOES keeps a running recording of what you play (up to 32 seconds) and plays it back under what you're playing now, from a set distance in the song: 1 beat to 8 bars. Four modes:
+- **ECHO:** the sound from that distance ago, exactly (a long, bar-synced echo). FEEDBACK gives echoes of echoes.
+- **REVERSE:** each stretch comes back backwards while the next plays, so it swells into its own start.
+- **TAPE:** the start of each phrase comes back at half speed, an octave down.
+- **LOOP:** a stretch is caught and repeated 1 to 8 times (or forever) while you play on over it.
+
+AGE wears each pass down (darker, a little saturated), so older echoes sound older. It's the fourth unit on the FX page's MOD / LO-FI tab, with its own page showing the recording and the part coming back. The mod matrix can move MIX, FEEDBACK and AGE. Switched off it changes nothing; it uses about 0.2% of a core. Our own design.
+
+### PARADOX (expansion)
+Inspired by the score of a German series about a small town where time runs in a loop: crushing sub drones, walls of noise, bowed strings, a choir, ticking clocks and rain, rumbling underground passages, melancholy glitchy electronica. Our own sounds; nothing from the series on the plugin.
+
+Every preset hears its own past come back through ECHOES, each in its own way: Yesterday's Voice (answered backwards), Caught In The Loop, Slow Tape Ghost, Wall Of Static, Bowed In Reverse, Choir Of Ages, Pressure Below, Decay Pulse, Underground Rumble, Worn Upright, Music Box Memory, Chapel Organ, Second Hand, Rain On The Window and Bootstrap Sequence (with a drum beat; the kit on C2 to B2).
+
+**MACRO 3 is ERA** on every preset, and loads in the middle: the present. Turn it left to go back in time (a worn cassette, a slow tape wobble, older, darker echoes) and right to go forward (crushed, colder, sharper, a glassy edge). The left end plays a few dB quieter, as an old tape does.
+
+Levels are measured, not set by ear.
+
+## 0.52.0
+
+**A switch for the EXPR wheel's volume** (your ask). In SETTINGS, under TUNE, there's a new **EXPR WHEEL** section with a **CONTROLS VOLUME** switch.
+
+- **On** (as before, and the default): on presets that don't use EXPRESSION, the EXPR wheel (or your keyboard's expression pedal) is a volume pedal. Left at the bottom, those presets are silent.
+- **Off:** on those presets the wheel and pedal do nothing, so a pedal left at the heel (say after rocking a SLINGBLADE wah) can never silence the next preset.
+- Presets that use EXPRESSION, like the SLINGBLADE wahs, follow the wheel either way.
+- Like TUNE, it's your setting, not the sound's: it stays as you set it when you change presets, and it's saved with your project.
+
 ## 0.51.0
 
 **The WAH** (your ask): a wah on every insert bus (FX > INSERTS, buses A to D), first in line, before the DRIVE, so a drive works on the swept peak like a wah into a distortion pedal.

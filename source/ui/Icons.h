@@ -24,9 +24,7 @@ namespace Icons
                       // PR7-K 0.15: the arpeggiator
                       arpeggio,
                       // PR7-K 0.17: the rack (FX)
-                      rack,
-                      // PR7-K 0.21: the drums
-                      drums };
+                      rack };
 
     juce::Path get (Type type);
 

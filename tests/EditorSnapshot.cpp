@@ -3,6 +3,7 @@
 #include "Parameters.h"
 #include "PluginEditor.h"
 #include "dsp/effects/Wah.h"
+#include "dsp/effects/Echoes.h"
 #include "PluginProcessor.h"
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/LoFi.h"
@@ -26,9 +27,6 @@
 //                                    on by itself for OSC, OSCPAGE, FILTERPAGE, FFT and TRAVEL. Otherwise the front panel.
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
 //   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
-//   PARAGON_SNAPSHOT_PAGE=drums      THE DRUMS (PARAGON_SNAPSHOT_DRUM=n: slot n chosen; PARAGON_SNAPSHOT_DRUMS=1: a beat just played, its rows lit;
-//                                    PARAGON_SNAPSHOT_DRUMSEQ=1: the SEQUENCER view, a beat playing with the song;
-//                                    PARAGON_SNAPSHOT_DRUMEDIT=1: the clap with an envelope, an anchor, GAIN and LP)
 //   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
@@ -157,7 +155,12 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::ins (0, "DriveGain"), 7.0f);
             set (ParamIDs::ins (0, "GlitchOn"), 1.0f);
             set (ParamIDs::ins (0, "GlitchMix"), 0.6f);
-            // 0.51.0: its WAH in AUTO, opened by the chord.
+            // 0.53.0: ECHOES, the last bar coming back backwards.
+            set (ParamIDs::echoOn, 1.0f);
+            set (ParamIDs::echoMode, (float) (int) effects::Echoes::Mode::reverse);
+            set (ParamIDs::echoDistance, 1.0f);
+            set (ParamIDs::echoMix, 0.4f);
+                        // 0.51.0: its WAH in AUTO, opened by the chord.
             set (ParamIDs::ins (0, "WahOn"), 1.0f);
             set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
             set (ParamIDs::ins (0, "WahPosition"), 0.15f);
@@ -187,7 +190,7 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : FxPage::View::rack);
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : FxPage::View::rack);
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot
         // never is (as PR7-E's snapshots, refresh them by hand). ECHELON with its dynamic band 3 selected.
         if (fx == "eq")
@@ -363,161 +366,6 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         view->getOscillatorPanel().getSpectrumEditor().setView (SpectrumEditor::View::harmonic);
     if (env ("PARAGON_SNAPSHOT_FFT_VIEW") == "bins")
         view->getOscillatorPanel().getSpectrumEditor().setView (SpectrumEditor::View::bins);
-    if (page == "drums")
-    {
-        // THE DRUMS (stage 6a): the kit on, slot PARAGON_SNAPSHOT_DRUM (1-12) chosen; PARAGON_SNAPSHOT_DRUMS=1 plays a
-        // beat into it first (kick, snare and closed hat just hit: their rows lit).
-        if (auto* on = processor.getParameters().getParameter (ParamIDs::drumsOn))
-            on->setValueNotifyingHost (1.0f);
-        view->showPage (MainView::Page::drums);
-        auto& drums = view->getDrumPage();
-        if (env ("PARAGON_SNAPSHOT_DRUMS") == "2")
-        {
-            // A file of nine kicks (each a semitone higher) in the kick's slot, its 4th kick chosen.
-            auto file = std::make_shared<synth::drums::Sample>();
-            file->name = "Kit_1_Kick";
-            file->sampleRate = 44100.0;
-            file->channels.assign (1, std::vector<float> ((size_t) (4.0 * 44100.0), 0.0f));
-            for (int k = 0; k < 9; ++k)
-            {
-                synth::drums::SlotSettings kick;
-                kick.pitch = (float) k;
-                kick.decay = 0.3f;
-                const auto hit = synth::drums::Kit::renderHit (kick, 1.0f, 44100.0, 0.4);
-                const auto at = (int) (0.05 * 44100.0) + (int) (k * 0.45 * 44100.0);
-                for (int i = 0; i < hit.getNumSamples() && at + i < file->length(); ++i)
-                    file->channels[0][(size_t) (at + i)] = hit.getSample (0, i);
-            }
-            processor.setDrumSample (0, file);
-            if (auto* m = processor.getParameters().getParameter (ParamIDs::drum (0, "Model")))
-                m->setValueNotifyingHost (m->convertTo0to1 ((float) (int) synth::drums::Model::sample));
-            drums.select (0);
-            drums.setSize (1476, 672);
-            drums.getDisplay().pickHit (3);
-            if (env ("PARAGON_SNAPSHOT_DRUMEDIT") == "2")   // and a fade out drawn over it
-            {
-                auto matrix = processor.getModMatrix();
-                matrix.drumEnvelopes[0] = { { { 0.0f, 1.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } }, -1, -1, -1 };
-                processor.setModMatrix (matrix);
-                drums.getEnvelopeEditor().setTarget (MultiPointEditor::Kind::drumEnvelope, 0);
-            }
-            drums.refreshPictures();
-        }
-        if (env ("PARAGON_SNAPSHOT_DRUMS") != "2")
-            drums.select (juce::jmax (1, env ("PARAGON_SNAPSHOT_DRUM").getIntValue()) - 1);
-        if (env ("PARAGON_SNAPSHOT_DRUMS") == "1")
-        {
-            juce::AudioBuffer<float> buffer (2, 512);
-            juce::MidiBuffer midi;
-            for (const auto note : { 36, 38, 42 })
-                midi.addEvent (juce::MidiMessage::noteOn (1, note, 1.0f), 0);
-            processor.processBlock (buffer, midi);
-            midi.clear();
-            for (int b = 0; b < 6; ++b)
-                processor.processBlock (buffer, midi);
-            drums.updateLights();
-        }
-        if (env ("PARAGON_SNAPSHOT_DRUMEDIT") == "1")
-        {
-            // THE SAMPLE EDITOR (6c): the clap with a drawn envelope (its flams held, its tail cut), an anchor on its
-            // main slap, GAIN and LP.
-            const auto set = [&processor] (const juce::String& id, float value)
-            {
-                if (auto* p = processor.getParameters().getParameter (id))
-                    p->setValueNotifyingHost (p->convertTo0to1 (value));
-            };
-            set (ParamIDs::drum (3, "Delay"), -22.0f);
-            set (ParamIDs::drum (3, "Gain"), 3.0f);
-            set (ParamIDs::drum (3, "LowPass"), 7000.0f);
-            set (ParamIDs::drum (3, "Decay"), 0.7f);
-            auto matrix = processor.getModMatrix();
-            matrix.drumEnvelopes[3] = { { { 0.0f, 1.0f, 0.0f }, { 0.35f, 0.9f, -0.4f }, { 0.6f, 0.25f, 0.0f }, { 0.75f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } }, -1, -1, -1 };
-            processor.setModMatrix (matrix);
-            processor.updateDrumReverses();   // the clap's hit length, which the envelope spans
-            drums.select (3);
-            drums.refreshPictures();
-        }
-        if (env ("PARAGON_SNAPSHOT_DRUMCHOSEN") == "1")
-        {
-            // 6c part 2: the hats and cymbal chosen together, a kit and sequence "loaded", the tom's hit playing.
-            drums.clickRow (6, {});
-            drums.clickRow (8, juce::ModifierKeys::ctrlModifier);
-            drums.clickRow (10, juce::ModifierKeys::ctrlModifier);
-            drums.clickRow (11, juce::ModifierKeys::ctrlModifier);
-            juce::AudioBuffer<float> buffer (2, 512);
-            juce::MidiBuffer midi;
-            midi.addEvent (juce::MidiMessage::noteOn (1, 45, 1.0f), 0);
-            processor.processBlock (buffer, midi);
-            midi.clear();
-            for (int b = 0; b < 12; ++b)
-                processor.processBlock (buffer, midi);
-            drums.updateLights();
-        }
-        if (env ("PARAGON_SNAPSHOT_DRUMSEQ") == "1")
-        {
-            // THE DRUM SEQUENCER (stage 6b): a beat in pattern A (accented hats with a roll, a pitched tom fill, a
-            // reversed cymbal swelling into the bar, a short open hat), played with the song to just past beat 2, the
-            // snares chosen.
-            synth::drumseq::Pattern beat;
-            const auto note = [&beat] (int row, double start, float velocity = 1.0f) -> synth::drumseq::Note&
-            {
-                synth::drumseq::Note n;
-                n.row = row;
-                n.start = start;
-                n.velocity = velocity;
-                beat.notes.push_back (n);
-                return beat.notes.back();
-            };
-            for (const auto k : { 0.0, 3.0, 8.0, 10.0 })
-                note (0, k);
-            note (2, 4.0);
-            note (2, 12.0);
-            for (int k = 0; k < 14; k += 2)
-                note (6, k, k % 4 == 0 ? 1.0f : 0.55f);
-            note (6, 14.0, 0.8f).roll = 2;
-            note (10, 7.0, 0.7f).gate = 0.25f;
-            note (9, 13.0).pitch = 2.0f;
-            note (7, 14.0);
-            note (5, 15.0).pitch = -3.0f;
-            note (11, 15.0).reverse = synth::drumseq::Reverse::endSync;
-            note (1, 6.0, 0.6f).pan = -0.5f;
-            auto matrix = processor.getModMatrix();
-            matrix.drumPatterns[0] = beat;
-            processor.setModMatrix (matrix);
-            if (auto* on = processor.getParameters().getParameter (ParamIDs::dseqOn))
-                on->setValueNotifyingHost (1.0f);
-            if (auto* sh = processor.getParameters().getParameter (ParamIDs::shuffle))
-                sh->setValueNotifyingHost (0.2f);
-            processor.updateDrumReverses();
-
-            struct Song final : juce::AudioPlayHead
-            {
-                double ppq = 0.0;
-                juce::Optional<PositionInfo> getPosition() const override
-                {
-                    PositionInfo info;
-                    info.setBpm (120.0);
-                    info.setPpqPosition (ppq);
-                    info.setIsPlaying (true);
-                    return info;
-                }
-            };
-            static Song song;
-            processor.setPlayHead (&song);
-            juce::AudioBuffer<float> buffer (2, 512);
-            juce::MidiBuffer midi;
-            for (int b = 0; b < 58; ++b)   // 1.14 beats: the playhead on step 5
-            {
-                processor.processBlock (buffer, midi);
-                song.ppq += 512.0 / 48000.0 * 2.0;
-            }
-            processor.setPlayHead (nullptr);
-            drums.showView (DrumPage::View::sequencer);
-            drums.select (2);
-            drums.getSequencer().getGrid().setSelection ({ 4, 5 });
-            drums.updateLights();
-        }
-    }
     if (page == "presets")
     {
         view->showPage (MainView::Page::presets);
