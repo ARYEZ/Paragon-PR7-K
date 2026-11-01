@@ -359,6 +359,7 @@ namespace synth
         pedalDown = false;
         lastPitch = -1.0f;
         modWheel = breath = expression = channelPressure = 0.0f;
+        expressionHeard = false;
         smoothedBend = 0.0f;
         seqClock = 0.0;
         travelClock.fill (0.0);
@@ -464,7 +465,10 @@ namespace synth
         else if (message.isController() && message.getControllerNumber() == 2)
             breath = (float) message.getControllerValue() / 127.0f;
         else if (message.isController() && message.getControllerNumber() == 11)
+        {
             expression = (float) message.getControllerValue() / 127.0f;
+            expressionHeard = true;
+        }
         else if (message.isChannelPressure())
             channelPressure = (float) message.getChannelPressureValue() / 127.0f;
         else if (message.isAftertouch())
@@ -1120,7 +1124,7 @@ namespace synth
             case S::pitchBend: return bend;
             case S::aftertouch: return channelPressure;
             case S::breath: return breath;
-            case S::expression: return expression;
+            case S::expression: return expressionSource();
             case S::sustain: return pedalDown ? 1.0f : 0.0f;
             default: return std::numeric_limits<float>::quiet_NaN();   // each note has its own
         }
@@ -1170,7 +1174,7 @@ namespace synth
         values[(size_t) mod::Source::aftertouch] = juce::jmax (channelPressure, voice.pressure);
         values[(size_t) mod::Source::keytrack] = (float) voice.note / 127.0f;
         values[(size_t) mod::Source::breath] = breath;
-        values[(size_t) mod::Source::expression] = expression;
+        values[(size_t) mod::Source::expression] = expressionSource();
         values[(size_t) mod::Source::sustain] = pedalDown ? 1.0f : 0.0f;
         values[(size_t) mod::Source::random] = voice.randomValue;
         values[(size_t) mod::Source::pitchEnvelope] = voice.pitchEnvelopeValue;

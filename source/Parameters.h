@@ -405,6 +405,9 @@ namespace ParamIDs
     inline constexpr const char* insModSettings[] = { "ModOn", "ModType", "ModRate", "ModDepth", "ModMix", "ModSync", "ModEq", "ModStereo",
                                                       "ModManual", "ModRes", "ModHadron", "ModWave" };   // ModIds' order
     inline constexpr const char* insLofiSettings[] = { "LofiOn", "LofiType", "LofiAmount", "LofiNoise", "LofiMix", "LofiLevel" };
+    // 0.51.0 (version hint 25): the bus's WAH, first on it, before the DRIVE (effects::Wah).
+    inline constexpr const char* insWahSettings[] = { "WahOn", "WahMode", "WahRange", "WahPosition", "WahResonance", "WahSensitivity",
+                                                      "WahSpeed", "WahDepth", "WahRate", "WahSync", "WahMix", "WahLevel" };
     // A bus's MOD as ModIds (the strings made once and kept).
     inline const ModIds& insModIds (int bus)
     {

@@ -2,6 +2,7 @@
 
 #include "Parameters.h"
 #include "PluginEditor.h"
+#include "dsp/effects/Wah.h"
 #include "PluginProcessor.h"
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/LoFi.h"
@@ -156,6 +157,12 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::ins (0, "DriveGain"), 7.0f);
             set (ParamIDs::ins (0, "GlitchOn"), 1.0f);
             set (ParamIDs::ins (0, "GlitchMix"), 0.6f);
+            // 0.51.0: its WAH in AUTO, opened by the chord.
+            set (ParamIDs::ins (0, "WahOn"), 1.0f);
+            set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
+            set (ParamIDs::ins (0, "WahPosition"), 0.15f);
+            set (ParamIDs::ins (0, "WahDepth"), 0.7f);
+            set (ParamIDs::ins (0, "WahResonance"), 7.0f);
             for (const auto note : { 48, 55, 60, 64, 67 })
                 processor.getKeyboardState().noteOn (1, note, 0.85f);
             juce::AudioBuffer<float> buffer (2, 256);
@@ -179,7 +186,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "reverb" ? FxPage::View::reverb : fx == "modfx" ? FxPage::View::modFx : fx == "mod" ? FxPage::View::mod
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
-                     : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi : FxPage::View::rack);
+                     : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
+                     : fx == "inswah" ? FxPage::View::insertWah : FxPage::View::rack);
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot
         // never is (as PR7-E's snapshots, refresh them by hand). ECHELON with its dynamic band 3 selected.
         if (fx == "eq")

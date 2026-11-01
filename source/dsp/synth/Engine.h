@@ -303,6 +303,12 @@ namespace synth
         // once for the whole synth, their values for each interval of the
         // render under way, and a scratch copy of the settings for a note.
         float modWheel = 0.0f, breath = 0.0f, expression = 0.0f, channelPressure = 0.0f;
+        // 0.51.0: whether controller 11 has come since the reset. Until it does, EXPRESSION as a matrix source reads
+        // full, as the EXPR wheel shows it and the volume swell takes it (a pedal not yet touched is all the way
+        // up), so a WAH routed to it starts at the toe, where the wheel is drawn. (Sent to the mod wheel, it still
+        // counts as 0 until it comes, so the wheel isn't pushed up by a pedal that isn't there.)
+        bool expressionHeard = false;
+        float expressionSource() const noexcept { return expressionHeard ? expression : 1.0f; }
         std::array<mod::LfoState, mod::numLfos> globalLfos {};
         static constexpr int maxIntervals = 64;   // render() works in pieces of up to 64 intervals (1024 samples)
         std::array<std::array<float, maxIntervals>, mod::numLfos> globalLfoValues {};

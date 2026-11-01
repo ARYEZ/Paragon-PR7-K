@@ -334,6 +334,8 @@ public:
     effects::Glitch::Settings getInsertGlitchSettings (int bus) const noexcept;
     effects::Modulation::Settings getInsertModSettings (int bus) const noexcept { return modSettingsFor (ParamIDs::insModIds (bus)); }
     effects::LoFi::Settings getInsertLoFiSettings (int bus) const noexcept;
+    effects::Wah::Settings getInsertWahSettings (int bus) const noexcept;   // 0.51.0; the pedal as the matrix has moved it
+    float getInsertWahSweep (int bus) const noexcept;                       // where its sweep is now, 0 to 1 (the page)
     std::array<float, synth::numSends> getInsertSends (int bus) const noexcept;
     float getInsertPeakDb (int bus) const noexcept
     {
@@ -359,7 +361,7 @@ private:
     void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, const juce::MidiBuffer& drums,
                        const synth::drums::KitSettings& kit, int start, int numSamples);
     void processModFx (juce::dsp::AudioBlock<float> block);
-    void processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady);
+    void processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady, double ppq);
     effects::Modulation::Settings modSettingsFor (const ParamIDs::ModIds&) const noexcept;
     effects::LoFi::Settings loFiSettingsFor (int bus) const noexcept;   // -1: the whole sound's
     float param (const char* id) const;

@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/Glitch.h"
+#include "dsp/effects/Wah.h"
 #include "ui/SynthControls.h"
 
 // THE INSERT BUSES' own pieces (stage 7d): the bus strip (which bus, which oscillators play into it, its sends), and
@@ -59,14 +60,34 @@ private:
     double seconds = 4.0, bpm = 120.0;
 };
 
-// DRIVE's or GLITCH's page on a bus: ON and MODEL / MODE along the top with BACK TO RACK, its preview, and the
+// What the WAH does now (0.51.0): its filter's curve where the sweep is (bright, moving with the pedal, AUTO or the
+// LFO), at the heel and the toe (dim), from 50 Hz to 10 kHz, the range shaded and the frequency named.
+class WahPreview final : public juce::Component,
+                         public juce::SettableTooltipClient,
+                         private juce::Timer
+{
+public:
+    WahPreview (ParagonX1AudioProcessor&, int bus);
+    void paint (juce::Graphics&) override;
+    float xFor (float hz) const noexcept;
+    float yFor (float db) const noexcept;
+    float getShownSweep() const noexcept { return shownSweep; }
+
+private:
+    void timerCallback() override;
+    ParagonX1AudioProcessor& processor;
+    int bus;
+    float shownSweep = -1.0f;
+};
+
+// DRIVE's, GLITCH's or the WAH's page on a bus: ON and MODEL / MODE along the top with BACK TO RACK, its preview, and the
 // controls that model or mode uses (as on PR7-G's panel: TONE but not on HALO or ABYSS, ABYSS's EQ, SKYLINE's ATTACK
 // and GATE; GLITCH's LENGTH as a time or a note by SYNC).
 class InsertEffectPage final : public juce::Component,
                                private juce::Timer
 {
 public:
-    enum class Kind { drive, glitch };
+    enum class Kind { drive, glitch, wah };
     InsertEffectPage (ParagonX1AudioProcessor&, Kind, int bus);
     std::function<void()> onClose;
 

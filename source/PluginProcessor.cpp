@@ -148,6 +148,7 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
         for (size_t s = 0; s < bus.drive_.size(); ++s) bus.drive_[s] = find (ParamIDs::insDriveSettings[s]);
         for (size_t s = 0; s < bus.glitch_.size(); ++s) bus.glitch_[s] = find (ParamIDs::insGlitchSettings[s]);
         for (size_t s = 0; s < bus.lofi_.size(); ++s) bus.lofi_[s] = find (ParamIDs::insLofiSettings[s]);
+        for (size_t s = 0; s < bus.wah_.size(); ++s) bus.wah_[s] = find (ParamIDs::insWahSettings[s]);
         bus.sends_ = { find ("SendDelay"), find ("SendReverb") };
     }
     for (int k = 0; k < ParamIDs::numLfos; ++k)
@@ -288,6 +289,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
         }
         bus.modulation.prepare (sampleRate, preparedBlockSize);
         bus.loFi.prepare (sampleRate, preparedBlockSize);
+        bus.wah.prepare (sampleRate, preparedBlockSize);
         bus.buffer.setSize (2, preparedBlockSize);
     }
     rack->loFi.prepare (sampleRate, preparedBlockSize);
@@ -577,16 +579,46 @@ effects::Glitch::Settings ParagonX1AudioProcessor::getInsertGlitchSettings (int 
     return s;
 }
 
+effects::Wah::Settings ParagonX1AudioProcessor::getInsertWahSettings (int bus) const noexcept
+{
+    bus = juce::jlimit (0, synth::numInsertBuses - 1, bus);
+    const auto& v = rack->buses[(size_t) bus].wah_;   // insWahSettings' order
+    const auto value = [&v] (int index) { return v[(size_t) index]->load(); };
+    effects::Wah::Settings s;
+    s.on = value (0) > 0.5f;
+    s.mode = (effects::Wah::Mode) juce::jlimit (0, effects::Wah::modeNames.size() - 1, juce::roundToInt (value (1)));
+    s.range = (effects::Wah::Range) juce::jlimit (0, effects::Wah::rangeNames.size() - 1, juce::roundToInt (value (2)));
+    // The pedal, or where the mod matrix has moved it (the EXPR wheel, routed): its range is 0 to 1, so the matrix's
+    // position is the value itself.
+    const auto moved = effectPositions[(size_t) (ModDestinations::effect ("ins1WahPosition") + bus)].load (std::memory_order_relaxed);
+    s.position = std::isnan (moved) ? value (3) : moved;
+    s.resonance = value (4);
+    s.sensitivity = value (5);
+    s.speed = value (6);
+    s.depth = value (7);
+    s.rateHz = value (8);
+    s.sync = juce::roundToInt (value (9));
+    s.mix = value (10);
+    s.levelDb = value (11);
+    return s;
+}
+
+float ParagonX1AudioProcessor::getInsertWahSweep (int bus) const noexcept
+{
+    return rack->buses[(size_t) juce::jlimit (0, synth::numInsertBuses - 1, bus)].wah.getSweep();
+}
+
 std::array<float, synth::numSends> ParagonX1AudioProcessor::getInsertSends (int bus) const noexcept
 {
     const auto& v = rack->buses[(size_t) juce::jlimit (0, synth::numInsertBuses - 1, bus)].sends_;
     return { v[0]->load(), v[1]->load() };
 }
 
-void ParagonX1AudioProcessor::processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady)
+void ParagonX1AudioProcessor::processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady, double ppq)
 {
-    // Each bus an oscillator plays into: DRIVE and GLITCH (one a side: PR7-G's are mono), MOD, LO-FI, as on PR7-G's
-    // chain (GLITCH POST, after the drive); then into the mix, and into the sends at the bus's amounts.
+    // Each bus an oscillator plays into: the WAH (0.51.0: before the drive, as on a pedalboard), DRIVE and GLITCH (one
+    // a side: PR7-G's are mono), MOD, LO-FI, as on PR7-G's chain (GLITCH POST, after the drive); then into the mix, and
+    // into the sends at the bus's amounts.
     const auto numSamples = (int) block.getNumSamples();
     const auto bpm = juce::jmax (1.0, hostBpm.load());
     for (int b = 0; b < synth::numInsertBuses; ++b)
@@ -598,6 +630,7 @@ void ParagonX1AudioProcessor::processInsertBuses (juce::dsp::AudioBlock<float> b
             continue;
         }
         auto busBlock = juce::dsp::AudioBlock<float> (bus.buffer).getSubBlock (0, (size_t) numSamples);
+        bus.wah.process (busBlock, getInsertWahSettings (b), bpm, ppq);
         const auto drive = getInsertDriveSettings (b);
         const auto glitch = getInsertGlitchSettings (b);
         // After the DRIVE, a DC blocker (5 Hz): RABID's circuit can leave its coupling capacitor charged, a steady
@@ -1244,7 +1277,9 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
                                                             .getSubsetChannelBlock (0, (size_t) juce::jmin (numChannels, 2));
     if (sendsReady)
     {
-        processInsertBuses (block, true);
+        // The song position at this piece's start (for the WAH's synced LFO): -1 while it's stopped.
+        const auto piecePpq = hostPpq >= 0.0 ? hostPpq + (double) start / getSampleRate() * juce::jmax (1.0, hostBpm.load()) / 60.0 : -1.0;
+        processInsertBuses (block, true, piecePpq);
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
     }

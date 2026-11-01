@@ -67,6 +67,7 @@ target_sources(ParagonX1
         source/dsp/effects/Aeon.cpp
         source/dsp/effects/Modulation.cpp
         source/dsp/effects/LoFi.cpp
+        source/dsp/effects/Wah.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp

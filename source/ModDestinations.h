@@ -33,7 +33,9 @@ namespace ModDestinations
     inline constexpr const char* effectIds[] = { "delayMix", "delayFeedback", "delayTone", "delayToReverb",
                                                  "reverbMix", "reverbSize", "reverbTone", "reverbPreDelay",
                                                  "modMix", "modDepth", "modRate", "mod2Mix", "mod2Depth", "mod2Rate",
-                                                 "lofiMix", "lofiAmount" };
+                                                 "lofiMix", "lofiAmount",
+                                                 // 0.51.0: each insert bus's WAH pedal (the EXPR wheel's job)
+                                                 "ins1WahPosition", "ins2WahPosition", "ins3WahPosition", "ins4WahPosition" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.
