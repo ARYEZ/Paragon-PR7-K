@@ -260,6 +260,8 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     drumKit.prepare (sampleRate, 512);   // the pieces processChunk renders in
 
     outputGain.reset (sampleRate, gainRampSeconds);
+    expressionGain.reset (sampleRate, 0.03);
+    expressionGain.setCurrentAndTargetValue (expressionGain.getTargetValue());
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));
     bypassAmount.reset (sampleRate, gainRampSeconds);
     bypassAmount.setCurrentAndTargetValue (isOn (ParamIDs::bypass) ? 1.0f : 0.0f);
@@ -1053,6 +1055,22 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     keyboardState.processNextMidiBuffer (keyboardMidi, 0, numSamples, true);
     if (const auto wheel = pendingModWheel.exchange (-1.0f); wheel >= 0.0f)
         keyboardMidi.addEvent (juce::MidiMessage::controllerEvent (1, 1, juce::roundToInt (wheel * 127.0f)), 0);
+    if (const auto pedal = pendingExpression.exchange (-1.0f); pedal >= 0.0f)
+        keyboardMidi.addEvent (juce::MidiMessage::controllerEvent (1, 11, juce::roundToInt (pedal * 127.0f)), 0);
+    // Where the wheels are, for the front panel; controller 11 is also the swell (see expressionGain).
+    for (const auto metadata : keyboardMidi)
+    {
+        const auto message = metadata.getMessage();
+        if (! message.isController())
+            continue;
+        if (message.getControllerNumber() == 1)
+            modWheelPosition = (float) message.getControllerValue() / 127.0f;
+        else if (message.getControllerNumber() == 11)
+        {
+            expressionPosition = (float) message.getControllerValue() / 127.0f;
+            expressionTarget = expressionPosition.load();
+        }
+    }
 
     // THE DRUMS: while they're on, a note-on in the kit's 12 keys plays the kit, not the synth. Note-offs go to the
     // synth either way (the kit's hits are one-shots), so a note held as DRUMS was switched on still ends. With the
@@ -1232,9 +1250,17 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));
+    // The expression swell (0.49.0): controller 11 sets the volume (squared, so it swells evenly to the ear), unless
+    // the preset routes EXPRESSION itself or sends it to the mod wheel; then it's left at full.
+    {
+        const auto* compiled = matrixForAudio.load();
+        const auto routed = (compiled != nullptr && (compiled->usedSources & (1u << (int) synth::mod::Source::expression)) != 0)
+                         || isOn (ParamIDs::mwExpression);
+        expressionGain.setTargetValue (routed ? 1.0f : expressionTarget * expressionTarget);
+    }
     for (int i = 0; i < numSamples; ++i)
     {
-        const auto gain = outputGain.getNextValue();
+        const auto gain = outputGain.getNextValue() * expressionGain.getNextValue();
         for (int channel = 0; channel < juce::jmin (numChannels, 2); ++channel)
             buffer.getWritePointer (channel, start)[i] *= gain;
     }

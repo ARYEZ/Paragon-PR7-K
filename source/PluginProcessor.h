@@ -172,6 +172,14 @@ public:
     void modMatrixEditFinished() { requestCheckpoint(); }
     // The MOD page's on-screen mod wheel (0 to 1): sent to the synth as MIDI controller 1 in the next block.
     void setScreenModWheel (float value) noexcept { pendingModWheel = juce::jlimit (0.0f, 1.0f, value); }
+    // 0.49.0: the front panel's EXPR wheel (MIDI controller 11, expression), and where the wheels are now (from the
+    // keyboard's own wheel and pedal too), 0 to 1, for the panel to follow.
+    void setScreenExpression (float value) noexcept { pendingExpression = juce::jlimit (0.0f, 1.0f, value); }
+    float getModWheelPosition() const noexcept { return modWheelPosition.load(); }
+    float getExpressionPosition() const noexcept { return expressionPosition.load(); }
+    // EXPRESSION as a swell (0.49.0): with no route in the preset from EXPRESSION and EXPRESSION not sent to the mod
+    // wheel, controller 11 sets the whole sound's volume, as a keyboard's expression pedal does (full until one comes).
+    float getExpressionGainForTest() const noexcept { return expressionTarget; }
 
     // MIDI LEARN (stage 4f): controllers linked to knobs. A knob asks to learn;
     // the next controller moved is linked to it (from the timer).
@@ -495,6 +503,10 @@ private:
     std::atomic<double> hostBpm { 120.0 };
     double hostPpq = -1.0;   // the song position at this block's start (-1: stopped); audio thread
     std::atomic<float> pendingModWheel { -1.0f };   // -1: nothing new
+    std::atomic<float> pendingExpression { -1.0f };
+    std::atomic<float> modWheelPosition { 0.0f }, expressionPosition { 1.0f };
+    float expressionTarget = 1.0f;                   // audio thread: the swell's gain, from controller 11
+    juce::SmoothedValue<float> expressionGain { 1.0f };
     MidiLinks midiLinks;
     std::array<std::atomic<juce::RangedAudioParameter*>, 128> controllerTargets {};   // the audio thread's copy, by CC
     std::atomic<int> lastController { -1 }, controllerCount { 0 };

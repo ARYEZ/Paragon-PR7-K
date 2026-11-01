@@ -1,4 +1,5 @@
 // The window: its layout, the oscillator tabs, the pages and the on-screen keyboard.
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -545,3 +546,49 @@ TEST_CASE ("The front panel: SHOW RACK swaps it with the OSCILLATORS and FILTER 
     CHECK (face.isVisible());
 }
 
+
+TEST_CASE ("The front panel's EXPR wheel swells the volume like an expression pedal, unless the preset routes EXPRESSION", "[ui]")
+{
+    Window w;
+    w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    w.processor.prepareToPlay (48000.0, 256);
+    w.processor.seedRandomForTest (1);
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+
+    const auto levelWith = [&] (float expression)
+    {
+        w.view->getFace().getExpressionWheel().setValue (expression, true);   // as dragging it does
+        double sum = 0.0;
+        int count = 0;
+        for (int block = 0; block < 60; ++block)   // the swell glides over 30 ms; measure after it settles
+        {
+            w.processor.processBlock (buffer, midi);
+            if (block >= 30)
+            {
+                sum += buffer.getRMSLevel (0, 0, 256);
+                ++count;
+            }
+        }
+        return sum / count;
+    };
+
+    w.processor.getKeyboardState().noteOn (1, 60, 0.9f);
+    const auto full = levelWith (1.0f);
+    const auto half = levelWith (0.5f);
+    const auto none = levelWith (0.0f);
+    CHECK (full > 0.02);
+    CHECK (half == Catch::Approx (full * 0.25).margin (full * 0.03));   // squared: half the wheel is -12 dB
+    CHECK (none < full * 0.001);
+    CHECK (w.view->getFace().getExpressionWheel().getValue() == Catch::Approx (0.0f));
+
+    // A preset that routes EXPRESSION itself: the wheel drives that route, the volume stays.
+    auto matrix = w.processor.getModMatrix();
+    ModRouteData route;
+    route.source = "expression";
+    route.destination = ParamIDs::fltCutoff;
+    route.amount = 0.3f;
+    matrix.routes.push_back (route);
+    w.processor.setModMatrix (matrix);
+    CHECK (levelWith (0.0f) > full * 0.3);
+}

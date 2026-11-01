@@ -6,6 +6,31 @@
 
 class ParagonX1AudioProcessor;
 
+// A performance wheel on the front panel (0.49.0): a ridged black wheel in a slot, lit orange from below as it's
+// turned, its name under it. Drag up and down; double-click returns it to its rest (MOD 0, EXPR full).
+class FaceWheel final : public juce::Component,
+                        public juce::SettableTooltipClient
+{
+public:
+    FaceWheel (const juce::String& name, float rest);
+    float getValue() const noexcept { return value; }
+    void setValue (float, bool notify);
+    bool isBeingDragged() const noexcept { return dragging; }
+    std::function<void (float)> onChange;
+
+    void paint (juce::Graphics&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override { dragging = false; }
+    void mouseDoubleClick (const juce::MouseEvent&) override { setValue (rest, true); }
+
+private:
+    juce::String name;
+    float rest, value, dragStartValue = 0.0f;
+    bool dragging = false;
+    juce::Rectangle<float> slotArea() const;
+};
+
 // 0.49.0 (the owner's design): the SYNTH page's front panel, a PR7 unit's face in the space the OSCILLATORS and
 // FILTER panels take when the rack is shown. In the middle a big LCD (the floor unit's screen: chrome frame, black
 // bezel, orange light) with the preset's slot and bank, its name and, scrolling underneath, its notes. Under it the
@@ -42,11 +67,15 @@ public:
     // For tests: the screen's area and the knobs.
     juce::Rectangle<int> getScreenArea() const noexcept { return screenArea; }
     const ParamControl& getMacroKnob (int index) const { return *macros[(size_t) index]; }
+    FaceWheel& getModWheel() noexcept { return modWheel; }
+    FaceWheel& getExpressionWheel() noexcept { return exprWheel; }
 
 private:
     void timerCallback() override;   // scrolls the notes
     void paintScreen (juce::Graphics&) const;
 
+    ParagonX1AudioProcessor& processor;
+    FaceWheel modWheel { "MOD", 0.0f }, exprWheel { "EXPR", 1.0f };
     std::array<std::unique_ptr<ParamControl>, 3> macros;
     ParamControl cutoff, resonance, attack, release;
     juce::TextButton previous { juce::CharPointer_UTF8 ("\xe2\x96\xb2") }, next { juce::CharPointer_UTF8 ("\xe2\x96\xbc") };
