@@ -2,6 +2,17 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.50.0
+
+**The front panel now matches PR7-G** (your four tweaks, with PR7-G as the reference):
+
+- **PR7-G's pearl black.** The face was painted in a dark purple-grey of my own. It's now drawn by PR7-G's own code for the unit: the same pearl black rim and satin plate, its sheen and grain, and the red light around the edge.
+- **PR7-G's logo.** "PR7-K" was typed in an ordinary italic font. The badge is now PR7-G's: PARAGON stamped over the PR7-K mark in the slanted, speed-cut letters with the red 7.
+- **The wheels have the expression pedal's tread.** MOD and EXPR are now neon pink-to-orange rubber with fine ribs, as on PR7-G's pedal. They're shaded where the wheel curves away, and the ribs roll as you turn them.
+- **Gradient knobs.** PR7-K had no finish setting, so it fell back to pearl white with black knobs. It's now a pearl black unit, so the big knobs have PR7-G's neon gradient. The same finish lights the FX page's power switches, small keys and knobs neon, as on PR7-G's pearl black unit.
+
+The knobs and wheels also sit a little higher, so their values no longer touch the bottom rim.
+
 ## 0.49.0
 
 **A new face for the SYNTH page: the PR7 front panel** (your design). Where the OSCILLATORS and FILTER panels were, PR7-K now opens on a PR7 unit's front panel, a cleaner look for playing:
