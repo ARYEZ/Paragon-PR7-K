@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.52.0
+
+**A switch for the EXPR wheel's volume** (your ask). In SETTINGS, under TUNE, there's a new **EXPR WHEEL** section with a **CONTROLS VOLUME** switch.
+
+- **On** (as before, and the default): on presets that don't use EXPRESSION, the EXPR wheel (or your keyboard's expression pedal) is a volume pedal. Left at the bottom, those presets are silent.
+- **Off:** on those presets the wheel and pedal do nothing, so a pedal left at the heel (say after rocking a SLINGBLADE wah) can never silence the next preset.
+- Presets that use EXPRESSION, like the SLINGBLADE wahs, follow the wheel either way.
+- Like TUNE, it's your setting, not the sound's: it stays as you set it when you change presets, and it's saved with your project.
+
 ## 0.51.0
 
 **The WAH** (your ask): a wah on every insert bus (FX > INSERTS, buses A to D), first in line, before the DRIVE, so a drive works on the swept peak like a wah into a distortion pedal.
