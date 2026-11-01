@@ -2,6 +2,26 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.51.0
+
+**The WAH** (your ask): a wah on every insert bus (FX > INSERTS, buses A to D), first in line, before the DRIVE, so a drive works on the swept peak like a wah into a distortion pedal.
+
+- **Our own design**, starting from PR7-G's wah but in stereo, and fuller: the resonant peak plus some of the low end under it, so the heel sounds dark and throaty rather than thin.
+- **Three modes:** PEDAL (you rock it), AUTO (it opens with how hard you play, then falls back), LFO (it sweeps by itself, free or in time with your song).
+- **Three ranges:** CLASSIC (350 Hz to 2.2 kHz, the classic pedal), WIDE (220 Hz to 3.5 kHz) and LOW (90 to 900 Hz, for basses).
+- **Knobs:** RESONANCE, plus SENS, SPEED and DEPTH for AUTO, RATE or a note length for the LFO, MIX and LEVEL.
+- **Works with the EXPR wheel:** each bus's wah pedal can be moved by the MOD matrix. Route EXPRESSION to "FX Insert A > Wah Pedal" and the EXPR wheel, or your keyboard's expression pedal, rocks it. While EXPRESSION is routed there, it no longer changes the volume. Until you first move the wheel or pedal, it counts as all the way up, as the wheel is drawn.
+- **Its page** shows the filter's curve where the wah is now (orange), and at the heel and the toe (grey), moving as you play.
+- **Nothing changes in your projects:** the wah is off by default.
+
+**New expansion: SLINGBLADE** (SB01 to SB15), your theme and name: brutal heaviness, soaring epicness and gilded opulence, in three acts. Every category has one sound from each act: the mines below, the gilded court at war, the dawn of the rebellion. MACRO 3 is **RISE** on every preset, taking each sound from held down to defiant. Our own sounds; nothing from the books on the plugin.
+
+- **Leads:** Drillbit Scream (a hard-synced saw through the wah on EXPR into a RAT-style drive), Gilded Fanfare (regal brass with the fifth stacked), Dawnbreaker (a supersaw anthem scooping into each note, the wah on EXPR).
+- **Pads:** Under The Crust (a dark drone, an FM rumble and tunnel wind), Glass Palace (a shimmering wavetable pad), Rising Tide Choir (the VOICE choir swelling from a hum to "ah").
+- **Basses:** Pick And Hammer (the AUTO wah opening on every note, into an overdrive), Warship Hull (a huge drifting reese), Uprising (a pumping step-sequenced bass).
+- **Keys:** Lullaby Below (a fragile FM music box), Ballroom Harpsichord, Victory Bells (bells built from a bell's partials, with a major third for triumph).
+- **Arps:** Machine Shift (a heavy drum beat and clanging metal through the LFO wah), Siege Clock (a ticking pattern rolled from the minor scale), Fleet Assault (three arps locked together, the wah on EXPR).
+
 ## 0.50.0
 
 **The front panel now matches PR7-G** (your four tweaks, with PR7-G as the reference):
