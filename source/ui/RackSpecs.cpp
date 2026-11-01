@@ -1,6 +1,7 @@
 #include "RackSpecs.h"
 
 #include "dsp/effects/Wah.h"
+#include "dsp/effects/Echoes.h"
 
 #include "EqDisplay.h"
 #include "LedDisplay.h"
@@ -613,9 +614,9 @@ namespace
     }
 }
 
-std::array<RackUnit::Spec, 3> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
+std::array<RackUnit::Spec, 4> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
 {
-    std::array<RackUnit::Spec, 3> specs;
+    std::array<RackUnit::Spec, 4> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -628,6 +629,55 @@ std::array<RackUnit::Spec, 3> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
                              [&p] { return p.getLoFiSettings(); }, "OUT", [&p] { return p.getLoFiPeakDb(); }, [openPage] { openPage (2); });
     specs[2].powerTooltip = "LO-FI on or off: the whole sound, echoes and all, through a phone, a radio, a megaphone, a cassette or a bitcrusher. "
                             "Click POWER (the word) or EDIT for its page";
+
+    // ECHOES (0.53.0): DISTANCE in big digits (beats), the mode and its settings beside it; the ladder what's coming back.
+    {
+        using Mode = effects::Echoes::Mode;
+        auto& s = specs[3];
+        s.number = 4;
+        s.name = "ECHOES";
+        s.kind = "THE PAST UNDER THE PRESENT  4 MODES";
+        s.series = "PR7-K SERIES  INSERT 4";
+        s.onParameterIds = { ParamIDs::echoOn };
+        s.powerTooltip = "ECHOES on or off: what you played comes back from the past, in time with your song. Click POWER (the word) or EDIT for its page";
+        // The keys pick REVERSE, TAPE or LOOP; the lit one again goes back to ECHO.
+        const auto modeKey = [&p] (Mode mode, const char* tip)
+        {
+            return RackUnit::Key { effects::Echoes::modeNames[(int) mode].toUpperCase(), tip,
+                                   [&p, mode] { return juce::roundToInt (valueOf (p, ParamIDs::echoMode)) == (int) mode; },
+                                   [&p, mode]
+                                   {
+                                       const auto lit = juce::roundToInt (valueOf (p, ParamIDs::echoMode)) == (int) mode;
+                                       setValue (p, ParamIDs::echoMode, (float) (int) (lit ? Mode::echo : mode));
+                                   } };
+        };
+        s.keys[0] = modeKey (Mode::reverse, "REVERSE: each stretch comes back backwards while the next plays (again for ECHO)");
+        s.keys[1] = modeKey (Mode::tape, "TAPE: each stretch comes back at half speed, an octave down (again for ECHO)");
+        s.keys[2] = modeKey (Mode::loop, "LOOP: a stretch is caught and repeated while you play on (again for ECHO)");
+        s.knobs = { RackUnit::Knob { ParamIDs::echoMix, "MIX" }, RackUnit::Knob { ParamIDs::echoFeedback, "FEEDBACK" } };
+        s.ladderTitle = "PAST";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getEchoesPeakDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto settings = p.getEchoesSettings();
+            const auto beats = effects::Echoes::distanceBeats[(size_t) juce::jlimit (0, (int) std::size (effects::Echoes::distanceBeats) - 1, settings.distance)];
+            const auto h = left.getHeight() * 0.56f;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (beats)), left.getTopLeft(), h);
+            line (g, beats == 1.0f ? "BEAT" : "BEATS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "BACK AT " + juce::String (p.getHostBpm(), 0) + " BPM", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { textOf (p, ParamIDs::echoMode).toUpperCase(),
+                                  (settings.mode == Mode::loop ? "REPEATS " : "FEEDBACK ") + textOf (p, ParamIDs::echoFeedback),
+                                  "AGE " + textOf (p, ParamIDs::echoAge), "MIX " + textOf (p, ParamIDs::echoMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.footTitle = "MODE";
+        s.footText = [&p] { return textOf (p, ParamIDs::echoMode); };
+        s.onEdit = [openPage] { openPage (3); };
+    }
     return specs;
 }
 

@@ -10,6 +10,7 @@
 #include "dsp/effects/Glitch.h"
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Wah.h"
+#include "dsp/effects/Echoes.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -470,4 +471,18 @@ void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
         layout.add (makeFloat (id ("WahMix"), name + "Wah Mix", { 0.0f, 1.0f, 0.01f }, 1.0f, w, asPercent));
         layout.add (makeFloat (id ("WahLevel"), name + "Wah Level", { -12.0f, 12.0f, 0.1f }, 0.0f, w, asDb));
     }
+}
+
+void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // ECHOES (0.53.0, effects::Echoes, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 27;
+    const ToText asKnob = [] (float value, int) { return juce::String (value, 2); };
+    const ToText asFeedback = [] (float value, int) { return juce::String (juce::roundToInt (value * 100.0f)) + "%"; };
+    layout.add (makeSwitch (ParamIDs::echoOn, "Echoes On", v, false));
+    layout.add (makeChoice (ParamIDs::echoMode, "Echoes Mode", v, effects::Echoes::modeNames, (int) effects::Echoes::Mode::echo));
+    layout.add (makeChoice (ParamIDs::echoDistance, "Echoes Distance", v, effects::Echoes::distanceNames, 2));
+    layout.add (makeFloat (ParamIDs::echoMix, "Echoes Mix", { 0.0f, 1.0f, 0.01f }, 0.5f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::echoFeedback, "Echoes Feedback", { 0.0f, 1.0f, 0.01f }, 0.3f, v, asFeedback));
+    layout.add (makeFloat (ParamIDs::echoAge, "Echoes Age", { 0.0f, 1.0f, 0.01f }, 0.3f, v, asKnob));
 }

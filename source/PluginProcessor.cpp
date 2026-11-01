@@ -280,6 +280,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->reverb.prepare (sampleRate, preparedBlockSize);
     for (auto& block : rack->modulation)
         block.prepare (sampleRate, preparedBlockSize);
+    rack->echoes.prepare (sampleRate, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
         for (int c = 0; c < 2; ++c)
@@ -519,6 +520,18 @@ effects::Modulation::Settings ParagonX1AudioProcessor::modSettingsFor (const Par
 }
 
 effects::LoFi::Settings ParagonX1AudioProcessor::getLoFiSettings() const noexcept { return loFiSettingsFor (-1); }
+
+effects::Echoes::Settings ParagonX1AudioProcessor::getEchoesSettings() const noexcept
+{
+    effects::Echoes::Settings s;
+    s.on = isOn (ParamIDs::echoOn);
+    s.mode = (effects::Echoes::Mode) juce::jlimit (0, effects::Echoes::modeNames.size() - 1, juce::roundToInt (param (ParamIDs::echoMode)));
+    s.distance = juce::roundToInt (param (ParamIDs::echoDistance));
+    s.mix = effectParam (ModDestinations::effect ("echoMix"), ParamIDs::echoMix);
+    s.feedback = effectParam (ModDestinations::effect ("echoFeedback"), ParamIDs::echoFeedback);
+    s.age = effectParam (ModDestinations::effect ("echoAge"), ParamIDs::echoAge);
+    return s;
+}
 
 effects::LoFi::Settings ParagonX1AudioProcessor::getInsertLoFiSettings (int bus) const noexcept { return loFiSettingsFor (bus); }
 
@@ -1282,6 +1295,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         processInsertBuses (block, true, piecePpq);
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
+        rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));

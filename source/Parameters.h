@@ -396,6 +396,14 @@ namespace ParamIDs
     inline constexpr auto lofiMix    = "lofiMix";      // 0 to 1
     inline constexpr auto lofiLevel  = "lofiLevel";    // dB
 
+    // ECHOES (0.53.0, version hint 27): the past played back under the present (effects::Echoes), after LO-FI.
+    inline constexpr auto echoOn       = "echoOn";
+    inline constexpr auto echoMode     = "echoMode";       // choice: effects::Echoes::modeNames
+    inline constexpr auto echoDistance = "echoDistance";   // choice: effects::Echoes::distanceNames
+    inline constexpr auto echoMix      = "echoMix";        // 0 to 1
+    inline constexpr auto echoFeedback = "echoFeedback";   // 0 to 1 (LOOP: repeats)
+    inline constexpr auto echoAge      = "echoAge";        // 0 to 1
+
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
     inline constexpr int numInsertBuses = 4;
@@ -469,4 +477,5 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 void addRackParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp
 void addSendParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (stage 7b)
 void addModFxParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (stage 7c)
-void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (stage 7d)
+void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
+void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

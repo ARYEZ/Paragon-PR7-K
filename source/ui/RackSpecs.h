@@ -20,7 +20,7 @@ std::array<RackUnit::Spec, 4> makeRackSpecs (ParagonX1AudioProcessor&, RackActio
 std::array<RackUnit::Spec, 2> makeSendSpecs (ParagonX1AudioProcessor&, std::function<void (int send)> openPage);
 
 // MOD, MOD 2 and LO-FI's rack units (stage 7c). `openPage` 0 opens MOD's page, 1 MOD 2's, 2 LO-FI's.
-std::array<RackUnit::Spec, 3> makeModFxSpecs (ParagonX1AudioProcessor&, std::function<void (int unit)> openPage);
+std::array<RackUnit::Spec, 4> makeModFxSpecs (ParagonX1AudioProcessor&, std::function<void (int unit)> openPage);
 
 // An insert bus's (0 to 3: A to D) four rack units (stage 7d): DRIVE, GLITCH, MOD, LO-FI. `openPage` 0 to 3 opens each one's page.
 std::array<RackUnit::Spec, 5> makeInsertSpecs (ParagonX1AudioProcessor&, int bus, std::function<void (int unit)> openPage);

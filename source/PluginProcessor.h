@@ -329,6 +329,15 @@ public:
     // MOD (0) or MOD 2's (1) settings as they are now (SYNC worked out at the song's tempo), and LO-FI's (stage 7c).
     effects::Modulation::Settings getModSettings (int which) const noexcept;
     effects::LoFi::Settings getLoFiSettings() const noexcept;
+    // ECHOES (0.53.0): its settings as they are now (MIX as the matrix moves it), the picture of the past for its page,
+    // and the loudest of what came back in the last block (dB, -100 while off).
+    effects::Echoes::Settings getEchoesSettings() const noexcept;
+    effects::Echoes::Picture getEchoesPicture (int columns) const { return rack->echoes.picture (columns, juce::jmax (20.0, hostBpm.load()), getEchoesSettings()); }
+    float getEchoesPeakDb() const noexcept
+    {
+        const auto peak = rack->echoes.getPastPeak();
+        return peak > 1.0e-5f ? juce::Decibels::gainToDecibels (peak) : -100.0f;
+    }
     // An insert bus's (0 to 3: A to D) effects' settings as they are now (stage 7d), its sends, and its output's peak.
     effects::Drive::Settings getInsertDriveSettings (int bus) const noexcept;
     effects::Glitch::Settings getInsertGlitchSettings (int bus) const noexcept;
