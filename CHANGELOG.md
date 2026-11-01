@@ -2,6 +2,17 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.55.0
+
+**Four presets get their movement back.** After the drums moved to PR7-D, these four sat in their banks' arp slots but only held a chord. Each now plays a real arp of its own:
+
+- **Battle Cry** (CHROMEFURY): hammers the chord you hold in sixteenths over two octaves, up and down, on driven saws. Accents land on the beat, and quick bursts of 2 to 3 repeated hits come before each bar turns.
+- **Festival Bronze** (PSI STORM): a fast gamelan figure in sixteenths that leaps up an octave and back. Two strikes a bar are left out so it breathes, and each bronze strike rings over the next.
+- **Ritual Choir** (CYBERSHRINE): sings the chord one voice at a time, a note a beat, climbing and falling over two octaves. Each note swells from "oo" to "ah" and keeps ringing, so the choir builds as it climbs.
+- **Sacred Chant** (ASCENSION): a monks' chant in eighths, walking up the notes you hold with a repeating fifth-and-octave figure. Every syllable opens from a hum into "ah". Hold one note for a plain chant.
+
+Levels are measured, not set by ear.
+
 ## 0.54.0
 
 **PR7-K is now purely a synth.** The drums have moved out: PR7-D is the family's drum plugin.
