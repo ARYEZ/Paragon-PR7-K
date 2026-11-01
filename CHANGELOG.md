@@ -2,6 +2,21 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.48.0
+
+**SEVERED**, the twenty-first expansion: a bank of its own under EXPANSIONS (SV01 to SV15), named by you. Inspired by the score of a 2022 series about office workers whose work memories are split from their home lives: a cheerful, sterile corporate surface (muzak, chimes, retro screens, humming lights, long white corridors) over quiet dread and a melancholy piano. Our own sounds; no title, company, departments, characters, terms or music from the series.
+
+- **MACRO 3 is DREAD on every preset**: the cheerful surface turns uneasy (a tritone or half-step clash creeps in, the sound grits up, the tape wobbles). MACRO 1 brightens, MACRO 2 is SPACE as in every expansion.
+- **Each preset is built round a different part of the synth**, so no two are made alike:
+  - **Leads:** Cheerful Memo (a hand-drawn wave evened out by EDGE's SYMMETRY), Number Sorter (a stepped retro-screen lead: CRUSH in RATE mode), Hallway Whistle (FORMANT's X-FADE through a band-pass on the note, long echoes).
+  - **Pads:** Fluorescent Hum (harmonics flickering: the FFT editor's VSPEED / VSTRENGTH, with ECHELON's dynamic band), Wellness Room (soothing, but leaning out of shape: SKEW and PINCH moved by slow LFOs), Elevator Descent (the Organ Stack table through a rotary speaker, sinking slowly).
+  - **Basses:** Quarterly Bass (the step sequencer with tied steps), Severed Sub (a clean sub, and a saw above it chopped by GLITCH's KILLSWITCH), Break Room Bass (a bark at every note from SYNC's own envelope).
+  - **Keys:** Lobby Piano (the felt piano as muzak through LO-FI's AM RADIO), Incentive Marimba (a bright FM marimba), Memo Chimes (chimes whose colour changes as they ring: TRAVEL's strength curves).
+  - **Arps:** Data Refinement (two arps together: CHORDS-mode stabs and picked notes between them), Sorting Pulse (ratchets and slides), Cold Corridor (reversed drum hits swelling into each beat, kit on C2 to B2, under a cold pulse).
+- **Levels** were balanced by measurement, not by ear: listen and adjust to taste.
+
+**The expansions now scroll.** The EXPANSIONS list in the preset browser is a scrolling list (your choice), so there's room for any number of banks. The buttons are back to full-size rows (with 21 banks they had shrunk to 16 px), a thin scroll bar appears when they don't all fit, and the list keeps the bank you chose in view.
+
 ## 0.47.0
 
 **SUPERPOSITION**, the twentieth expansion: a bank of its own under EXPANSIONS (SP01 to SP15), named by you. Inspired by the score of a 2024 science-fiction series about a physicist thrown into other versions of his own life, searching for the way home: cold, cerebral and quietly dreadful, the same sound in many versions (copies drifting apart, notes never the same twice, patterns that never repeat), and under it the warm thread of home. Our own sounds; no title, characters, places, terms or music from the series.

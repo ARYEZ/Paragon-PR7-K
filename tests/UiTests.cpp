@@ -31,12 +31,16 @@ namespace
             // A list's rows are placed by JUCE beyond its visible part, for scrolling.
             if (dynamic_cast<juce::ListBox*> (&parent) != nullptr)
                 continue;
+            // A scrolling view's contents are taller (or wider) than its window, and move within it: their size isn't
+            // checked against it (0.48.0: the browser's expansion list). What's inside them still is.
+            const auto scrolled = dynamic_cast<juce::Viewport*> (parent.getParentComponent()) != nullptr;
 
             const auto name = path + "/" + (child->getName().isNotEmpty() ? child->getName()
                                                                           : juce::String (typeid (*child).name()));
             INFO (name << " at " << child->getBounds().toString() << " in " << parent.getLocalBounds().toString());
             CHECK_FALSE (child->getBounds().isEmpty());
-            CHECK (parent.getLocalBounds().expanded (1).contains (child->getBounds()));
+            if (! scrolled)
+                CHECK (parent.getLocalBounds().expanded (1).contains (child->getBounds()));
             checkLayout (*child, name);
         }
     }
