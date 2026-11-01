@@ -4,6 +4,7 @@
 #include "ui/CompPage.h"
 #include "ui/DominionPage.h"
 #include "ui/EchoesPage.h"
+#include "ui/CracklePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -29,7 +30,8 @@ public:
                       sends, delay, reverb,                // stage 7b
                       modFx, mod, mod2, loFi,              // stage 7c
                       inserts, insertDrive, insertGlitch, insertMod, insertLoFi, insertWah,   // stage 7d (the strip's bus)
-                      echoes };                                             // 0.53.0 (on the MOD / LO-FI tab)
+                      echoes,                                               // 0.53.0 (on the MOD / LO-FI tab)
+                      crackle };                                            // 0.56.0 (on the MOD / LO-FI tab)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -38,8 +40,9 @@ public:
     SendPage& getDelayPage() noexcept { return delayPage; }
     SendPage& getReverbPage() noexcept { return reverbPage; }
     SendMatrix& getSendMatrix() noexcept { return matrix; }
-    RackUnit& getModFxUnit (int index) noexcept { return *modFxUnits[(size_t) index]; }   // MOD, MOD 2, LO-FI, ECHOES
+    RackUnit& getModFxUnit (int index) noexcept { return *modFxUnits[(size_t) index]; }   // MOD, MOD 2, LO-FI, ECHOES, CRACKLE
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
+    CracklePage& getCracklePage() noexcept { return cracklePage; }
     ModFxPage& getModFxPage (int index) noexcept { return *modFxPages[(size_t) index]; }
     juce::TextButton& getModFxTab() noexcept { return modFxTab; }
     juce::TextButton& getInsertsTab() noexcept { return insertsTab; }
@@ -61,7 +64,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 4> modFxUnits;   // MOD, MOD 2, LO-FI, ECHOES
+    std::array<std::unique_ptr<RackUnit>, 5> modFxUnits;   // MOD, MOD 2, LO-FI, ECHOES, CRACKLE
     std::array<std::unique_ptr<ModFxPage>, 3> modFxPages;
     juce::TextButton insertsTab { "INSERTS" }, sendsTab { "SENDS" }, modFxTab { "MOD / LO-FI" }, masterTab { "MASTER" };
     InsertBusStrip insertStrip;
@@ -71,6 +74,7 @@ private:
     SendMatrix matrix;
     SendPage delayPage, reverbPage;
     EchoesPage echoesPage;
+    CracklePage cracklePage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

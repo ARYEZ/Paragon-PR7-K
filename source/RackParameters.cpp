@@ -11,6 +11,7 @@
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
+#include "dsp/effects/Crackle.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -485,4 +486,21 @@ void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
     layout.add (makeFloat (ParamIDs::echoMix, "Echoes Mix", { 0.0f, 1.0f, 0.01f }, 0.5f, v, asPercent));
     layout.add (makeFloat (ParamIDs::echoFeedback, "Echoes Feedback", { 0.0f, 1.0f, 0.01f }, 0.3f, v, asFeedback));
     layout.add (makeFloat (ParamIDs::echoAge, "Echoes Age", { 0.0f, 1.0f, 0.01f }, 0.3f, v, asKnob));
+}
+
+void addCrackleParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // CRACKLE (0.56.0, effects::Crackle, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 28;
+    const effects::Crackle::Settings d;
+    const ToText asRate = [] (float value, int) { return juce::String (value, value < 10.0f ? 1 : 0) + " /s"; };
+    const ToText asKnob = [] (float value, int) { return juce::String (value, 2); };
+    layout.add (makeSwitch (ParamIDs::crackleOn, "Crackle On", v, false));
+    layout.add (makeFloat (ParamIDs::crackleRate, "Crackle Rate", logRange (0.5, 2000.0), d.rate, v, asRate));
+    layout.add (makeFloat (ParamIDs::crackleCluster, "Crackle Cluster", { 0.0f, 1.0f, 0.01f }, d.cluster, v, asKnob));
+    layout.add (makeFloat (ParamIDs::crackleTone, "Crackle Tone", logRange (300.0, 12000.0), d.toneHz, v, asFrequency));
+    layout.add (makeFloat (ParamIDs::crackleWidth, "Crackle Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::crackleFollow, "Crackle Follow", { 0.0f, 1.0f, 0.01f }, d.follow, v, asPercent));
+    layout.add (makeFloat (ParamIDs::crackleLevel, "Crackle Level", { -48.0f, 6.0f, 0.1f }, d.levelDb, v,
+                           [] (float db, int) { return juce::String (db, 1) + " dB"; }));
 }

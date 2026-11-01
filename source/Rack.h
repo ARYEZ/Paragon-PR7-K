@@ -10,6 +10,7 @@
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
+#include "dsp/effects/Crackle.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -65,7 +66,9 @@ struct Rack
     effects::LoFi loFi;
     std::atomic<float> loFiPeak { 0.0f };
     // ECHOES (0.53.0): after LO-FI, so the past it plays back is the whole sound, echoes and reverb and all.
-    effects::Echoes echoes;   // LO-FI's output peak in the last block, while it's on (its unit's meter)
+    effects::Echoes echoes;
+    // CRACKLE (0.56.0): after ECHOES, so the clicks aren't echoed; FOLLOW listens to the whole sound.
+    effects::Crackle crackle;   // LO-FI's output peak in the last block, while it's on (its unit's meter)
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

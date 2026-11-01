@@ -42,6 +42,8 @@ add_executable(ParagonX1Tests
     WahTests.cpp
     WahPluginTests.cpp
     EchoesTests.cpp
+    CrackleTests.cpp
+    CracklePluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

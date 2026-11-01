@@ -68,6 +68,7 @@ target_sources(ParagonX1
         source/dsp/effects/LoFi.cpp
         source/dsp/effects/Wah.cpp
         source/dsp/effects/Echoes.cpp
+        source/dsp/effects/Crackle.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -99,6 +100,7 @@ target_sources(ParagonX1
         source/ui/SynthPanels.cpp
         source/ui/PedalBody.cpp
         source/ui/EchoesPage.cpp
+        source/ui/CracklePage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
