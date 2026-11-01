@@ -237,6 +237,9 @@ namespace ParamIDs
     // CONTROLLER TO MOD WHEEL (stage 4f, 0.14.0): these controllers drive the mod wheel too (the "mw" switches).
     inline constexpr auto mwBreath     = "mwBreath";
     inline constexpr auto mwExpression = "mwExpression";
+    // 0.52.0 (the owner's ask): whether controller 11 (the EXPR wheel, an expression pedal) swells the volume of a
+    // preset that doesn't route EXPRESSION (0.49.0). Off: it does nothing there. Global, not in presets.
+    inline constexpr auto exprVolume = "exprVolume";
     inline constexpr auto mwAftertouch = "mwAftertouch";
     inline constexpr auto mwSustain    = "mwSustain";
 
@@ -435,7 +438,7 @@ namespace ParamIDs
 
     // Global settings: kept when switching presets. Everything else is part of a preset.
     // The LIMITER's UNITY and DELTA are for listening while you set it, not part of a sound.
-    inline const juce::StringArray notInRigs { outputGain, bypass, tune, mwBreath, mwExpression, mwAftertouch, mwSustain, limitUnity, limitDelta };
+    inline const juce::StringArray notInRigs { outputGain, bypass, tune, mwBreath, mwExpression, mwAftertouch, mwSustain, limitUnity, limitDelta, exprVolume };
 }
 
 namespace ParamRanges

@@ -33,7 +33,8 @@ namespace
     constexpr int stage6aStart = 21;   // 0.21.1: SAMPLE's START and END
     constexpr int stage6b = 22;  // 0.22.0
     constexpr int stage6c = 23;  // 0.23.0
-    constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter
+    constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
+    constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
     const ToText asPercent = [] (float value, int) { return juce::String (juce::roundToInt (value * 100.0f)) + "%"; };
@@ -565,6 +566,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);
+    addSwitch (layout, exprVolume, "Expression Controls Volume", true, stageExprSwitch);
     addSwitch (layout, mwAftertouch, "Aftertouch To Mod Wheel", false, stage4f);
     addSwitch (layout, mwSustain, "Sustain To Mod Wheel", false, stage4f);
 

@@ -592,3 +592,50 @@ TEST_CASE ("The front panel's EXPR wheel swells the volume like an expression pe
     w.processor.setModMatrix (matrix);
     CHECK (levelWith (0.0f) > full * 0.3);
 }
+
+TEST_CASE ("SETTINGS' EXPR WHEEL CONTROLS VOLUME off: the wheel at the bottom doesn't silence a preset, and stays off across presets", "[ui]")
+{
+    Window w;
+    w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    w.processor.prepareToPlay (48000.0, 256);
+    w.processor.seedRandomForTest (1);
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    const auto levelWith = [&] (float expression)
+    {
+        w.view->getFace().getExpressionWheel().setValue (expression, true);
+        double sum = 0.0;
+        for (int block = 0; block < 60; ++block)
+        {
+            w.processor.processBlock (buffer, midi);
+            if (block >= 30)
+                sum += buffer.getRMSLevel (0, 0, 256);
+        }
+        return sum / 30.0;
+    };
+    auto* parameter = w.processor.getParameters().getParameter (ParamIDs::exprVolume);
+    REQUIRE (parameter != nullptr);
+    CHECK (parameter->getValue() > 0.5f);   // on by default: as 0.49.0 to 0.51.0
+    CHECK (ParamIDs::notInRigs.contains (ParamIDs::exprVolume));
+
+    w.processor.getKeyboardState().noteOn (1, 60, 0.9f);
+    const auto full = levelWith (1.0f);
+    CHECK (levelWith (0.0f) < full * 0.001);   // on: the bottom is silence
+
+    // Switched off on the page: the wheel at the bottom leaves the volume full.
+    w.view->showPage (MainView::Page::settings);
+    auto& toggle = w.view->getSettingsPage().getExprVolumeSwitch();
+    CHECK (toggle.isVisible());
+    CHECK (w.view->getSettingsPage().isVisible());
+    CHECK (! toggle.getBounds().isEmpty());
+    CHECK (w.view->getSettingsPage().getLocalBounds().contains (toggle.getBounds()));
+    parameter->setValueNotifyingHost (0.0f);
+    CHECK (levelWith (0.0f) == Catch::Approx (full).margin (full * 0.02));
+
+    // Loading a preset leaves it as it is (it's the player's setting, not the sound's).
+    w.processor.getKeyboardState().allNotesOff (1);
+    const auto entries = w.processor.getRigLibrary().getEntries();
+    REQUIRE (! entries.empty());
+    w.processor.loadRig (entries.front());
+    CHECK (parameter->getValue() < 0.5f);
+}

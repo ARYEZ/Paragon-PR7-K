@@ -1286,11 +1286,12 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));
     // The expression swell (0.49.0): controller 11 sets the volume (squared, so it swells evenly to the ear), unless
-    // the preset routes EXPRESSION itself or sends it to the mod wheel; then it's left at full.
+    // the preset routes EXPRESSION itself or sends it to the mod wheel, or (0.52.0) SETTINGS' EXPR WHEEL CONTROLS
+    // VOLUME is off; then it's left at full.
     {
         const auto* compiled = matrixForAudio.load();
         const auto routed = (compiled != nullptr && (compiled->usedSources & (1u << (int) synth::mod::Source::expression)) != 0)
-                         || isOn (ParamIDs::mwExpression);
+                         || isOn (ParamIDs::mwExpression) || ! isOn (ParamIDs::exprVolume);   // 0.52.0: or switched off in SETTINGS
         expressionGain.setTargetValue (routed ? 1.0f : expressionTarget * expressionTarget);
     }
     for (int i = 0; i < numSamples; ++i)

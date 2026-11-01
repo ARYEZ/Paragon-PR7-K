@@ -34,8 +34,14 @@ namespace
 //==============================================================================
 SettingsPage::SettingsPage (ParagonX1AudioProcessor& p)
     : processor (p),
-      tuneAttachment (p.getParameters(), ParamIDs::tune, tune)
+      tuneAttachment (p.getParameters(), ParamIDs::tune, tune),
+      exprVolume (p.getParameters(), ParamIDs::exprVolume, "CONTROLS VOLUME",
+                  "On: on a preset that doesn't use EXPRESSION itself, the EXPR wheel (or your keyboard's expression pedal) "
+                  "is a volume pedal, and at the bottom the synth is silent. Off: there it does nothing, so a pedal left down "
+                  "never silences a preset. Presets that route EXPRESSION (the wah on SLINGBLADE's leads...) use it either way. "
+                  "Not saved with presets.")
 {
+    addAndMakeVisible (exprVolume);
     tune.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     tune.setColour (juce::Slider::textBoxTextColourId, ParagonColours::accent);
     tune.setColour (juce::Slider::trackColourId, ParagonColours::accent);
@@ -158,6 +164,19 @@ void SettingsPage::paint (juce::Graphics& g)
 
     section (tuneArea, "TUNE", "Tunes the whole synth, in cents: 0 is concert pitch (A = 440 Hz). "
                                "It stays as it is when you change presets.");
+    // 0.52.0: EXPR WHEEL, a heading and its text inside TUNE's panel.
+    {
+        auto inner = exprArea;
+        g.setColour (ParagonColours::text);
+        g.setFont (juce::FontOptions (16.0f, juce::Font::bold));
+        g.drawText ("EXPR WHEEL", inner.removeFromTop (24), juce::Justification::centredLeft, false);
+        g.setColour (ParagonColours::textDim);
+        g.setFont (juce::FontOptions (13.0f));
+        g.drawFittedText ("On presets that don't use EXPRESSION, the EXPR wheel (or your expression pedal) is the volume: "
+                          "left at the bottom, they're silent. Switch it off and there it does nothing. Presets that use "
+                          "EXPRESSION (a wah, say) follow it either way. It stays as it is when you change presets.",
+                          inner.removeFromTop (54), juce::Justification::topLeft, 3, 1.0f);
+    }
     section (rigsArea, "PRESETS", "Your presets are files in this folder, so you can back them up or share them:\n"
                                   + processor.getRigLibrary().getFolder().getFullPathName());
     section (midiArea, "MIDI LINKS", shownLinks.isEmpty()
@@ -198,5 +217,8 @@ void SettingsPage::resized()
 
     auto tuneControls = tuneArea.reduced (24, 18).withTrimmedTop (90);
     tune.setBounds (tuneControls.removeFromTop (32).withWidth (juce::jmin (420, tuneControls.getWidth())));
+    // 0.52.0: EXPR WHEEL, under TUNE in the same panel.
+    exprArea = tuneArea.reduced (24, 18).withTrimmedTop (150);
+    exprVolume.setBounds (exprArea.withTrimmedTop (78).removeFromTop (ParamControl::knobHeight).withWidth (130));
     openFolder.setBounds (rigsArea.reduced (24, 18).withTrimmedTop (100).removeFromTop (32).withWidth (220));
 }

@@ -4,6 +4,7 @@
 
 #include "PluginProcessor.h"
 #include "ui/Icons.h"
+#include "ui/SynthControls.h"
 
 // The panels' shared style, and the SETTINGS page.
 
@@ -54,7 +55,12 @@ private:
     juce::Slider tune { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::AudioProcessorValueTreeState::SliderAttachment tuneAttachment;
     juce::TextButton openFolder { "OPEN PRESETS FOLDER" };
-    juce::Rectangle<int> tuneArea, rigsArea, aboutArea;
+    ParamControl exprVolume;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
+    juce::Rectangle<int> tuneArea, rigsArea, aboutArea, exprArea;
+
+public:
+    ParamControl& getExprVolumeSwitch() noexcept { return exprVolume; }   // for tests
+private:
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override { repaint(); }
 };
