@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.49.0
+
+**A new face for the SYNTH page: the PR7 front panel** (your design). Where the OSCILLATORS and FILTER panels were, PR7-K now opens on a PR7 unit's front panel, a cleaner look for playing:
+
+- **The LCD screen** in the middle (the floor unit's screen: chrome frame, black bezel, orange glow): the preset's slot and bank (SV01 · SEVERED), its name in big letters, and its notes scrolling along the bottom; EDITED lights when you've changed the sound. Click it to open the preset browser; the ▲ ▼ keys beside it step through the presets.
+- **The three macros** as big red pedal knobs under the screen, named after the preset's own macros (BRIGHT / SPACE / DREAD...).
+- **Four hero knobs:** CUTOFF and RESONANCE (FILTER) on the left, ATTACK and RELEASE (AMP) on the right. Like every knob, they take MIDI learn and dropped modulation, and show their modulation rings.
+- **Two wheels** at the far left: **MOD**, the mod wheel (MIDI controller 1, as your keyboard's), and **EXPR**, an expression pedal (controller 11). Drag them; double-click returns them to rest. They follow your keyboard's own wheel and pedal.
+- **SHOW RACK / HIDE RACK** (under OUTPUT) swaps the front panel for the full OSCILLATORS and FILTER panels in the same space, and back. PR7-K remembers which you left it on. The envelopes, AMP, PLAY and the keyboard stay as they are.
+
+**Expression now swells the volume.** Controller 11 (the EXPR wheel, or an expression pedal on your keyboard) sets the whole sound's volume, as on most synths, unless the preset routes EXPRESSION in its mod matrix (then it drives those routes) or EXPRESSION is sent to the mod wheel (SETTINGS). Full until any comes. Note: a DAW track or MIDI file that sends expression at 0 will now quiet the synth until it comes back up.
+
 ## 0.48.0
 
 **SEVERED**, the twenty-first expansion: a bank of its own under EXPANSIONS (SV01 to SV15), named by you. Inspired by the score of a 2022 series about office workers whose work memories are split from their home lives: a cheerful, sterile corporate surface (muzak, chimes, retro screens, humming lights, long white corridors) over quiet dread and a melancholy piano. Our own sounds; no title, company, departments, characters, terms or music from the series.
