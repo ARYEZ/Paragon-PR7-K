@@ -2,6 +2,23 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.57.0
+
+**DOWNPOUR, and NEON RAIN gets its centrepiece.** The first of the early expansion banks to get one sound idea running through every preset, as the newer banks have.
+
+**DOWNPOUR** (a new effect, our own design: the sixth unit on the FX page's MOD / LO-FI tab): rain on the glass, added to your sound.
+- **Patter:** a bed of tiny droplets, like rain on a window. RAIN sets how hard it falls, from nothing at all to a downpour.
+- **Drops that play your notes:** now and then a big drop rings out on one of the notes you're holding (OCTAVE: one, two or three octaves up). Each starts a little flat and slides up onto its note, as a real water drop does. Hold a chord and the rain picks out its notes, never in rhythm.
+- **DISTANCE** moves the rain from right on the glass (sharp, bright) to out in the street (dull, soft). **SPACE** sends some of it into the preset's own reverb. **WIDTH** spreads it, **LEVEL** sets how loud.
+- **FOLLOW:** the rain falls only while you play, and stops about a second after you let go, so sounds still end in silence.
+- Its page is a window: each drop a ripple where it lands, named by the note it rang on.
+- RAIN, DROPS, DISTANCE and LEVEL can be moved by the mod matrix (FX Downpour).
+
+**NEON RAIN: MACRO 3 is now STORM on all 15 presets.**
+- At 0, every preset sounds exactly as before: no rain at all.
+- Turning it up brings the rain, from a few drops to a downpour, coming closer as it builds, with its drops ringing on your notes.
+- Each preset's old MACRO 3 job (GROWL, SCOOP, VOWEL, FAT and so on) still comes with it, and the preset notes say so.
+
 ## 0.56.0
 
 **MELTDOWN**, a new expansion (MD01-MD15), and **CRACKLE**, the effect it's built round.
