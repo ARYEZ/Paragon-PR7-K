@@ -274,6 +274,8 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->echoes.prepare (sampleRate, preparedBlockSize);
     rack->crackle.prepare (sampleRate, preparedBlockSize);
     rack->downpour.prepare (sampleRate, preparedBlockSize);
+    rack->infernal.prepare (sampleRate, preparedBlockSize);
+    rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
         for (int c = 0; c < 2; ++c)
@@ -1172,6 +1174,23 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::Infernal::Settings ParagonX1AudioProcessor::getInfernalSettings() const noexcept
+{
+    effects::Infernal::Settings s;
+    s.on = isOn (ParamIDs::infernalOn);
+    s.drive = effectParam (ModDestinations::effect ("infernalDrive"), ParamIDs::infernalDrive);
+    s.tight = param (ParamIDs::infernalTight);
+    s.fuzz = param (ParamIDs::infernalFuzz);
+    s.crush = param (ParamIDs::infernalCrush);
+    s.amp = param (ParamIDs::infernalAmp);
+    s.noise = effectParam (ModDestinations::effect ("infernalNoise"), ParamIDs::infernalNoise);
+    s.feedback = effectParam (ModDestinations::effect ("infernalFeedback"), ParamIDs::infernalFeedback);
+    s.cab = param (ParamIDs::infernalCab);
+    s.mix = effectParam (ModDestinations::effect ("infernalMix"), ParamIDs::infernalMix);
+    s.levelDb = param (ParamIDs::infernalLevel);
+    return s;
+}
+
 void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples)
 {
     const auto numChannels = buffer.getNumChannels();
@@ -1279,6 +1298,40 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         // The song position at this piece's start (for the WAH's synced LFO): -1 while it's stopped.
         const auto piecePpq = hostPpq >= 0.0 ? hostPpq + (double) start / getSampleRate() * juce::jmax (1.0, hostBpm.load()) / 60.0 : -1.0;
         processInsertBuses (block, true, piecePpq);
+        // INFERNAL (0.59.0): the synth destroyed, before the sends; each send gets what INFERNAL changed in the share
+        // the dry sound was sent, so the echoes and the room are of the destroyed sound too.
+        if (const auto hell = getInfernalSettings(); (hell.on && hell.mix > 0.0f) || ! rack->infernal.isResting())
+        {
+            std::array<float, 64> sounding {};
+            rack->infernal.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            const auto n = juce::jmin (numSamples, rack->infernalBefore.getNumSamples());
+            const auto sides = juce::jmin (2, (int) block.getNumChannels());   // (a mono host: one)
+            for (int c = 0; c < sides; ++c)
+                juce::FloatVectorOperations::copy (rack->infernalBefore.getWritePointer (c), block.getChannelPointer ((size_t) c), n);
+            rack->infernal.process (block, hell);
+            double before = 0.0;
+            for (int c = 0; c < sides; ++c)
+                for (int i = 0; i < n; ++i)
+                    before += (double) rack->infernalBefore.getSample (c, i) * rack->infernalBefore.getSample (c, i);
+            if (before > 1.0e-12)
+                for (auto& send : rack->sends)
+                {
+                    double sent = 0.0;
+                    for (int c = 0; c < 2; ++c)
+                        for (int i = 0; i < n; ++i)
+                            sent += (double) send.getSample (c, i) * send.getSample (c, i);
+                    const auto share = (float) juce::jlimit (0.0, 2.0, std::sqrt (sent / before));
+                    if (share > 0.0f)
+                        for (int c = 0; c < 2; ++c)
+                        {
+                            auto* out = send.getWritePointer (c);
+                            const auto* now = block.getChannelPointer ((size_t) juce::jmin (c, sides - 1));
+                            const auto* was = rack->infernalBefore.getReadPointer (juce::jmin (c, sides - 1));
+                            for (int i = 0; i < n; ++i)
+                                out[i] += share * (now[i] - was[i]);
+                        }
+                }
+        }
         // DOWNPOUR (0.57.0): this piece's rain, from the notes sounding and listening to the synth; SPACE's share into
         // the REVERB's send now, the rain itself added after CRACKLE.
         {

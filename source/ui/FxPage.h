@@ -7,6 +7,7 @@
 #include "ui/CracklePage.h"
 #include "ui/DownpourPage.h"
 #include "ui/SiroccoPage.h"
+#include "ui/InfernalPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -35,7 +36,8 @@ public:
                       echoes,                                               // 0.53.0 (on the MOD / LO-FI tab)
                       crackle,                                              // 0.56.0 (on the MOD / LO-FI tab)
                       downpour,                                             // 0.57.0 (on the MOD / LO-FI tab)
-                      sirocco };                                            // 0.58.0 (the SIGNATURE slot)
+                      sirocco,                                              // 0.58.0 (the SIGNATURE slot)
+                      infernal };                                           // 0.59.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -51,6 +53,7 @@ public:
     // A preset loaded (its key changed): the slot shows the signature effect it has on (if the one shown is off).
     void followSignature (const juce::String& rigKey);
     SiroccoPage& getSiroccoPage() noexcept { return siroccoPage; }
+    InfernalPage& getInfernalPage() noexcept { return infernalPage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -76,7 +79,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 7> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 8> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -92,6 +95,7 @@ private:
     CracklePage cracklePage;
     DownpourPage downpourPage;
     SiroccoPage siroccoPage;
+    InfernalPage infernalPage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

@@ -67,12 +67,12 @@ TEST_CASE ("The SIGNATURE slot: four units on MOD / LO-FI, one signature shown, 
     view->showPage (MainView::Page::fx);
     auto& fx = view->getFxPage();
     fx.show (FxPage::View::modFx);
-    CHECK (signatureNames() == juce::StringArray { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO" });
-    for (int s = 0; s < 4; ++s)
+    CHECK (signatureNames() == juce::StringArray { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL" });
+    for (int s = 0; s < signatureNames().size(); ++s)
     {
         fx.showSignature (s);
         int visible = 0;
-        for (int k = 0; k < 7; ++k)
+        for (int k = 0; k < 8; ++k)
             visible += fx.getModFxUnit (k).isVisible() ? 1 : 0;
         CHECK (visible == 4);
         auto& unit = fx.getModFxUnit (3 + s);

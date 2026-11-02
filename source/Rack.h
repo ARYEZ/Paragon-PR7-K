@@ -12,6 +12,7 @@
 #include "dsp/effects/Echoes.h"
 #include "dsp/effects/Crackle.h"
 #include "dsp/effects/Downpour.h"
+#include "dsp/effects/Infernal.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -73,6 +74,10 @@ struct Rack
     // DOWNPOUR (0.57.0): made before the sends (listening to the synth, its SPACE into the REVERB's send), added after
     // CRACKLE, so MOD, LO-FI and ECHOES don't shape the rain.
     effects::Downpour downpour;
+    // INFERNAL (0.59.0): on the synth (buses and all) before the sends, so DELAY and REVERB hear the destroyed sound;
+    // `infernalBefore` keeps the block as it came, to work out what INFERNAL changed for the sends.
+    effects::Infernal infernal;
+    juce::AudioBuffer<float> infernalBefore;
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

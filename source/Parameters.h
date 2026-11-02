@@ -406,6 +406,18 @@ namespace ParamIDs
     inline constexpr auto downpourWidth    = "downpourWidth";      // 0 to 1
     inline constexpr auto downpourFollow   = "downpourFollow";     // 0 to 1
     inline constexpr auto downpourLevel    = "downpourLevel";      // dB, -48 to +6
+    // INFERNAL (0.59.0, version hint 31, effects::Infernal): parallel destruction, HELLFORGE's signature.
+    inline constexpr auto infernalOn       = "infernalOn";
+    inline constexpr auto infernalDrive    = "infernalDrive";      // 0 to 1
+    inline constexpr auto infernalTight    = "infernalTight";      // 0 to 1: the clean split, 30-400 Hz
+    inline constexpr auto infernalFuzz     = "infernalFuzz";       // 0 to 1: each chain's blend
+    inline constexpr auto infernalCrush    = "infernalCrush";
+    inline constexpr auto infernalAmp      = "infernalAmp";
+    inline constexpr auto infernalNoise    = "infernalNoise";
+    inline constexpr auto infernalFeedback = "infernalFeedback";   // 0 to 1: the AMP's bloom
+    inline constexpr auto infernalCab      = "infernalCab";        // 0 to 1: the cabinet dark to bright
+    inline constexpr auto infernalMix      = "infernalMix";        // 0 to 1
+    inline constexpr auto infernalLevel    = "infernalLevel";      // dB, -24 to +12
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -484,4 +496,5 @@ void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addCrackleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.56.0)
 void addDownpourParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.57.0)
+void addInfernalParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.59.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

@@ -43,7 +43,9 @@ namespace ModDestinations
                                                  // 0.57.0: DOWNPOUR: how hard it rains, how many drops, how far, how loud
                                                  "downpourRain", "downpourDrops", "downpourDistance", "downpourLevel",
                                                  // 0.58.0: SIROCCO: how loud the answers (layer by layer), how detuned, how spread
-                                                 "siroccoLevel", "siroccoDetune", "siroccoSpread" };
+                                                 "siroccoLevel", "siroccoDetune", "siroccoSpread",
+                                                 // 0.59.0: INFERNAL: how hard, how much, the noise's growl, the bloom
+                                                 "infernalDrive", "infernalMix", "infernalNoise", "infernalFeedback" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

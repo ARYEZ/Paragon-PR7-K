@@ -1646,7 +1646,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             line ({ { 0, 0.5, 50 }, { 0.5, 0.5, 50 }, { 1, 0.5, 53 }, { 1.5, 0.25, 55 }, { 1.75, 0.25, 56 }, { 2, 1.5, 57 },
                     { 3.5, 0.5, 56 }, { 4, 1, 55 }, { 5, 1, 53 }, { 6, 2, 50 }, { 8, 0.5, 62 }, { 8.5, 0.5, 60 }, { 9, 0.5, 58 },
                     { 9.5, 0.5, 57 }, { 10, 2, 56 }, { 12, 4, 57 } }, 110);
-            if (rig.name == "Molten Riff")
+            if (rig.name == "Hellfire Lead" || rig.name == "Whammy Wraith")
                 for (int k = 0; k <= 16; ++k)   // a whammy dive on the last note
                     e.push_back ({ at (13.5 + k * 0.1), juce::MidiMessage::pitchWheel (1, juce::jlimit (0, 16383, 8192 - k * 512)) });
             else
@@ -1668,7 +1668,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 chord (e, at (8), at (11), { 21 }, 120);
                 length = 18.0 * beat;
             }
-            else if (rig.name == "Gut Chug")
+            else if (rig.name == "Gut Chug" || rig.name == "Sine Engine")
             {
                 // A syncopated sixteenth-note chug on low D, a half-step up and the octave for accents.
                 const int bar[16] = { 26, 26, 26, 0, 26, 26, 0, 27, 26, 26, 26, 0, 26, 0, 38, 38 };
@@ -1687,8 +1687,20 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (hell && type == "Keys")
         {
-            if (rig.name == "Ritual Bells")
-                line ({ { 0, 1, 62 }, { 1.5, 1, 61 }, { 3, 1, 57 }, { 4.5, 1, 58 }, { 6, 1, 62 }, { 7.5, 1, 65 }, { 9, 1, 64 }, { 10.5, 2, 61 } }, 90);
+            if (rig.name == "Anvil Stab")
+            {
+                // Stabs: short chords on a syncopated rhythm, D minor then E flat, the last let ring.
+                const double hits[] = { 0, 0.75, 1.5, 2.5, 3.0 };
+                for (int bar = 0; bar < 4; ++bar)
+                    for (const auto h : hits)
+                    {
+                        if (bar % 2 == 0)
+                            chord (e, at (bar * 4 + h), at (bar * 4 + h + 0.2), { 50, 53, 57 }, h == 0 ? 120 : 100);
+                        else
+                            chord (e, at (bar * 4 + h), at (bar * 4 + h + 0.2), { 51, 55, 58 }, h == 0 ? 120 : 100);
+                    }
+                chord (e, at (16), at (17.5), { 50, 53, 57 }, 120);
+            }
             else if (rig.name == "Iron Riff" && juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {}) == "eighths")
             {
                 // PARAGON_RENDER_STYLE=eighths: straight eighth notes, one finger, the power chords changing each half bar.
@@ -1727,10 +1739,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (hell)
         {
-            if (rig.name == "Gatling Pulse")
+            if (rig.name == "Gatling Pulse" || rig.name == "Chainsaw Pulse")
                 chord (e, at (0), at (15.9), { 38 }, 110);
-            else if (rig.name == "War Machine")
-                chord (e, at (0), at (15.9), { 50 }, 110);
             else
                 chord (e, at (0), at (15.9), { 50, 53, 57 }, 100);
             length = 19.0 * beat;

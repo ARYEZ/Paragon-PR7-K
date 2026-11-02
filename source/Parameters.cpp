@@ -553,5 +553,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addEchoesParameters (layout); // ECHOES (0.53.0): RackParameters.cpp
     addCrackleParameters (layout); // CRACKLE (0.56.0): RackParameters.cpp
     addDownpourParameters (layout); // DOWNPOUR (0.57.0): RackParameters.cpp
+    addInfernalParameters (layout); // INFERNAL (0.59.0): RackParameters.cpp
     return layout;
 }
