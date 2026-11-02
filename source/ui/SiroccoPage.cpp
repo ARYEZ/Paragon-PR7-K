@@ -136,7 +136,7 @@ SiroccoPage::SiroccoPage (ParagonX1AudioProcessor& p) : display (p)
     make (controls, ParamIDs::siroccoVoices, "VOICES", "1 to 3 answers, stacked a 3rd apart: a small choir.");
     make (controls, ParamIDs::siroccoDelay, "DELAY", "The answers come this long after the note (0: with it).");
     make (controls, ParamIDs::siroccoLevel, "LEVEL", "How loud the answers are; with more VOICES they come in one at a time as it rises. "
-                                                     "The mod matrix can move it (Sirocco > Level).");
+                                                     "The mod matrix can move it (FX Sirocco > Level).");
     make (controls, ParamIDs::siroccoDetune, "DETUNE", "Each answer a few cents off, alternately sharp and flat: wider, more human.");
     make (controls, ParamIDs::siroccoSpread, "SPREAD", "How far the answers are placed left and right.");
     for (auto* list : { &top, &controls })

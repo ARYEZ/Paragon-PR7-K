@@ -53,7 +53,7 @@ TEST_CASE ("SIROCCO in the plugin: the answers sound, LEVEL is a matrix destinat
     for (const auto* id : { ParamIDs::siroccoLevel, ParamIDs::siroccoDetune, ParamIDs::siroccoSpread })
     {
         REQUIRE (ModDestinations::find (id) != nullptr);
-        CHECK (ModDestinations::find (id)->group == "Sirocco");
+        CHECK (ModDestinations::find (id)->group == "FX Sirocco");
     }
 }
 

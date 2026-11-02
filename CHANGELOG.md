@@ -15,7 +15,7 @@ Each version's notes appear on its GitHub Release page.
 - **DELAY:** the answer comes a moment after the note, like a reply. **DETUNE** and **SPREAD** make the answers wider and more human.
 - The answers are played by the synth itself (the same oscillators, filter and envelopes as your note), so they sound as clean as the note. They glide with a mono lead and let go with their note. Turn LEVEL (or MACRO 3) up while holding a chord and the answers come in.
 - Its page shows a keyboard: the scale marked, the notes you play in orange, the answers in blue.
-- LEVEL, DETUNE and SPREAD can be moved by the mod matrix (Sirocco).
+- LEVEL, DETUNE and SPREAD can be moved by the mod matrix (FX Sirocco).
 
 **SANDSEA: MACRO 3 is now SIROCCO on all 15 presets**, in D Phrygian dominant.
 - At 0, every preset sounds exactly as before: no answers at all.
