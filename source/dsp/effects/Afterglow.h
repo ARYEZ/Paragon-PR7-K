@@ -17,6 +17,8 @@ namespace effects
     //  - TAPE: wow (a slow pitch sway) with a little flutter, gentle saturation and a softened top, as if the whole
     //    sound went down to a cassette. TAPE sets how much of all three; at 0 the signal isn't delayed at all, so
     //    turning it up from 0 moves smoothly.
+    // It keeps the level: what comes out is brought back to the loudness that went in (smoothed over about a second, at
+    // most 3 dB either way), so turning it up changes the character, not the volume.
     // At ENSEMBLE and TAPE 0 (or off, once settled) the sound passes exactly as it was.
     class Afterglow
     {
@@ -60,6 +62,9 @@ namespace effects
         std::array<float, 2> toneState {};
         double sweepPhase = 0.0, shimmerPhase = 0.0, wowPhase = 0.0, flutterPhase = 0.0;
         float ensembleNow = 0.0f, tapeNow = 0.0f, smoothing = 0.0f;
+        // Level kept: the power going in and coming out (smoothed over about a second) and the make-up between them.
+        double powerIn = 0.0, powerOut = 0.0;
+        float makeUp = 1.0f;
         std::array<std::atomic<float>, 3> voiceShown {};
         std::atomic<float> wowShown { 0.0f }, ensembleShown { 0.0f }, tapeShown { 0.0f };
     };

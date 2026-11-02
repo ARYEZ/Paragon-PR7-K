@@ -222,11 +222,18 @@ TEST_CASE ("AFTERGLOW's TAPE: the wow sways the pitch, the saturation adds harmo
     INFO ("3rd harmonic: plain " << third (plain[0]) << " dB, through TAPE " << third (loud[0]) << " dB");
     CHECK (third (loud[0]) > third (plain[0]) + 40.0);
 
-    // The top: 14 kHz comes out quieter.
-    const auto high14 = run (tape, 1.5, [] (double t) { return centred (14000.0, t, 0.2f); });
-    const auto drop = db (rms (high14[0], (size_t) (0.5 * sampleRate), high14[0].size())) - db (0.2 / std::sqrt (2.0));
-    INFO ("14 kHz through TAPE: " << drop << " dB");
-    CHECK (drop < -3.0);
+    // The top: with 500 Hz and 14 kHz together, the 14 kHz comes out quieter against the 500 Hz (the level is kept
+    // overall, so it's the balance that tells).
+    const auto mixed = [] (double t) {
+        const auto v = 0.15f * (float) std::sin (juce::MathConstants<double>::twoPi * 500.0 * t)
+                     + 0.15f * (float) std::sin (juce::MathConstants<double>::twoPi * 14000.0 * t);
+        return std::pair<float, float> { v, v };
+    };
+    const auto top = run (tape, 2.0, mixed);
+    const auto from = (size_t) (1.0 * sampleRate), length = (size_t) (0.9 * sampleRate);
+    const auto tilt = db (levelAt (top[0], 14000.0, from, length)) - db (levelAt (top[0], 500.0, from, length));
+    INFO ("14 kHz against 500 Hz through TAPE: " << tilt << " dB (0 going in)");
+    CHECK (tilt < -3.0);
 }
 
 TEST_CASE ("AFTERGLOW's effect fades in without a jump as TAPE and ENSEMBLE turn up from 0", "[afterglow]")

@@ -43,6 +43,8 @@ namespace effects
         toneState = {};
         sweepPhase = shimmerPhase = wowPhase = flutterPhase = 0.0;
         ensembleNow = tapeNow = 0.0f;
+        powerIn = powerOut = 0.0;
+        makeUp = 1.0f;
     }
 
     void Afterglow::process (juce::dsp::AudioBlock<float> block, const Settings& s) noexcept
@@ -65,12 +67,17 @@ namespace effects
             ensembleShown.store (0.0f, std::memory_order_relaxed);
             tapeShown.store (0.0f, std::memory_order_relaxed);
             wowShown.store (0.0f, std::memory_order_relaxed);
+            powerIn = powerOut = 0.0;
+            makeUp = 1.0f;
             return;
         }
 
         const auto stereo = block.getNumChannels() > 1;
         auto* left = block.getChannelPointer (0);
         auto* right = stereo ? block.getChannelPointer (1) : left;
+        auto inSum = 0.0, outSum = 0.0;
+        for (int i = 0; i < n; ++i)
+            inSum += (double) left[i] * left[i] + (double) right[i] * right[i];
         const auto msToSamples = 0.001 * sampleRate;
         const auto twoPi = juce::MathConstants<double>::twoPi;
         const auto sweepStep = sweepHz / sampleRate, shimmerStep = shimmerHz / sampleRate;
@@ -129,7 +136,7 @@ namespace effects
                                      + shimmerMs * std::sin (twoPi * (shimmerPhase + offset));
                         wet += ensembleLines[(size_t) c].read (d * msToSamples);
                     }
-                    wet *= 1.0f / 3.0f;
+                    wet *= 0.57735027f;   // 1 / sqrt 3: the three voices sway apart, so they add by power, not in step
                     x[c] = x[c] * (1.0f - 0.65f * ensembleNow) + wet * (0.95f * ensembleNow);   // at full mostly the chorus: wide
                 }
             sweepPhase += sweepStep;
@@ -137,9 +144,28 @@ namespace effects
             if (sweepPhase >= 1.0) sweepPhase -= 1.0;
             if (shimmerPhase >= 1.0) shimmerPhase -= 1.0;
 
+            outSum += (double) x[0] * x[0] + (double) x[1] * x[1];
             left[i] = x[0];
             if (stereo)
                 right[i] = x[1];
+        }
+
+        // The make-up: toward what brings the output's power back to the input's, glided across the block.
+        {
+            const auto k = 1.0 - std::exp (-(double) n / (1.0 * sampleRate));
+            powerIn += (inSum / juce::jmax (1, n) - powerIn) * k;
+            powerOut += (outSum / juce::jmax (1, n) - powerOut) * k;
+            auto target = powerIn > 1.0e-9 && powerOut > 1.0e-9 ? (float) std::sqrt (powerIn / powerOut) : makeUp;
+            target = juce::jlimit (0.7079f, 1.4125f, target);   // at most 3 dB either way
+            const auto step = (target - makeUp) / (float) juce::jmax (1, n);
+            for (int i = 0; i < n; ++i)
+            {
+                makeUp += step;
+                left[i] *= makeUp;
+                if (stereo)
+                    right[i] *= makeUp;
+            }
+            makeUp = target;
         }
 
         for (int v = 0; v < 3; ++v)
