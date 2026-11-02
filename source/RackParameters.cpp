@@ -15,6 +15,7 @@
 #include "dsp/effects/Downpour.h"
 #include "dsp/effects/Infernal.h"
 #include "dsp/effects/Afterglow.h"
+#include "dsp/effects/LightTrail.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -556,4 +557,20 @@ void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::afterglowDrift, "Afterglow Drift", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
     layout.add (makeFloat (ParamIDs::afterglowEnsemble, "Afterglow Ensemble", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
     layout.add (makeFloat (ParamIDs::afterglowTape, "Afterglow Tape", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+}
+
+void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LIGHTTRAIL (0.61.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 33;
+    const effects::LightTrail::Settings d;
+    const ToText asRise = [] (float st, int) { return (st > 0.0f ? "+" : "") + juce::String (st, 1) + " st"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::LightTrail::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::trailOn, "Lighttrail On", v, false));
+    layout.add (makeChoice (ParamIDs::trailDivision, "Lighttrail Division", v, effects::LightTrail::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::trailLength, "Lighttrail Length", { 0.0f, 1.0f, 0.01f }, d.length, v, asPercent));
+    layout.add (makeFloat (ParamIDs::trailRise, "Lighttrail Rise", { -12.0f, 12.0f, 0.1f }, d.riseSemitones, v, asRise));
+    layout.add (makeFloat (ParamIDs::trailTone, "Lighttrail Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::trailSpread, "Lighttrail Spread", { 0.0f, 1.0f, 0.01f }, d.spread, v, asPercent));
+    layout.add (makeFloat (ParamIDs::trailMix, "Lighttrail Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
 }

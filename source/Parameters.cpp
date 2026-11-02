@@ -555,5 +555,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addDownpourParameters (layout); // DOWNPOUR (0.57.0): RackParameters.cpp
     addInfernalParameters (layout); // INFERNAL (0.59.0): RackParameters.cpp
     addAfterglowParameters (layout); // AFTERGLOW (0.60.0): RackParameters.cpp
+    addLightTrailParameters (layout); // LIGHTTRAIL (0.61.0): RackParameters.cpp
     return layout;
 }

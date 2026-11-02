@@ -72,6 +72,7 @@ target_sources(ParagonX1
         source/dsp/effects/Downpour.cpp
         source/dsp/effects/Infernal.cpp
         source/dsp/effects/Afterglow.cpp
+        source/dsp/effects/LightTrail.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -108,6 +109,7 @@ target_sources(ParagonX1
         source/ui/SiroccoPage.cpp
         source/ui/InfernalPage.cpp
         source/ui/AfterglowPage.cpp
+        source/ui/LightTrailPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
