@@ -1597,17 +1597,12 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (star && type == "Bass")
         {
-            if (rig.name == "Pulse Runner")
+            if (rig.name == "Eighth Note Pulse")
             {
                 const int notes[] = { 36, 36, 48, 36, 36, 46, 36, 43 };
                 for (int bar = 0; bar < 4; ++bar)
                     for (int k = 0; k < 8; ++k)
                         chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { notes[k] - (bar == 2 ? 4 : 0) }, k % 2 == 0 ? 110 : 90);
-            }
-            else if (rig.name == "Gated Octave")
-            {
-                chord (e, at (0), at (7.9), { 36 }, 100);
-                chord (e, at (8), at (15.9), { 32 }, 100);
             }
             else
                 line ({ { 0, 2, 36 }, { 2, 2, 39 }, { 4, 3, 32 }, { 7, 1, 34 }, { 8, 2, 36 }, { 10, 2, 43 }, { 12, 4, 36 } }, 100);
@@ -1615,15 +1610,12 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (star && type == "Keys")
         {
-            if (rig.name == "Lab Chimes")
-                line ({ { 0, 1, 72 }, { 1.5, 1, 75 }, { 3, 1, 79 }, { 4.5, 1, 77 }, { 6, 1, 75 }, { 7.5, 1, 74 }, { 9, 2, 72 } }, 85);
-            else
             {
                 const std::initializer_list<int> chords[] = { { 60, 63, 67 }, { 56, 60, 63 }, { 55, 58, 63 }, { 58, 62, 65 } };
                 int c = 0;
                 for (const auto& notes : chords)
                 {
-                    if (rig.name == "Brass '84")
+                    if (rig.name == "Brass '84" || rig.name == "Neon Stabs")
                         for (const auto offset : { 0.0, 1.5, 2.5 })
                             chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.6), notes, offset == 0.0 ? 115 : 95);
                     else
@@ -1635,10 +1627,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (star)
         {
-            if (rig.name == "Midnight Run")
-                chord (e, at (0), at (15.9), { 48, 51, 55 }, 105);
-            else
-                chord (e, at (0), at (15.9), { 60, 63, 67 }, 100);
+            chord (e, at (0), at (15.9), { 60, 63, 67 }, 100);
             length = 19.0 * beat;
         }
         else if (hell && type == "Lead")
