@@ -11,6 +11,7 @@
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
 #include "dsp/effects/Crackle.h"
+#include "dsp/effects/Downpour.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -69,6 +70,9 @@ struct Rack
     effects::Echoes echoes;
     // CRACKLE (0.56.0): after ECHOES, so the clicks aren't echoed; FOLLOW listens to the whole sound.
     effects::Crackle crackle;   // LO-FI's output peak in the last block, while it's on (its unit's meter)
+    // DOWNPOUR (0.57.0): made before the sends (listening to the synth, its SPACE into the REVERB's send), added after
+    // CRACKLE, so MOD, LO-FI and ECHOES don't shape the rain.
+    effects::Downpour downpour;
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

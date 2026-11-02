@@ -1,5 +1,7 @@
 #include "RackSpecs.h"
 
+#include "ui/DownpourPage.h"
+
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
 
@@ -614,9 +616,9 @@ namespace
     }
 }
 
-std::array<RackUnit::Spec, 5> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
+std::array<RackUnit::Spec, 6> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
 {
-    std::array<RackUnit::Spec, 5> specs;
+    std::array<RackUnit::Spec, 6> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -726,6 +728,55 @@ std::array<RackUnit::Spec, 5> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
         s.footTitle = "LEVEL";
         s.footText = [&p] { return textOf (p, ParamIDs::crackleLevel); };
         s.onEdit = [openPage] { openPage (4); };
+    }
+
+    // DOWNPOUR (0.57.0): the drops a second in big digits, the last drop's note; the keys how hard it rains; the
+    // ladder how thick the patter is.
+    {
+        auto& s = specs[5];
+        s.number = 6;
+        s.name = "DOWNPOUR";
+        s.kind = "RAIN ON THE GLASS  DROPS ON YOUR NOTES";
+        s.series = "PR7-K SERIES  INSERT 6";
+        s.onParameterIds = { ParamIDs::downpourOn };
+        s.powerTooltip = "DOWNPOUR on or off: rain on the glass, its drops ringing on the notes you play. Click POWER (the word) or EDIT for its page";
+        const auto rainKey = [&p] (const char* name, float rain, const char* tip)
+        {
+            return RackUnit::Key { name, tip,
+                                   [&p, rain] { return std::abs (valueOf (p, ParamIDs::downpourRain) - rain) < 0.08f; },
+                                   [&p, rain] { setValue (p, ParamIDs::downpourRain, rain); } };
+        };
+        s.keys[0] = rainKey ("DRIZZLE", 0.25f, "DRIZZLE: a few spots on the glass");
+        s.keys[1] = rainKey ("RAIN", 0.55f, "RAIN: steady rain");
+        s.keys[2] = rainKey ("STORM", 0.9f, "STORM: a downpour");
+        s.knobs = { RackUnit::Knob { ParamIDs::downpourRain, "RAIN" }, RackUnit::Knob { ParamIDs::downpourLevel, "LEVEL" } };
+        // The ladder: the patter (10 x log10 of the taps a second: 40 to 4000).
+        s.ladderTitle = "PATTER";
+        s.ladderMarks = { 36.0f, 30.0f, 24.8f, 20.0f, 16.0f };
+        s.ladderLabels = { "4K", "1K", "300", "100", "40" };
+        s.ladderReading = [&p]
+        {
+            const auto rate = p.getDownpour().getCurrentPatterRate();
+            return rate > 0.0f ? 10.0f * std::log10 (rate) : -100.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto drops = p.getDownpour().getCurrentDropRate();
+            const auto end = drawNumber (g, juce::String (drops, drops < 10.0f ? 1 : 0), left.getTopLeft(), h);
+            line (g, "DPS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            const auto last = p.getDownpour().getRecentDrops().back();
+            line (g, last.sample >= 0 ? "LAST DROP " + DownpourDisplay::noteName (last.note) : juce::String ("DROPS ON YOUR NOTES"),
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "RAIN " + textOf (p, ParamIDs::downpourRain), "DROPS " + textOf (p, ParamIDs::downpourDrops),
+                                  "DISTANCE " + textOf (p, ParamIDs::downpourDistance), textOf (p, ParamIDs::downpourOctave) },
+                    content.getHeight() * 0.16f);
+        };
+        s.footTitle = "LEVEL";
+        s.footText = [&p] { return textOf (p, ParamIDs::downpourLevel); };
+        s.onEdit = [openPage] { openPage (5); };
     }
     return specs;
 }

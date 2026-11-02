@@ -19,7 +19,8 @@ namespace expansions
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
-          "keys and slow neon pulses. Our own sounds." },
+          "keys and slow neon pulses. Built round DOWNPOUR (0.57.0), rain on the glass whose drops ring on the notes you "
+          "play, and MACRO 3, STORM: from dry to a downpour. Our own sounds." },
         { "HELLFORGE", "HF",
           "Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through brutal "
           "distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds." },

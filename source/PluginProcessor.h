@@ -208,6 +208,7 @@ public:
         rack->loFi.seedRandom (seed);
         rack->delay.seedRandom (seed);
         rack->crackle.seedRandom ((std::uint32_t) seed);
+        rack->downpour.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -297,6 +298,9 @@ public:
     // CRACKLE (0.56.0): its settings as they are now (RATE, CLUSTER, LEVEL as the matrix moves them), and the counter.
     effects::Crackle::Settings getCrackleSettings() const noexcept;
     const effects::Crackle& getCrackle() const noexcept { return rack->crackle; }
+    // DOWNPOUR (0.57.0): its settings as they are now (RAIN, DROPS, DISTANCE, LEVEL as the matrix moves them), and the rain.
+    effects::Downpour::Settings getDownpourSettings() const noexcept;
+    const effects::Downpour& getDownpour() const noexcept { return rack->downpour; }
     // An insert bus's (0 to 3: A to D) effects' settings as they are now (stage 7d), its sends, and its output's peak.
     effects::Drive::Settings getInsertDriveSettings (int bus) const noexcept;
     effects::Glitch::Settings getInsertGlitchSettings (int bus) const noexcept;

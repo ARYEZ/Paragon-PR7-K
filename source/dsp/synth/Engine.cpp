@@ -380,6 +380,15 @@ namespace synth
         return (int) std::count_if (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing; });
     }
 
+    int Engine::getSoundingNotes (float* pitches, int capacity) const noexcept
+    {
+        int count = 0;
+        for (const auto& v : voices)
+            if (v.playing && ! v.killing && count < capacity)
+                pitches[count++] = v.pitch;
+        return count;
+    }
+
     //==========================================================================
     void Engine::process (float* left, float* right, int numSamples,
                           const juce::MidiBuffer& midi, int midiStart, const Settings& settings) noexcept

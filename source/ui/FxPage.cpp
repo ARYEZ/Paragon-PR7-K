@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), cracklePage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), cracklePage (processor), downpourPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,8 +46,8 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle };
-        show (views[juce::jlimit (0, 4, unit)]);
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour };
+        show (views[juce::jlimit (0, 5, unit)]);
     });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
@@ -67,6 +67,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // CRACKLE (0.56.0): its page.
     cracklePage.onClose = [this] { show (View::modFx); };
     addChildComponent (cracklePage);
+    // DOWNPOUR (0.57.0): its page.
+    downpourPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (downpourPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -138,6 +141,7 @@ void FxPage::show (View newView)
     modFxPages[2]->setVisible (view == View::loFi);
     echoesPage.setVisible (view == View::echoes);
     cracklePage.setVisible (view == View::crackle);
+    downpourPage.setVisible (view == View::downpour);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -197,7 +201,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.
@@ -225,8 +229,8 @@ void FxPage::resized()
                 page->setBounds (getLocalBounds());
         }
     }
-    // MOD / LO-FI: its five units (0.56.0: CRACKLE made five) from the top, at the master units' size or smaller so
-    // all five fit.
+    // MOD / LO-FI: its six units (0.56.0: CRACKLE made five, 0.57.0: DOWNPOUR six) from the top, at the master units'
+    // size or smaller so all six fit.
     {
         const auto count = (float) modFxUnits.size();
         const auto byHeightNow = ((float) rackArea.getHeight() - (count - 1.0f) * gap) / count;

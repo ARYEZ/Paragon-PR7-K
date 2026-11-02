@@ -386,6 +386,16 @@ namespace ParamIDs
     inline constexpr auto crackleWidth   = "crackleWidth";     // 0 to 1
     inline constexpr auto crackleFollow  = "crackleFollow";    // 0 to 1
     inline constexpr auto crackleLevel   = "crackleLevel";     // dB, -48 to +6
+    // DOWNPOUR (0.57.0, version hint 29, effects::Downpour): rain on the glass, the drops on the notes sounding.
+    inline constexpr auto downpourOn       = "downpourOn";
+    inline constexpr auto downpourRain     = "downpourRain";       // 0 to 1
+    inline constexpr auto downpourDrops    = "downpourDrops";      // 0 to 1
+    inline constexpr auto downpourOctave   = "downpourOctave";     // choice: effects::Downpour::octaveNames
+    inline constexpr auto downpourDistance = "downpourDistance";   // 0 to 1
+    inline constexpr auto downpourSpace    = "downpourSpace";      // 0 to 1: into the REVERB's send
+    inline constexpr auto downpourWidth    = "downpourWidth";      // 0 to 1
+    inline constexpr auto downpourFollow   = "downpourFollow";     // 0 to 1
+    inline constexpr auto downpourLevel    = "downpourLevel";      // dB, -48 to +6
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -463,4 +473,5 @@ void addModFxParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); 
 void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addCrackleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.56.0)
+void addDownpourParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.57.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

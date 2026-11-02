@@ -228,6 +228,26 @@ TEST_CASE ("Every expansion preset's settings, routes and macros are real ones",
     }
 }
 
+TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its left", "[rigs][expansions][downpour]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 0)   // NEON RAIN: the first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "STORM");
+        CHECK (rig.notes.contains ("STORM ("));
+        CHECK (rig.parameters.at (ParamIDs::downpourOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::downpourRain) == 0.0f);   // no rain until STORM brings it: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::downpourRain && r.amount > 0.5f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;

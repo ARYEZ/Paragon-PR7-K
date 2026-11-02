@@ -165,6 +165,11 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::crackleRate, 60.0f);
             set (ParamIDs::crackleCluster, 0.7f);
             set (ParamIDs::crackleLevel, -18.0f);
+            // 0.57.0: DOWNPOUR, steady rain, its drops on the chord, into the reverb.
+            set (ParamIDs::downpourOn, 1.0f);
+            set (ParamIDs::downpourRain, 0.6f);
+            set (ParamIDs::downpourDrops, 0.9f);
+            set (ParamIDs::downpourLevel, -14.0f);
                         // 0.51.0: its WAH in AUTO, opened by the chord.
             set (ParamIDs::ins (0, "WahOn"), 1.0f);
             set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
@@ -195,7 +200,7 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : FxPage::View::rack);
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : FxPage::View::rack);
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot
         // never is (as PR7-E's snapshots, refresh them by hand). ECHELON with its dynamic band 3 selected.
         if (fx == "eq")

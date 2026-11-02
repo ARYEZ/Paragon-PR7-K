@@ -74,6 +74,9 @@ namespace synth
 
         // Notes sounding now (including releasing ones), for the display and tests.
         int getNumActiveVoices() const noexcept;
+        // 0.57.0, for DOWNPOUR: the pitches (MIDI notes, glides and all) of the notes sounding now, releasing ones too,
+        // up to `capacity`; how many.
+        int getSoundingNotes (float* pitches, int capacity) const noexcept;
 
         // Oscillators running now, every unison and chord copy counted (as Avenger's
         // info screen counts them): what the CPU is spent on.

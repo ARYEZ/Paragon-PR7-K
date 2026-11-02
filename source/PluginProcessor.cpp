@@ -273,6 +273,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
         block.prepare (sampleRate, preparedBlockSize);
     rack->echoes.prepare (sampleRate, preparedBlockSize);
     rack->crackle.prepare (sampleRate, preparedBlockSize);
+    rack->downpour.prepare (sampleRate, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
         for (int c = 0; c < 2; ++c)
@@ -1143,6 +1144,21 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     midi.clear();   // an instrument: nothing goes on down the MIDI chain
 }
 
+effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const noexcept
+{
+    effects::Downpour::Settings s;
+    s.on = isOn (ParamIDs::downpourOn);
+    s.rain = effectParam (ModDestinations::effect ("downpourRain"), ParamIDs::downpourRain);
+    s.drops = effectParam (ModDestinations::effect ("downpourDrops"), ParamIDs::downpourDrops);
+    s.octave = juce::roundToInt (param (ParamIDs::downpourOctave));
+    s.distance = effectParam (ModDestinations::effect ("downpourDistance"), ParamIDs::downpourDistance);
+    s.space = param (ParamIDs::downpourSpace);
+    s.width = param (ParamIDs::downpourWidth);
+    s.follow = param (ParamIDs::downpourFollow);
+    s.levelDb = effectParam (ModDestinations::effect ("downpourLevel"), ParamIDs::downpourLevel);
+    return s;
+}
+
 void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples)
 {
     const auto numChannels = buffer.getNumChannels();
@@ -1239,10 +1255,22 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         // The song position at this piece's start (for the WAH's synced LFO): -1 while it's stopped.
         const auto piecePpq = hostPpq >= 0.0 ? hostPpq + (double) start / getSampleRate() * juce::jmax (1.0, hostBpm.load()) / 60.0 : -1.0;
         processInsertBuses (block, true, piecePpq);
+        // DOWNPOUR (0.57.0): this piece's rain, from the notes sounding and listening to the synth; SPACE's share into
+        // the REVERB's send now, the rain itself added after CRACKLE.
+        {
+            std::array<float, effects::Downpour::maxNotes> notes {};
+            rack->downpour.setNotes (notes.data(), engine.getSoundingNotes (notes.data(), (int) notes.size()));
+            const auto rain = getDownpourSettings();
+            rack->downpour.render (block, rain);
+            if (! rack->downpour.isSilent() && rain.space > 0.0f)
+                for (int c = 0; c < 2; ++c)
+                    rack->sends[1].addFrom (c, 0, rack->downpour.getOutput (c), juce::jmin (numSamples, rack->downpour.getRenderedSamples()), rain.space);
+        }
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
         rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
+        rack->downpour.addTo (block);                          // 0.57.0: the rain
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));
