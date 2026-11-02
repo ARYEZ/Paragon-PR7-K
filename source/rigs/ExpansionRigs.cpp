@@ -667,174 +667,174 @@ namespace
          .set (ParamIDs::compRatio, ratio).set (ParamIDs::compMakeUp, makeUpDb);
     }
 
-    // HELLFORGE: inspired by modern industrial-metal game scores (synths played like down-tuned guitars through brutal
-    // distortion, sub drops, noise walls, a dark choir, syncopated chugs). No names or music from any game: our own
-    // sounds. MACRO 3 is DESTROY on most: more drive.
+    // HELLFORGE's centrepiece (0.59.0, the owner's ask: "a premiere rig"): INFERNAL, parallel destruction. `hell`
+    // sets it up; MACRO 3 is DESTROY on every preset: INFERNAL's MIX (for the four kept presets, from 0: the sound
+    // as approved), DRIVE and NOISE. The kept presets' old DESTROY routes ride along.
+    struct Hell
+    {
+        float drive = 0.5f, tight = 0.4f, fuzz = 0.6f, crush = 0.0f, amp = 0.8f, noise = 0.3f, feedback = 0.3f, cab = 0.5f;
+        float mix = 1.0f, levelDb = 0.0f;
+        float mixRise = 0.0f, driveRise = 0.3f, noiseRise = 0.25f;   // MACRO 3's routes
+        // The four presets kept from 0.26.0: nothing at the macro's left, INFERNAL coming in as it turns.
+        static Hell keep() { Hell h; h.mix = 0.0f; h.mixRise = 0.7f; h.driveRise = 0.25f; h.noiseRise = 0.2f; h.tight = 0.5f; return h; }
+    };
+
+    void hell (Builder& b, Hell h)
+    {
+        b.set (ParamIDs::infernalOn, 1.0f).set (ParamIDs::infernalDrive, h.drive).set (ParamIDs::infernalTight, h.tight)
+         .set (ParamIDs::infernalFuzz, h.fuzz).set (ParamIDs::infernalCrush, h.crush).set (ParamIDs::infernalAmp, h.amp)
+         .set (ParamIDs::infernalNoise, h.noise).set (ParamIDs::infernalFeedback, h.feedback).set (ParamIDs::infernalCab, h.cab)
+         .set (ParamIDs::infernalMix, h.mix).set (ParamIDs::infernalLevel, h.levelDb);
+        if (h.mixRise > 0.0f)
+            route (b, "macro3", ParamIDs::infernalMix, h.mixRise);
+        if (h.driveRise > 0.0f)
+            route (b, "macro3", ParamIDs::infernalDrive, h.driveRise);
+        if (h.noiseRise > 0.0f)
+            route (b, "macro3", ParamIDs::infernalNoise, h.noiseRise);
+    }
+
+    // HELLFORGE: inspired by modern industrial-metal game scores (the owner's references: synths as powerful and
+    // distorted as down-tuned guitars, leads played like a guitar, clean subs under noise that riffs, a screaming
+    // choir, a cathedral organ, a chainsaw and a kick). No names or music from any game: our own sounds. 0.59.0 (the
+    // owner's ask): rebuilt round INFERNAL; Gut Chug, Tectonic Drop, Iron Riff and Gatling Pulse kept as they were.
     void hellforge (Expansion x)
     {
         using DM = effects::Drive::Model;
-        using GM = effects::Glitch::Mode;
-        constexpr int vca = 0, fet = 2;
+        constexpr int fet = 2;
 
         // ---- LEADS -------------------------------------------------------------------------------------------
-        auto riff = x.make ("Molten Riff", 1, { "Lead", "Drive", "Mono", "Inserts" },
-            "A synth played like a lead guitar: five detuned saws over a pulse an octave down, through insert bus A's "
-            "RABID turned well up, with a short glide and the pitch wheel set to dive a whole octave (bend down 12) for "
-            "whammy dives. Dotted-eighth echoes and a room, taken after the drive. MACROS: BRIGHT, SPACE, DESTROY "
-            "(SHAPER 1's tube into the drive).");
-        riff.osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.18f).osc (0, "UniSpread", 0.6f)
-            .osc (0, "Volume", 0.6f).osc (0, "Insert", 1.0f)
-            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
-            .osc (1, "Insert", 1.0f)
-            .shaper (0, synth::ShaperModel::tube, 0.15f)
-            .filter (FilterType::lp24, 5000.0f, 0.1f, 0.2f).filterEnvelope (0.0f, 400.0f, 0.6f, 200.0f)
-            .ampEnvelope (2.0f, 400.0f, 0.9f, 200.0f)
-            .mono (30.0f).set (ParamIDs::bendDown, 12.0f).set (ParamIDs::bendUp, 2.0f);
-        drive (riff, 0, DM::rabid, 7.0f, 6.0f, 0.0f, 0.4f, 0.3f);
-        route (riff, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (riff, "macro3", ParamIDs::shp (0, "Drive"), 0.6f);
-        macros (riff, "BRIGHT", "SPACE", "DESTROY");
-        delay (riff, "1/8 dotted", 0.3f, 0.15f, true, 4.0f);
-        reverb (riff, RT::room, 0.5f, 0.15f);
-        space (riff);
-        riff.set (ParamIDs::patchLevel, 1.9f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (riff);
+        auto lead = x.make ("Hellfire Lead", 1, { "Lead", "Guitar", "Infernal", "Mono" },
+            "A lead played like a guitar: a saw and a narrow pulse, a little detuned, through INFERNAL's AMP into its "
+            "speaker cabinet, held notes blooming with feedback an octave up, vibrato coming in late, a short glide, and "
+            "the pitch wheel diving a whole octave (bend down 12) for whammy dives. The MOD WHEEL feeds back harder. "
+            "Dotted-eighth echoes and a hall after the amp. MACROS: BRIGHT, SPACE, DESTROY (more drive, a growl "
+            "of pitched noise).");
+        lead.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.35f).osc (0, "UniDetune", 0.08f).osc (0, "UniSpread", 0.4f)
+            .osc (0, "Volume", 0.6f).osc (0, "VibAmount", 22.0f).osc (0, "VibRate", 5.6f).osc (0, "VibFade", 350.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.4f)
+            .osc (1, "VibAmount", 22.0f).osc (1, "VibRate", 5.6f).osc (1, "VibFade", 350.0f)
+            .filter (FilterType::lp24, 7000.0f, 0.1f, 0.15f).filterEnvelope (0.0f, 300.0f, 0.7f, 200.0f)
+            .ampEnvelope (3.0f, 300.0f, 0.95f, 250.0f)
+            .mono (25.0f).set (ParamIDs::bendDown, 12.0f).set (ParamIDs::bendUp, 2.0f);
+        { Hell h; h.amp = 1.0f; h.fuzz = 0.3f; h.noise = 0.0f; h.feedback = 0.55f; h.cab = 0.45f; h.drive = 0.55f; h.tight = 0.35f; hell (lead, h); }
+        route (lead, "modWheel", ParamIDs::infernalFeedback, 0.45f);
+        route (lead, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (lead, "BRIGHT", "SPACE", "DESTROY");
+        delay (lead, "1/8 dotted", 0.3f, 0.15f, true, 4.0f);
+        reverb (lead, RT::hall, 0.55f, 0.15f);
+        space (lead);
+        lead.set (ParamIDs::patchLevel, 0.0f);
+        x.add (lead);
 
-        auto siren = x.make ("Warning Siren", 2, { "Lead", "Sync", "Pitch", "Mono" },
-            "A screaming lead: a saw hard-synced, its sync sweeping down as each note starts, while the PITCH envelope "
-            "pulls every note up from an octave below like an air-raid siren winding up. SHAPER 1 folds it, vibrato comes "
-            "in late. The MOD WHEEL pushes the sync further. MACROS: BRIGHT, SPACE, SCREAM (more sync).");
-        siren.osc (0, "SyncAmount", 0.25f).osc (0, "SyncEnv", 0.4f).osc (0, "SyncEnvTime", 400.0f).osc (0, "Volume", 0.6f)
-             .osc (0, "VibAmount", 20.0f).osc (0, "VibRate", 6.0f).osc (0, "VibFade", 300.0f)
-             .shaper (0, synth::ShaperModel::sineFold, 0.25f)
-             .filter (FilterType::lp24, 6000.0f, 0.2f, 0.0f)
-             .ampEnvelope (5.0f, 400.0f, 0.9f, 300.0f)
-             .mono (60.0f)
-             .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 12.0f);
-        siren.rig.modulation.pitchEnvelope = { { SP { 0.0f, 0.0f, 0.5f }, SP { 0.35f, 0.5f, 0.0f } }, -1, -1, -1 };
-        route (siren, "modWheel", ParamIDs::osc (0, "SyncAmount"), 0.35f);
-        route (siren, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (siren, "macro3", ParamIDs::osc (0, "SyncAmount"), 0.4f);
-        macros (siren, "BRIGHT", "SPACE", "SCREAM");
-        delay (siren, "1/8", 0.3f, 0.15f, true, 5.0f);
-        reverb (siren, RT::hall, 0.6f, 0.2f);
-        space (siren);
-        siren.set (ParamIDs::patchLevel, -8.3f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (siren);
+        auto wraith = x.make ("Whammy Wraith", 2, { "Lead", "Fuzz", "Infernal", "Mono" },
+            "A squealing, fuzzed lead: a narrow pulse with a saw an octave up for the harmonics, through INFERNAL's FUZZ "
+            "and AMP, feedback swelling fast on held notes, the pitch wheel diving a whole octave and screaming up one. "
+            "The MOD WHEEL widens the vibrato into a wail. MACROS: BRIGHT, SPACE, DESTROY.");
+        wraith.osc (0, "Wave", pulse).osc (0, "Width", 0.18f).osc (0, "Volume", 0.6f)
+              .osc (0, "VibAmount", 15.0f).osc (0, "VibRate", 6.2f).osc (0, "VibFade", 250.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.25f)
+              .filter (FilterType::lp24, 6000.0f, 0.2f, 0.0f)
+              .ampEnvelope (2.0f, 300.0f, 0.95f, 300.0f)
+              .mono (40.0f).set (ParamIDs::bendDown, 12.0f).set (ParamIDs::bendUp, 12.0f);
+        { Hell h; h.fuzz = 1.0f; h.amp = 0.5f; h.noise = 0.0f; h.feedback = 0.8f; h.cab = 0.7f; h.drive = 0.6f; h.tight = 0.4f; hell (wraith, h); }
+        route (wraith, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.35f);
+        route (wraith, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (wraith, "BRIGHT", "SPACE", "DESTROY");
+        delay (wraith, "1/4", 0.35f, 0.15f, true, 4.0f);
+        reverb (wraith, RT::hall, 0.6f, 0.18f);
+        space (wraith);
+        wraith.set (ParamIDs::patchLevel, 0.0f);
+        x.add (wraith);
 
-        auto scream = x.make ("Signal Scream", 3, { "Lead", "FM", "Glitch", "Inserts" },
-            "A howling, broken-signal lead: a sine frequency-modulated by a saw a fifth up, FORMANT and a fast LFO making "
-            "it howl, through insert bus A's CHIMERA and GLITCH chopping it into sixteenth-note stutters. The MOD WHEEL "
-            "opens the howl. MACROS: BRIGHT, SPACE, DESTROY (more FM).");
-        scream.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "Formant", 0.25f).osc (0, "Insert", 1.0f)
-              .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.3f)
-              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 7.0f).osc (1, "Volume", 1.0f)
-              .filter (FilterType::lp24, 7000.0f, 0.1f, 0.0f)
-              .ampEnvelope (3.0f, 300.0f, 0.9f, 250.0f)
-              .mono (40.0f)
-              .set (ParamIDs::lfo (0, "Rate"), 5.5f);
-        drive (scream, 0, DM::chimera, 5.0f, 6.0f, 0.0f, 0.4f, 0.4f);
-        glitch (scream, 0, GM::sequence, "1/16", 4.0f, 3.0f, 0.35f);
-        route (scream, "lfo1", ParamIDs::osc (0, "Formant"), 0.06f);
-        route (scream, "modWheel", ParamIDs::osc (0, "Formant"), 0.3f);
-        route (scream, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (scream, "macro3", ParamIDs::osc (0, "FmAmount"), 0.35f);
-        macros (scream, "BRIGHT", "SPACE", "DESTROY");
-        delay (scream, "1/8", 0.35f, 0.15f, true, 5.0f);
-        reverb (scream, RT::plate, 0.5f, 0.15f);
-        space (scream);
-        scream.set (ParamIDs::patchLevel, 1.1f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (scream);
+        auto plasma = x.make ("Plasma Scream", 3, { "Lead", "Sync", "Infernal", "Crush" },
+            "A digital scream: a saw hard-synced, its sync sweeping down as each note starts, through INFERNAL's AMP with "
+            "its CRUSH grinding underneath, like a guitar through broken electronics. The MOD WHEEL pushes the sync. "
+            "MACROS: BRIGHT, SPACE, DESTROY.");
+        plasma.osc (0, "SyncAmount", 0.3f).osc (0, "SyncEnv", 0.35f).osc (0, "SyncEnvTime", 300.0f).osc (0, "Volume", 0.6f)
+              .osc (0, "VibAmount", 18.0f).osc (0, "VibRate", 5.8f).osc (0, "VibFade", 300.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+              .filter (FilterType::lp24, 6500.0f, 0.15f, 0.0f)
+              .ampEnvelope (2.0f, 300.0f, 0.9f, 220.0f)
+              .mono (30.0f).set (ParamIDs::bendDown, 12.0f);
+        { Hell h; h.amp = 0.9f; h.crush = 0.35f; h.fuzz = 0.2f; h.noise = 0.15f; h.feedback = 0.3f; h.cab = 0.6f; h.drive = 0.5f; hell (plasma, h); }
+        route (plasma, "modWheel", ParamIDs::osc (0, "SyncAmount"), 0.35f);
+        route (plasma, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (plasma, "BRIGHT", "SPACE", "DESTROY");
+        delay (plasma, "1/8", 0.3f, 0.12f, true, 5.0f);
+        reverb (plasma, RT::plate, 0.5f, 0.15f);
+        space (plasma);
+        plasma.set (ParamIDs::patchLevel, 0.0f);
+        x.add (plasma);
 
         // ---- PADS --------------------------------------------------------------------------------------------
-        auto choir = x.make ("Ash Choir", 4, { "Pad", "Choir", "Wavetable", "Drive" },
-            "A dark, distorted choir: the Vowels table singing \"ah\" in a wide unison, an \"oh\" an octave below, "
-            "both through SHAPER 1's tube so the voices grind, a slow LFO moving the vowel, a dimension doubler and a "
-            "cathedral. MACROS: BRIGHT, SPACE, DESTROY (the tube).");
-        choir.osc (0, "Wave", wavetable).osc (0, "Table", table ("Vowels")).osc (0, "WtIndex", 0.0f)
-             .osc (0, "UniVoices", 6.0f).osc (0, "UniMix", 0.75f).osc (0, "UniDetune", 0.25f).osc (0, "UniSpread", 1.0f)
-             .osc (0, "Volume", 0.5f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", wavetable).osc (1, "Table", table ("Vowels")).osc (1, "WtIndex", 0.75f)
-             .osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "UniVoices", 3.0f).osc (1, "UniMix", 0.6f)
-             .osc (1, "UniDetune", 0.2f).osc (1, "UniSpread", 0.8f)
-             .shaper (0, synth::ShaperModel::tube, 0.35f)
-             .filter (FilterType::lp12, 1800.0f, 0.1f, 0.0f)
-             .ampEnvelope (900.0f, 2000.0f, 0.9f, 2200.0f)
-             .set (ParamIDs::lfo (0, "Rate"), 0.1f).set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
-        route (choir, "lfo1", ParamIDs::osc (0, "WtIndex"), 0.05f);
-        route (choir, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (choir, "macro3", ParamIDs::shp (0, "Drive"), 0.5f);
-        macros (choir, "BRIGHT", "SPACE", "DESTROY");
-        chorus (choir, ParamIDs::modIds, MT::dimension, 0.3f, 0.5f, 0.4f);
-        reverb (choir, RT::cathedral, 0.4f, 0.3f, 30.0f, 4.0f);
-        eqBand (choir, 0, eq::Shape::lowCut, 80.0f, 0.0f);
-        space (choir);
-        choir.set (ParamIDs::patchLevel, -4.5f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (choir);
+        auto screamers = x.make ("Screamer Choir", 4, { "Pad", "Voice", "Choir", "Infernal" },
+            "A choir of metal screamers: buzzing saws and a breath of noise sung through the VOICE filter, each note "
+            "scooping up into pitch as a scream does and the vowel tearing open from \"oo\" to \"ah\", every voice its "
+            "own vibrato, through INFERNAL's FUZZ and pitched NOISE so the voices rasp. Hold chords low. MACROS: BRIGHT, "
+            "SPACE, DESTROY (rawer throats).");
+        screamers.osc (0, "UniVoices", 6.0f).osc (0, "UniMix", 0.75f).osc (0, "UniDetune", 0.22f).osc (0, "UniSpread", 1.0f)
+                 .osc (0, "Volume", 0.5f).osc (0, "VibMode", (float) synth::VibratoMode::independent)
+                 .osc (0, "VibAmount", 30.0f).osc (0, "VibRate", 5.0f).osc (0, "VibFade", 200.0f)
+                 .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.25f).osc (1, "NoiseColour", 0.1f).osc (1, "Volume", 1.0f)
+                 .filter (FilterType::lp12, 4500.0f, 0.1f, 0.0f)
+                 .ampEnvelope (60.0f, 800.0f, 0.9f, 900.0f)
+                 .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.0f).set (ParamIDs::voiceSize, 0.3f)
+                 .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 1.0f)
+                 .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 4.0f)
+                 .set (ParamIDs::env (0, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+        screamers.rig.modulation.pitchEnvelope = { { SP { 0.0f, 0.0f, -0.4f }, SP { 0.25f, 0.5f, 0.0f } }, -1, -1, -1 };
+        screamers.rig.modulation.envelopes[0] = { { SP { 0.0f, 0.0f, 0.3f }, SP { 0.35f, 1.0f, 0.0f } }, -1, -1, -1 };
+        route (screamers, "env1", ParamIDs::voiceVowel, 0.5f);
+        { Hell h; h.fuzz = 0.5f; h.amp = 0.3f; h.noise = 0.35f; h.feedback = 0.0f; h.mix = 0.4f; h.tight = 0.5f; h.mixRise = 0.4f; hell (screamers, h); }
+        route (screamers, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (screamers, "BRIGHT", "SPACE", "DESTROY");
+        reverb (screamers, RT::cathedral, 0.5f, 0.3f, 30.0f, 4.0f);
+        space (screamers);
+        screamers.set (ParamIDs::patchLevel, 0.0f);
+        x.add (screamers);
 
-        auto furnace = x.make ("Furnace Drone", 5, { "Pad", "Noise", "Drive", "Inserts" },
-            "A wall of noise and heat: seven saws detuned far apart, with a stream of noise, all through insert bus A's "
-            "ABYSS with its lows up, the filter breathing very slowly (LFO 2). Hold one low note or a fifth. MACROS: "
-            "BRIGHT, SPACE, HEAT (more noise).");
-        furnace.osc (0, "UniVoices", 7.0f).osc (0, "UniMix", 0.85f).osc (0, "UniDetune", 0.5f).osc (0, "UniSpread", 1.0f)
-               .osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
-               .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.3f).osc (1, "NoiseColour", 0.5f)
-               .osc (1, "Volume", 1.0f).osc (1, "Insert", 1.0f)
-               .filter (FilterType::lp24, 1200.0f, 0.25f, 0.0f)
-               .ampEnvelope (1800.0f, 2000.0f, 1.0f, 3000.0f)
-               .set (ParamIDs::lfo (1, "Rate"), 0.08f).set (ParamIDs::lfo (1, "Trigger"), (float) synth::mod::LfoTrigger::global);
-        drive (furnace, 0, DM::abyss, 6.0f, 4.0f, 0.0f, 0.0f, 0.4f);
-        furnace.set (ParamIDs::ins (0, "DriveLow"), 7.0f).set (ParamIDs::ins (0, "DriveHigh"), 4.0f);
-        route (furnace, "lfo2", ParamIDs::fltCutoff, 0.2f);
-        route (furnace, "macro1", ParamIDs::fltCutoff, 0.3f);
-        route (furnace, "macro3", ParamIDs::osc (1, "Noise"), 0.3f);
-        macros (furnace, "BRIGHT", "SPACE", "HEAT");
-        reverb (furnace, RT::hall, 0.6f, 0.25f);
-        space (furnace);
-        furnace.set (ParamIDs::patchLevel, 3.7f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (furnace);
+        auto drone = x.make ("Hellfire Drone", 5, { "Pad", "Sine", "Noise", "Infernal" },
+            "The machine idling: two clean sines an octave apart, the sub kept clean under INFERNAL while the rest goes "
+            "through FUZZ, CRUSH and NOISE pulsed at the notes' pitch, so the drone growls in tune; LFO 1 slowly breathes "
+            "the drive. Hold one low note or a fifth. MACROS: BRIGHT, SPACE, DESTROY.");
+        drone.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.45f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", saw).osc (2, "Transpose", 19.0f).osc (2, "Volume", 0.08f)
+             .ampEnvelope (900.0f, 2000.0f, 1.0f, 2500.0f)
+             .set (ParamIDs::lfo (0, "Rate"), 0.12f).set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        { Hell h; h.fuzz = 0.8f; h.crush = 0.3f; h.amp = 0.3f; h.noise = 1.0f; h.feedback = 0.0f; h.mix = 0.85f; h.tight = 0.55f; hell (drone, h); }
+        route (drone, "lfo1", ParamIDs::infernalDrive, 0.12f);
+        route (drone, "macro1", ParamIDs::osc (2, "Volume"), 0.15f);
+        macros (drone, "BRIGHT", "SPACE", "DESTROY");
+        reverb (drone, RT::hall, 0.7f, 0.25f);
+        space (drone);
+        drone.set (ParamIDs::patchLevel, 0.0f);
+        x.add (drone);
 
-        auto corrupt = x.make ("Corrupted Signal", 6, { "Pad", "Wavetable", "Travel", "Glitch", "Lo-Fi" },
-            "A broken transmission: the Bit Steps table stepped through by TRAVEL in sixteenths (jumps, reverses, "
-            "retriggers and dropouts), bit-crushed, through insert bus A's GLITCH (INTERFERE) and LO-FI's bitcrusher on "
-            "the whole sound. In time with your song. MACROS: BRIGHT, SPACE, CORRUPT (more crush).");
-        corrupt.osc (0, "Wave", wavetable).osc (0, "Table", table ("Bit Steps")).osc (0, "WtIndex", 0.2f)
-               .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.15f).osc (0, "UniSpread", 0.8f)
-               .osc (0, "Crush", 0.25f).osc (0, "CrushMode", 1.0f).osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f)
-               .osc (0, "TrOn", 1.0f).osc (0, "TrEditors", (float) synth::travel::Editors::envSeq).osc (0, "TrSteps", 8.0f)
-               .osc (0, "TrSync", (float) synth::mod::LfoSync::straight).osc (0, "TrDivision", division ("1/16"))
-               .osc (0, "TrStrength", 0.7f).osc (0, "TrTrigger", (float) synth::travel::Trigger::firstNote)
-               .filter (FilterType::lp24, 3000.0f, 0.2f, 0.0f)
-               .ampEnvelope (300.0f, 1000.0f, 1.0f, 1500.0f)
-               .set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) effects::LoFi::Type::bitcrusher)
-               .set (ParamIDs::lofiAmount, 3.0f).set (ParamIDs::lofiMix, 0.4f).set (ParamIDs::lofiNoise, 0.0f);
-        glitch (corrupt, 0, GM::interfere, "1/8", 5.0f, 5.0f, 0.4f);
-        corrupt.set (ParamIDs::ins (0, "SendReverb"), 0.5f).set (ParamIDs::ins (0, "SendDelay"), 0.3f);
-        {
-            auto& t = corrupt.rig.modulation.travel[0];
-            t.envelope = { { SP { 0.0f, 0.0f, 0.0f }, SP { 1.0f, 1.0f, 0.0f } }, -1, -1, -1 };
-            using M = synth::travel::StepMode;
-            const synth::travel::Step steps[] = { { M::normal, 1.0f, 1 }, { M::trigger, 4.0f, 1 }, { M::reverse, 1.0f, 1 }, { M::silence, 1.0f, 1 },
-                                                  { M::high, 1.0f, 1 }, { M::trigger, 2.0f, 1 }, { M::low, 1.0f, 1 }, { M::flip, 1.0f, 1 } };
-            for (int k = 0; k < 8; ++k)
-                t.pattern.steps[(size_t) k] = steps[k];
-        }
-        route (corrupt, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (corrupt, "macro3", ParamIDs::osc (0, "Crush"), 0.4f);
-        route (corrupt, "macro3", ParamIDs::lofiAmount, 0.3f);
-        macros (corrupt, "BRIGHT", "SPACE", "CORRUPT");
-        delay (corrupt, "1/16 dotted", 0.35f, 0.12f, true, 5.0f);
-        reverb (corrupt, RT::plate, 0.6f, 0.2f);
-        space (corrupt);
-        corrupt.set (ParamIDs::patchLevel, -7.2f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (corrupt);
+        auto shadow = x.make ("Riff Shadow", 6, { "Pad", "Layer", "Guitar", "Infernal" },
+            "A layer to sit under a down-tuned guitar: a wide saw an octave down and a clean sine sub, through INFERNAL's "
+            "AMP and its cabinet so it blends with the guitar's own, the lows kept clean and tight. Play it with the "
+            "guitar's riff or hold the chord under it. MACROS: BRIGHT, SPACE, DESTROY.");
+        shadow.osc (0, "Transpose", -12.0f).osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.12f)
+              .osc (0, "UniSpread", 0.9f).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
+              .filter (FilterType::lp24, 3000.0f, 0.1f, 0.2f).filterEnvelope (0.0f, 250.0f, 0.6f, 150.0f)
+              .ampEnvelope (4.0f, 300.0f, 0.9f, 200.0f);
+        { Hell h; h.amp = 0.8f; h.fuzz = 0.3f; h.noise = 0.1f; h.feedback = 0.0f; h.cab = 0.35f; h.tight = 0.6f; h.mix = 0.7f; h.drive = 0.45f; hell (shadow, h); }
+        compressor (shadow, fet, -18.0f, 4.0f, 2.0f);
+        route (shadow, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (shadow, "BRIGHT", "SPACE", "DESTROY");
+        reverb (shadow, RT::room, 0.4f, 0.1f);
+        space (shadow);
+        shadow.set (ParamIDs::patchLevel, 0.0f);
+        x.add (shadow);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
         auto chug = x.make ("Gut Chug", 7, { "Bass", "Drive", "Mono", "Inserts" },
             "A down-tuned palm-muted chug: a saw and a pulse an octave up (the pick's edge) through insert bus A's RABID, "
             "plucked short by the filter, every note struck afresh, and a clean sine an octave down under it, straight to "
             "the mix. CONSTRICTOR (FET) slams it, ECHELON scoops the mids. Play it in sixteenths. MACROS: BRIGHT, SPACE, "
-            "DESTROY.");
+            "DESTROY (INFERNAL comes in under it, the sub kept clean).");
         chug.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.4f).osc (0, "UniDetune", 0.1f).osc (0, "Volume", 0.6f)
             .osc (0, "PhaseRand", 0.0f).osc (0, "Insert", 1.0f)
             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.35f)
@@ -857,13 +857,14 @@ namespace
         macros (chug, "BRIGHT", "SPACE", "DESTROY");
         reverb (chug, RT::room, 0.3f, 0.1f);
         space (chug);
+        hell (chug, Hell::keep());
         chug.set (ParamIDs::patchLevel, 4.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (chug);
 
         auto drop = x.make ("Tectonic Drop", 8, { "Bass", "Hit", "Pitch", "Sub" },
             "A sub drop for the moment before everything hits: a sine falling two octaves into its note over about a "
             "second (the PITCH envelope), a saw an octave up giving it a growl through SHAPER 1's tube, ringing three "
-            "seconds into a hall. MACROS: BRIGHT, SPACE, DESTROY.");
+            "seconds into a hall. MACROS: BRIGHT, SPACE, DESTROY (INFERNAL comes in, the sub kept clean).");
         drop.osc (0, "Wave", sine).osc (0, "Volume", 0.9f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f)
             .osc (0, "SendReverb", 0.1f).osc (0, "SendDelay", 0.0f)
             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f)
@@ -877,85 +878,72 @@ namespace
         macros (drop, "BRIGHT", "SPACE", "DESTROY");
         reverb (drop, RT::hall, 0.8f, 0.25f, 10.0f, 3.0f);
         space (drop);
+        hell (drop, Hell::keep());
         drop.set (ParamIDs::patchLevel, -4.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (drop);
 
-        auto grinder = x.make ("Grinder Bass", 9, { "Bass", "Wavetable", "Modulation", "Shaper" },
-            "A grinding, chewing bass: the Wavefold table with its sub, LFO 1 (sixteenths, in time with your song) "
-            "sweeping the fold and the filter, SHAPER 1's diode biting into it, CONSTRICTOR (FET) holding it. The MOD "
-            "WHEEL folds it further. MACROS: BRIGHT, SPACE, DESTROY.");
-        grinder.osc (0, "Wave", wavetable).osc (0, "Table", table ("Wavefold")).osc (0, "WtIndex", 0.3f)
-               .osc (0, "Sub", 0.5f).osc (0, "PhaseRand", 0.0f).osc (0, "Volume", 0.7f)
-               .shaper (0, synth::ShaperModel::diode, 0.4f)
-               .filter (FilterType::lp24, 1500.0f, 0.3f, 0.0f)
-               .ampEnvelope (2.0f, 300.0f, 1.0f, 120.0f)
-               .mono (20.0f)
-               .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::triangle)
-               .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight)
-               .set (ParamIDs::lfo (0, "Division"), division ("1/16"))
-               .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global)
-               .set (ParamIDs::lfo (0, "Offset"), 1.0f);
-        compressor (grinder, fet, -18.0f, 4.0f, 2.0f);
-        route (grinder, "lfo1", ParamIDs::osc (0, "WtIndex"), 0.35f);
-        route (grinder, "lfo1", ParamIDs::fltCutoff, 0.15f);
-        route (grinder, "modWheel", ParamIDs::osc (0, "WtIndex"), 0.3f);
-        route (grinder, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (grinder, "macro3", ParamIDs::shp (0, "Drive"), 0.5f);
-        macros (grinder, "BRIGHT", "SPACE", "DESTROY");
-        reverb (grinder, RT::room, 0.3f, 0.08f);
-        space (grinder);
-        grinder.set (ParamIDs::patchLevel, 3.8f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (grinder);
+        auto engine = x.make ("Sine Engine", 9, { "Bass", "Sine", "Noise", "Infernal" },
+            "The engine of the whole bank: two pure sines, the sub kept clean while the one an octave up goes through "
+            "INFERNAL's FUZZ and CRUSH, with noise pulsed at the note's pitch growling on top in time with the riff. "
+            "CONSTRICTOR (FET) slams it. Play riffs in sixteenths. The MOD WHEEL brings up the growl. MACROS: BRIGHT, "
+            "SPACE, DESTROY.");
+        engine.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.6f).osc (1, "PhaseRand", 0.0f)
+              .ampEnvelope (1.0f, 200.0f, 0.85f, 60.0f)
+              .mono (0.0f).set (ParamIDs::legato, 0.0f);
+        { Hell h; h.fuzz = 1.0f; h.crush = 0.25f; h.amp = 0.4f; h.noise = 0.7f; h.feedback = 0.0f; h.tight = 0.45f; h.drive = 0.6f; hell (engine, h); }
+        compressor (engine, fet, -18.0f, 4.0f, 2.0f);
+        route (engine, "modWheel", ParamIDs::infernalNoise, 0.3f);
+        route (engine, "macro1", ParamIDs::osc (1, "Volume"), 0.2f);
+        macros (engine, "BRIGHT", "SPACE", "DESTROY");
+        reverb (engine, RT::room, 0.3f, 0.06f);
+        space (engine);
+        engine.set (ParamIDs::patchLevel, 0.0f);
+        x.add (engine);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
-        auto organ = x.make ("Rust Organ", 10, { "Keys", "Organ", "Drive", "Inserts" },
-            "A heavy, overdriven organ: the Organ Stack table through insert bus A's BANSHEE and a rotary speaker, so "
-            "chords growl and swirl. MACROS: BRIGHT, SPACE, DESTROY (SHAPER 1's tube into the drive).");
-        organ.osc (0, "Wave", wavetable).osc (0, "Table", table ("Organ Stack")).osc (0, "WtIndex", 0.6f)
-             .osc (0, "UniVoices", 2.0f).osc (0, "UniMix", 0.4f).osc (0, "UniDetune", 0.06f).osc (0, "Volume", 0.6f)
-             .osc (0, "Insert", 1.0f)
-             .shaper (0, synth::ShaperModel::tube, 0.1f)
-             .filter (FilterType::lp12, 4000.0f, 0.05f, 0.0f)
-             .ampEnvelope (5.0f, 200.0f, 1.0f, 150.0f);
-        drive (organ, 0, DM::screamer, 7.0f, 5.0f, 3.0f, 0.0f, 0.3f);
-        chorus (organ, ParamIDs::insModIds (0), MT::rotary, 6.0f, 0.6f, 1.0f);
-        route (organ, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (organ, "macro3", ParamIDs::shp (0, "Drive"), 0.6f);
+        auto organ = x.make ("Profane Organ", 10, { "Keys", "Organ", "Cathedral", "Infernal" },
+            "An enormous church organ: the Organ Stack table with a pipe an octave down and a high fifth above, speaking "
+            "slowly and ringing into a vast cathedral. Clean as it comes; DESTROY drags it through INFERNAL into a hellish "
+            "organ. MACROS: BRIGHT, SPACE, DESTROY.");
+        organ.osc (0, "Wave", wavetable).osc (0, "Table", table ("Organ Stack")).osc (0, "WtIndex", 0.7f)
+             .osc (0, "UniVoices", 2.0f).osc (0, "UniMix", 0.35f).osc (0, "UniDetune", 0.05f).osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 19.0f).osc (2, "Volume", 0.12f)
+             .filter (FilterType::lp12, 6000.0f, 0.05f, 0.0f)
+             .ampEnvelope (40.0f, 200.0f, 1.0f, 1200.0f);
+        { Hell h; h.mix = 0.0f; h.mixRise = 0.8f; h.amp = 0.8f; h.fuzz = 0.5f; h.noise = 0.2f; h.feedback = 0.2f; h.tight = 0.5f; hell (organ, h); }
+        route (organ, "macro1", ParamIDs::fltCutoff, 0.2f);
         macros (organ, "BRIGHT", "SPACE", "DESTROY");
-        reverb (organ, RT::room, 0.5f, 0.15f);
+        reverb (organ, RT::cathedral, 0.9f, 0.4f, 40.0f, 4.0f);
         space (organ);
-        organ.set (ParamIDs::patchLevel, 0.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        organ.set (ParamIDs::patchLevel, 0.0f);
         x.add (organ);
 
-        auto bells = x.make ("Ritual Bells", 11, { "Keys", "FM", "Bell", "Delay" },
-            "Dark, clanging bells: a sine modulated by oscillator 2 a minor ninth up and pulled sharp (the harsh, "
-            "inharmonic ring), the strike fading slower than the note, a low sine for the bell's body, SHAPER 1's tube "
-            "after the filter for grime, ping-pong echoes and a cathedral. MACROS: METAL (the FM), SPACE, DESTROY.");
-        bells.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
-             .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.15f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 13.0f).osc (1, "Fine", 30.0f).osc (1, "Volume", 1.0f)
-             .osc (1, "PhaseRand", 0.0f)
-             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f)
-             .shaper (0, synth::ShaperModel::tube, 0.25f, true)
-             .ampEnvelope (1.0f, 5000.0f, 0.0f, 3000.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.5f)
-             .set (ParamIDs::env (0, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
-        bells.rig.modulation.envelopes[0] = { { SP { 0.0f, 1.0f, -0.6f }, SP { 3.0f, 0.0f, 0.0f } }, -1, -1, -1 };
-        route (bells, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
-        route (bells, "velocity", ParamIDs::osc (0, "FmAmount"), 0.12f);
-        route (bells, "macro1", ParamIDs::osc (0, "FmAmount"), 0.25f);
-        route (bells, "macro3", ParamIDs::shp (0, "Drive"), 0.5f);
-        macros (bells, "METAL", "SPACE", "DESTROY");
-        delay (bells, "1/4", 0.4f, 0.2f, true, 4.0f);
-        reverb (bells, RT::cathedral, 0.35f, 0.3f, 30.0f, 4.0f);
-        space (bells);
-        bells.set (ParamIDs::patchLevel, -7.0f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (bells);
+        auto anvil = x.make ("Anvil Stab", 11, { "Keys", "Stab", "Filter", "Infernal" },
+            "A filter-driven stab: saws and a pulse snapped open by the filter and shut again, through INFERNAL's FUZZ and "
+            "AMP, so every chord hits like a hammer on an anvil. Harder playing snaps brighter. MACROS: BRIGHT, SPACE, "
+            "DESTROY.");
+        anvil.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.45f).osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.7f)
+             .osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+             .filter (FilterType::lp24, 400.0f, 0.35f, 0.75f).filterEnvelope (0.0f, 180.0f, 0.0f, 120.0f)
+             .set (ParamIDs::fltVel, 0.4f).set (ParamIDs::fltEnvVel, 0.5f)
+             .ampEnvelope (1.0f, 400.0f, 0.0f, 200.0f);
+        { Hell h; h.fuzz = 0.8f; h.amp = 0.6f; h.noise = 0.1f; h.feedback = 0.0f; h.mix = 0.8f; hell (anvil, h); }
+        route (anvil, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (anvil, "BRIGHT", "SPACE", "DESTROY");
+        delay (anvil, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
+        reverb (anvil, RT::hall, 0.5f, 0.15f);
+        space (anvil);
+        anvil.set (ParamIDs::patchLevel, 0.0f);
+        x.add (anvil);
 
         auto riff2 = x.make ("Iron Riff", 12, { "Keys", "Chords", "Drive", "Inserts" },
             "Gatling Pulse played by hand: every key gives a whole power chord (the oscillator's chorder adds the fifth "
             "and the octave) with a clean sine sub an octave under it, through insert bus A's RABID, so one finger plays "
             "a down-tuned rhythm-guitar chord. Short notes snap like a palm mute; held ones ring. CONSTRICTOR (FET) "
-            "slams it, ECHELON scoops the mids. MACROS: BRIGHT, SPACE, DESTROY.");
+            "slams it, ECHELON scoops the mids. MACROS: BRIGHT, SPACE, DESTROY (INFERNAL comes in, the sub kept clean).");
         riff2.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.4f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.5f)
              .osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f).osc (0, "Insert", 1.0f)
              .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 7.0f).osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 12.0f)
@@ -977,6 +965,7 @@ namespace
         delay (riff2, "1/8 dotted", 0.2f, 0.08f, true, 4.0f);
         reverb (riff2, RT::room, 0.3f, 0.1f);
         space (riff2);
+        hell (riff2, Hell::keep());
         riff2.set (ParamIDs::patchLevel, 5.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (riff2);
 
@@ -984,7 +973,7 @@ namespace
         auto gatling = x.make ("Gatling Pulse", 13, { "Arp", "Chords", "Drive", "Chug" },
             "Hold one low key (or a chord: its root is used): ARP 1 fires power chords with a sub under them in a "
             "syncopated sixteenth-note chug, with a dissonant half-step stab near the end of the bar, through insert bus "
-            "A's RABID, in time with your song. CONSTRICTOR (FET) slams it. MACROS: BRIGHT, SPACE, DESTROY.");
+            "A's RABID, in time with your song. CONSTRICTOR (FET) slams it. MACROS: BRIGHT, SPACE, DESTROY (INFERNAL comes in, the sub kept clean).");
         gatling.osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.4f).osc (0, "UniDetune", 0.1f).osc (0, "UniSpread", 0.5f)
                .osc (0, "Volume", 0.55f).osc (0, "Arp", 1.0f).osc (0, "Insert", 1.0f)
                .shaper (0, synth::ShaperModel::tube, 0.1f)
@@ -1016,92 +1005,60 @@ namespace
         reverb (gatling, RT::room, 0.3f, 0.1f);
         eqBand (gatling, 0, eq::Shape::bell, 450.0f, -2.5f, 1.0f);
         space (gatling);
+        hell (gatling, Hell::keep());
         gatling.set (ParamIDs::patchLevel, 6.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (gatling);
 
-        auto shrapnel = x.make ("Shrapnel Grid", 14, { "Arp", "Randomizer", "Glitch", "Wavetable" },
-            "Sharp metal fragments: ARP 1's randomizer picks notes from the Phrygian scale over three octaves, with "
-            "rests and ratchet bursts, and rolls a new pattern every pass. Each note a short bit-crushed pluck from the "
-            "Bit Steps table, through insert bus A's GLITCH and ping-pong echoes. Hold a key or a chord. MACROS: BRIGHT, "
-            "SPACE, CORRUPT (more crush).");
-        shrapnel.osc (0, "Wave", wavetable).osc (0, "Table", table ("Bit Steps")).osc (0, "WtIndex", 0.5f)
-                .osc (0, "Crush", 0.3f).osc (0, "CrushMode", 2.0f).osc (0, "Volume", 0.6f).osc (0, "Arp", 1.0f)
-                .osc (0, "Insert", 1.0f)
-                .filter (FilterType::lp24, 4000.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 120.0f, 0.0f, 100.0f)
-                .ampEnvelope (0.5f, 150.0f, 0.0f, 100.0f)
-                .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::random)
-                .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
-                .set (ParamIDs::arp (0, "Gate"), 0.4f);
+        auto chainsaw = x.make ("Chainsaw Pulse", 14, { "Arp", "Noise", "Kick", "Infernal" },
+            "A chainsaw and a kick: hold a low key and ARP 1 fires a sine that drops two octaves into its note on every "
+            "beat (the kick) while a buzzing chainsaw idles between them in sixteenths, all through INFERNAL's FUZZ and "
+            "pitched NOISE, so the engine rattles in time with your song. MACROS: BRIGHT, SPACE, DESTROY.");
+        chainsaw.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f).osc (1, "PitchEnv", 0.0f)
+           .osc (1, "Transpose", 12.0f)
+           .ampEnvelope (0.5f, 140.0f, 0.0f, 60.0f)
+           .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 24.0f)
+           .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+           .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Gate"), 0.7f);
+        chainsaw.rig.modulation.pitchEnvelope = { { SP { 0.0f, 1.0f, -0.6f }, SP { 0.06f, 0.5f, 0.0f } }, -1, -1, -1 };
         {
-            auto& r = shrapnel.rig.modulation.arpRandomizers[0];
-            r.scale = synth::arp::scaleNames.indexOf ("Phrygian");
-            r.restChance = 0.3f;
-            r.ratchetChance = 0.3f;
-            r.lengthChances = { 1.0f, 0.1f, 0.0f, 0.0f };
-            r.velocityLow = 0.6f;
-            r.autoDice = true;
-            r.seed = 13;
-            auto& p = shrapnel.rig.modulation.arps[0].patterns[0];
-            p = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
-        }
-        glitch (shrapnel, 0, GM::sequence, "1/32", 5.0f, 4.0f, 0.3f);
-        shrapnel.set (ParamIDs::ins (0, "SendDelay"), 0.5f).set (ParamIDs::ins (0, "SendReverb"), 0.3f);
-        route (shrapnel, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (shrapnel, "macro3", ParamIDs::osc (0, "Crush"), 0.4f);
-        macros (shrapnel, "BRIGHT", "SPACE", "CORRUPT");
-        delay (shrapnel, "1/16 dotted", 0.35f, 0.2f, true, 6.0f);
-        reverb (shrapnel, RT::plate, 0.5f, 0.15f);
-        space (shrapnel);
-        shrapnel.set (ParamIDs::patchLevel, 4.2f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (shrapnel);
-
-        auto machine = x.make ("War Machine", 15, { "Arp", "Bass", "Step Seq", "Drive" },
-            "A pumping war-march sequence: hold a key and ARP 1 drives a saw an octave down with a square on top through "
-            "a sixteenth-note pattern of roots, octaves and fifths, while the STEP SEQUENCER ducks the volume on every "
-            "beat like a sidechained mix, all through insert bus A's CHIMERA, in time with your song. MACROS: BRIGHT, "
-            "SPACE, DESTROY.");
-        machine.osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
-               .osc (0, "Insert", 1.0f)
-               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
-               .osc (1, "Insert", 1.0f)
-               .shaper (0, synth::ShaperModel::tube, 0.1f)
-               .filter (FilterType::lp24, 1800.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 160.0f, 0.2f, 100.0f)
-               .ampEnvelope (1.0f, 200.0f, 0.6f, 90.0f)
-               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
-               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Gate"), 0.6f)
-               .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 0.6f).set (ParamIDs::seqGate, 1.0f)
-               .set (ParamIDs::seqContour, 0.3f).set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 16.0f);
-        {
-            auto& p = machine.rig.modulation.arps[0].patterns[0];
+            auto& p = chainsaw.rig.modulation.arps[0].patterns[0];
             p = {};
-            const int on[] = { 0, 2, 3, 6, 8, 10, 11, 14 };
-            const int transpose[] = { 0, 0, 12, 0, 0, 0, 12, 7 };
-            for (int i = 0; i < 8; ++i)
+            for (int k = 0; k < 16; ++k)
             {
-                auto& b = p.blocks[(size_t) on[i]];
-                b.on = true;
-                b.transpose = transpose[i];
-                b.velocity = on[i] % 4 == 0 ? 1.0f : 0.8f;
+                auto& blk = p.blocks[(size_t) k];
+                blk.on = true;
+                blk.velocity = k % 4 == 0 ? 1.0f : 0.55f;
             }
-            const float pump[4] = { 0.3f, 0.65f, 0.9f, 1.0f };   // ducked on the beat, back up by the next
-            for (int row = 0; row < 2; ++row)
-                for (int k = 0; k < synth::seq::maxSteps; ++k)
-                {
-                    auto& step = machine.rig.modulation.stepPattern.rows[(size_t) row][(size_t) k];
-                    step.on = true;
-                    step.level = pump[k % 4];
-                    step.tied = true;
-                }
         }
-        drive (machine, 0, DM::chimera, 5.0f, 5.0f, 0.0f, 0.2f, 0.2f);
-        route (machine, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (machine, "macro3", ParamIDs::shp (0, "Drive"), 0.6f);
-        macros (machine, "BRIGHT", "SPACE", "DESTROY");
-        delay (machine, "1/8 dotted", 0.3f, 0.1f, true, 4.0f);
-        reverb (machine, RT::room, 0.4f, 0.12f);
-        space (machine);
-        machine.set (ParamIDs::patchLevel, 5.4f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (machine);
+        { Hell h; h.fuzz = 0.9f; h.noise = 0.6f; h.amp = 0.3f; h.crush = 0.2f; h.feedback = 0.0f; h.tight = 0.5f; h.mix = 0.8f; hell (chainsaw, h); }
+        route (chainsaw, "macro1", ParamIDs::osc (1, "Volume"), 0.2f);
+        macros (chainsaw, "BRIGHT", "SPACE", "DESTROY");
+        reverb (chainsaw, RT::room, 0.4f, 0.1f);
+        space (chainsaw);
+        chainsaw.set (ParamIDs::patchLevel, 0.0f);
+        x.add (chainsaw);
+
+        auto run = x.make ("Berserk Run", 15, { "Arp", "Shred", "Guitar", "Infernal" },
+            "Shredding runs: hold a chord and ARP 1 tears up and down it over two octaves in sixteenths, a lead played "
+            "like a guitar through INFERNAL's AMP and cabinet, every note picked, in time with your song. The MOD WHEEL "
+            "feeds back. MACROS: BRIGHT, SPACE, DESTROY.");
+        run.osc (0, "Volume", 0.6f).osc (0, "Arp", 1.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.35f).osc (1, "Arp", 1.0f)
+           .filter (FilterType::lp24, 5000.0f, 0.15f, 0.3f).filterEnvelope (0.0f, 120.0f, 0.4f, 80.0f)
+           .ampEnvelope (1.0f, 160.0f, 0.6f, 60.0f)
+           .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+           .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+           .set (ParamIDs::arp (0, "Gate"), 0.75f);
+        { Hell h; h.amp = 1.0f; h.fuzz = 0.3f; h.noise = 0.0f; h.feedback = 0.3f; h.cab = 0.5f; h.drive = 0.55f; hell (run, h); }
+        route (run, "modWheel", ParamIDs::infernalFeedback, 0.4f);
+        route (run, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (run, "BRIGHT", "SPACE", "DESTROY");
+        delay (run, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
+        reverb (run, RT::hall, 0.5f, 0.12f);
+        space (run);
+        run.set (ParamIDs::patchLevel, 0.0f);
+        x.add (run);
     }
 
     // STARCOURT (the owner's name): inspired by the dark '80s analog-synth score of a supernatural mystery series:
