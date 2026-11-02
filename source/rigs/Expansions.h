@@ -27,7 +27,8 @@ namespace expansions
           "round INFERNAL (0.59.0), parallel destruction, and MACRO 3, DESTROY. Our own sounds." },
         { "STARCOURT", "SC",
           "Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor "
-          "chords, chorused polysynth pads, haunting leads, and cassette wobble. Our own sounds." },
+          "chords, string-machine and polysynth pads, haunting leads, eighth-note basses. Built round AFTERGLOW (0.60.0), "
+          "an old polysynth's glow, and MACRO 3, GLOW. Our own sounds." },
         { "SANDSEA", "SS",
           "Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices, "
           "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Built round SIROCCO "
