@@ -324,7 +324,7 @@ namespace
         storm (strings, "ENSEMBLE (the detune)",
                "STORM (rain on the glass, its drops ringing on your notes; more detune with it)",
                RainSpot { 0.7f, 1, 0.45f, 0.6f, -8.0f });
-        strings.set (ParamIDs::patchLevel, -7.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        strings.set (ParamIDs::patchLevel, -9.8f);   // LEVEL: measured, not by ear
         x.add (strings);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -1132,7 +1132,7 @@ namespace
         delay (mixtape, "1/8 dotted", 0.35f, 0.2f, true, 5.0f);
         reverb (mixtape, RT::hall, 0.6f, 0.22f);
         space (mixtape);
-        mixtape.set (ParamIDs::patchLevel, -2.5f);   // LEVEL: measured, not by ear
+        mixtape.set (ParamIDs::patchLevel, -6.0f);   // LEVEL: measured, not by ear
         x.add (mixtape);
 
         auto ghost = x.make ("Radio Ghost", 3, { "Lead", "Triangle", "Drift", "Mono" },
@@ -1150,7 +1150,7 @@ namespace
         delay (ghost, "1/4", 0.4f, 0.18f, true, 4.0f);
         reverb (ghost, RT::plate, 0.75f, 0.3f);
         space (ghost);
-        ghost.set (ParamIDs::patchLevel, 0.0f);
+        ghost.set (ParamIDs::patchLevel, -3.3f);   // LEVEL: measured, not by ear
         x.add (ghost);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -1207,7 +1207,7 @@ namespace
         afterglow (dream, { 0.5f, 0.4f, 0.5f, 0.3f, 0.5f, 0.5f, 0.5f, 0.4f });
         reverb (dream, RT::hall, 0.8f, 0.3f);
         space (dream);
-        dream.set (ParamIDs::patchLevel, -4.0f);   // LEVEL: measured, not by ear
+        dream.set (ParamIDs::patchLevel, -7.3f);   // LEVEL: measured, not by ear
         x.add (dream);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -1244,7 +1244,7 @@ namespace
         afterglow (eighths, { 0.3f, 0.2f, 0.15f, 0.3f, 0.6f, 0.5f, 0.3f, 0.5f });
         reverb (eighths, RT::room, 0.3f, 0.06f);
         space (eighths);
-        eighths.set (ParamIDs::patchLevel, 0.0f);
+        eighths.set (ParamIDs::patchLevel, -1.9f);   // LEVEL: measured, not by ear
         x.add (eighths);
 
         auto wall = x.make ("Saw Wall Bass", 9, { "Bass", "Saw", "Unison", "Afterglow" },
@@ -1260,7 +1260,7 @@ namespace
         afterglow (wall, { 0.35f, 0.3f, 0.25f, 0.35f, 0.6f, 0.5f, 0.4f, 0.45f });
         reverb (wall, RT::room, 0.35f, 0.08f);
         space (wall);
-        wall.set (ParamIDs::patchLevel, 2.5f);   // LEVEL: measured, not by ear
+        wall.set (ParamIDs::patchLevel, 0.4f);   // LEVEL: measured, not by ear
         x.add (wall);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -1281,7 +1281,7 @@ namespace
         afterglow (lantern, { 0.3f, 0.2f, 0.45f, 0.3f, 0.6f, 0.5f, 0.5f, 0.45f });
         reverb (lantern, RT::plate, 0.5f, 0.2f);
         space (lantern);
-        lantern.set (ParamIDs::patchLevel, -2.5f);   // LEVEL: measured, not by ear
+        lantern.set (ParamIDs::patchLevel, -5.2f);   // LEVEL: measured, not by ear
         x.add (lantern);
 
         auto stabs = x.make ("Neon Stabs", 11, { "Keys", "Stab", "Polysynth", "Afterglow" },
@@ -1299,7 +1299,7 @@ namespace
         delay (stabs, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
         reverb (stabs, RT::hall, 0.5f, 0.15f);
         space (stabs);
-        stabs.set (ParamIDs::patchLevel, -2.5f);   // LEVEL: measured, not by ear
+        stabs.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: measured, not by ear
         x.add (stabs);
 
         auto brass = x.make ("Brass '84", 12, { "Keys", "Brass", "Polysynth" },
@@ -1373,7 +1373,7 @@ namespace
         delay (rising, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
         reverb (rising, RT::hall, 0.55f, 0.18f);
         space (rising);
-        rising.set (ParamIDs::patchLevel, 2.0f);   // LEVEL: measured, not by ear
+        rising.set (ParamIDs::patchLevel, -0.5f);   // LEVEL: measured, not by ear
         x.add (rising);
 
         auto cassette = x.make ("Cassette Arp", 15, { "Arp", "Tape", "Up-Down", "Afterglow" },
@@ -1393,7 +1393,7 @@ namespace
         delay (cassette, "1/4", 0.3f, 0.12f, true, 4.0f);
         reverb (cassette, RT::plate, 0.45f, 0.15f);
         space (cassette);
-        cassette.set (ParamIDs::patchLevel, 1.5f);   // LEVEL: measured, not by ear
+        cassette.set (ParamIDs::patchLevel, -1.4f);   // LEVEL: measured, not by ear
         x.add (cassette);
     }
 
