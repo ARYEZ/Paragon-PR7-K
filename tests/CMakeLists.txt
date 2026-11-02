@@ -48,6 +48,8 @@ add_executable(ParagonX1Tests
     DownpourPluginTests.cpp
     SiroccoTests.cpp
     SiroccoPluginTests.cpp
+    InfernalTests.cpp
+    InfernalPluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

@@ -175,6 +175,10 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::siroccoScale, 1.0f);
             set (ParamIDs::siroccoVoices, 2.0f);
             set (ParamIDs::siroccoLevel, 1.0f);
+            // 0.59.0: INFERNAL, the chord destroyed: AMP and FUZZ, some noise.
+            set (ParamIDs::infernalOn, 1.0f);
+            set (ParamIDs::infernalMix, 0.5f);
+            set (ParamIDs::infernalNoise, 0.5f);
                         // 0.51.0: its WAH in AUTO, opened by the chord.
             set (ParamIDs::ins (0, "WahOn"), 1.0f);
             set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
@@ -205,8 +209,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : FxPage::View::rack);
-        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO).
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : FxPage::View::rack);
+        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL).
         if (const auto signature = env ("PARAGON_SNAPSHOT_SIGNATURE"); signature.isNotEmpty())
             fxPage.showSignature (signature.getIntValue());
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot

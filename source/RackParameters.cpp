@@ -13,6 +13,7 @@
 #include "dsp/effects/Echoes.h"
 #include "dsp/effects/Crackle.h"
 #include "dsp/effects/Downpour.h"
+#include "dsp/effects/Infernal.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -520,5 +521,27 @@ void addDownpourParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::downpourWidth, "Downpour Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
     layout.add (makeFloat (ParamIDs::downpourFollow, "Downpour Follow", { 0.0f, 1.0f, 0.01f }, d.follow, v, asPercent));
     layout.add (makeFloat (ParamIDs::downpourLevel, "Downpour Level", { -48.0f, 6.0f, 0.1f }, d.levelDb, v,
+                           [] (float db, int) { return juce::String (db, 1) + " dB"; }));
+}
+
+void addInfernalParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // INFERNAL (0.59.0, effects::Infernal, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 31;
+    const effects::Infernal::Settings d;
+    const ToText asDrive = [] (float value, int) { return "+" + juce::String (juce::roundToInt (42.0f * value)) + " dB"; };
+    const ToText asTight = [] (float value, int) { return juce::String (juce::roundToInt (effects::Infernal::tightHz (value))) + " Hz"; };
+    const ToText asCab = [] (float value, int) { return juce::String (effects::Infernal::cabHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::infernalOn, "Infernal On", v, false));
+    layout.add (makeFloat (ParamIDs::infernalDrive, "Infernal Drive", { 0.0f, 1.0f, 0.01f }, d.drive, v, asDrive));
+    layout.add (makeFloat (ParamIDs::infernalTight, "Infernal Tight", { 0.0f, 1.0f, 0.01f }, d.tight, v, asTight));
+    layout.add (makeFloat (ParamIDs::infernalFuzz, "Infernal Fuzz", { 0.0f, 1.0f, 0.01f }, d.fuzz, v, asPercent));
+    layout.add (makeFloat (ParamIDs::infernalCrush, "Infernal Crush", { 0.0f, 1.0f, 0.01f }, d.crush, v, asPercent));
+    layout.add (makeFloat (ParamIDs::infernalAmp, "Infernal Amp", { 0.0f, 1.0f, 0.01f }, d.amp, v, asPercent));
+    layout.add (makeFloat (ParamIDs::infernalNoise, "Infernal Noise", { 0.0f, 1.0f, 0.01f }, d.noise, v, asPercent));
+    layout.add (makeFloat (ParamIDs::infernalFeedback, "Infernal Feedback", { 0.0f, 1.0f, 0.01f }, d.feedback, v, asPercent));
+    layout.add (makeFloat (ParamIDs::infernalCab, "Infernal Cab", { 0.0f, 1.0f, 0.01f }, d.cab, v, asCab));
+    layout.add (makeFloat (ParamIDs::infernalMix, "Infernal Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+    layout.add (makeFloat (ParamIDs::infernalLevel, "Infernal Level", { -24.0f, 12.0f, 0.1f }, d.levelDb, v,
                            [] (float db, int) { return juce::String (db, 1) + " dB"; }));
 }

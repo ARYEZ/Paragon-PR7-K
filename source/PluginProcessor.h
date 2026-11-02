@@ -209,6 +209,7 @@ public:
         rack->delay.seedRandom (seed);
         rack->crackle.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
+        rack->infernal.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -301,6 +302,9 @@ public:
     // DOWNPOUR (0.57.0): its settings as they are now (RAIN, DROPS, DISTANCE, LEVEL as the matrix moves them), and the rain.
     effects::Downpour::Settings getDownpourSettings() const noexcept;
     const effects::Downpour& getDownpour() const noexcept { return rack->downpour; }
+    // INFERNAL (0.59.0): its settings as they are now (DRIVE, MIX, NOISE, FEEDBACK as the matrix moves them).
+    effects::Infernal::Settings getInfernalSettings() const noexcept;
+    const effects::Infernal& getInfernal() const noexcept { return rack->infernal; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

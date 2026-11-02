@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO" };
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 7> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 8> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 7> specs;
+    std::array<RackUnit::Spec, 8> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -832,6 +832,62 @@ std::array<RackUnit::Spec, 7> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (6); };
+    }
+
+    // INFERNAL (0.59.0): the drive in big digits, the split and the chains' blends; the keys set the character.
+    {
+        auto& s = specs[7];
+        s.name = "INFERNAL";
+        s.kind = "PARALLEL DESTRUCTION  FOUR CHAINS";
+        s.onParameterIds = { ParamIDs::infernalOn };
+        s.powerTooltip = "INFERNAL on or off: your sound through four chains of destruction at once. Click POWER (the word) or EDIT for its page";
+        // The keys: three characters (FUZZ / AMP / NOISE to the fore), lit when that chain leads.
+        const auto characterKey = [&p] (const char* name, const char* lead, const char* tip)
+        {
+            return RackUnit::Key { name, tip,
+                                   [&p, lead]
+                                   {
+                                       const char* chains[] = { ParamIDs::infernalFuzz, ParamIDs::infernalAmp, ParamIDs::infernalNoise };
+                                       for (const auto* c : chains)
+                                           if (juce::String (c) != lead && valueOf (p, c) > valueOf (p, lead))
+                                               return false;
+                                       return valueOf (p, lead) > 0.0f;
+                                   },
+                                   [&p, lead]
+                                   {
+                                       for (const auto* c : { ParamIDs::infernalFuzz, ParamIDs::infernalAmp, ParamIDs::infernalNoise })
+                                           setValue (p, c, juce::String (c) == lead ? 1.0f : 0.3f);
+                                   } };
+        };
+        s.keys[0] = characterKey ("FUZZ", ParamIDs::infernalFuzz, "FUZZ to the fore: the buzzing riff");
+        s.keys[1] = characterKey ("AMP", ParamIDs::infernalAmp, "AMP to the fore: the guitar-like lead");
+        s.keys[2] = characterKey ("NOISE", ParamIDs::infernalNoise, "NOISE to the fore: the growl pitched to your notes");
+        s.knobs = { RackUnit::Knob { ParamIDs::infernalDrive, "DRIVE" }, RackUnit::Knob { ParamIDs::infernalMix, "MIX" } };
+        s.ladderTitle = "HEAT";
+        s.ladderMarks = { 0.0f, -6.0f, -12.0f, -24.0f, -48.0f };
+        s.ladderLabels = { "0", "-6", "-12", "-24", "-48" };
+        s.ladderReading = [&p]
+        {
+            auto loudest = -100.0f;
+            for (int k = 0; k < 4; ++k)
+                loudest = juce::jmax (loudest, p.getInfernal().getChainDb (k));
+            return loudest;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getInfernalSettings();
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (42.0f * settings.drive)), left.getTopLeft(), h);
+            line (g, "DB", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "CLEAN UNDER " + textOf (p, ParamIDs::infernalTight), left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "FUZZ " + textOf (p, ParamIDs::infernalFuzz) + "  CRUSH " + textOf (p, ParamIDs::infernalCrush),
+                                  "AMP " + textOf (p, ParamIDs::infernalAmp) + "  NOISE " + textOf (p, ParamIDs::infernalNoise),
+                                  "FEEDBACK " + textOf (p, ParamIDs::infernalFeedback), "CAB " + textOf (p, ParamIDs::infernalCab) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (7); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
