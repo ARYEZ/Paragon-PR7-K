@@ -31,6 +31,7 @@ namespace
     // 20 to 23 were THE DRUMS (0.21.0 to 0.23.0), removed in 0.54.0: never reuse them.
     constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
     constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
+    constexpr int stageSirocco = 30;      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
     const ToText asPercent = [] (float value, int) { return juce::String (juce::roundToInt (value * 100.0f)) + "%"; };
@@ -494,6 +495,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     }
     addSwitch (layout, arpsTogether, "Arps Together", synth::Settings{}.arpsTogether, stage5b);
 
+    // SIROCCO (0.58.0): the answering harmony, in presets.
+    {
+        const synth::sirocco::Settings d;
+        addSwitch (layout, siroccoOn, "Sirocco On", d.on, stageSirocco);
+        addChoice (layout, siroccoKey, "Sirocco Key", synth::sirocco::keyNames, d.key, stageSirocco);
+        addChoice (layout, siroccoScale, "Sirocco Scale", synth::arp::scaleNames, d.scale, stageSirocco);
+        addChoice (layout, siroccoInterval, "Sirocco Interval", synth::sirocco::intervalNames, d.interval, stageSirocco);
+        add (layout, siroccoVoices, "Sirocco Voices", { 1.0f, (float) synth::sirocco::maxVoices, 1.0f }, (float) d.voices,
+             [] (float v, int) { return juce::String (juce::roundToInt (v)); }, stageSirocco);
+        add (layout, siroccoDelay, "Sirocco Delay", { 0.0f, 500.0f, 1.0f }, d.delayMs, asMs, stageSirocco);
+        add (layout, siroccoLevel, "Sirocco Level", { 0.0f, 1.0f }, d.level, asPercent, stageSirocco);
+        add (layout, siroccoDetune, "Sirocco Detune", { 0.0f, 30.0f, 0.1f }, d.detuneCents,
+             [] (float v, int) { return juce::String (v, 1) + " ct"; }, stageSirocco);
+        add (layout, siroccoSpread, "Sirocco Spread", { 0.0f, 1.0f }, d.spread, asPercent, stageSirocco);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);
@@ -535,5 +552,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addInsertParameters (layout); // the insert buses (stage 7d): RackParameters.cpp
     addEchoesParameters (layout); // ECHOES (0.53.0): RackParameters.cpp
     addCrackleParameters (layout); // CRACKLE (0.56.0): RackParameters.cpp
+    addDownpourParameters (layout); // DOWNPOUR (0.57.0): RackParameters.cpp
     return layout;
 }

@@ -100,7 +100,7 @@ TEST_CASE ("CRACKLE: RATE, CLUSTER and LEVEL are mod-matrix destinations (FX Cra
     CHECK (p.processor.getCrackleSettings().rate < 2.5f);
 }
 
-TEST_CASE ("CRACKLE: the MOD / LO-FI view's fifth unit, and its page", "[crackle][ui]")
+TEST_CASE ("CRACKLE: the MOD / LO-FI view's SIGNATURE slot, and its page", "[crackle][ui]")
 {
     ParagonX1AudioProcessor processor;
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
@@ -110,12 +110,13 @@ TEST_CASE ("CRACKLE: the MOD / LO-FI view's fifth unit, and its page", "[crackle
     view->showPage (MainView::Page::fx);
     auto& fx = view->getFxPage();
     fx.show (FxPage::View::modFx);
+    fx.showSignature (1);   // 0.58.0: in the SIGNATURE slot
     auto& unit = fx.getModFxUnit (4);
     CHECK (unit.getSpec().name == "CRACKLE");
     CHECK (unit.isVisible());
+    CHECK (! fx.getModFxUnit (3).isVisible());   // ECHOES waits its turn
     CHECK (unit.getBottom() <= fx.getHeight());
-    for (int k = 1; k < 5; ++k)
-        CHECK (fx.getModFxUnit (k - 1).getBottom() <= fx.getModFxUnit (k).getY());
+    CHECK (fx.getModFxUnit (2).getBottom() <= unit.getY());
 
     unit.getSpec().onEdit();
     auto& page = fx.getCracklePage();

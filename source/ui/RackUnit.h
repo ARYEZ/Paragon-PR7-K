@@ -43,6 +43,7 @@ public:
         std::function<void (juce::Graphics&, juce::Rectangle<float> glass)> paintReadout;
         juce::String footTitle;
         std::function<juce::String()> footText;
+        std::function<void()> onFootClick;             // 0.58.0: the small screen under EDIT as a selector (SIGNATURE)
         std::function<void()> onEdit;
         juce::String powerTooltip;
     };

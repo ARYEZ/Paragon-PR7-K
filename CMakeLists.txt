@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
 
-project(ParagonX1 VERSION 0.56.0 LANGUAGES C CXX)
+project(ParagonX1 VERSION 0.58.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -69,6 +69,7 @@ target_sources(ParagonX1
         source/dsp/effects/Wah.cpp
         source/dsp/effects/Echoes.cpp
         source/dsp/effects/Crackle.cpp
+        source/dsp/effects/Downpour.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -101,6 +102,8 @@ target_sources(ParagonX1
         source/ui/PedalBody.cpp
         source/ui/EchoesPage.cpp
         source/ui/CracklePage.cpp
+        source/ui/DownpourPage.cpp
+        source/ui/SiroccoPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

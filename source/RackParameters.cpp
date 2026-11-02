@@ -12,6 +12,7 @@
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
 #include "dsp/effects/Crackle.h"
+#include "dsp/effects/Downpour.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -502,5 +503,22 @@ void addCrackleParameters (juce::AudioProcessorValueTreeState::ParameterLayout& 
     layout.add (makeFloat (ParamIDs::crackleWidth, "Crackle Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
     layout.add (makeFloat (ParamIDs::crackleFollow, "Crackle Follow", { 0.0f, 1.0f, 0.01f }, d.follow, v, asPercent));
     layout.add (makeFloat (ParamIDs::crackleLevel, "Crackle Level", { -48.0f, 6.0f, 0.1f }, d.levelDb, v,
+                           [] (float db, int) { return juce::String (db, 1) + " dB"; }));
+}
+
+void addDownpourParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // DOWNPOUR (0.57.0, effects::Downpour, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 29;
+    const effects::Downpour::Settings d;
+    layout.add (makeSwitch (ParamIDs::downpourOn, "Downpour On", v, false));
+    layout.add (makeFloat (ParamIDs::downpourRain, "Downpour Rain", { 0.0f, 1.0f, 0.01f }, d.rain, v, asPercent));
+    layout.add (makeFloat (ParamIDs::downpourDrops, "Downpour Drops", { 0.0f, 1.0f, 0.01f }, d.drops, v, asPercent));
+    layout.add (makeChoice (ParamIDs::downpourOctave, "Downpour Octave", v, effects::Downpour::octaveNames, d.octave));
+    layout.add (makeFloat (ParamIDs::downpourDistance, "Downpour Distance", { 0.0f, 1.0f, 0.01f }, d.distance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::downpourSpace, "Downpour Space", { 0.0f, 1.0f, 0.01f }, d.space, v, asPercent));
+    layout.add (makeFloat (ParamIDs::downpourWidth, "Downpour Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::downpourFollow, "Downpour Follow", { 0.0f, 1.0f, 0.01f }, d.follow, v, asPercent));
+    layout.add (makeFloat (ParamIDs::downpourLevel, "Downpour Level", { -48.0f, 6.0f, 0.1f }, d.levelDb, v,
                            [] (float db, int) { return juce::String (db, 1) + " dB"; }));
 }

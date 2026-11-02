@@ -68,6 +68,8 @@ void RackUnit::mouseUp (const juce::MouseEvent& e)
 {
     if (at (214.0f, 26.0f, 196.0f, 80.0f).contains (e.position) && spec.onEdit)
         spec.onEdit();
+    else if (at (1218.0f, 58.0f, 98.0f, 52.0f).contains (e.position) && spec.onFootClick)
+        spec.onFootClick();
 }
 
 void RackUnit::timerCallback()

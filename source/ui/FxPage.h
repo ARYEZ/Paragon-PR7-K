@@ -5,6 +5,8 @@
 #include "ui/DominionPage.h"
 #include "ui/EchoesPage.h"
 #include "ui/CracklePage.h"
+#include "ui/DownpourPage.h"
+#include "ui/SiroccoPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -31,7 +33,9 @@ public:
                       modFx, mod, mod2, loFi,              // stage 7c
                       inserts, insertDrive, insertGlitch, insertMod, insertLoFi, insertWah,   // stage 7d (the strip's bus)
                       echoes,                                               // 0.53.0 (on the MOD / LO-FI tab)
-                      crackle };                                            // 0.56.0 (on the MOD / LO-FI tab)
+                      crackle,                                              // 0.56.0 (on the MOD / LO-FI tab)
+                      downpour,                                             // 0.57.0 (on the MOD / LO-FI tab)
+                      sirocco };                                            // 0.58.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -40,9 +44,16 @@ public:
     SendPage& getDelayPage() noexcept { return delayPage; }
     SendPage& getReverbPage() noexcept { return reverbPage; }
     SendMatrix& getSendMatrix() noexcept { return matrix; }
-    RackUnit& getModFxUnit (int index) noexcept { return *modFxUnits[(size_t) index]; }   // MOD, MOD 2, LO-FI, ECHOES, CRACKLE
+    RackUnit& getModFxUnit (int index) noexcept { return *modFxUnits[(size_t) index]; }   // MOD, MOD 2, LO-FI, ECHOES, CRACKLE, DOWNPOUR, SIROCCO
+    // The SIGNATURE slot (0.58.0): the fourth place shows one of ECHOES, CRACKLE, DOWNPOUR, SIROCCO (signatureNames).
+    void showSignature (int signature);
+    int getSignatureShown() const noexcept { return signatureShown; }
+    // A preset loaded (its key changed): the slot shows the signature effect it has on (if the one shown is off).
+    void followSignature (const juce::String& rigKey);
+    SiroccoPage& getSiroccoPage() noexcept { return siroccoPage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
+    DownpourPage& getDownpourPage() noexcept { return downpourPage; }
     ModFxPage& getModFxPage (int index) noexcept { return *modFxPages[(size_t) index]; }
     juce::TextButton& getModFxTab() noexcept { return modFxTab; }
     juce::TextButton& getInsertsTab() noexcept { return insertsTab; }
@@ -61,10 +72,14 @@ public:
     void resized() override;
 
 private:
+    ParagonX1AudioProcessor& audio;   // (declared first: set before the pages are built)
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 5> modFxUnits;   // MOD, MOD 2, LO-FI, ECHOES, CRACKLE
+    std::array<std::unique_ptr<RackUnit>, 7> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    int signatureShown = 0;
+    juce::String followedRig;
+    void chooseSignature();
     std::array<std::unique_ptr<ModFxPage>, 3> modFxPages;
     juce::TextButton insertsTab { "INSERTS" }, sendsTab { "SENDS" }, modFxTab { "MOD / LO-FI" }, masterTab { "MASTER" };
     InsertBusStrip insertStrip;
@@ -75,6 +90,8 @@ private:
     SendPage delayPage, reverbPage;
     EchoesPage echoesPage;
     CracklePage cracklePage;
+    DownpourPage downpourPage;
+    SiroccoPage siroccoPage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

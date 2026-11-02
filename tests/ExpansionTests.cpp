@@ -228,6 +228,47 @@ TEST_CASE ("Every expansion preset's settings, routes and macros are real ones",
     }
 }
 
+TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its left", "[rigs][expansions][downpour]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 0)   // NEON RAIN: the first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "STORM");
+        CHECK (rig.notes.contains ("STORM ("));
+        CHECK (rig.parameters.at (ParamIDs::downpourOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::downpourRain) == 0.0f);   // no rain until STORM brings it: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::downpourRain && r.amount > 0.5f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
+TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left", "[rigs][expansions][sirocco]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "SIROCCO");
+        CHECK (rig.notes.contains ("SIROCCO ("));
+        CHECK (rig.parameters.at (ParamIDs::siroccoOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::siroccoLevel) == 0.0f);   // no answers until the macro brings them: the sound as approved
+        CHECK (rig.parameters.at (ParamIDs::siroccoKey) == 2.0f);     // D
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;

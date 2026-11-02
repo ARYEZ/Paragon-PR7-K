@@ -19,7 +19,8 @@ namespace expansions
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
-          "keys and slow neon pulses. Our own sounds." },
+          "keys and slow neon pulses. Built round DOWNPOUR (0.57.0), rain on the glass whose drops ring on the notes you "
+          "play, and MACRO 3, STORM: from dry to a downpour. Our own sounds." },
         { "HELLFORGE", "HF",
           "Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through brutal "
           "distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds." },
@@ -28,7 +29,9 @@ namespace expansions
           "chords, chorused polysynth pads, haunting leads, and cassette wobble. Our own sounds." },
         { "SANDSEA", "SS",
           "Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices, "
-          "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Our own sounds." },
+          "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Built round SIROCCO "
+          "(0.58.0), a harmony answering every note in the bank's scale, and MACRO 3, SIROCCO: from one voice to a small "
+          "choir. Our own sounds." },
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
           "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Our own sounds." },

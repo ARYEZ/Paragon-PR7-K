@@ -273,6 +273,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
         block.prepare (sampleRate, preparedBlockSize);
     rack->echoes.prepare (sampleRate, preparedBlockSize);
     rack->crackle.prepare (sampleRate, preparedBlockSize);
+    rack->downpour.prepare (sampleRate, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
         for (int c = 0; c < 2; ++c)
@@ -975,6 +976,19 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.modulation.buttons[(size_t) k] = isOn (ParamIDs::macroButtons[k]);
     s.modulation.bpm = hostBpm.load();
     s.arpsTogether = isOn (ParamIDs::arpsTogether);
+    // SIROCCO (0.58.0): LEVEL, DETUNE and SPREAD as the matrix moves them (the whole synth's sources).
+    {
+        auto& h = s.sirocco;
+        h.on = isOn (ParamIDs::siroccoOn);
+        h.key = choice (param (ParamIDs::siroccoKey), synth::sirocco::keyNames.size());
+        h.scale = choice (param (ParamIDs::siroccoScale), synth::arp::scaleNames.size());
+        h.interval = choice (param (ParamIDs::siroccoInterval), synth::sirocco::intervalNames.size());
+        h.voices = juce::jlimit (1, synth::sirocco::maxVoices, juce::roundToInt (param (ParamIDs::siroccoVoices)));
+        h.delayMs = param (ParamIDs::siroccoDelay);
+        h.level = effectParam (ModDestinations::effect ("siroccoLevel"), ParamIDs::siroccoLevel);
+        h.detuneCents = effectParam (ModDestinations::effect ("siroccoDetune"), ParamIDs::siroccoDetune);
+        h.spread = effectParam (ModDestinations::effect ("siroccoSpread"), ParamIDs::siroccoSpread);
+    }
     s.sendOn = { isOn (ParamIDs::delayOn), isOn (ParamIDs::reverbOn) };
     s.modulation.toModWheel = { isOn (ParamIDs::mwBreath), isOn (ParamIDs::mwExpression), isOn (ParamIDs::mwAftertouch), isOn (ParamIDs::mwSustain) };
 
@@ -1143,6 +1157,21 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     midi.clear();   // an instrument: nothing goes on down the MIDI chain
 }
 
+effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const noexcept
+{
+    effects::Downpour::Settings s;
+    s.on = isOn (ParamIDs::downpourOn);
+    s.rain = effectParam (ModDestinations::effect ("downpourRain"), ParamIDs::downpourRain);
+    s.drops = effectParam (ModDestinations::effect ("downpourDrops"), ParamIDs::downpourDrops);
+    s.octave = juce::roundToInt (param (ParamIDs::downpourOctave));
+    s.distance = effectParam (ModDestinations::effect ("downpourDistance"), ParamIDs::downpourDistance);
+    s.space = param (ParamIDs::downpourSpace);
+    s.width = param (ParamIDs::downpourWidth);
+    s.follow = param (ParamIDs::downpourFollow);
+    s.levelDb = effectParam (ModDestinations::effect ("downpourLevel"), ParamIDs::downpourLevel);
+    return s;
+}
+
 void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples)
 {
     const auto numChannels = buffer.getNumChannels();
@@ -1224,6 +1253,17 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         settings.modulation.ppq = hostPpq >= 0.0 ? hostPpq + (start + done) / getSampleRate() * settings.modulation.bpm / 60.0 : -1.0;
         engine.process (left + done, right, n, midi, start + done, settings);
         updateEffectModulation (settings, n);
+        {
+            // What's sounding, for SIROCCO's page: played notes and answers.
+            std::array<float, 96> pitches {};
+            bool answer[96] {};
+            std::array<std::uint8_t, 128> flags {};
+            const auto count = engine.getSoundingNotes (pitches.data(), (int) pitches.size(), answer);
+            for (int k = 0; k < count; ++k)
+                flags[(size_t) juce::jlimit (0, 127, juce::roundToInt (pitches[(size_t) k]))] |= answer[k] ? 2 : 1;
+            for (size_t k = 0; k < flags.size(); ++k)
+                soundingNotes[k].store (flags[k], std::memory_order_relaxed);
+        }
         if (numChannels == 1)
             for (int i = 0; i < n; ++i)
                 left[done + i] = 0.5f * (left[done + i] + scratchRight[i]);
@@ -1239,10 +1279,22 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         // The song position at this piece's start (for the WAH's synced LFO): -1 while it's stopped.
         const auto piecePpq = hostPpq >= 0.0 ? hostPpq + (double) start / getSampleRate() * juce::jmax (1.0, hostBpm.load()) / 60.0 : -1.0;
         processInsertBuses (block, true, piecePpq);
+        // DOWNPOUR (0.57.0): this piece's rain, from the notes sounding and listening to the synth; SPACE's share into
+        // the REVERB's send now, the rain itself added after CRACKLE.
+        {
+            std::array<float, effects::Downpour::maxNotes> notes {};
+            rack->downpour.setNotes (notes.data(), engine.getSoundingNotes (notes.data(), (int) notes.size()));
+            const auto rain = getDownpourSettings();
+            rack->downpour.render (block, rain);
+            if (! rack->downpour.isSilent() && rain.space > 0.0f)
+                for (int c = 0; c < 2; ++c)
+                    rack->sends[1].addFrom (c, 0, rack->downpour.getOutput (c), juce::jmin (numSamples, rack->downpour.getRenderedSamples()), rain.space);
+        }
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
         rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
+        rack->downpour.addTo (block);                          // 0.57.0: the rain
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));

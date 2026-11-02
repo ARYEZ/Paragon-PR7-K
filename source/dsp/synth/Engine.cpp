@@ -365,6 +365,7 @@ namespace synth
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
+        numPendingAnswers = 0;
         sampleClock = blockStartClock = 0;
         liveCycles.fill (-1);
         keysDown.fill (false);
@@ -378,6 +379,19 @@ namespace synth
     int Engine::getNumActiveVoices() const noexcept
     {
         return (int) std::count_if (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing; });
+    }
+
+    int Engine::getSoundingNotes (float* pitches, int capacity, bool* isAnswer) const noexcept
+    {
+        int count = 0;
+        for (const auto& v : voices)
+            if (v.playing && ! v.killing && count < capacity)
+            {
+                if (isAnswer != nullptr)
+                    isAnswer[count] = v.source == answerSource;
+                pitches[count++] = v.pitch;
+            }
+        return count;
     }
 
     //==========================================================================
@@ -432,6 +446,7 @@ namespace synth
             while (done < until)
             {
                 runArps (settings);
+                runAnswers (settings);
                 auto next = until;
                 if (const auto due = nextArpTime (settings) - sampleClock; due > 0 && due < (std::int64_t) (until - done))
                     next = done + (int) due;
@@ -603,22 +618,25 @@ namespace synth
                         && (settings.play.glideMode == GlideMode::always || anyHeld);
         startVoice (*voice, note, velocity, glide ? lastPitch : (float) note, settings, 0, keyMask);
         applyOscillatorLimits (*voice, settings);
+        answer (*voice, settings);
     }
 
     void Engine::makeRoom (const Settings& settings) noexcept
     {
-        // Over VOICES: the quietest releasing note goes, or else the oldest.
-        auto sounding = (int) std::count_if (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing && ! v.killing; });
+        // Over VOICES: the quietest releasing note goes, or else the oldest. SIROCCO's answers (0.58.0) don't count:
+        // they go with their note.
+        const auto counts = [this] (const Voice& v) { return v.playing && ! v.killing && v.source != answerSource; };
+        auto sounding = (int) std::count_if (voices.begin(), voices.end(), counts);
         while (sounding >= juce::jlimit (1, maxVoices, settings.play.voices))
         {
             Voice* victim = nullptr;
             for (auto& voice : voices)
-                if (voice.playing && ! voice.killing && voice.amp.isReleasing()
+                if (counts (voice) && voice.amp.isReleasing()
                     && (victim == nullptr || voice.amp.getLevel() < victim->amp.getLevel()))
                     victim = &voice;
             if (victim == nullptr)
                 for (auto& voice : voices)
-                    if (voice.playing && ! voice.killing && (victim == nullptr || voice.age < victim->age))
+                    if (counts (voice) && (victim == nullptr || voice.age < victim->age))
                         victim = &voice;
             if (victim == nullptr)
                 break;
@@ -654,6 +672,7 @@ namespace synth
             const auto glide = settings.play.glideMs > 0.0f && lastPitch >= 0.0f && glides (target, settings) && settings.play.glideMode == GlideMode::always;
             startVoice (*voice, target, heldVelocities[(size_t) target], glide ? lastPitch : (float) target, settings, 0, keyMask);
             monoVoice = voice;   // after starting it: starting a voice clears whatever it was
+            answer (*voice, settings);
             return;
         }
         if (target == monoVoice->note && monoVoice->held)
@@ -665,6 +684,7 @@ namespace synth
         const auto legato = settings.play.legato && overlapping;
         const auto glide = settings.play.glideMs > 0.0f && glides (target, settings) && (settings.play.glideMode == GlideMode::always || overlapping);
         retrigger (*monoVoice, target, heldVelocities[(size_t) target], ! legato, glide, settings);
+        reanswer (*monoVoice, ! legato, glide, settings);
     }
 
     void Engine::monoNoteOff (int note, const Settings& settings) noexcept
@@ -684,8 +704,11 @@ namespace synth
         {
             // Back to a key still held (a trill): always legato-style glide rules.
             if (target != monoVoice->note)
+            {
                 retrigger (*monoVoice, target, heldVelocities[(size_t) target], ! settings.play.legato,
                            settings.play.glideMs > 0.0f, settings);
+                reanswer (*monoVoice, ! settings.play.legato, settings.play.glideMs > 0.0f, settings);
+            }
             return;
         }
         if (monoVoice->note != note && monoVoice->held)
@@ -725,6 +748,7 @@ namespace synth
         for (auto& st : arps)
             st = {};
         numArpEvents = 0;
+        numPendingAnswers = 0;
         keysDown.fill (false);
         numKeysDown = 0;
     }
@@ -948,6 +972,8 @@ namespace synth
         for (auto& envelope : voice.envelopes)
             envelope.release();
         voice.pitchEnvelope.release();
+        if (voice.source != answerSource)
+            releaseAnswers (voice);   // SIROCCO: its answers let go with it
     }
 
     void Engine::releaseGlobalEnvelopesIfNoneHeld() noexcept
@@ -960,6 +986,8 @@ namespace synth
 
     void Engine::kill (Voice& voice) noexcept
     {
+        if (voice.source != answerSource && voice.playing)
+            releaseAnswers (voice);
         voice.killing = true;
         voice.held = voice.sustained = false;
         if (&voice == monoVoice)
@@ -968,6 +996,10 @@ namespace synth
 
     void Engine::free (Voice& voice) noexcept
     {
+        if (voice.playing && voice.source != answerSource)
+            releaseAnswers (voice);
+        voice.answers = 0;
+        voice.layer = 0;
         voice.playing = voice.held = voice.sustained = voice.killing = false;
         voice.killGain = 1.0f;
         voice.note = -1;
@@ -1387,7 +1419,9 @@ namespace synth
 
         // The AMP: envelope, velocity, SPIKE, VOLUME, then this note's pan.
         const auto velocityGain = 1.0f - ampSettings.velocity * velocityDown;
-        const auto volume = ampSettings.volume * velocityGain;
+        // SIROCCO (0.58.0): an answer at its LEVEL (layer by layer).
+        const auto answerGain = voice.source == answerSource ? sirocco::layerGain (settings.sirocco.level, voice.layer, settings.sirocco.voices) : 1.0f;
+        const auto volume = ampSettings.volume * velocityGain * answerGain;
         const auto spike = ampSettings.spike * spikeMaxGain * (1.0f - ampSettings.spikeVelocity * velocityDown);
         const auto spikeStep = 1.0f / juce::jmax (1.0f, spikeMs * 0.001f * (float) sampleRate);
         for (int i = 0; i < n; ++i)
@@ -1602,6 +1636,8 @@ namespace synth
         auto next = std::numeric_limits<std::int64_t>::max();
         for (int i = 0; i < numArpEvents; ++i)
             next = juce::jmin (next, arpEvents[(size_t) i].time);
+        for (int i = 0; i < numPendingAnswers; ++i)   // SIROCCO's answers after their DELAY
+            next = juce::jmin (next, pendingAnswers[(size_t) i].time);
         for (int a = 0; a < arp::numArps; ++a)
             if (arpActive (a) && arps[(size_t) a].running)
                 next = juce::jmin (next, arpStepTime (a, arps[(size_t) a].lastStep + 1, settings));
@@ -1704,7 +1740,7 @@ namespace synth
     void Engine::arpNoteEnded() noexcept
     {
         // ARP NOTES envelopes let go when no arp note is held.
-        if (std::any_of (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing && v.held && v.source > 0 && ! v.killing; }))
+        if (std::any_of (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing && v.held && v.source > 0 && v.source <= arp::numArps && ! v.killing; }))
             return;
         for (int k = 0; k < mod::numEnvelopes; ++k)
             if ((arpEnvelopeMask >> k) & 1u)
@@ -1743,6 +1779,7 @@ namespace synth
                 if (voice.playing && voice.age == st.slideAge && voice.source == source && ! voice.killing)
                 {
                     retrigger (voice, e.note, e.velocity, false, settings.play.glideMs > 0.0f, settings);
+                    reanswer (voice, false, settings.play.glideMs > 0.0f, settings);
                     pairAges[(size_t) (st.slidePair % maxArpEvents)] = 0;   // the last note's end is cancelled
                     age = voice.age;
                     st.slideAge = e.slide ? voice.age : 0;
@@ -1758,9 +1795,145 @@ namespace synth
         startVoice (*voice, e.note, e.velocity, (float) e.note, settings, source, arpMasks[(size_t) e.arp]);
         applyOscillatorLimits (*voice, settings);
         lastPitch = keysLastPitch;
+        answer (*voice, settings);
         age = voice->age;
         st.slideAge = e.slide ? voice->age : 0;
         st.slidePair = e.slide ? e.pair : 0;
+    }
+
+    //==========================================================================
+    // SIROCCO (0.58.0): each note's answers are voices of their own, on the note's oscillators, started with it or after
+    // DELAY, moved when it moves (a mono lead's glide, an arp's slide), let go when it is.
+    void Engine::answer (const Voice& parent, const Settings& settings) noexcept
+    {
+        const auto& s = settings.sirocco;
+        if (! s.answers() || parent.source == answerSource)
+            return;
+        const auto voicesWanted = juce::jlimit (1, sirocco::maxVoices, s.voices);
+        const auto delay = (std::int64_t) std::llround (juce::jlimit (0.0f, 500.0f, s.delayMs) * 0.001 * sampleRate);
+        const auto age = parent.age;
+        for (int layer = 0; layer < voicesWanted; ++layer)
+        {
+            if (delay <= 0)
+                startAnswer (age, layer, settings);
+            else if (numPendingAnswers < (int) pendingAnswers.size())
+                pendingAnswers[(size_t) numPendingAnswers++] = { age, layer, sampleClock + delay };
+        }
+    }
+
+    void Engine::startAnswer (std::uint64_t parentAge, int layer, const Settings& settings) noexcept
+    {
+        const auto findParent = [this, parentAge]() -> Voice*
+        {
+            for (auto& v : voices)
+                if (v.playing && v.age == parentAge && ! v.killing && (v.held || v.sustained) && v.source != answerSource)
+                    return &v;
+            return nullptr;
+        };
+        if (findParent() == nullptr)
+            return;   // let go (or stolen) before its DELAY was up
+        const auto& s = settings.sirocco;
+        // Answers don't take a note's place (a mono lead's VOICES is 1): a free voice of the pool, or none.
+        if (std::all_of (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing; }))
+            return;
+        auto* parent = findParent();
+        if (parent == nullptr)
+            return;
+        std::array<int, 12> notes {};
+        const auto inScale = sirocco::scaleNotes (s.scale, notes);
+        const auto note = sirocco::harmonyNote (parent->note, sirocco::stepsFor (s.interval, layer, juce::jmax (1, inScale)), s.key, s.scale);
+        const auto velocity = parent->velocity;
+        const auto mask = parent->oscMask;
+        const auto keysLastPitch = lastPitch;   // an answer doesn't move the keys' glide
+        auto* voice = findFreeVoice();
+        startVoice (*voice, note, velocity, (float) note, settings, answerSource, mask);
+        lastPitch = keysLastPitch;
+        voice->answers = parentAge;
+        voice->layer = layer;
+        placeAnswer (*voice, settings);
+        applyOscillatorLimits (*voice, settings);
+    }
+
+    void Engine::reanswer (const Voice& parent, bool restartEnvelopes, bool glide, const Settings& settings) noexcept
+    {
+        const auto& s = settings.sirocco;
+        // A note with no answers yet (a mono lead's legato phrase begun with LEVEL at 0, or SIROCCO just switched on):
+        // they start now, as for a new note.
+        const auto hasAnswers = std::any_of (voices.begin(), voices.end(), [&parent] (const Voice& v)
+                                             { return v.playing && ! v.killing && v.source == answerSource && v.answers == parent.age; })
+                             || std::any_of (pendingAnswers.begin(), pendingAnswers.begin() + numPendingAnswers,
+                                             [&parent] (const PendingAnswer& p) { return p.parent == parent.age; });
+        if (! hasAnswers)
+        {
+            answer (parent, settings);
+            return;
+        }
+        std::array<int, 12> notes {};
+        const auto inScale = juce::jmax (1, sirocco::scaleNotes (s.scale, notes));
+        for (auto& v : voices)
+            if (v.playing && ! v.killing && v.source == answerSource && v.answers == parent.age)
+            {
+                const auto note = sirocco::harmonyNote (parent.note, sirocco::stepsFor (s.interval, v.layer, inScale), s.key, s.scale);
+                const auto keysLastPitch = lastPitch;
+                retrigger (v, note, parent.velocity, restartEnvelopes, glide, settings);
+                lastPitch = keysLastPitch;
+                placeAnswer (v, settings);
+            }
+    }
+
+    void Engine::placeAnswer (Voice& voice, const Settings& settings) noexcept
+    {
+        // DETUNE: the first a little sharp, the second flat, the third half as sharp; SPREAD: left, right, middle.
+        constexpr float detunes[] = { 1.0f, -1.0f, 0.5f };
+        constexpr float pans[] = { -1.0f, 1.0f, 0.0f };
+        const auto layer = (size_t) juce::jlimit (0, sirocco::maxVoices - 1, voice.layer);
+        const auto& s = settings.sirocco;
+        const auto gliding = voice.glideRate > 0.0f;
+        voice.targetPitch = (float) voice.note + s.detuneCents * 0.01f * detunes[layer];
+        if (! gliding)
+            voice.pitch = voice.targetPitch;
+        voice.notePan = juce::jlimit (-1.0f, 1.0f, voice.notePan + juce::jlimit (0.0f, 1.0f, s.spread) * pans[layer]);
+        balance (voice.notePan, voice.panLeft, voice.panRight);
+    }
+
+    void Engine::releaseAnswers (const Voice& parent) noexcept
+    {
+        if (parent.age == 0)
+            return;
+        for (auto& v : voices)
+            if (v.playing && v.source == answerSource && v.answers == parent.age && v.held && ! v.killing)
+            {
+                v.held = v.sustained = false;
+                releaseVoice (v);
+            }
+    }
+
+    void Engine::runAnswers (const Settings& settings) noexcept
+    {
+        for (int i = 0; i < numPendingAnswers;)
+        {
+            const auto p = pendingAnswers[(size_t) i];
+            if (p.time > sampleClock)
+            {
+                ++i;
+                continue;
+            }
+            pendingAnswers[(size_t) i] = pendingAnswers[(size_t) --numPendingAnswers];
+            startAnswer (p.parent, p.layer, settings);
+        }
+        // Notes held without answers (begun with LEVEL at 0, MACRO 3 turned up while they're held): answered now.
+        if (! settings.sirocco.answers())
+            return;
+        for (auto& v : voices)
+            if (v.playing && ! v.killing && (v.held || v.sustained) && v.source != answerSource)
+            {
+                const auto answered = std::any_of (voices.begin(), voices.end(), [&v] (const Voice& a)
+                                                   { return a.playing && a.source == answerSource && a.answers == v.age; })
+                                   || std::any_of (pendingAnswers.begin(), pendingAnswers.begin() + numPendingAnswers,
+                                                   [&v] (const PendingAnswer& p) { return p.parent == v.age; });
+                if (! answered)
+                    answer (v, settings);
+            }
     }
 
     float Engine::seqDepth (double age, const StepSeqSettings& s) const noexcept

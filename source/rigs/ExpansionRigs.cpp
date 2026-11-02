@@ -102,6 +102,35 @@ namespace
 
     // NEON RAIN: inspired by the 1982 neo-noir sci-fi film score (brass from a big polysynth, rain-soaked pads, smoky
     // leads, glassy keys, slow neon pulses). No titles, names or music from the film: our own sounds.
+    // NEON RAIN's MACRO 3, STORM (0.57.0, the owner's ask: a centrepiece for the bank, built round DOWNPOUR): rain on
+    // the glass, its drops ringing on the notes played. RAIN is 0 at the macro's left (no rain at all: the preset sounds
+    // exactly as before) and 0.9 at the right (a downpour), the rain coming closer as it builds. The preset's old MACRO
+    // 3 job rides along (its routes stay), named in the notes: `oldText` there becomes `newText`.
+    struct RainSpot
+    {
+        float drops = 0.6f;      // DROPS
+        int octave = 1;          // octaveNames: +1, +2, +3
+        float distance = 0.45f;  // at the macro's left; 0.3 closer at its right
+        float space = 0.5f;      // into the REVERB (when the preset has it on)
+        float levelDb = -18.0f;
+        float width = 0.8f;
+    };
+
+    void storm (Builder& b, const juce::String& oldText, const juce::String& newText, RainSpot r = {})
+    {
+        const auto reverbOn = b.rig.parameters.find (ParamIDs::reverbOn);
+        const auto hasReverb = reverbOn != b.rig.parameters.end() && reverbOn->second > 0.5f;
+        b.set (ParamIDs::downpourOn, 1.0f).set (ParamIDs::downpourRain, 0.0f).set (ParamIDs::downpourDrops, r.drops)
+         .set (ParamIDs::downpourOctave, (float) r.octave).set (ParamIDs::downpourDistance, r.distance)
+         .set (ParamIDs::downpourSpace, hasReverb ? r.space : 0.0f).set (ParamIDs::downpourWidth, r.width)
+         .set (ParamIDs::downpourFollow, 1.0f).set (ParamIDs::downpourLevel, r.levelDb);
+        route (b, "macro3", ParamIDs::downpourRain, 0.9f);
+        route (b, "macro3", ParamIDs::downpourDistance, -0.3f);
+        b.rig.modulation.macroNames[2] = "STORM";
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, newText);
+    }
+
     void neonRain (Expansion x)
     {
         // ---- LEADS -------------------------------------------------------------------------------------------
@@ -131,6 +160,9 @@ namespace
         delay (brass, "1/4", 0.3f, 0.16f, false, 4.0f);
         reverb (brass, RT::hall, 0.7f, 0.3f, 30.0f);
         space (brass);
+        storm (brass, "GROWL (SHAPER 1's tube)",
+               "STORM (rain on the glass, its drops ringing on your notes; SHAPER 1's tube growls with it)",
+               RainSpot { 0.5f, 1, 0.4f, 0.5f, -6.0f });
         brass.set (ParamIDs::patchLevel, -5.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (brass);
 
@@ -160,6 +192,9 @@ namespace
         reeds.set (ParamIDs::delayType, (float) (int) effects::Delay::Type::tape);
         reverb (reeds, RT::plate, 0.5f, 0.2f);
         space (reeds);
+        storm (reeds, "GROWL (the diode and more breath)",
+               "STORM (rain on the glass, its drops ringing on your notes; the diode and more breath with it)",
+               RainSpot { 0.4f, 1, 0.55f, 0.5f, -13.0f });
         reeds.set (ParamIDs::patchLevel, 1.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (reeds);
 
@@ -186,6 +221,9 @@ namespace
         ribbon.set (ParamIDs::delayToReverb, 0.4f);
         reverb (ribbon, RT::cathedral, 0.45f, 0.32f, 60.0f, 4.0f);
         space (ribbon);
+        storm (ribbon, "SCOOP (the scoop's depth)",
+               "STORM (rain on the glass, its drops ringing on your notes; a deeper scoop with it)",
+               RainSpot { 0.5f, 1, 0.35f, 0.5f, -11.0f });
         ribbon.set (ParamIDs::patchLevel, -3.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (ribbon);
 
@@ -215,6 +253,9 @@ namespace
         reverb (choir, RT::cathedral, 0.35f, 0.35f, 40.0f, 4.5f);
         eqBand (choir, 0, eq::Shape::lowCut, 110.0f, 0.0f);
         space (choir);
+        storm (choir, "VOWEL (towards \"ee\")",
+               "STORM (rain on the glass, its drops ringing on your notes; the choir towards \"ee\" with it)",
+               RainSpot { 0.8f, 1, 0.5f, 0.7f, -15.0f });
         choir.set (ParamIDs::patchLevel, 0.3f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (choir);
 
@@ -247,6 +288,9 @@ namespace
         macros (mist, "BRIGHT", "SPACE", "RAIN");
         reverb (mist, RT::cathedral, 0.3f, 0.3f, 30.0f, 3.5f);
         space (mist);
+        storm (mist, "RAIN (the noise)",
+               "STORM (rain on the glass, its drops ringing on your notes; the noise rising with it)",
+               RainSpot { 0.5f, 2, 0.6f, 0.7f, -5.0f });
         mist.set (ParamIDs::patchLevel, -6.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (mist);
 
@@ -277,6 +321,9 @@ namespace
         eqBand (strings, 0, eq::Shape::lowCut, 120.0f, 0.0f);
         eqBand (strings, 1, eq::Shape::highShelf, 9000.0f, -2.0f);
         space (strings);
+        storm (strings, "ENSEMBLE (the detune)",
+               "STORM (rain on the glass, its drops ringing on your notes; more detune with it)",
+               RainSpot { 0.7f, 1, 0.45f, 0.6f, -8.0f });
         strings.set (ParamIDs::patchLevel, -7.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (strings);
 
@@ -308,6 +355,9 @@ namespace
         macros (pulseBass, "OPEN", "SPACE", "GRIT");
         reverb (pulseBass, RT::room, 0.3f, 0.2f);
         space (pulseBass);
+        storm (pulseBass, "GRIT (the filter's drive)",
+               "STORM (rain on the glass, its drops ringing high over your notes; the filter's drive with it)",
+               RainSpot { 0.5f, 2, 0.55f, 0.5f, -6.0f });
         pulseBass.set (ParamIDs::patchLevel, 1.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (pulseBass);
 
@@ -332,6 +382,9 @@ namespace
         macros (thunder, "BRIGHT", "SPACE", "DROP");
         reverb (thunder, RT::hall, 0.9f, 0.35f, 15.0f, 3.0f);
         space (thunder);
+        storm (thunder, "DROP (how far the pitch falls)",
+               "STORM (rain on the glass, its drops ringing high over your notes; the pitch falling further with it)",
+               RainSpot { 0.4f, 2, 0.7f, 0.6f, -9.5f });
         thunder.set (ParamIDs::patchLevel, -1.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (thunder);
 
@@ -362,6 +415,9 @@ namespace
         macros (velvet, "TONE", "SPACE", "FAT");
         reverb (velvet, RT::room, 0.4f, 0.0f);   // silent until SPACE brings it in
         space (velvet);
+        storm (velvet, "FAT (the sub)",
+               "STORM (rain on the glass, its drops ringing high over your notes; more sub with it)",
+               RainSpot { 0.4f, 2, 0.5f, 0.5f, -16.5f });
         velvet.set (ParamIDs::patchLevel, 6.3f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (velvet);
 
@@ -389,6 +445,9 @@ namespace
         chorus (piano, ParamIDs::mod2Ids, MT::chorus, 0.5f, 0.3f, 0.35f);
         reverb (piano, RT::plate, 0.45f, 0.2f);
         space (piano);
+        storm (piano, "DETUNE (the modulator's tuning: a slow beating)",
+               "STORM (rain on the glass, its drops ringing on your notes; the modulator detuned with it, a slow beating)",
+               RainSpot { 0.8f, 1, 0.3f, 0.5f, -5.5f });
         piano.set (ParamIDs::patchLevel, -7.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (piano);
 
@@ -416,6 +475,9 @@ namespace
         chimes.set (ParamIDs::delayToReverb, 0.4f);
         reverb (chimes, RT::hall, 0.7f, 0.28f, 30.0f, 6.0f);
         space (chimes);
+        storm (chimes, "SPACE (more hall and echoes), DETUNE.",
+               "SPACE (more hall and echoes), STORM (rain on the glass, its drops ringing on your notes; detuned with it).",
+               RainSpot { 0.7f, 0, 0.3f, 0.5f, -14.0f });
         chimes.set (ParamIDs::patchLevel, -2.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (chimes);
 
@@ -439,6 +501,9 @@ namespace
         delay (nightKeys, "1/4", 0.25f, 0.1f, false, 4.0f);
         reverb (nightKeys, RT::hall, 0.55f, 0.22f);
         space (nightKeys);
+        storm (nightKeys, "BRASS (the filter envelope)",
+               "STORM (rain on the glass, its drops ringing on your notes; brassier with it)",
+               RainSpot { 0.6f, 1, 0.4f, 0.5f, -4.0f });
         nightKeys.set (ParamIDs::patchLevel, -11.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (nightKeys);
 
@@ -480,6 +545,9 @@ namespace
         delay (grid, "1/8 dotted", 0.45f, 0.3f, true, 5.0f);
         reverb (grid, RT::hall, 0.5f, 0.18f);
         space (grid);
+        storm (grid, "OCTAVE (the low pulse)",
+               "STORM (rain on the glass, its drops ringing on your notes; the low pulse with it)",
+               RainSpot { 0.6f, 1, 0.4f, 0.5f, -11.0f });
         grid.set (ParamIDs::patchLevel, -1.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (grid);
 
@@ -516,6 +584,9 @@ namespace
         drops.set (ParamIDs::delayToReverb, 0.5f);
         reverb (drops, RT::cathedral, 0.25f, 0.3f, 40.0f, 5.0f);
         space (drops);
+        storm (drops, "SPARKLE (a sine two octaves up)",
+               "STORM (rain on the glass, its drops ringing on your notes; a sine two octaves up sparkling with it)",
+               RainSpot { 0.9f, 0, 0.35f, 0.5f, -14.0f });
         drops.set (ParamIDs::patchLevel, -1.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (drops);
 
@@ -568,6 +639,9 @@ namespace
         reverb (skyline, RT::hall, 0.6f, 0.25f);
         eqBand (skyline, 0, eq::Shape::lowCut, 90.0f, 0.0f);
         space (skyline);
+        storm (skyline, "SMOOTH (less gating)",
+               "STORM (rain on the glass, its drops ringing on your notes; less gating with it)",
+               RainSpot { 0.6f, 1, 0.45f, 0.5f, -6.5f });
         skyline.set (ParamIDs::patchLevel, -6.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (skyline);
     }
@@ -1380,6 +1454,33 @@ namespace
     // throat-singing and chant, keening voices with wide ornamented vibrato, enormous horn blasts, metallic ritual
     // percussion, wind and sand, melodies in the Phrygian dominant and double-harmonic scales. No title, characters,
     // places or music from the film: our own sounds.
+    // SANDSEA's MACRO 3, SIROCCO (0.58.0, the owner's ask and name: the bank's centrepiece): a harmony answering every note
+    // in D Phrygian dominant, the bank's scale. LEVEL 0 at the macro's left (no answers at all: the preset sounds exactly
+    // as before), the answers coming in one at a time as it rises, spreading wider. The preset's old MACRO 3 job rides
+    // along (its routes stay), named in the notes: `oldText` there becomes `newText`.
+    struct Answer
+    {
+        int interval = 0;        // synth::sirocco::intervalNames
+        int voices = 1;
+        float delayMs = 0.0f;
+        float levelTop = 1.0f;   // LEVEL at the macro's right
+        float detune = 6.0f;     // cents
+    };
+
+    void answers (Builder& b, const juce::String& oldText, const juce::String& newText, Answer a)
+    {
+        b.set (ParamIDs::siroccoOn, 1.0f).set (ParamIDs::siroccoKey, 2.0f)                  // D
+         .set (ParamIDs::siroccoScale, (float) synth::arp::scaleNames.indexOf ("Phrygian Dominant"))
+         .set (ParamIDs::siroccoInterval, (float) a.interval).set (ParamIDs::siroccoVoices, (float) a.voices)
+         .set (ParamIDs::siroccoDelay, a.delayMs).set (ParamIDs::siroccoLevel, 0.0f)
+         .set (ParamIDs::siroccoDetune, a.detune).set (ParamIDs::siroccoSpread, 0.2f);
+        route (b, "macro3", ParamIDs::siroccoLevel, a.levelTop);
+        route (b, "macro3", ParamIDs::siroccoSpread, 0.4f);
+        b.rig.modulation.macroNames[2] = "SIROCCO";
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, newText);
+    }
+
     void sandsea (Expansion x)
     {
         using SP3 = synth::mod::ShapePoint;
@@ -1406,6 +1507,9 @@ namespace
         delay (voice, "1/4", 0.3f, 0.15f, true, 4.0f);
         reverb (voice, RT::cathedral, 0.4f, 0.3f, 50.0f, 4.0f);
         space (voice);
+        answers (voice, "VOWEL (towards \"ee\")",
+                 "SIROCCO (a second voice answering each note a 3rd above, a moment late; with it, the vowel towards \"ee\")",
+                 Answer { 0, 1, 120.0f, 1.0f, 8.0f });
         voice.set (ParamIDs::patchLevel, 6.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (voice);
 
@@ -1427,6 +1531,9 @@ namespace
         macros (horn, "BRIGHT", "SPACE", "GRIT");
         reverb (horn, RT::hall, 0.75f, 0.25f, 30.0f, 4.0f);
         space (horn);
+        answers (horn, "GRIT.",
+                 "SIROCCO (horns joining below, a 3rd and then a 5th under each note; with them, grit).",
+                 Answer { 5, 2, 0.0f, 1.0f, 6.0f });
         horn.set (ParamIDs::patchLevel, -5.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (horn);
 
@@ -1447,6 +1554,9 @@ namespace
         flute.set (ParamIDs::delayType, (float) (int) effects::Delay::Type::tape);
         reverb (flute, RT::hall, 0.6f, 0.25f);
         space (flute);
+        answers (flute, "BREATH.",
+                 "SIROCCO (a second flute a 6th below, a breath behind; with it, more breath).",
+                 Answer { 8, 1, 60.0f, 1.0f, 8.0f });
         flute.set (ParamIDs::patchLevel, -3.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (flute);
 
@@ -1468,6 +1578,9 @@ namespace
         macros (desert, "BRIGHT", "SPACE", "WIND");
         reverb (desert, RT::cathedral, 0.35f, 0.3f, 30.0f, 3.5f);
         space (desert);
+        answers (desert, "WIND (more noise)",
+                 "SIROCCO (a 5th and then a 7th rising over the drone; with them, more wind)",
+                 Answer { 2, 2, 0.0f, 1.0f, 5.0f });
         desert.set (ParamIDs::patchLevel, -10.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (desert);
 
@@ -1491,6 +1604,9 @@ namespace
         chorus (chant, ParamIDs::modIds, MT::dimension, 0.2f, 0.4f, 0.35f);
         reverb (chant, RT::cathedral, 0.35f, 0.3f, 40.0f, 3.5f);
         space (chant);
+        answers (chant, "GROWL.",
+                 "SIROCCO (a second chanter a 5th above; with it, growl).",
+                 Answer { 2, 1, 0.0f, 0.35f, 5.0f });
         chant.set (ParamIDs::patchLevel, -4.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (chant);
 
@@ -1509,6 +1625,9 @@ namespace
         mirage.set (ParamIDs::modStereo, 1.0f);
         reverb (mirage, RT::reverse, 0.8f, 0.35f);
         space (mirage);
+        answers (mirage, "SHIMMER (more AM)",
+                 "SIROCCO (a choir of three answering in 3rds above; with it, more AM)",
+                 Answer { 0, 3, 0.0f, 1.0f, 8.0f });
         mirage.set (ParamIDs::patchLevel, -10.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (mirage);
 
@@ -1534,6 +1653,9 @@ namespace
         macros (worm, "BRIGHT", "SPACE", "GROAN");
         reverb (worm, RT::hall, 0.6f, 0.15f);
         space (worm);
+        answers (worm, "GROAN (a deeper rise)",
+                 "SIROCCO (a 5th above groaning with it; with it, a deeper rise)",
+                 Answer { 2, 1, 0.0f, 1.0f, 4.0f });
         worm.set (ParamIDs::patchLevel, -6.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (worm);
 
@@ -1555,6 +1677,9 @@ namespace
         macros (quake, "BRIGHT", "SPACE", "DESTROY");
         reverb (quake, RT::hall, 0.8f, 0.25f, 10.0f, 3.0f);
         space (quake);
+        answers (quake, "DESTROY.",
+                 "SIROCCO (a second quake a 5th above, a beat behind; with it, destruction).",
+                 Answer { 2, 1, 150.0f, 0.6f, 4.0f });
         quake.set (ParamIDs::patchLevel, -1.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (quake);
 
@@ -1575,6 +1700,9 @@ namespace
         macros (iron, "BRIGHT", "SPACE", "DESTROY");
         reverb (iron, RT::room, 0.4f, 0.1f);
         space (iron);
+        answers (iron, "DESTROY.",
+                 "SIROCCO (the riff doubled a 4th above; with it, destruction).",
+                 Answer { 1, 1, 0.0f, 0.6f, 4.0f });
         iron.set (ParamIDs::patchLevel, 8.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (iron);
 
@@ -1599,6 +1727,9 @@ namespace
         delay (copper, "1/4", 0.4f, 0.2f, true, 4.0f);
         reverb (copper, RT::cathedral, 0.35f, 0.3f, 30.0f, 4.0f);
         space (copper);
+        answers (copper, "GRIT (SHAPER 1's tube after the filter)",
+                 "SIROCCO (bells answering a 3rd and a 5th above, a moment late; with them, SHAPER 1's tube after the filter)",
+                 Answer { 0, 2, 80.0f, 0.45f, 6.0f });
         copper.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (copper);
 
@@ -1617,6 +1748,9 @@ namespace
         delay (harp, "1/8", 0.25f, 0.12f, true, 5.0f);
         reverb (harp, RT::hall, 0.5f, 0.2f);
         space (harp);
+        answers (harp, "TWANG (more resonance)",
+                 "SIROCCO (a second string a 3rd below; with it, more resonance)",
+                 Answer { 5, 1, 0.0f, 0.8f, 6.0f });
         harp.set (ParamIDs::patchLevel, 3.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (harp);
 
@@ -1640,6 +1774,9 @@ namespace
         macros (gong, "CLANG", "SPACE", "GRIT");
         reverb (gong, RT::cathedral, 0.4f, 0.35f, 30.0f, 4.0f);
         space (gong);
+        answers (gong, "GRIT.",
+                 "SIROCCO (a second gong a 5th above, struck after the first; with it, grit).",
+                 Answer { 2, 1, 250.0f, 1.0f, 4.0f });
         gong.set (ParamIDs::patchLevel, -1.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (gong);
 
@@ -1659,6 +1796,9 @@ namespace
         macros (war, "BRIGHT", "SPACE", "PULSE");
         reverb (war, RT::hall, 0.6f, 0.25f);
         space (war);
+        answers (war, "PULSE (louder pulse)",
+                 "SIROCCO (a pulse a 5th above; with it, a louder pulse)",
+                 Answer { 2, 1, 0.0f, 0.6f, 4.0f });
         war.set (ParamIDs::patchLevel, 1.5f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (war);
 
@@ -1690,6 +1830,9 @@ namespace
         delay (ripple, "1/8 dotted", 0.35f, 0.2f, true, 6.0f);
         reverb (ripple, RT::hall, 0.5f, 0.2f);
         space (ripple);
+        answers (ripple, "SPARKLE (a sine two octaves up)",
+                 "SIROCCO (the runs answered in 3rds; with them, a sine two octaves up)",
+                 Answer { 0, 1, 0.0f, 0.7f, 5.0f });
         ripple.set (ParamIDs::patchLevel, 1.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (ripple);
 
@@ -1715,6 +1858,9 @@ namespace
         delay (caravan, "1/4", 0.3f, 0.15f, true, 4.0f);
         reverb (caravan, RT::hall, 0.55f, 0.22f);
         space (caravan);
+        answers (caravan, "WARMTH (the low triangle)",
+                 "SIROCCO (each step answered a 6th above; with it, the low triangle)",
+                 Answer { 3, 1, 0.0f, 0.6f, 6.0f });
         caravan.set (ParamIDs::patchLevel, -1.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (caravan);
     }

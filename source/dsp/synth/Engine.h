@@ -74,6 +74,9 @@ namespace synth
 
         // Notes sounding now (including releasing ones), for the display and tests.
         int getNumActiveVoices() const noexcept;
+        // 0.57.0, for DOWNPOUR: the pitches (MIDI notes, glides and all) of the notes sounding now, releasing ones too,
+        // up to `capacity`; how many.
+        int getSoundingNotes (float* pitches, int capacity, bool* isAnswer = nullptr) const noexcept;   // 0.58.0: and which are SIROCCO's answers
 
         // Oscillators running now, every unison and chord copy counted (as Avenger's
         // info screen counts them): what the CPU is spent on.
@@ -199,6 +202,8 @@ namespace synth
             std::array<mod::LfoState, mod::numLfos> lfos {};
             std::array<mod::EnvelopeState, mod::numEnvelopes> envelopes {};   // those set to VOICE (0.10.0)
             float randomValue = 0.0f, pressure = 0.0f;
+            std::uint64_t answers = 0;   // 0.58.0, SIROCCO: an answer's note's age (its source is answerSource)
+            int layer = 0;               // ...and which answer it is (0 the first)
             std::array<float, mod::maxRoutes> lagged {};
             bool lagFresh = true;
             float spikePosition = 1.0f;                 // 0 to 1 through the spike (1: done)
@@ -373,6 +378,18 @@ namespace synth
         // On the heap (about 48 KB), sized once: the engine stays small enough for a thread's stack.
         std::vector<ArpEvent> arpEvents = std::vector<ArpEvent> (maxArpEvents);
         int numArpEvents = 0, nextPair = 1;
+
+        // SIROCCO (0.58.0): answers waiting for their DELAY, by their note's age.
+        static constexpr int answerSource = arp::numArps + 1;   // an answer's voice source (keys 0, arps 1-8)
+        struct PendingAnswer { std::uint64_t parent = 0; int layer = 0; std::int64_t time = 0; };
+        std::array<PendingAnswer, 96> pendingAnswers {};
+        int numPendingAnswers = 0;
+        void answer (const Voice& parent, const Settings&) noexcept;            // its answers, now or after DELAY
+        void startAnswer (std::uint64_t parentAge, int layer, const Settings&) noexcept;
+        void reanswer (const Voice& parent, bool restartEnvelopes, bool glide, const Settings&) noexcept;   // the note moved
+        void placeAnswer (Voice&, const Settings&) noexcept;                    // DETUNE and SPREAD
+        void releaseAnswers (const Voice& parent) noexcept;
+        void runAnswers (const Settings&) noexcept;                             // starts the answers due now
         std::vector<std::uint64_t> pairAges = std::vector<std::uint64_t> (maxArpEvents);   // the voice each pair started (by its age)
         std::int64_t sampleClock = 0, blockStartClock = 0;
         std::uint8_t keyMask = 0xff;                            // the oscillators the keys play themselves

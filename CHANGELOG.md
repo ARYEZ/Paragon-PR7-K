@@ -2,6 +2,43 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.58.0
+
+**SIROCCO, the SIGNATURE slot, and SANDSEA gets its centrepiece.**
+
+**The SIGNATURE slot** (your design): the FX page's MOD / LO-FI tab is four units again, at full size. The fourth is the SIGNATURE slot: click the small screen under its EDIT to pick ECHOES, CRACKLE, DOWNPOUR or SIROCCO. Each keeps its own POWER, so presets that use two at once (MELTDOWN's Warning Tone and Distant Siren) are unchanged; the screen shows "+1", "+2" when others are also on. Loading a preset shows its own signature effect.
+
+**SIROCCO** (a new signature effect, our own design): a harmony that answers every note you play, and the arps' notes, kept to a scale.
+- **KEY** and **SCALE** (every scale the arp randomizer has: Phrygian dominant, double harmonic, pelog and the rest). A note outside the scale is answered in parallel.
+- **INTERVAL:** a 3rd, 4th, 5th, 6th or octave, above or below, in steps of the scale (in D Phrygian dominant, D is answered by F#, E-flat by G).
+- **VOICES:** up to three answers stacked in 3rds, a small choir. **LEVEL** brings them in one at a time.
+- **DELAY:** the answer comes a moment after the note, like a reply. **DETUNE** and **SPREAD** make the answers wider and more human.
+- The answers are played by the synth itself (the same oscillators, filter and envelopes as your note), so they sound as clean as the note. They glide with a mono lead and let go with their note. Turn LEVEL (or MACRO 3) up while holding a chord and the answers come in.
+- Its page shows a keyboard: the scale marked, the notes you play in orange, the answers in blue.
+- LEVEL, DETUNE and SPREAD can be moved by the mod matrix (FX Sirocco).
+
+**SANDSEA: MACRO 3 is now SIROCCO on all 15 presets**, in D Phrygian dominant.
+- At 0, every preset sounds exactly as before: no answers at all.
+- Turning it up brings the answers in and spreads them wider, each preset its own way: horns joining below, a second flute a breath behind, a choir of three on Mirage, a second gong struck after the first, runs in 3rds on Sand Ripple.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+## 0.57.0
+
+**DOWNPOUR, and NEON RAIN gets its centrepiece.** The first of the early expansion banks to get one sound idea running through every preset, as the newer banks have.
+
+**DOWNPOUR** (a new effect, our own design: the sixth unit on the FX page's MOD / LO-FI tab): rain on the glass, added to your sound.
+- **Patter:** a bed of tiny droplets, like rain on a window. RAIN sets how hard it falls, from nothing at all to a downpour.
+- **Drops that play your notes:** now and then a big drop rings out on one of the notes you're holding (OCTAVE: one, two or three octaves up). Each starts a little flat and slides up onto its note, as a real water drop does. Hold a chord and the rain picks out its notes, never in rhythm.
+- **DISTANCE** moves the rain from right on the glass (sharp, bright) to out in the street (dull, soft). **SPACE** sends some of it into the preset's own reverb. **WIDTH** spreads it, **LEVEL** sets how loud.
+- **FOLLOW:** the rain falls only while you play, and stops about a second after you let go, so sounds still end in silence.
+- Its page is a window: each drop a ripple where it lands, named by the note it rang on.
+- RAIN, DROPS, DISTANCE and LEVEL can be moved by the mod matrix (FX Downpour).
+
+**NEON RAIN: MACRO 3 is now STORM on all 15 presets.**
+- At 0, every preset sounds exactly as before: no rain at all.
+- Turning it up brings the rain, from a few drops to a downpour, coming closer as it builds, with its drops ringing on your notes.
+- Each preset's old MACRO 3 job (GROWL, SCOOP, VOWEL, FAT and so on) still comes with it, and the preset notes say so.
+
 ## 0.56.0
 
 **MELTDOWN**, a new expansion (MD01-MD15), and **CRACKLE**, the effect it's built round.

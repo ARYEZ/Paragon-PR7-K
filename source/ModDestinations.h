@@ -39,7 +39,11 @@ namespace ModDestinations
                                                  // 0.53.0: ECHOES: how loud the past comes back, its echoes of echoes, how worn
                                                  "echoMix", "echoFeedback", "echoAge",
                                                  // 0.56.0: CRACKLE: how many clicks, how bunched, how loud
-                                                 "crackleRate", "crackleCluster", "crackleLevel" };
+                                                 "crackleRate", "crackleCluster", "crackleLevel",
+                                                 // 0.57.0: DOWNPOUR: how hard it rains, how many drops, how far, how loud
+                                                 "downpourRain", "downpourDrops", "downpourDistance", "downpourLevel",
+                                                 // 0.58.0: SIROCCO: how loud the answers (layer by layer), how detuned, how spread
+                                                 "siroccoLevel", "siroccoDetune", "siroccoSpread" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.
