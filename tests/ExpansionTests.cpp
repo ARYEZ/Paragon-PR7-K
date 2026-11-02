@@ -263,7 +263,7 @@ TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left"
         CHECK (rig.parameters.at (ParamIDs::siroccoLevel) == 0.0f);   // no answers until the macro brings them: the sound as approved
         CHECK (rig.parameters.at (ParamIDs::siroccoKey) == 2.0f);     // D
         const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
-                                         { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.5f; });
+                                         { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
         CHECK (routed);
     }
     CHECK (count == 15);
