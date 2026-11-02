@@ -1816,6 +1816,28 @@ namespace
     // precise glowing synth pulses locked to the beat, huge throbbing analog basses, orchestral-electronic swells,
     // clean leads with long glides, a robotic vocal texture, crisp digital bleeps. Cold and exact: no tape, no wobble.
     // No title, characters, places or music from the films: our own sounds.
+    // DATASTREAM's centrepiece (0.61.0, the owner's ask): LIGHTTRAIL on every preset, MACRO 3 TRAIL. Each preset gets
+    // its own trail (division, rise, length, tone, spread) at MIX 0, so at the macro's left it sounds exactly as approved;
+    // the macro brings the trail in and lengthens it. Its old MACRO 3 job rides along (the notes say so).
+    struct Trail
+    {
+        int division = 2;             // effects::LightTrail::divisionNames
+        float rise = 0.0f, length = 0.5f, tone = 0.7f, spread = 0.7f;
+        float mixTop = 0.5f;          // the macro's MIX at full
+    };
+
+    void trails (Builder& b, const juce::String& oldText, const juce::String& newText, Trail t)
+    {
+        b.set (ParamIDs::trailOn, 1.0f).set (ParamIDs::trailDivision, (float) t.division).set (ParamIDs::trailRise, t.rise)
+         .set (ParamIDs::trailLength, t.length).set (ParamIDs::trailTone, t.tone).set (ParamIDs::trailSpread, t.spread)
+         .set (ParamIDs::trailMix, 0.0f);
+        route (b, "macro3", ParamIDs::trailMix, t.mixTop);
+        route (b, "macro3", ParamIDs::trailLength, 0.2f);
+        b.rig.modulation.macroNames[2] = "TRAIL";
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, newText);
+    }
+
     void datastream (Expansion x)
     {
         using SP4 = synth::mod::ShapePoint;
@@ -1833,10 +1855,11 @@ namespace
              .mono (180.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::always).set (ParamIDs::glideCurve, 0.4f);
         route (trail, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (trail, "macro3", ParamIDs::osc (0, "SyncAmount"), 0.3f);
-        macros (trail, "BRIGHT", "SPACE", "GLOW");
+        macros (trail, "BRIGHT", "SPACE", "TRAIL");
         delay (trail, "1/8 dotted", 0.35f, 0.2f, true, 6.0f);
         reverb (trail, RT::hall, 0.6f, 0.2f);
         space (trail);
+        trails (trail, "GLOW (more sync)", "TRAIL (each note's trail, plus GLOW (more sync))", { 2, 7.0f, 0.5f, 0.8f, 0.8f, 0.55f });
         trail.set (ParamIDs::patchLevel, -0.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (trail);
 
@@ -1855,10 +1878,11 @@ namespace
         vector.rig.modulation.travel[0].envelope = { { SP4 { 0.0f, 0.0f, -0.3f }, SP4 { 1.0f, 1.0f, 0.0f } }, -1, -1, -1 };
         route (vector, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (vector, "macro3", ParamIDs::osc (0, "Crush"), 0.3f);
-        macros (vector, "BRIGHT", "SPACE", "ROBOT");
+        macros (vector, "BRIGHT", "SPACE", "TRAIL");
         delay (vector, "1/8", 0.3f, 0.15f, true, 5.0f);
         reverb (vector, RT::plate, 0.5f, 0.15f);
         space (vector);
+        trails (vector, "ROBOT (more crush)", "TRAIL (each note's trail, plus ROBOT (more crush))", { 3, 12.0f, 0.45f, 0.7f, 0.7f, 0.5f });
         vector.set (ParamIDs::patchLevel, 9.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (vector);
 
@@ -1874,10 +1898,11 @@ namespace
         burst.rig.modulation.pitchEnvelope = { { SP4 { 0.0f, 1.0f, -0.7f }, SP4 { 0.03f, 0.5f, 0.0f } }, -1, -1, -1 };
         route (burst, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (burst, "macro3", ParamIDs::pitchEnvRange, 0.3f);
-        macros (burst, "BRIGHT", "SPACE", "BLIP");
+        macros (burst, "BRIGHT", "SPACE", "TRAIL");
         delay (burst, "1/8 dotted", 0.3f, 0.15f, true, 6.0f);
         reverb (burst, RT::room, 0.5f, 0.12f);
         space (burst);
+        trails (burst, "BLIP (a bigger blip)", "TRAIL (each note's trail, plus BLIP (a bigger blip))", { 0, 2.0f, 0.6f, 0.9f, 0.6f, 0.5f });
         burst.set (ParamIDs::patchLevel, -4.8f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (burst);
 
@@ -1895,10 +1920,11 @@ namespace
                .ampEnvelope (1500.0f, 2000.0f, 0.9f, 2500.0f);
         route (horizon, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (horizon, "macro3", ParamIDs::fltEnv, 0.3f);
-        macros (horizon, "BRIGHT", "SPACE", "SWELL");
+        macros (horizon, "BRIGHT", "SPACE", "TRAIL");
         reverb (horizon, RT::hall, 0.8f, 0.3f, 30.0f, 4.5f);
         eqBand (horizon, 0, eq::Shape::lowCut, 100.0f, 0.0f);
         space (horizon);
+        trails (horizon, "SWELL (a bigger opening)", "TRAIL (each note's trail, plus SWELL (a bigger opening))", { 5, 12.0f, 0.45f, 0.6f, 0.7f, 0.45f });
         horizon.set (ParamIDs::patchLevel, -8.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (horizon);
 
@@ -1917,10 +1943,11 @@ namespace
         cathedral.rig.modulation.travel[0].envelope = { { SP4 { 0.0f, 0.0f, 0.0f }, SP4 { 1.0f, 1.0f, 0.0f } }, -1, -1, -1 };
         route (cathedral, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (cathedral, "macro3", ParamIDs::osc (0, "WtIndex"), 0.3f);
-        macros (cathedral, "BRIGHT", "SPACE", "HARMONICS");
+        macros (cathedral, "BRIGHT", "SPACE", "TRAIL");
         chorus (cathedral, ParamIDs::modIds, MT::chorus, 0.3f, 0.3f, 0.3f);
         reverb (cathedral, RT::cathedral, 0.4f, 0.35f, 40.0f, 4.5f);
         space (cathedral);
+        trails (cathedral, "HARMONICS", "TRAIL (each note's trail, plus HARMONICS)", { 4, 7.0f, 0.45f, 0.6f, 0.8f, 0.45f });
         cathedral.set (ParamIDs::patchLevel, -3.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (cathedral);
 
@@ -1946,9 +1973,10 @@ namespace
             }
         route (sky, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (sky, "macro3", ParamIDs::seqVolMix, -0.7f);
-        macros (sky, "BRIGHT", "SPACE", "SMOOTH");
+        macros (sky, "BRIGHT", "SPACE", "TRAIL");
         reverb (sky, RT::plate, 0.6f, 0.25f);
         space (sky);
+        trails (sky, "SMOOTH (less gating)", "TRAIL (each note's trail, plus SMOOTH (less gating))", { 3, 0.0f, 0.5f, 0.7f, 1.0f, 0.45f });
         sky.set (ParamIDs::patchLevel, -6.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (sky);
 
@@ -1971,9 +1999,10 @@ namespace
         route (engine, "lfo1", ParamIDs::fltCutoff, 0.25f);
         route (engine, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (engine, "macro3", ParamIDs::fltDrive, 0.5f);
-        macros (engine, "BRIGHT", "SPACE", "GROWL");
+        macros (engine, "BRIGHT", "SPACE", "TRAIL");
         reverb (engine, RT::room, 0.3f, 0.08f);
         space (engine);
+        trails (engine, "GROWL (the filter's drive)", "TRAIL (each note's trail, plus GROWL (the filter's drive))", { 2, 12.0f, 0.35f, 0.6f, 0.6f, 0.4f });
         engine.set (ParamIDs::patchLevel, 6.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (engine);
 
@@ -1990,9 +2019,10 @@ namespace
         route (bitfall, "modWheel", ParamIDs::osc (0, "Crush"), 0.6f);
         route (bitfall, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (bitfall, "macro3", ParamIDs::lofiMix, 0.6f);
-        macros (bitfall, "BRIGHT", "SPACE", "CRUSH");
+        macros (bitfall, "BRIGHT", "SPACE", "TRAIL");
         reverb (bitfall, RT::room, 0.3f, 0.08f);
         space (bitfall);
+        trails (bitfall, "CRUSH", "TRAIL (each note's trail, plus CRUSH)", { 2, -12.0f, 0.4f, 0.6f, 0.6f, 0.45f });
         bitfall.set (ParamIDs::patchLevel, -3.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (bitfall);
 
@@ -2006,9 +2036,10 @@ namespace
                .mono (60.0f);
         route (lattice, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (lattice, "macro3", ParamIDs::osc (0, "Sub"), 0.3f);
-        macros (lattice, "BRIGHT", "SPACE", "WEIGHT");
+        macros (lattice, "BRIGHT", "SPACE", "TRAIL");
         reverb (lattice, RT::room, 0.3f, 0.08f);
         space (lattice);
+        trails (lattice, "WEIGHT (more sub)", "TRAIL (each note's trail, plus WEIGHT (more sub))", { 4, 12.0f, 0.35f, 0.6f, 0.6f, 0.4f });
         lattice.set (ParamIDs::patchLevel, -2.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (lattice);
 
@@ -2028,10 +2059,11 @@ namespace
         route (console, "velocity", ParamIDs::osc (0, "FmAmount"), 0.15f);
         route (console, "macro1", ParamIDs::osc (0, "FmAmount"), 0.25f);
         route (console, "macro3", ParamIDs::osc (2, "Volume"), 0.15f);
-        macros (console, "BRIGHT", "SPACE", "SHIMMER");
+        macros (console, "BRIGHT", "SPACE", "TRAIL");
         delay (console, "1/8 dotted", 0.35f, 0.18f, true, 6.0f);
         reverb (console, RT::plate, 0.5f, 0.2f);
         space (console);
+        trails (console, "SHIMMER", "TRAIL (each note's trail, plus SHIMMER)", { 4, 7.0f, 0.5f, 1.0f, 0.8f, 0.5f });
         console.set (ParamIDs::patchLevel, -9.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (console);
 
@@ -2048,9 +2080,10 @@ namespace
                 .ampEnvelope (10.0f, 800.0f, 0.7f, 400.0f);
         route (protocol, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (protocol, "macro3", ParamIDs::fltEnv, 0.3f);
-        macros (protocol, "BRIGHT", "SPACE", "BITE");
+        macros (protocol, "BRIGHT", "SPACE", "TRAIL");
         reverb (protocol, RT::hall, 0.7f, 0.25f);
         space (protocol);
+        trails (protocol, "BITE (a bigger punch)", "TRAIL (each note's trail, plus BITE (a bigger punch))", { 5, 0.0f, 0.4f, 0.6f, 0.7f, 0.4f });
         protocol.set (ParamIDs::patchLevel, -11.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (protocol);
 
@@ -2064,10 +2097,11 @@ namespace
               .ampEnvelope (1.0f, 800.0f, 0.0f, 400.0f).set (ParamIDs::ampDecayCurve, -0.4f).set (ParamIDs::ampVel, 0.4f);
         route (chimes, "macro1", ParamIDs::osc (0, "FmAmount"), 0.25f);
         route (chimes, "macro3", ParamIDs::osc (0, "Crush"), 0.3f);
-        macros (chimes, "BRIGHT", "SPACE", "CRUSH");
+        macros (chimes, "BRIGHT", "SPACE", "TRAIL");
         delay (chimes, "1/16 dotted", 0.4f, 0.2f, true, 7.0f);
         reverb (chimes, RT::plate, 0.4f, 0.15f);
         space (chimes);
+        trails (chimes, "CRUSH", "TRAIL (each note's trail, plus CRUSH)", { 1, 5.0f, 0.55f, 0.9f, 0.8f, 0.5f });
         chimes.set (ParamIDs::patchLevel, 2.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (chimes);
 
@@ -2092,10 +2126,11 @@ namespace
         route (overclock, "lfo1", ParamIDs::fltCutoff, 0.3f);
         route (overclock, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (overclock, "macro3", ParamIDs::fltRes, 0.35f);
-        macros (overclock, "BRIGHT", "SPACE", "RESONANCE");
+        macros (overclock, "BRIGHT", "SPACE", "TRAIL");
         delay (overclock, "1/8 dotted", 0.35f, 0.18f, true, 5.0f);
         reverb (overclock, RT::hall, 0.5f, 0.18f);
         space (overclock);
+        trails (overclock, "RESONANCE", "TRAIL (each note's trail, plus RESONANCE)", { 2, -5.0f, 0.45f, 0.7f, 0.7f, 0.45f });
         overclock.set (ParamIDs::patchLevel, -0.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (overclock);
 
@@ -2131,10 +2166,11 @@ namespace
         }
         route (system, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (system, "macro3", ParamIDs::seqVolMix, -0.7f);
-        macros (system, "BRIGHT", "SPACE", "SMOOTH");
+        macros (system, "BRIGHT", "SPACE", "TRAIL");
         delay (system, "1/4 dotted", 0.35f, 0.15f, true, 5.0f);
         reverb (system, RT::plate, 0.5f, 0.2f);
         space (system);
+        trails (system, "SMOOTH (less chopping)", "TRAIL (each note's trail, plus SMOOTH (less chopping))", { 4, 12.0f, 0.45f, 0.7f, 0.8f, 0.45f });
         system.set (ParamIDs::patchLevel, 0.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (system);
 
@@ -2165,10 +2201,11 @@ namespace
         circuit.set (ParamIDs::ins (0, "SendDelay"), 0.4f).set (ParamIDs::ins (0, "SendReverb"), 0.3f);
         route (circuit, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (circuit, "macro3", ParamIDs::osc (0, "Crush"), 0.4f);
-        macros (circuit, "BRIGHT", "SPACE", "CRUSH");
+        macros (circuit, "BRIGHT", "SPACE", "TRAIL");
         delay (circuit, "1/8 dotted", 0.3f, 0.15f, true, 6.0f);
         reverb (circuit, RT::plate, 0.4f, 0.15f);
         space (circuit);
+        trails (circuit, "CRUSH", "TRAIL (each note's trail, plus CRUSH)", { 0, 7.0f, 0.5f, 0.8f, 0.7f, 0.5f });
         circuit.set (ParamIDs::patchLevel, 1.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (circuit);
     }
