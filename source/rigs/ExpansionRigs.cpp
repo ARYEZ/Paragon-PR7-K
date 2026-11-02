@@ -324,7 +324,7 @@ namespace
         storm (strings, "ENSEMBLE (the detune)",
                "STORM (rain on the glass, its drops ringing on your notes; more detune with it)",
                RainSpot { 0.7f, 1, 0.45f, 0.6f, -8.0f });
-        strings.set (ParamIDs::patchLevel, -9.8f);   // LEVEL: measured, not by ear
+        strings.set (ParamIDs::patchLevel, -7.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (strings);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -1191,7 +1191,7 @@ namespace
         afterglow (strings, { 0.3f, 0.25f, 0.7f, 0.2f, 0.6f, 0.6f, 0.3f, 0.45f });
         reverb (strings, RT::hall, 0.7f, 0.25f);
         space (strings);
-        strings.set (ParamIDs::patchLevel, -5.5f);   // LEVEL: measured, not by ear
+        strings.set (ParamIDs::patchLevel, -9.8f);   // LEVEL: measured, not by ear
         x.add (strings);
 
         auto dream = x.make ("Polysynth Dream", 6, { "Pad", "Saw", "Afterglow", "Swell" },
