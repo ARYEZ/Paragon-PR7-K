@@ -137,7 +137,7 @@ TEST_CASE ("DOWNPOUR: RAIN, DROPS, DISTANCE and LEVEL are mod-matrix destination
     CHECK (p.processor.getDownpourSettings().rain < 0.15f);
 }
 
-TEST_CASE ("DOWNPOUR: the MOD / LO-FI view's sixth unit, and its page", "[downpour][ui]")
+TEST_CASE ("DOWNPOUR: the MOD / LO-FI view's SIGNATURE slot, and its page", "[downpour][ui]")
 {
     ParagonX1AudioProcessor processor;
     std::unique_ptr<juce::AudioProcessorEditor> editor (processor.createEditor());
@@ -147,12 +147,12 @@ TEST_CASE ("DOWNPOUR: the MOD / LO-FI view's sixth unit, and its page", "[downpo
     view->showPage (MainView::Page::fx);
     auto& fx = view->getFxPage();
     fx.show (FxPage::View::modFx);
+    fx.showSignature (2);   // 0.58.0: in the SIGNATURE slot
     auto& unit = fx.getModFxUnit (5);
     CHECK (unit.getSpec().name == "DOWNPOUR");
     CHECK (unit.isVisible());
     CHECK (unit.getBottom() <= fx.getHeight());
-    for (int k = 1; k < 6; ++k)
-        CHECK (fx.getModFxUnit (k - 1).getBottom() <= fx.getModFxUnit (k).getY());
+    CHECK (fx.getModFxUnit (2).getBottom() <= unit.getY());
 
     unit.getSpec().onEdit();
     auto& page = fx.getDownpourPage();

@@ -205,6 +205,16 @@ namespace ParamIDs
 
     // ARPS TOGETHER (stage 5b, 0.16.0): every arp's steps counted from the first key held, so they stay in step.
     inline constexpr auto arpsTogether = "arpsTogether";
+    // SIROCCO (0.58.0, version hint 30, synth::sirocco): a harmony answering every note, snapped to a scale.
+    inline constexpr auto siroccoOn       = "siroccoOn";
+    inline constexpr auto siroccoKey      = "siroccoKey";        // choice: synth::sirocco::keyNames
+    inline constexpr auto siroccoScale    = "siroccoScale";      // choice: synth::arp::scaleNames
+    inline constexpr auto siroccoInterval = "siroccoInterval";   // choice: synth::sirocco::intervalNames
+    inline constexpr auto siroccoVoices   = "siroccoVoices";     // 1 to 3
+    inline constexpr auto siroccoDelay    = "siroccoDelay";      // ms, 0 to 500
+    inline constexpr auto siroccoLevel    = "siroccoLevel";      // 0 to 1
+    inline constexpr auto siroccoDetune   = "siroccoDetune";     // cents, 0 to 30
+    inline constexpr auto siroccoSpread   = "siroccoSpread";     // 0 to 1
 
     // 0.54.0: THE DRUMS (6a-6c: drumsOn, drumsRoot, drumsLevel, drumsVelocity, drum1-12..., dseq*) were removed at the
     // owner's word (PR7-D is the family's drum plugin): never reuse those IDs.

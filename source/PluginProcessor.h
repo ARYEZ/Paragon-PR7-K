@@ -301,6 +301,14 @@ public:
     // DOWNPOUR (0.57.0): its settings as they are now (RAIN, DROPS, DISTANCE, LEVEL as the matrix moves them), and the rain.
     effects::Downpour::Settings getDownpourSettings() const noexcept;
     const effects::Downpour& getDownpour() const noexcept { return rack->downpour; }
+    // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
+    std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
+    {
+        std::array<std::uint8_t, 128> out {};
+        for (size_t i = 0; i < out.size(); ++i)
+            out[i] = soundingNotes[i].load (std::memory_order_relaxed);
+        return out;
+    }
     // An insert bus's (0 to 3: A to D) effects' settings as they are now (stage 7d), its sends, and its output's peak.
     effects::Drive::Settings getInsertDriveSettings (int bus) const noexcept;
     effects::Glitch::Settings getInsertGlitchSettings (int bus) const noexcept;
@@ -330,6 +338,7 @@ public:
     }
 
 private:
+    std::array<std::atomic<std::uint8_t>, 128> soundingNotes {};   // for SIROCCO's page (getSoundingNoteFlags)
     void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples);
     void processModFx (juce::dsp::AudioBlock<float> block);
     void processInsertBuses (juce::dsp::AudioBlock<float> block, bool sendsReady, double ppq);

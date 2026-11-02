@@ -20,7 +20,12 @@ std::array<RackUnit::Spec, 4> makeRackSpecs (ParagonX1AudioProcessor&, RackActio
 std::array<RackUnit::Spec, 2> makeSendSpecs (ParagonX1AudioProcessor&, std::function<void (int send)> openPage);
 
 // MOD, MOD 2 and LO-FI's rack units (stage 7c). `openPage` 0 opens MOD's page, 1 MOD 2's, 2 LO-FI's.
-std::array<RackUnit::Spec, 6> makeModFxSpecs (ParagonX1AudioProcessor&, std::function<void (int unit)> openPage);
+// MOD, MOD 2, LO-FI, then the SIGNATURE slot's effects (0.58.0: ECHOES, CRACKLE, DOWNPOUR, SIROCCO: one shown at a time
+// in the fourth place, picked on the small screen under EDIT, which calls `chooseSignature`).
+std::array<RackUnit::Spec, 7> makeModFxSpecs (ParagonX1AudioProcessor&, std::function<void (int unit)> openPage, std::function<void()> chooseSignature);
+// The SIGNATURE slot's effects, in its order (never reorder: the page's choice follows it), and whether each is on.
+const juce::StringArray& signatureNames();
+bool signatureOn (ParagonX1AudioProcessor&, int signature);
 
 // An insert bus's (0 to 3: A to D) four rack units (stage 7d): DRIVE, GLITCH, MOD, LO-FI. `openPage` 0 to 3 opens each one's page.
 std::array<RackUnit::Spec, 5> makeInsertSpecs (ParagonX1AudioProcessor&, int bus, std::function<void (int unit)> openPage);

@@ -5,8 +5,8 @@
 #include "ui/RackSpecs.h"
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
-    : insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), cracklePage (processor), downpourPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+    : audio (processor), insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
+      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,9 +46,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour };
-        show (views[juce::jlimit (0, 5, unit)]);
-    });
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco };
+        show (views[juce::jlimit (0, 6, unit)]);
+    }, [this] { chooseSignature(); });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
     {
@@ -70,6 +70,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // DOWNPOUR (0.57.0): its page.
     downpourPage.onClose = [this] { show (View::modFx); };
     addChildComponent (downpourPage);
+    // SIROCCO (0.58.0): its page.
+    siroccoPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (siroccoPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -134,14 +137,15 @@ void FxPage::show (View newView)
     for (auto& unit : sendUnits)
         unit->setVisible (view == View::sends);
     matrix.setVisible (view == View::sends);
-    for (auto& unit : modFxUnits)
-        unit->setVisible (view == View::modFx);
+    for (size_t i = 0; i < modFxUnits.size(); ++i)   // MOD, MOD 2, LO-FI, and the SIGNATURE slot's chosen one
+        modFxUnits[i]->setVisible (view == View::modFx && (i < 3 || (int) i == 3 + signatureShown));
     modFxPages[0]->setVisible (view == View::mod);
     modFxPages[1]->setVisible (view == View::mod2);
     modFxPages[2]->setVisible (view == View::loFi);
     echoesPage.setVisible (view == View::echoes);
     cracklePage.setVisible (view == View::crackle);
     downpourPage.setVisible (view == View::downpour);
+    siroccoPage.setVisible (view == View::sirocco);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -201,7 +205,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.
@@ -229,16 +233,12 @@ void FxPage::resized()
                 page->setBounds (getLocalBounds());
         }
     }
-    // MOD / LO-FI: its six units (0.56.0: CRACKLE made five, 0.57.0: DOWNPOUR six) from the top, at the master units'
-    // size or smaller so all six fit.
+    // MOD / LO-FI: four places as the MASTER's (0.58.0, the owner's design): MOD, MOD 2, LO-FI, and the SIGNATURE slot,
+    // whose four effects share the fourth place (one shown at a time).
+    for (size_t i = 0; i < modFxUnits.size(); ++i)
     {
-        const auto count = (float) modFxUnits.size();
-        const auto byHeightNow = ((float) rackArea.getHeight() - (count - 1.0f) * gap) / count;
-        const auto w = juce::jmin (width, byHeightNow * RackUnit::referenceWidth / RackUnit::referenceHeight);
-        const auto h = w * RackUnit::referenceHeight / RackUnit::referenceWidth;
-        for (size_t i = 0; i < modFxUnits.size(); ++i)
-            modFxUnits[i]->setBounds (juce::Rectangle<float> ((float) rackArea.getCentreX() - w * 0.5f, (float) rackArea.getY() + (float) i * (h + gap),
-                                                              w, h).toNearestInt());
+        const auto row = (float) juce::jmin ((int) i, 3);
+        modFxUnits[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + row * (height + gap), width, height).toNearestInt());
     }
 
     // SENDS: the two units at the master units' size, the matrix under them.
@@ -249,4 +249,42 @@ void FxPage::resized()
         sendsArea.removeFromTop (juce::roundToInt (height) + gap);
     }
     matrix.setBounds (sendsArea.withSizeKeepingCentre (juce::roundToInt (width), sendsArea.getHeight()));
+}
+
+//==============================================================================
+void FxPage::showSignature (int signature)
+{
+    signatureShown = juce::jlimit (0, signatureNames().size() - 1, signature);
+    if (view == View::modFx)
+        show (View::modFx);
+}
+
+void FxPage::chooseSignature()
+{
+    // The SIGNATURE slot's menu: each effect, ticked if shown, marked if on.
+    juce::PopupMenu menu;
+    menu.addSectionHeader ("SIGNATURE");
+    for (int k = 0; k < signatureNames().size(); ++k)
+        menu.addItem (k + 1, signatureNames()[k] + (signatureOn (audio, k) ? "  (ON)" : ""), true, k == signatureShown);
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (modFxUnits[(size_t) (3 + signatureShown)].get()),
+                        [safe = juce::Component::SafePointer<FxPage> (this)] (int chosen)
+                        {
+                            if (safe != nullptr && chosen > 0)
+                                safe->showSignature (chosen - 1);
+                        });
+}
+
+void FxPage::followSignature (const juce::String& rigKey)
+{
+    if (rigKey == followedRig)
+        return;
+    followedRig = rigKey;
+    if (signatureOn (audio, signatureShown))
+        return;
+    for (int k = 0; k < signatureNames().size(); ++k)
+        if (signatureOn (audio, k))
+        {
+            showSignature (k);
+            return;
+        }
 }

@@ -103,6 +103,7 @@ target_sources(ParagonX1
         source/ui/EchoesPage.cpp
         source/ui/CracklePage.cpp
         source/ui/DownpourPage.cpp
+        source/ui/SiroccoPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

@@ -616,9 +616,21 @@ namespace
     }
 }
 
-std::array<RackUnit::Spec, 6> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
+const juce::StringArray& signatureNames()
 {
-    std::array<RackUnit::Spec, 6> specs;
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO" };
+    return names;
+}
+
+bool signatureOn (ParagonX1AudioProcessor& p, int signature)
+{
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn };
+    return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
+}
+
+std::array<RackUnit::Spec, 7> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+{
+    std::array<RackUnit::Spec, 7> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -777,6 +789,67 @@ std::array<RackUnit::Spec, 6> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
         s.footTitle = "LEVEL";
         s.footText = [&p] { return textOf (p, ParamIDs::downpourLevel); };
         s.onEdit = [openPage] { openPage (5); };
+    }
+
+    // SIROCCO (0.58.0): the answers sounding in big digits, the key and scale; the keys pick the interval.
+    {
+        auto& s = specs[6];
+        s.name = "SIROCCO";
+        s.kind = "ANSWERING HARMONY  IN THE SCALE";
+        s.onParameterIds = { ParamIDs::siroccoOn };
+        s.powerTooltip = "SIROCCO on or off: a harmony answering every note you play, kept to a scale. Click POWER (the word) or EDIT for its page";
+        const auto intervalKey = [&p] (const char* name, int interval, const char* tip)
+        {
+            return RackUnit::Key { name, tip, [&p, interval] { return juce::roundToInt (valueOf (p, ParamIDs::siroccoInterval)) == interval; },
+                                   [&p, interval] { setValue (p, ParamIDs::siroccoInterval, (float) interval); } };
+        };
+        s.keys[0] = intervalKey ("3RD", 0, "3RD ABOVE: each note answered a 3rd up in the scale");
+        s.keys[1] = intervalKey ("5TH", 2, "5TH ABOVE: each note answered a 5th up in the scale");
+        s.keys[2] = intervalKey ("OCTAVE", 4, "OCTAVE ABOVE");
+        s.knobs = { RackUnit::Knob { ParamIDs::siroccoLevel, "LEVEL" }, RackUnit::Knob { ParamIDs::siroccoSpread, "SPREAD" } };
+        const auto answersNow = [&p]
+        {
+            int count = 0;
+            for (const auto f : p.getSoundingNoteFlags())
+                count += (f & 2) != 0 ? 1 : 0;
+            return count;
+        };
+        s.ladderTitle = "ANSWERS";
+        s.ladderMarks = { 8.0f, 6.0f, 4.0f, 2.0f, 1.0f };
+        s.ladderLabels = { "8", "6", "4", "2", "1" };
+        s.ladderReading = [answersNow] { return (float) answersNow(); };
+        s.paintReadout = [&p, answersNow] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto end = drawNumber (g, juce::String (answersNow()), left.getTopLeft(), h);
+            line (g, "ANS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, textOf (p, ParamIDs::siroccoKey) + " " + textOf (p, ParamIDs::siroccoScale).toUpperCase(),
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { textOf (p, ParamIDs::siroccoInterval), "VOICES " + textOf (p, ParamIDs::siroccoVoices),
+                                  "DELAY " + textOf (p, ParamIDs::siroccoDelay), "LEVEL " + textOf (p, ParamIDs::siroccoLevel) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (6); };
+    }
+
+    // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
+    // place; the small screen under EDIT names the one shown (and how many others are on) and picks another.
+    for (int k = 0; k < signatureNames().size(); ++k)
+    {
+        auto& s = specs[(size_t) (3 + k)];
+        s.number = 4;
+        s.series = "PR7-K SERIES  SIGNATURE";
+        s.footTitle = "SIGNATURE";
+        s.footText = [&p, k]
+        {
+            int others = 0;
+            for (int j = 0; j < signatureNames().size(); ++j)
+                others += j != k && signatureOn (p, j) ? 1 : 0;
+            return signatureNames()[k] + (others > 0 ? " +" + juce::String (others) : juce::String());
+        };
+        s.onFootClick = chooseSignature;
     }
     return specs;
 }

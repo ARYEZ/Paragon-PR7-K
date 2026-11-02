@@ -976,6 +976,19 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.modulation.buttons[(size_t) k] = isOn (ParamIDs::macroButtons[k]);
     s.modulation.bpm = hostBpm.load();
     s.arpsTogether = isOn (ParamIDs::arpsTogether);
+    // SIROCCO (0.58.0): LEVEL, DETUNE and SPREAD as the matrix moves them (the whole synth's sources).
+    {
+        auto& h = s.sirocco;
+        h.on = isOn (ParamIDs::siroccoOn);
+        h.key = choice (param (ParamIDs::siroccoKey), synth::sirocco::keyNames.size());
+        h.scale = choice (param (ParamIDs::siroccoScale), synth::arp::scaleNames.size());
+        h.interval = choice (param (ParamIDs::siroccoInterval), synth::sirocco::intervalNames.size());
+        h.voices = juce::jlimit (1, synth::sirocco::maxVoices, juce::roundToInt (param (ParamIDs::siroccoVoices)));
+        h.delayMs = param (ParamIDs::siroccoDelay);
+        h.level = effectParam (ModDestinations::effect ("siroccoLevel"), ParamIDs::siroccoLevel);
+        h.detuneCents = effectParam (ModDestinations::effect ("siroccoDetune"), ParamIDs::siroccoDetune);
+        h.spread = effectParam (ModDestinations::effect ("siroccoSpread"), ParamIDs::siroccoSpread);
+    }
     s.sendOn = { isOn (ParamIDs::delayOn), isOn (ParamIDs::reverbOn) };
     s.modulation.toModWheel = { isOn (ParamIDs::mwBreath), isOn (ParamIDs::mwExpression), isOn (ParamIDs::mwAftertouch), isOn (ParamIDs::mwSustain) };
 
@@ -1240,6 +1253,17 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         settings.modulation.ppq = hostPpq >= 0.0 ? hostPpq + (start + done) / getSampleRate() * settings.modulation.bpm / 60.0 : -1.0;
         engine.process (left + done, right, n, midi, start + done, settings);
         updateEffectModulation (settings, n);
+        {
+            // What's sounding, for SIROCCO's page: played notes and answers.
+            std::array<float, 96> pitches {};
+            bool answer[96] {};
+            std::array<std::uint8_t, 128> flags {};
+            const auto count = engine.getSoundingNotes (pitches.data(), (int) pitches.size(), answer);
+            for (int k = 0; k < count; ++k)
+                flags[(size_t) juce::jlimit (0, 127, juce::roundToInt (pitches[(size_t) k]))] |= answer[k] ? 2 : 1;
+            for (size_t k = 0; k < flags.size(); ++k)
+                soundingNotes[k].store (flags[k], std::memory_order_relaxed);
+        }
         if (numChannels == 1)
             for (int i = 0; i < n; ++i)
                 left[done + i] = 0.5f * (left[done + i] + scratchRight[i]);

@@ -7,6 +7,7 @@
 #include "StepSequencer.h"
 #include "WtTravel.h"
 #include "Arpeggiator.h"
+#include "Sirocco.h"
 
 #include <array>
 
@@ -291,6 +292,7 @@ namespace synth
         // Stage 7b: the sends in use (their effect on): only then does the engine fill their mixes.
         std::array<bool, numSends> sendOn {};
         bool arpsTogether = false;   // 0.16.0: the first key starts every arp's clock, so arps joining later are in step
+        sirocco::Settings sirocco;   // 0.58.0: SIROCCO, the answering harmony
 
         Settings() { oscillators[0].on = true; }
     };

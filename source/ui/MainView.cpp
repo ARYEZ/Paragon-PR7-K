@@ -236,6 +236,7 @@ void MainView::refreshRig()
             break;
         }
     face.setScreen (screen);
+    fxPage.followSignature (rig.name + "|" + rig.file.getFullPathName());   // 0.58.0: the SIGNATURE slot shows the preset's own
     const auto& matrix = audioProcessor.getModMatrix();
     face.setMacroNames ({ matrix.macroName (0), matrix.macroName (1), matrix.macroName (2) });
 }

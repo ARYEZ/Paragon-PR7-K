@@ -71,7 +71,8 @@ namespace ModDestinations
                 { "FX Insert A", "Wah Pedal" }, { "FX Insert B", "Wah Pedal" }, { "FX Insert C", "Wah Pedal" }, { "FX Insert D", "Wah Pedal" },
                 { "FX Echoes", "Mix" }, { "FX Echoes", "Feedback" }, { "FX Echoes", "Age" },
                 { "FX Crackle", "Rate" }, { "FX Crackle", "Cluster" }, { "FX Crackle", "Level" },
-                { "FX Downpour", "Rain" }, { "FX Downpour", "Drops" }, { "FX Downpour", "Distance" }, { "FX Downpour", "Level" } };
+                { "FX Downpour", "Rain" }, { "FX Downpour", "Drops" }, { "FX Downpour", "Distance" }, { "FX Downpour", "Level" },
+                { "Sirocco", "Level" }, { "Sirocco", "Detune" }, { "Sirocco", "Spread" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });
