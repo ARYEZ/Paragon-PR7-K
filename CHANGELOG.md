@@ -2,6 +2,45 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.56.0
+
+**MELTDOWN**, a new expansion (MD01-MD15), and **CRACKLE**, the effect it's built round.
+
+### CRACKLE (new effect)
+The crackle of a radiation counter, added on top of your sound (which passes through unchanged). Like a real counter, the clicks come at random moments and never fall into a rhythm.
+- **RATE:** how many clicks a second, from one every two seconds to a 2,000-a-second roar.
+- **CLUSTER:** bunches them into bursts and lulls.
+- **TONE:** a dull tick or a sharp snap.
+- **WIDTH:** spreads each click across left and right.
+- **FOLLOW:** clicks only while the sound plays, so it falls silent when you stop.
+- **LEVEL:** how loud the clicks are.
+
+It's the fifth unit on the FX page's MOD / LO-FI tab (the units there are a little smaller now so all five fit), with a counter page showing every click in the last 2.5 seconds. The mod matrix can move RATE, CLUSTER and LEVEL. Switched off it changes nothing; it uses about 0.4% of a core even at 2,000 clicks a second. Our own design.
+
+### MELTDOWN (expansion)
+Inspired by the score of a 2019 series about a nuclear disaster, made almost entirely from the sounds of a power plant: pressure drones, groaning and ringing metal, pumps breathing, a counter's crackle, a lone voice rising out of the noise. Invisible danger, dread and grief. Built from the synth (no recordings); our own sounds, nothing from the series on the plugin.
+
+- **Leads:** Lone Voice, Warning Tone, Bowed Rim
+- **Pads:** Pressure Front, Glass Partials, Mourning Choir
+- **Basses:** Turbine Hum, Coolant Pump, Stressed Steel
+- **Keys:** Struck Pipes, Abandoned Upright, Tolling Bell
+- **Arps:** Counter Ticks, Relay Bank, Distant Siren
+
+**MACRO 3 is DOSE** on every preset. At 0 there's just a rare, faint tick. Turn it up and the clicks thicken into a roar while the sound corrodes, each preset its own way: crushed, driven, drifting out of tune, worn like old tape, or ringing harsher.
+
+Levels are measured, not set by ear.
+
+## 0.55.0
+
+**Four presets get their movement back.** After the drums moved to PR7-D, these four sat in their banks' arp slots but only held a chord. Each now plays a real arp of its own:
+
+- **Battle Cry** (CHROMEFURY): hammers the chord you hold in sixteenths over two octaves, up and down, on driven saws. Accents land on the beat, and quick bursts of 2 to 3 repeated hits come before each bar turns.
+- **Festival Bronze** (PSI STORM): a fast gamelan figure in sixteenths that leaps up an octave and back. Two strikes a bar are left out so it breathes, and each bronze strike rings over the next.
+- **Ritual Choir** (CYBERSHRINE): sings the chord one voice at a time, a note a beat, climbing and falling over two octaves. Each note swells from "oo" to "ah" and keeps ringing, so the choir builds as it climbs.
+- **Sacred Chant** (ASCENSION): a monks' chant in eighths, walking up the notes you hold with a repeating fifth-and-octave figure. Every syllable opens from a hum into "ah". Hold one note for a plain chant.
+
+Levels are measured, not set by ear.
+
 ## 0.54.0
 
 **PR7-K is now purely a synth.** The drums have moved out: PR7-D is the family's drum plugin.

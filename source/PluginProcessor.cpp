@@ -272,6 +272,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     for (auto& block : rack->modulation)
         block.prepare (sampleRate, preparedBlockSize);
     rack->echoes.prepare (sampleRate, preparedBlockSize);
+    rack->crackle.prepare (sampleRate, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
         for (int c = 0; c < 2; ++c)
@@ -521,6 +522,19 @@ effects::Echoes::Settings ParagonX1AudioProcessor::getEchoesSettings() const noe
     s.mix = effectParam (ModDestinations::effect ("echoMix"), ParamIDs::echoMix);
     s.feedback = effectParam (ModDestinations::effect ("echoFeedback"), ParamIDs::echoFeedback);
     s.age = effectParam (ModDestinations::effect ("echoAge"), ParamIDs::echoAge);
+    return s;
+}
+
+effects::Crackle::Settings ParagonX1AudioProcessor::getCrackleSettings() const noexcept
+{
+    effects::Crackle::Settings s;
+    s.on = isOn (ParamIDs::crackleOn);
+    s.rate = effectParam (ModDestinations::effect ("crackleRate"), ParamIDs::crackleRate);
+    s.cluster = effectParam (ModDestinations::effect ("crackleCluster"), ParamIDs::crackleCluster);
+    s.toneHz = param (ParamIDs::crackleTone);
+    s.width = param (ParamIDs::crackleWidth);
+    s.follow = param (ParamIDs::crackleFollow);
+    s.levelDb = effectParam (ModDestinations::effect ("crackleLevel"), ParamIDs::crackleLevel);
     return s;
 }
 
@@ -1228,6 +1242,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
         rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
+        rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));

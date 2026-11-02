@@ -614,9 +614,9 @@ namespace
     }
 }
 
-std::array<RackUnit::Spec, 4> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
+std::array<RackUnit::Spec, 5> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage)
 {
-    std::array<RackUnit::Spec, 4> specs;
+    std::array<RackUnit::Spec, 5> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -677,6 +677,55 @@ std::array<RackUnit::Spec, 4> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
         s.footTitle = "MODE";
         s.footText = [&p] { return textOf (p, ParamIDs::echoMode); };
         s.onEdit = [openPage] { openPage (3); };
+    }
+
+    // CRACKLE (0.56.0): the clicks counted in the last second in big digits, like a counter; the keys pick a density.
+    {
+        auto& s = specs[4];
+        s.number = 5;
+        s.name = "CRACKLE";
+        s.kind = "RANDOM CLICKS  A COUNTER'S CRACKLE";
+        s.series = "PR7-K SERIES  INSERT 5";
+        s.onParameterIds = { ParamIDs::crackleOn };
+        s.powerTooltip = "CRACKLE on or off: a radiation counter's random clicks, added to the sound. Click POWER (the word) or EDIT for its page";
+        const auto rateKey = [&p] (const char* name, float rate, const char* tip)
+        {
+            return RackUnit::Key { name, tip,
+                                   [&p, rate]
+                                   {
+                                       const auto now = valueOf (p, ParamIDs::crackleRate);
+                                       return now > rate * 0.7f && now < rate * 1.4f;
+                                   },
+                                   [&p, rate] { setValue (p, ParamIDs::crackleRate, rate); } };
+        };
+        s.keys[0] = rateKey ("SPARSE", 4.0f, "SPARSE: about 4 clicks a second");
+        s.keys[1] = rateKey ("STEADY", 40.0f, "STEADY: about 40 clicks a second");
+        s.keys[2] = rateKey ("STORM", 600.0f, "STORM: about 600 clicks a second, a roar");
+        s.knobs = { RackUnit::Knob { ParamIDs::crackleRate, "RATE" }, RackUnit::Knob { ParamIDs::crackleLevel, "LEVEL" } };
+        // The ladder: how fast it's clicking (10 x log10 of the clicks a second: 1, 10, 30, 100, 1000).
+        s.ladderTitle = "COUNT";
+        s.ladderMarks = { 30.0f, 20.0f, 14.8f, 10.0f, 0.0f };
+        s.ladderLabels = { "1K", "100", "30", "10", "1" };
+        s.ladderReading = [&p]
+        {
+            const auto rate = p.getCrackle().getRecentRate();
+            return rate > 0.0f ? 10.0f * std::log10 (rate) : -100.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (p.getCrackle().getRecentRate())), left.getTopLeft(), h);
+            line (g, "CPS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "CLICKS IN THE LAST SECOND", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "RATE " + textOf (p, ParamIDs::crackleRate), "CLUSTER " + textOf (p, ParamIDs::crackleCluster),
+                                  "TONE " + textOf (p, ParamIDs::crackleTone), "FOLLOW " + textOf (p, ParamIDs::crackleFollow) },
+                    content.getHeight() * 0.16f);
+        };
+        s.footTitle = "LEVEL";
+        s.footText = [&p] { return textOf (p, ParamIDs::crackleLevel); };
+        s.onEdit = [openPage] { openPage (4); };
     }
     return specs;
 }

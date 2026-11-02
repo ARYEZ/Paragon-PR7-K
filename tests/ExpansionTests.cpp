@@ -335,8 +335,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto sev = rig.bank == Rig::numBanks + 20;       // SEVERED: 96 BPM, D minor slipping into bright F major
         const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
         const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
+        const auto melt = rig.bank == Rig::numBanks + 23;      // MELTDOWN: 66 BPM in D minor, slow, with half-step clusters
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -482,6 +483,44 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     rock (0.0, 4.0);
                     rock (8.0, 12.0);
                 }
+                length = 19.0 * beat;
+            }
+        }
+        else if (melt)
+        {
+            if (type == "Lead")
+            {
+                // A grieving line in D minor, a half-step sigh, a long held note.
+                line ({ { 0, 2, 62 }, { 2, 1, 65 }, { 3, 1, 64 }, { 4, 3, 62 }, { 8, 1.5, 69 }, { 9.5, 0.5, 70 }, { 10, 2, 69 },
+                        { 12, 4, 65 } }, 95);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                // D minor with a clashing half step, then Bb over D.
+                chord (e, at (0), at (7.8), { 38, 50, 57, 62, 65 }, 90);
+                chord (e, at (8), at (15.8), { 38, 50, 58, 62, 63 }, 90);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                line ({ { 0, 3.9, 26 }, { 4, 3.9, 27 }, { 8, 3.9, 26 }, { 12, 3.9, 22 } }, 105);
+                wheel (8.0, 15.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                line ({ { 0, 2, 62 }, { 2, 2, 69 }, { 4, 2, 65 }, { 6, 2, 63 } }, 90);
+                chord (e, at (8), at (12), { 50, 57, 62, 65 }, 90);
+                chord (e, at (12), at (15), { 46, 58, 62, 63 }, 90);
+                length = 20.0 * beat;
+            }
+            else
+            {
+                chord (e, at (0), at (7.9), { 62, 65, 69 }, 100);
+                chord (e, at (8), at (15.9), { 62, 63, 70 }, 100);
                 length = 19.0 * beat;
             }
         }

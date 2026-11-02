@@ -378,6 +378,14 @@ namespace ParamIDs
     inline constexpr auto echoMix      = "echoMix";        // 0 to 1
     inline constexpr auto echoFeedback = "echoFeedback";   // 0 to 1 (LOOP: repeats)
     inline constexpr auto echoAge      = "echoAge";        // 0 to 1
+    // CRACKLE (0.56.0, version hint 28, effects::Crackle): a radiation counter's random clicks.
+    inline constexpr auto crackleOn      = "crackleOn";
+    inline constexpr auto crackleRate    = "crackleRate";      // clicks a second, 0.5 to 2000 (log)
+    inline constexpr auto crackleCluster = "crackleCluster";   // 0 to 1
+    inline constexpr auto crackleTone    = "crackleTone";      // Hz, 300 to 12000 (log)
+    inline constexpr auto crackleWidth   = "crackleWidth";     // 0 to 1
+    inline constexpr auto crackleFollow  = "crackleFollow";    // 0 to 1
+    inline constexpr auto crackleLevel   = "crackleLevel";     // dB, -48 to +6
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -453,4 +461,6 @@ void addRackParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  
 void addSendParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (stage 7b)
 void addModFxParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (stage 7c)
 void addInsertParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
-void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)
+void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
+void addCrackleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.56.0)
+   // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

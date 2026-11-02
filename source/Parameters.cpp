@@ -534,5 +534,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addModFxParameters (layout);  // MOD, MOD 2, LO-FI (stage 7c): RackParameters.cpp
     addInsertParameters (layout); // the insert buses (stage 7d): RackParameters.cpp
     addEchoesParameters (layout); // ECHOES (0.53.0): RackParameters.cpp
+    addCrackleParameters (layout); // CRACKLE (0.56.0): RackParameters.cpp
     return layout;
 }

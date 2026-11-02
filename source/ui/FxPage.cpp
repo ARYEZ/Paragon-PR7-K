@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), cracklePage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,8 +46,8 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes };
-        show (views[juce::jlimit (0, 3, unit)]);
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle };
+        show (views[juce::jlimit (0, 4, unit)]);
     });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
@@ -64,6 +64,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // ECHOES (0.53.0): its page.
     echoesPage.onClose = [this] { show (View::modFx); };
     addChildComponent (echoesPage);
+    // CRACKLE (0.56.0): its page.
+    cracklePage.onClose = [this] { show (View::modFx); };
+    addChildComponent (cracklePage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -134,6 +137,7 @@ void FxPage::show (View newView)
     modFxPages[1]->setVisible (view == View::mod2);
     modFxPages[2]->setVisible (view == View::loFi);
     echoesPage.setVisible (view == View::echoes);
+    cracklePage.setVisible (view == View::crackle);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -193,7 +197,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.
@@ -221,10 +225,17 @@ void FxPage::resized()
                 page->setBounds (getLocalBounds());
         }
     }
-    // MOD / LO-FI: the three units at the master units' size, from the top.
-    for (size_t i = 0; i < modFxUnits.size(); ++i)
-        modFxUnits[i]->setBounds (juce::Rectangle<float> ((float) rackArea.getCentreX() - width * 0.5f, (float) rackArea.getY() + (float) i * (height + gap),
-                                                          width, height).toNearestInt());
+    // MOD / LO-FI: its five units (0.56.0: CRACKLE made five) from the top, at the master units' size or smaller so
+    // all five fit.
+    {
+        const auto count = (float) modFxUnits.size();
+        const auto byHeightNow = ((float) rackArea.getHeight() - (count - 1.0f) * gap) / count;
+        const auto w = juce::jmin (width, byHeightNow * RackUnit::referenceWidth / RackUnit::referenceHeight);
+        const auto h = w * RackUnit::referenceHeight / RackUnit::referenceWidth;
+        for (size_t i = 0; i < modFxUnits.size(); ++i)
+            modFxUnits[i]->setBounds (juce::Rectangle<float> ((float) rackArea.getCentreX() - w * 0.5f, (float) rackArea.getY() + (float) i * (h + gap),
+                                                              w, h).toNearestInt());
+    }
 
     // SENDS: the two units at the master units' size, the matrix under them.
     auto sendsArea = rackArea;
