@@ -2,6 +2,31 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.59.0
+
+**INFERNAL, and HELLFORGE rebuilt as a premiere bank.**
+
+**INFERNAL** (a new signature effect, our own design, in the SIGNATURE slot): parallel destruction, after the way the industrial-metal game scores you pointed to were described being made: plain synth sounds sent through several chains of pedals at once and mixed back together.
+- **TIGHT** keeps everything under it clean (30 to 400 Hz), so the sub stays solid under the dirt.
+- Everything above goes through four chains side by side, each with its own blend:
+  - **FUZZ:** a hard, lopsided fuzz that buzzes rather than fizzes.
+  - **CRUSH:** few bits and a lowered sample rate, a digital grind.
+  - **AMP:** a guitar amp's two gain stages into a speaker cabinet (**CAB** sets dark to bright). This is what makes a synth lead sound played on a guitar. **FEEDBACK** makes held notes bloom an octave up, as a guitar feeds back.
+  - **NOISE:** noise pulsed at the pitch of the notes you play, so it growls in tune and in time with the riff instead of hissing.
+- **DRIVE** pushes every chain, a glue compressor holds them together, **MIX** blends the whole (at 0 the sound passes exactly as it was), **LEVEL** sets the destroyed part.
+- Its page shows each chain's level, the feedback bloom and the glue compressor's work.
+- DRIVE, MIX, NOISE and FEEDBACK can be moved by the mod matrix (FX Infernal).
+
+**HELLFORGE, rebuilt round INFERNAL** (your ask: "a premiere rig for us"). MACRO 3 is DESTROY on all 15.
+- **Kept:** Gut Chug, Tectonic Drop, Iron Riff and Gatling Pulse. With MACRO 3 at 0 they sound exactly as before; turning it up now also brings INFERNAL in.
+- **New:**
+  - Leads: **Hellfire Lead** (played like a guitar through the AMP and cabinet, feedback blooming on held notes, the pitch wheel diving an octave, the MOD WHEEL feeding back harder), **Whammy Wraith** (a squealing fuzz lead), **Plasma Scream** (a hard-synced scream through broken electronics).
+  - Pads: **Screamer Choir** (voices scooping up into pitch, the vowel tearing open, rasping), **Hellfire Drone** (clean sines, noise growling in tune), **Riff Shadow** (a layer to sit under a down-tuned guitar).
+  - Bass: **Sine Engine** (two pure sines, the sub clean, the upper one fuzzed and crushed, with noise growling on top).
+  - Keys: **Profane Organ** (a clean cathedral organ that DESTROY drags through INFERNAL), **Anvil Stab** (hammer-hit chords).
+  - Arps: **Chainsaw Pulse** (a sine kick on every beat, a buzzing saw idling between), **Berserk Run** (shredding runs over two octaves through the AMP).
+- Gone: Molten Riff, Warning Siren, Signal Scream, Ash Choir, Furnace Drone, Corrupted Signal, Grinder Bass, Rust Organ, Ritual Bells, Shrapnel Grid and War Machine. A project that used one of them keeps its sound: the settings are saved in the project.
+
 ## 0.58.0
 
 **SIROCCO, the SIGNATURE slot, and SANDSEA gets its centrepiece.**

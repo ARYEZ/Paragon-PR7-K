@@ -22,8 +22,9 @@ namespace expansions
           "keys and slow neon pulses. Built round DOWNPOUR (0.57.0), rain on the glass whose drops ring on the notes you "
           "play, and MACRO 3, STORM: from dry to a downpour. Our own sounds." },
         { "HELLFORGE", "HF",
-          "Inspired by modern industrial-metal game scores: synths played like down-tuned guitars through brutal "
-          "distortion, sub drops, noise walls, a dark choir and syncopated chugs. Our own sounds." },
+          "Inspired by modern industrial-metal game scores: synths as heavy as down-tuned guitars, leads played like a "
+          "guitar, clean subs under noise that growls in tune, a screaming choir, a cathedral organ, a chainsaw. Built "
+          "round INFERNAL (0.59.0), parallel destruction, and MACRO 3, DESTROY. Our own sounds." },
         { "STARCOURT", "SC",
           "Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor "
           "chords, chorused polysynth pads, haunting leads, and cassette wobble. Our own sounds." },
