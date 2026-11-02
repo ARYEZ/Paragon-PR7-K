@@ -72,7 +72,7 @@ TEST_CASE ("The SIGNATURE slot: four units on MOD / LO-FI, one signature shown, 
     {
         fx.showSignature (s);
         int visible = 0;
-        for (int k = 0; k < 8; ++k)
+        for (int k = 0; k < 3 + signatureNames().size(); ++k)   // MOD, MOD 2, LO-FI and every signature effect
             visible += fx.getModFxUnit (k).isVisible() ? 1 : 0;
         CHECK (visible == 4);
         auto& unit = fx.getModFxUnit (3 + s);
