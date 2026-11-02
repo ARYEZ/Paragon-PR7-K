@@ -743,7 +743,7 @@ namespace
         delay (wraith, "1/4", 0.35f, 0.15f, true, 4.0f);
         reverb (wraith, RT::hall, 0.6f, 0.18f);
         space (wraith);
-        wraith.set (ParamIDs::patchLevel, 0.0f);
+        wraith.set (ParamIDs::patchLevel, -1.0f);
         x.add (wraith);
 
         auto plasma = x.make ("Plasma Scream", 3, { "Lead", "Sync", "Infernal", "Crush" },
@@ -790,7 +790,7 @@ namespace
         macros (screamers, "BRIGHT", "SPACE", "DESTROY");
         reverb (screamers, RT::cathedral, 0.5f, 0.3f, 30.0f, 4.0f);
         space (screamers);
-        screamers.set (ParamIDs::patchLevel, 0.0f);
+        screamers.set (ParamIDs::patchLevel, -4.5f);
         x.add (screamers);
 
         auto drone = x.make ("Hellfire Drone", 5, { "Pad", "Sine", "Noise", "Infernal" },
@@ -808,7 +808,7 @@ namespace
         macros (drone, "BRIGHT", "SPACE", "DESTROY");
         reverb (drone, RT::hall, 0.7f, 0.25f);
         space (drone);
-        drone.set (ParamIDs::patchLevel, 0.0f);
+        drone.set (ParamIDs::patchLevel, -4.0f);
         x.add (drone);
 
         auto shadow = x.make ("Riff Shadow", 6, { "Pad", "Layer", "Guitar", "Infernal" },
@@ -826,7 +826,7 @@ namespace
         macros (shadow, "BRIGHT", "SPACE", "DESTROY");
         reverb (shadow, RT::room, 0.4f, 0.1f);
         space (shadow);
-        shadow.set (ParamIDs::patchLevel, 0.0f);
+        shadow.set (ParamIDs::patchLevel, 3.0f);
         x.add (shadow);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -898,7 +898,7 @@ namespace
         macros (engine, "BRIGHT", "SPACE", "DESTROY");
         reverb (engine, RT::room, 0.3f, 0.06f);
         space (engine);
-        engine.set (ParamIDs::patchLevel, 0.0f);
+        engine.set (ParamIDs::patchLevel, 3.0f);
         x.add (engine);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -917,7 +917,7 @@ namespace
         macros (organ, "BRIGHT", "SPACE", "DESTROY");
         reverb (organ, RT::cathedral, 0.9f, 0.4f, 40.0f, 4.0f);
         space (organ);
-        organ.set (ParamIDs::patchLevel, 0.0f);
+        organ.set (ParamIDs::patchLevel, -9.0f);
         x.add (organ);
 
         auto anvil = x.make ("Anvil Stab", 11, { "Keys", "Stab", "Filter", "Infernal" },
@@ -936,7 +936,7 @@ namespace
         delay (anvil, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
         reverb (anvil, RT::hall, 0.5f, 0.15f);
         space (anvil);
-        anvil.set (ParamIDs::patchLevel, 0.0f);
+        anvil.set (ParamIDs::patchLevel, -2.5f);
         x.add (anvil);
 
         auto riff2 = x.make ("Iron Riff", 12, { "Keys", "Chords", "Drive", "Inserts" },
@@ -1036,7 +1036,7 @@ namespace
         macros (chainsaw, "BRIGHT", "SPACE", "DESTROY");
         reverb (chainsaw, RT::room, 0.4f, 0.1f);
         space (chainsaw);
-        chainsaw.set (ParamIDs::patchLevel, 0.0f);
+        chainsaw.set (ParamIDs::patchLevel, 2.0f);
         x.add (chainsaw);
 
         auto run = x.make ("Berserk Run", 15, { "Arp", "Shred", "Guitar", "Infernal" },
