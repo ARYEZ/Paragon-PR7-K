@@ -29,7 +29,9 @@ namespace expansions
           "chords, chorused polysynth pads, haunting leads, and cassette wobble. Our own sounds." },
         { "SANDSEA", "SS",
           "Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices, "
-          "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Our own sounds." },
+          "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Built round SIROCCO "
+          "(0.58.0), a harmony answering every note in the bank's scale, and MACRO 3, SIROCCO: from one voice to a small "
+          "choir. Our own sounds." },
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
           "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Our own sounds." },

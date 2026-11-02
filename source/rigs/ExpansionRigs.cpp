@@ -1605,8 +1605,8 @@ namespace
         reverb (chant, RT::cathedral, 0.35f, 0.3f, 40.0f, 3.5f);
         space (chant);
         answers (chant, "GROWL.",
-                 "SIROCCO (an octave above and then its 3rd, like the overtones of a choir; with them, growl).",
-                 Answer { 4, 2, 0.0f, 1.0f, 5.0f });
+                 "SIROCCO (a second chanter a 5th above; with it, growl).",
+                 Answer { 2, 1, 0.0f, 0.35f, 5.0f });
         chant.set (ParamIDs::patchLevel, -4.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (chant);
 
@@ -1679,7 +1679,7 @@ namespace
         space (quake);
         answers (quake, "DESTROY.",
                  "SIROCCO (a second quake a 5th above, a beat behind; with it, destruction).",
-                 Answer { 2, 1, 150.0f, 1.0f, 4.0f });
+                 Answer { 2, 1, 150.0f, 0.6f, 4.0f });
         quake.set (ParamIDs::patchLevel, -1.6f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (quake);
 
@@ -1702,7 +1702,7 @@ namespace
         space (iron);
         answers (iron, "DESTROY.",
                  "SIROCCO (the riff doubled a 4th above; with it, destruction).",
-                 Answer { 1, 1, 0.0f, 1.0f, 4.0f });
+                 Answer { 1, 1, 0.0f, 0.6f, 4.0f });
         iron.set (ParamIDs::patchLevel, 8.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (iron);
 
@@ -1729,7 +1729,7 @@ namespace
         space (copper);
         answers (copper, "GRIT (SHAPER 1's tube after the filter)",
                  "SIROCCO (bells answering a 3rd and a 5th above, a moment late; with them, SHAPER 1's tube after the filter)",
-                 Answer { 0, 2, 80.0f, 1.0f, 6.0f });
+                 Answer { 0, 2, 80.0f, 0.45f, 6.0f });
         copper.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (copper);
 
@@ -1750,7 +1750,7 @@ namespace
         space (harp);
         answers (harp, "TWANG (more resonance)",
                  "SIROCCO (a second string a 3rd below; with it, more resonance)",
-                 Answer { 5, 1, 0.0f, 1.0f, 6.0f });
+                 Answer { 5, 1, 0.0f, 0.8f, 6.0f });
         harp.set (ParamIDs::patchLevel, 3.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (harp);
 
@@ -1798,7 +1798,7 @@ namespace
         space (war);
         answers (war, "PULSE (louder pulse)",
                  "SIROCCO (a pulse a 5th above; with it, a louder pulse)",
-                 Answer { 2, 1, 0.0f, 1.0f, 4.0f });
+                 Answer { 2, 1, 0.0f, 0.6f, 4.0f });
         war.set (ParamIDs::patchLevel, 1.5f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (war);
 
@@ -1832,7 +1832,7 @@ namespace
         space (ripple);
         answers (ripple, "SPARKLE (a sine two octaves up)",
                  "SIROCCO (the runs answered in 3rds; with them, a sine two octaves up)",
-                 Answer { 0, 1, 0.0f, 1.0f, 5.0f });
+                 Answer { 0, 1, 0.0f, 0.7f, 5.0f });
         ripple.set (ParamIDs::patchLevel, 1.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (ripple);
 
@@ -1860,7 +1860,7 @@ namespace
         space (caravan);
         answers (caravan, "WARMTH (the low triangle)",
                  "SIROCCO (each step answered a 6th above; with it, the low triangle)",
-                 Answer { 3, 1, 0.0f, 1.0f, 6.0f });
+                 Answer { 3, 1, 0.0f, 0.6f, 6.0f });
         caravan.set (ParamIDs::patchLevel, -1.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (caravan);
     }

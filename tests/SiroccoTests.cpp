@@ -145,6 +145,7 @@ TEST_CASE ("SIROCCO: a mono lead's answer glides with it; an arp's notes are ans
 {
     auto p = sinePlayer();
     p.settings.play.mode = PlayMode::mono;
+    p.settings.play.voices = 1;   // as the mono presets: the answer must not take the lead's place
     p.settings.play.legato = true;
     p.settings.play.glideMs = 30.0f;
     p.on (62);
@@ -184,4 +185,32 @@ TEST_CASE ("SIROCCO: DETUNE puts the answer that many cents sharp", "[sirocco]")
     const auto plainPitch = levelAt (out[0], noteHz (66.0), from, length);
     INFO ("F# +20 ct " << db (sharp) << " dB, F# in tune " << db (plainPitch) << " dB");
     CHECK (sharp > plainPitch * 2.0);
+}
+
+TEST_CASE ("SIROCCO: a legato phrase begun with LEVEL at 0 is answered from its next note", "[sirocco]")
+{
+    auto p = sinePlayer();
+    p.settings.play.mode = PlayMode::mono;
+    p.settings.play.voices = 1;
+    p.settings.sirocco.level = 0.0f;   // MACRO 3 still on its way up
+    p.on (62);
+    p.render (0.2);
+    CHECK (p.engine.getNumActiveVoices() == 1);
+    p.settings.sirocco.level = 1.0f;
+    p.on (67);   // legato: the same voice moves
+    p.render (0.2);
+    CHECK (p.engine.getNumActiveVoices() == 2);   // ...and now it's answered
+}
+
+TEST_CASE ("SIROCCO: a chord held while LEVEL comes up is answered", "[sirocco]")
+{
+    auto p = sinePlayer();
+    p.settings.sirocco.level = 0.0f;
+    for (const auto n : { 62, 66, 69 })
+        p.on (n);
+    p.render (0.2);
+    CHECK (p.engine.getNumActiveVoices() == 3);
+    p.settings.sirocco.level = 0.5f;
+    p.render (0.1);
+    CHECK (p.engine.getNumActiveVoices() == 6);
 }

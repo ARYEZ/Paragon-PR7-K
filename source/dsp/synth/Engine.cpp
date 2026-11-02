@@ -623,18 +623,20 @@ namespace synth
 
     void Engine::makeRoom (const Settings& settings) noexcept
     {
-        // Over VOICES: the quietest releasing note goes, or else the oldest.
-        auto sounding = (int) std::count_if (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing && ! v.killing; });
+        // Over VOICES: the quietest releasing note goes, or else the oldest. SIROCCO's answers (0.58.0) don't count:
+        // they go with their note.
+        const auto counts = [this] (const Voice& v) { return v.playing && ! v.killing && v.source != answerSource; };
+        auto sounding = (int) std::count_if (voices.begin(), voices.end(), counts);
         while (sounding >= juce::jlimit (1, maxVoices, settings.play.voices))
         {
             Voice* victim = nullptr;
             for (auto& voice : voices)
-                if (voice.playing && ! voice.killing && voice.amp.isReleasing()
+                if (counts (voice) && voice.amp.isReleasing()
                     && (victim == nullptr || voice.amp.getLevel() < victim->amp.getLevel()))
                     victim = &voice;
             if (victim == nullptr)
                 for (auto& voice : voices)
-                    if (voice.playing && ! voice.killing && (victim == nullptr || voice.age < victim->age))
+                    if (counts (voice) && (victim == nullptr || voice.age < victim->age))
                         victim = &voice;
             if (victim == nullptr)
                 break;
@@ -1831,8 +1833,10 @@ namespace synth
         if (findParent() == nullptr)
             return;   // let go (or stolen) before its DELAY was up
         const auto& s = settings.sirocco;
-        makeRoom (settings);
-        auto* parent = findParent();   // making room may have taken it
+        // Answers don't take a note's place (a mono lead's VOICES is 1): a free voice of the pool, or none.
+        if (std::all_of (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing; }))
+            return;
+        auto* parent = findParent();
         if (parent == nullptr)
             return;
         std::array<int, 12> notes {};
@@ -1853,6 +1857,17 @@ namespace synth
     void Engine::reanswer (const Voice& parent, bool restartEnvelopes, bool glide, const Settings& settings) noexcept
     {
         const auto& s = settings.sirocco;
+        // A note with no answers yet (a mono lead's legato phrase begun with LEVEL at 0, or SIROCCO just switched on):
+        // they start now, as for a new note.
+        const auto hasAnswers = std::any_of (voices.begin(), voices.end(), [&parent] (const Voice& v)
+                                             { return v.playing && ! v.killing && v.source == answerSource && v.answers == parent.age; })
+                             || std::any_of (pendingAnswers.begin(), pendingAnswers.begin() + numPendingAnswers,
+                                             [&parent] (const PendingAnswer& p) { return p.parent == parent.age; });
+        if (! hasAnswers)
+        {
+            answer (parent, settings);
+            return;
+        }
         std::array<int, 12> notes {};
         const auto inScale = juce::jmax (1, sirocco::scaleNotes (s.scale, notes));
         for (auto& v : voices)
@@ -1906,6 +1921,19 @@ namespace synth
             pendingAnswers[(size_t) i] = pendingAnswers[(size_t) --numPendingAnswers];
             startAnswer (p.parent, p.layer, settings);
         }
+        // Notes held without answers (begun with LEVEL at 0, MACRO 3 turned up while they're held): answered now.
+        if (! settings.sirocco.answers())
+            return;
+        for (auto& v : voices)
+            if (v.playing && ! v.killing && (v.held || v.sustained) && v.source != answerSource)
+            {
+                const auto answered = std::any_of (voices.begin(), voices.end(), [&v] (const Voice& a)
+                                                   { return a.playing && a.source == answerSource && a.answers == v.age; })
+                                   || std::any_of (pendingAnswers.begin(), pendingAnswers.begin() + numPendingAnswers,
+                                                   [&v] (const PendingAnswer& p) { return p.parent == v.age; });
+                if (! answered)
+                    answer (v, settings);
+            }
     }
 
     float Engine::seqDepth (double age, const StepSeqSettings& s) const noexcept

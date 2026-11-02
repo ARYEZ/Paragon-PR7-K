@@ -102,3 +102,4 @@ TEST_CASE ("The SIGNATURE slot: four units on MOD / LO-FI, one signature shown, 
     CHECK (page.getShownControls().size() == 9);
     CHECK (! page.getDisplay().getBounds().isEmpty());
 }
+
