@@ -41,7 +41,7 @@ namespace synth
         // Its random choices (start phases, RANDOM pitch, unison copies'
         // vibrato speeds...) from a fixed start, so a test hears the same
         // every run. The plugin leaves them seeded from the clock.
-        void seedRandom (juce::int64 seed) noexcept { random.setSeed (seed); }
+        void seedRandom (juce::int64 seed) noexcept { random.setSeed (seed); glowRandom = (std::uint32_t) seed * 2654435761u + 12345u; }
         void reset() noexcept;   // silence at once, every note gone
 
         // Writes `numSamples` of sound into `left` and `right`, playing the MIDI
@@ -213,6 +213,11 @@ namespace synth
             vocal::Coefficients vocalCoefficients;                  // its resonators (the first formant follows a high note)
 
             std::array<OscState, numOscillators> oscillators;
+
+            // AFTERGLOW (0.60.0): this note's own character, -1 to 1 each (drawn when it starts, from AFTERGLOW's own
+            // random numbers, so the synth's other random choices are the same with it or without), and its wander.
+            float glowTune = 0.0f, glowCutoff = 0.0f, glowTime = 0.0f;
+            float driftTune = 0.0f, driftCutoff = 0.0f, driftTuneTo = 0.0f, driftCutoffTo = 0.0f, driftLeft = 0.0f;
         };
 
         void handle (const juce::MidiMessage&, const Settings&) noexcept;
@@ -274,6 +279,15 @@ namespace synth
 
         std::array<bool, numOscillators> alternate {};   // RANDOM's alternating direction, per oscillator
         juce::Random random;
+        std::uint32_t glowRandom = 0x2545f491u;   // AFTERGLOW's own (xorshift32)
+        float nextGlow() noexcept   // -1 to 1
+        {
+            glowRandom ^= glowRandom << 13;
+            glowRandom ^= glowRandom >> 17;
+            glowRandom ^= glowRandom << 5;
+            return (float) (glowRandom >> 8) * (2.0f / 16777216.0f) - 1.0f;
+        }
+        void driftOn (Voice&, int numSamples) noexcept;   // AFTERGLOW's wander, moved on
 
         // Scratch for one control interval: each path's sound, per channel; which
         // path each oscillator plays into (-1: none) and which paths are in use.

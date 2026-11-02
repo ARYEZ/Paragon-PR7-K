@@ -293,6 +293,16 @@ namespace synth
         std::array<bool, numSends> sendOn {};
         bool arpsTogether = false;   // 0.16.0: the first key starts every arp's clock, so arps joining later are in step
         sirocco::Settings sirocco;   // 0.58.0: SIROCCO, the answering harmony
+        // 0.60.0, AFTERGLOW's voice half: each note its own analog character, as an old polysynth's voice cards.
+        // AGE: each note's fixed offsets (tuning, filter, envelope times); DRIFT: each note's slow wander. At 0, nothing.
+        struct Afterglow
+        {
+            bool on = false;
+            float age = 0.0f, drift = 0.0f;   // 0 to 1
+            static constexpr float ageCents = 14.0f, ageOctaves = 0.35f, ageTimeOctaves = 0.5f;   // at AGE 1, either way
+            static constexpr float driftCents = 11.0f, driftOctaves = 0.25f;                       // at DRIFT 1, either way
+            bool active() const noexcept { return on && (age > 0.0f || drift > 0.0f); }
+        } afterglow;
 
         Settings() { oscillators[0].on = true; }
     };

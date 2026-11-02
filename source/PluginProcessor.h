@@ -305,6 +305,9 @@ public:
     // INFERNAL (0.59.0): its settings as they are now (DRIVE, MIX, NOISE, FEEDBACK as the matrix moves them).
     effects::Infernal::Settings getInfernalSettings() const noexcept;
     const effects::Infernal& getInfernal() const noexcept { return rack->infernal; }
+    // AFTERGLOW (0.60.0): the effect half's settings (ENSEMBLE, TAPE as the matrix moves them); AGE and DRIFT go to the synth.
+    effects::Afterglow::Settings getAfterglowSettings() const noexcept;
+    const effects::Afterglow& getAfterglow() const noexcept { return rack->afterglow; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

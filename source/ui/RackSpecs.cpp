@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 8> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 9> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 8> specs;
+    std::array<RackUnit::Spec, 9> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -888,6 +888,60 @@ std::array<RackUnit::Spec, 8> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (7); };
+    }
+
+    // AFTERGLOW (0.60.0): AGE in big digits as the cents it spreads the notes, DRIFT, ENSEMBLE and TAPE; the keys
+    // pick a character: FRESH (a little), WORN (more), RELIC (all of it, the exaggerated end).
+    {
+        auto& s = specs[8];
+        s.name = "AFTERGLOW";
+        s.kind = "ANALOG VOICES  ENSEMBLE  TAPE";
+        s.onParameterIds = { ParamIDs::afterglowOn };
+        s.powerTooltip = "AFTERGLOW on or off: an old polysynth's glow, each note its own, then ensemble and tape. Click POWER (the word) or EDIT for its page";
+        struct Character { const char* name; float age, drift, ensemble, tape; const char* tip; };
+        static constexpr Character characters[] = {
+            { "FRESH", 0.3f, 0.2f, 0.35f, 0.15f, "A young polysynth: the notes a little apart, a light ensemble" },
+            { "WORN", 0.6f, 0.5f, 0.65f, 0.4f, "Well played: the notes clearly their own, a lush ensemble, some tape" },
+            { "RELIC", 1.0f, 1.0f, 1.0f, 0.8f, "The exaggerated end: every note its own, swaying, a huge ensemble on worn tape" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& c = characters[k];
+            s.keys[(size_t) k] = RackUnit::Key { c.name, c.tip,
+                                                 [&p, c] { return std::abs (valueOf (p, ParamIDs::afterglowAge) - c.age) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::afterglowEnsemble) - c.ensemble) < 0.01f; },
+                                                 [&p, c]
+                                                 {
+                                                     setValue (p, ParamIDs::afterglowAge, c.age);
+                                                     setValue (p, ParamIDs::afterglowDrift, c.drift);
+                                                     setValue (p, ParamIDs::afterglowEnsemble, c.ensemble);
+                                                     setValue (p, ParamIDs::afterglowTape, c.tape);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::afterglowAge, "AGE" }, RackUnit::Knob { ParamIDs::afterglowEnsemble, "ENSEMBLE" } };
+        s.ladderTitle = "GLOW";
+        s.ladderMarks = { 100.0f, 75.0f, 50.0f, 25.0f, 0.0f };
+        s.ladderLabels = { "100", "75", "50", "25", "0" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getAfterglow();
+            return valueOf (p, ParamIDs::afterglowOn) > 0.5f
+                       ? 100.0f * juce::jmax (valueOf (p, ParamIDs::afterglowAge), fx.getEnsembleNow(), fx.getTapeNow())
+                       : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto cents = juce::roundToInt (valueOf (p, ParamIDs::afterglowAge) * synth::Settings::Afterglow::ageCents);
+            const auto end = drawNumber (g, juce::String (cents), left.getTopLeft(), h);
+            line (g, "CENTS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "EACH NOTE ITS OWN", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AGE " + textOf (p, ParamIDs::afterglowAge), "DRIFT " + textOf (p, ParamIDs::afterglowDrift),
+                                  "ENSEMBLE " + textOf (p, ParamIDs::afterglowEnsemble), "TAPE " + textOf (p, ParamIDs::afterglowTape) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (8); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

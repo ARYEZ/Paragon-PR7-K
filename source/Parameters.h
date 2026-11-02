@@ -418,6 +418,13 @@ namespace ParamIDs
     inline constexpr auto infernalCab      = "infernalCab";        // 0 to 1: the cabinet dark to bright
     inline constexpr auto infernalMix      = "infernalMix";        // 0 to 1
     inline constexpr auto infernalLevel    = "infernalLevel";      // dB, -24 to +12
+    // AFTERGLOW (0.60.0, version hint 32): STARCOURT's signature. AGE and DRIFT go to the synth's notes
+    // (synth::Settings::afterglow), ENSEMBLE and TAPE to effects::Afterglow.
+    inline constexpr auto afterglowOn       = "afterglowOn";
+    inline constexpr auto afterglowAge      = "afterglowAge";       // 0 to 1: each note's own tuning, filter and timing
+    inline constexpr auto afterglowDrift    = "afterglowDrift";     // 0 to 1: each note's slow wander
+    inline constexpr auto afterglowEnsemble = "afterglowEnsemble";  // 0 to 1
+    inline constexpr auto afterglowTape     = "afterglowTape";      // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -497,4 +504,5 @@ void addEchoesParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addCrackleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.56.0)
 void addDownpourParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.57.0)
 void addInfernalParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.59.0)
+void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.60.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

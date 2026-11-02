@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : audio (processor), insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,8 +46,8 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal };
-        show (views[juce::jlimit (0, 7, unit)]);
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow };
+        show (views[juce::jlimit (0, 8, unit)]);
     }, [this] { chooseSignature(); });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
@@ -76,6 +76,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // INFERNAL (0.59.0): its page.
     infernalPage.onClose = [this] { show (View::modFx); };
     addChildComponent (infernalPage);
+    // AFTERGLOW (0.60.0): its page.
+    afterglowPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (afterglowPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -150,6 +153,7 @@ void FxPage::show (View newView)
     downpourPage.setVisible (view == View::downpour);
     siroccoPage.setVisible (view == View::sirocco);
     infernalPage.setVisible (view == View::infernal);
+    afterglowPage.setVisible (view == View::afterglow);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -209,7 +213,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.

@@ -14,6 +14,7 @@
 #include "dsp/effects/Crackle.h"
 #include "dsp/effects/Downpour.h"
 #include "dsp/effects/Infernal.h"
+#include "dsp/effects/Afterglow.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -544,4 +545,15 @@ void addInfernalParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::infernalMix, "Infernal Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
     layout.add (makeFloat (ParamIDs::infernalLevel, "Infernal Level", { -24.0f, 12.0f, 0.1f }, d.levelDb, v,
                            [] (float db, int) { return juce::String (db, 1) + " dB"; }));
+}
+
+void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // AFTERGLOW (0.60.0, our own design): off and at 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 32;
+    layout.add (makeSwitch (ParamIDs::afterglowOn, "Afterglow On", v, false));
+    layout.add (makeFloat (ParamIDs::afterglowAge, "Afterglow Age", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::afterglowDrift, "Afterglow Drift", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::afterglowEnsemble, "Afterglow Ensemble", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::afterglowTape, "Afterglow Tape", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
 }
