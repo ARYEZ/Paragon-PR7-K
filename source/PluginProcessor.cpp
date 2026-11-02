@@ -275,6 +275,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->crackle.prepare (sampleRate, preparedBlockSize);
     rack->downpour.prepare (sampleRate, preparedBlockSize);
     rack->infernal.prepare (sampleRate, preparedBlockSize);
+    rack->afterglow.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -990,6 +991,10 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         h.level = effectParam (ModDestinations::effect ("siroccoLevel"), ParamIDs::siroccoLevel);
         h.detuneCents = effectParam (ModDestinations::effect ("siroccoDetune"), ParamIDs::siroccoDetune);
         h.spread = effectParam (ModDestinations::effect ("siroccoSpread"), ParamIDs::siroccoSpread);
+        // AFTERGLOW (0.60.0): each note's character and wander.
+        s.afterglow.on = isOn (ParamIDs::afterglowOn);
+        s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
+        s.afterglow.drift = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowDrift"), ParamIDs::afterglowDrift));
     }
     s.sendOn = { isOn (ParamIDs::delayOn), isOn (ParamIDs::reverbOn) };
     s.modulation.toModWheel = { isOn (ParamIDs::mwBreath), isOn (ParamIDs::mwExpression), isOn (ParamIDs::mwAftertouch), isOn (ParamIDs::mwSustain) };
@@ -1174,6 +1179,15 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::Afterglow::Settings ParagonX1AudioProcessor::getAfterglowSettings() const noexcept
+{
+    effects::Afterglow::Settings s;
+    s.on = isOn (ParamIDs::afterglowOn);
+    s.ensemble = effectParam (ModDestinations::effect ("afterglowEnsemble"), ParamIDs::afterglowEnsemble);
+    s.tape = effectParam (ModDestinations::effect ("afterglowTape"), ParamIDs::afterglowTape);
+    return s;
+}
+
 effects::Infernal::Settings ParagonX1AudioProcessor::getInfernalSettings() const noexcept
 {
     effects::Infernal::Settings s;
@@ -1346,6 +1360,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
         rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
+        rack->afterglow.process (block, getAfterglowSettings());   // 0.60.0: the ensemble and the tape
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

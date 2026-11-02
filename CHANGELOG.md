@@ -2,6 +2,29 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.60.0
+
+**AFTERGLOW, and STARCOURT rebuilt to exaggerate the 1980s synths.**
+
+**AFTERGLOW** (a new signature effect, our own design, in the SIGNATURE slot): the glow of an old 1980s polysynth, in the notes themselves and after them.
+- **AGE:** every note gets its own slightly different tuning (up to 14 cents either way), filter brightness and envelope timing, the way an old polysynth's voices never quite matched. A chord breathes and shimmers on its own.
+- **DRIFT:** each held note's tuning and brightness wander slowly, differently from every other note's, as old circuits did while they warmed up.
+- **ENSEMBLE:** a lush three-voice chorus, as the era's string machines and polysynths had, spreading the sound wide.
+- **TAPE:** as if the whole sound went down to a cassette: a slow pitch sway (about 10 cents), warm saturation and a softer top.
+- It keeps the level: turning it up changes the character, not the volume. Off, or at 0, the sound is exactly as before.
+- FRESH, WORN and RELIC on its unit set all four at once (RELIC is the exaggerated end). Its page shows eight voice cards set apart by AGE and DRIFT, the ensemble's voices circling, and the tape's sway.
+- AGE, DRIFT, ENSEMBLE and TAPE can be moved by the mod matrix (FX Afterglow).
+
+**STARCOURT, rebuilt round AFTERGLOW** (your ask: "exaggerate the 1980s glorious synths"). MACRO 3 is now GLOW on all 15: from tight and modern to a huge, glowing, wobbly old polysynth.
+- **Kept:** Arcade Hero, Basement Glow, Night Drive Sub, Brass '84 and Dark Ostinato. With GLOW at 0 they sound exactly as before; turning it up brings AFTERGLOW in, along with each one's old MACRO 3 job (Dark Ostinato's extra resonance is a little gentler now, since GLOW adds level of its own).
+- **New:**
+  - Leads: **Mixtape Lead** (the big soaring score lead: two saws and a square, a lazy glide, vibrato blooming late), **Radio Ghost** (a thin, haunted triangle drifting out of tune).
+  - Pads: **Dusk Strings** (a string machine, its pulses shimmering, through the ensemble), **Polysynth Dream** (the full-blown polysynth chord, swelling open, every voice its own).
+  - Basses: **Eighth Note Pulse** (the driving eighth-note bass), **Saw Wall Bass** (a wide wall of saws holding the chords up).
+  - Keys: **Lantern Keys** (a warm, glassy FM electric piano), **Neon Stabs** (bright polysynth stabs).
+  - Arps: **Rising Arp** (a minor chord climbing over two octaves in sixteenths, the filter slowly opening), **Cassette Arp** (a bright arpeggio worn and wobbling on tape).
+- Gone: Static Wail, Phantom Sync, Other Side, Cassette Choir, Pulse Runner, Gated Octave, VHS Piano, Lab Chimes, Gated Sequence and Midnight Run. A project that used one of them keeps its sound: the settings are saved in the project.
+
 ## 0.59.0
 
 **INFERNAL, and HELLFORGE rebuilt as a premiere bank.**

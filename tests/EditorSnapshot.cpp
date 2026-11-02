@@ -179,6 +179,12 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::infernalOn, 1.0f);
             set (ParamIDs::infernalMix, 0.5f);
             set (ParamIDs::infernalNoise, 0.5f);
+            // 0.60.0: AFTERGLOW, WORN.
+            set (ParamIDs::afterglowOn, 1.0f);
+            set (ParamIDs::afterglowAge, 0.6f);
+            set (ParamIDs::afterglowDrift, 0.5f);
+            set (ParamIDs::afterglowEnsemble, 0.65f);
+            set (ParamIDs::afterglowTape, 0.4f);
                         // 0.51.0: its WAH in AUTO, opened by the chord.
             set (ParamIDs::ins (0, "WahOn"), 1.0f);
             set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
@@ -209,8 +215,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : FxPage::View::rack);
-        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL).
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : FxPage::View::rack);
+        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW).
         if (const auto signature = env ("PARAGON_SNAPSHOT_SIGNATURE"); signature.isNotEmpty())
             fxPage.showSignature (signature.getIntValue());
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot

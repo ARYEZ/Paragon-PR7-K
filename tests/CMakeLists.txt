@@ -50,6 +50,8 @@ add_executable(ParagonX1Tests
     SiroccoPluginTests.cpp
     InfernalTests.cpp
     InfernalPluginTests.cpp
+    AfterglowTests.cpp
+    AfterglowPluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

@@ -73,7 +73,8 @@ namespace ModDestinations
                 { "FX Crackle", "Rate" }, { "FX Crackle", "Cluster" }, { "FX Crackle", "Level" },
                 { "FX Downpour", "Rain" }, { "FX Downpour", "Drops" }, { "FX Downpour", "Distance" }, { "FX Downpour", "Level" },
                 { "FX Sirocco", "Level" }, { "FX Sirocco", "Detune" }, { "FX Sirocco", "Spread" },
-                { "FX Infernal", "Drive" }, { "FX Infernal", "Mix" }, { "FX Infernal", "Noise" }, { "FX Infernal", "Feedback" } };
+                { "FX Infernal", "Drive" }, { "FX Infernal", "Mix" }, { "FX Infernal", "Noise" }, { "FX Infernal", "Feedback" },
+                { "FX Afterglow", "Age" }, { "FX Afterglow", "Drift" }, { "FX Afterglow", "Ensemble" }, { "FX Afterglow", "Tape" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

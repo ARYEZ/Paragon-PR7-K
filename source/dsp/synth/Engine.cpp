@@ -807,6 +807,13 @@ namespace synth
         voice.velocity = velocity;
         voice.age = ++noteCounter;
         voice.pitch = fromPitch;
+        // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
+        voice.glowTune = nextGlow();
+        voice.glowCutoff = nextGlow();
+        voice.glowTime = nextGlow();
+        voice.driftTune = voice.driftTuneTo = nextGlow();
+        voice.driftCutoff = voice.driftCutoffTo = nextGlow();
+        voice.driftLeft = 0.0f;
         for (auto& path : voice.paths)
         {
             path.key = -1;
@@ -1289,8 +1296,38 @@ namespace synth
 
         const auto& filterSettings = settings.filter;
         const auto& ampSettings = settings.amp;
-        voice.amp.update (ampSettings.envelope);
-        voice.filter.update (filterSettings.envelope);
+        // AFTERGLOW: this note's own tuning, filter and envelope times (none of it while it's off or at 0).
+        const auto& glow = settings.afterglow;
+        const auto glowing = unmodulated.afterglow.on && glow.active();
+        auto glowSemitones = 0.0f, glowOctaves = 0.0f;
+        if (glowing)
+        {
+            driftOn (voice, n);
+            glowSemitones = 0.01f * (glow.age * Settings::Afterglow::ageCents * voice.glowTune
+                                     + glow.drift * Settings::Afterglow::driftCents * voice.driftTune);
+            glowOctaves = glow.age * Settings::Afterglow::ageOctaves * voice.glowCutoff
+                        + glow.drift * Settings::Afterglow::driftOctaves * voice.driftCutoff;
+        }
+        if (glowing && glow.age > 0.0f)
+        {
+            // Each note's envelopes a little faster or slower than the others' (all its stages by one factor).
+            const auto scale = std::exp2 (glow.age * Settings::Afterglow::ageTimeOctaves * voice.glowTime);
+            auto amp = ampSettings.envelope;
+            auto filt = filterSettings.envelope;
+            for (auto* e : { &amp, &filt })
+            {
+                e->attackMs *= scale;
+                e->decayMs *= scale;
+                e->releaseMs *= scale;
+            }
+            voice.amp.update (amp);
+            voice.filter.update (filt);
+        }
+        else
+        {
+            voice.amp.update (ampSettings.envelope);
+            voice.filter.update (filterSettings.envelope);
+        }
 
         // Glide, once per interval: straight, or along GLIDE CURVE's path.
         if (voice.glideRate > 0.0f && ! juce::exactlyEqual (settings.pitch.glideCurve, 0.0f))
@@ -1315,7 +1352,9 @@ namespace synth
                 voice.pitch += voice.targetPitch > voice.pitch ? step : -step;
         }
         const auto wheel = bendValues[(size_t) juce::jlimit (0, maxIntervals - 1, interval)];
-        const auto bendSemitones = wheel >= 0.0f ? wheel * settings.play.bendUp : wheel * settings.play.bendDown;
+        auto bendSemitones = wheel >= 0.0f ? wheel * settings.play.bendUp : wheel * settings.play.bendDown;
+        if (glowing)
+            bendSemitones += glowSemitones;
 
         // Each oscillator's route this interval, and the path it plays into.
         assignPaths (voice, settings);
@@ -1344,6 +1383,8 @@ namespace synth
                          - filterSettings.velocity * filterVelocityOctaves * velocityDown
                          + filterSettings.envelopeAmount * filterEnvelopeOctaves * filterEnvelope
                                * (1.0f - filterSettings.envelopeVelocity * velocityDown);
+            if (glowing)
+                octaves += glowOctaves;
             const auto cutoff = (double) filterSettings.cutoffHz * std::exp2 ((double) octaves);
             const auto resonance = filterSettings.resonance * (1.0f - filterSettings.resonanceVelocity * velocityDown);
             filterTarget = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
@@ -1879,6 +1920,23 @@ namespace synth
                 lastPitch = keysLastPitch;
                 placeAnswer (v, settings);
             }
+    }
+
+    void Engine::driftOn (Voice& voice, int numSamples) noexcept
+    {
+        // AFTERGLOW's wander: each note heads for a new random place every 0.4 to 1.6 s, gliding there with a 0.35 s
+        // time constant, so its tuning and filter sway slowly and differently from every other note's.
+        const auto seconds = (float) numSamples / (float) sampleRate;
+        voice.driftLeft -= seconds;
+        if (voice.driftLeft <= 0.0f)
+        {
+            voice.driftTuneTo = nextGlow();
+            voice.driftCutoffTo = nextGlow();
+            voice.driftLeft = 1.0f + 0.6f * nextGlow();
+        }
+        const auto k = 1.0f - std::exp (-seconds / 0.35f);
+        voice.driftTune += (voice.driftTuneTo - voice.driftTune) * k;
+        voice.driftCutoff += (voice.driftCutoffTo - voice.driftCutoff) * k;
     }
 
     void Engine::placeAnswer (Voice& voice, const Settings& settings) noexcept

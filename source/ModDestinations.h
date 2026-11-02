@@ -45,7 +45,9 @@ namespace ModDestinations
                                                  // 0.58.0: SIROCCO: how loud the answers (layer by layer), how detuned, how spread
                                                  "siroccoLevel", "siroccoDetune", "siroccoSpread",
                                                  // 0.59.0: INFERNAL: how hard, how much, the noise's growl, the bloom
-                                                 "infernalDrive", "infernalMix", "infernalNoise", "infernalFeedback" };
+                                                 "infernalDrive", "infernalMix", "infernalNoise", "infernalFeedback",
+                                                 // 0.60.0: AFTERGLOW: each note's character and wander, the ensemble, the tape
+                                                 "afterglowAge", "afterglowDrift", "afterglowEnsemble", "afterglowTape" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.
