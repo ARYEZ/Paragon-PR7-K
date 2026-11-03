@@ -18,6 +18,7 @@
 #include "dsp/effects/LightTrail.h"
 #include "dsp/effects/BlackHole.h"
 #include "dsp/effects/Dilation.h"
+#include "dsp/effects/Remnant.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -613,4 +614,22 @@ void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::dilationReach, "Dilation Reach", { 0.0f, 1.0f, 0.01f }, d.reach, v, asReach));
     layout.add (makeFloat (ParamIDs::dilationTone, "Dilation Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
     layout.add (makeFloat (ParamIDs::dilationMix, "Dilation Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // REMNANT (0.64.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 36;
+    const effects::Remnant::Settings d;
+    const ToText asLength = [] (float value, int) { return juce::String (effects::Remnant::lengthSeconds (value), 2) + " s"; };
+    const ToText asTaper = [] (float value, int) { return juce::String (effects::Remnant::taperDb (value), 1) + " dB a layer"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::Remnant::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::remnantOn, "Remnant On", v, false));
+    layout.add (makeChoice (ParamIDs::remnantLayers, "Remnant Layers", v, effects::Remnant::layerNames, d.layers));
+    layout.add (makeChoice (ParamIDs::remnantStep, "Remnant Step", v, effects::Remnant::stepNames, d.step));
+    layout.add (makeFloat (ParamIDs::remnantLength, "Remnant Length", { 0.0f, 1.0f, 0.01f }, d.length, v, asLength));
+    layout.add (makeFloat (ParamIDs::remnantTaper, "Remnant Taper", { 0.0f, 1.0f, 0.01f }, d.taper, v, asTaper));
+    layout.add (makeFloat (ParamIDs::remnantTone, "Remnant Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::remnantWidth, "Remnant Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::remnantMix, "Remnant Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
 }

@@ -58,6 +58,8 @@ add_executable(ParagonX1Tests
     BlackHolePluginTests.cpp
     DilationTests.cpp
     DilationPluginTests.cpp
+    RemnantTests.cpp
+    RemnantPluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

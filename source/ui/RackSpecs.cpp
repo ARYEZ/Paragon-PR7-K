@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 12> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 13> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 12> specs;
+    std::array<RackUnit::Spec, 13> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1064,6 +1064,46 @@ std::array<RackUnit::Spec, 12> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (11); };
+    }
+
+    // REMNANT (0.64.0): how many layers in big digits, how far down each and how long; the keys set how many:
+    // SHALLOW (1), DEEPER (2), DEEPEST (3).
+    {
+        auto& s = specs[12];
+        s.name = "REMNANT";
+        s.kind = "DREAM LAYERS  MIX  LENGTH";
+        s.onParameterIds = { ParamIDs::remnantOn };
+        s.powerTooltip = "REMNANT on or off: layers of what you play beneath it, each deeper one slower and lower. Click POWER (the word) or EDIT for its page";
+        struct Depth { const char* name; int layers; const char* tip; };
+        static constexpr Depth depths[] = { { "SHALLOW", 0, "One layer beneath your sound" },
+                                            { "DEEPER", 1, "Two layers, the second a dream of the first" },
+                                            { "DEEPEST", 2, "Three layers, each a dream of the one above" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& d = depths[k];
+            s.keys[(size_t) k] = RackUnit::Key { d.name, d.tip,
+                                                 [&p, d] { return juce::roundToInt (valueOf (p, ParamIDs::remnantLayers)) == d.layers; },
+                                                 [&p, d] { setValue (p, ParamIDs::remnantLayers, (float) d.layers); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::remnantMix, "MIX" }, RackUnit::Knob { ParamIDs::remnantLength, "LENGTH" } };
+        s.ladderTitle = "DEPTH";
+        s.ladderMarks = { 0.0f, -6.0f, -12.0f, -24.0f, -48.0f };
+        s.ladderLabels = { "0", "-6", "-12", "-24", "-48" };
+        s.ladderReading = [&p] { return p.getRemnant().getTotalDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getRemnantSettings();
+            const auto end = drawNumber (g, juce::String (juce::jlimit (1, 3, settings.layers + 1)), left.getTopLeft(), h);
+            line (g, settings.layers == 0 ? "LAYER" : "LAYERS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "BENEATH YOUR SOUND", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "STEP " + textOf (p, ParamIDs::remnantStep), "LENGTH " + textOf (p, ParamIDs::remnantLength),
+                                  "TAPER " + juce::String (effects::Remnant::taperDb (settings.taper), 1) + " DB", "MIX " + textOf (p, ParamIDs::remnantMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (12); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

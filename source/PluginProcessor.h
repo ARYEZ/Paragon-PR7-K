@@ -318,6 +318,9 @@ public:
     // DILATION (0.63.0): its settings (SLOW, TONE, MIX as the matrix moves them).
     effects::Dilation::Settings getDilationSettings() const noexcept;
     const effects::Dilation& getDilation() const noexcept { return rack->dilation; }
+    // REMNANT (0.64.0): its settings (MIX, TONE, TAPER as the matrix moves them).
+    effects::Remnant::Settings getRemnantSettings() const noexcept;
+    const effects::Remnant& getRemnant() const noexcept { return rack->remnant; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

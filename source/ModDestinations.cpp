@@ -77,7 +77,8 @@ namespace ModDestinations
                 { "FX Afterglow", "Age" }, { "FX Afterglow", "Drift" }, { "FX Afterglow", "Ensemble" }, { "FX Afterglow", "Tape" },
                 { "FX Lighttrail", "Length" }, { "FX Lighttrail", "Rise" }, { "FX Lighttrail", "Tone" }, { "FX Lighttrail", "Mix" },
                 { "FX Blackhole", "Hold" }, { "FX Blackhole", "Pull" }, { "FX Blackhole", "Tone" }, { "FX Blackhole", "Mix" },
-                { "FX Dilation", "Slow" }, { "FX Dilation", "Tone" }, { "FX Dilation", "Mix" } };
+                { "FX Dilation", "Slow" }, { "FX Dilation", "Tone" }, { "FX Dilation", "Mix" },
+                { "FX Remnant", "Mix" }, { "FX Remnant", "Tone" }, { "FX Remnant", "Taper" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

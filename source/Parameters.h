@@ -449,6 +449,15 @@ namespace ParamIDs
     inline constexpr auto dilationReach  = "dilationReach";    // 0 to 1: 1 s to 8 s behind at most
     inline constexpr auto dilationTone   = "dilationTone";     // 0 to 1
     inline constexpr auto dilationMix    = "dilationMix";      // 0 to 1
+    // REMNANT (0.64.0, version hint 36, effects::Remnant): DREAMSTATE's signature.
+    inline constexpr auto remnantOn     = "remnantOn";
+    inline constexpr auto remnantLayers = "remnantLayers";   // Remnant::layerNames: 1 to 3
+    inline constexpr auto remnantStep   = "remnantStep";     // Remnant::stepNames
+    inline constexpr auto remnantLength = "remnantLength";   // 0 to 1: 0.4 s to 4 s
+    inline constexpr auto remnantTaper  = "remnantTaper";    // 0 to 1: each deeper layer 0 to 12 dB quieter
+    inline constexpr auto remnantTone   = "remnantTone";     // 0 to 1
+    inline constexpr auto remnantWidth  = "remnantWidth";    // 0 to 1
+    inline constexpr auto remnantMix    = "remnantMix";      // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -532,4 +541,5 @@ void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.61.0)
 void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.62.0)
 void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.63.0)
+void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.64.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

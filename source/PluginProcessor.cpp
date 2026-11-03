@@ -279,6 +279,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->lightTrail.prepare (sampleRate, preparedBlockSize);
     rack->blackHole.prepare (sampleRate, preparedBlockSize);
     rack->dilation.prepare (sampleRate, preparedBlockSize);
+    rack->remnant.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1182,6 +1183,20 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::Remnant::Settings ParagonX1AudioProcessor::getRemnantSettings() const noexcept
+{
+    effects::Remnant::Settings s;
+    s.on = isOn (ParamIDs::remnantOn);
+    s.layers = juce::roundToInt (param (ParamIDs::remnantLayers));
+    s.step = juce::roundToInt (param (ParamIDs::remnantStep));
+    s.length = param (ParamIDs::remnantLength);
+    s.taper = effectParam (ModDestinations::effect ("remnantTaper"), ParamIDs::remnantTaper);
+    s.tone = effectParam (ModDestinations::effect ("remnantTone"), ParamIDs::remnantTone);
+    s.width = param (ParamIDs::remnantWidth);
+    s.mix = effectParam (ModDestinations::effect ("remnantMix"), ParamIDs::remnantMix);
+    return s;
+}
+
 effects::Dilation::Settings ParagonX1AudioProcessor::getDilationSettings() const noexcept
 {
     effects::Dilation::Settings s;
@@ -1406,6 +1421,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->lightTrail.process (block, getLightTrailSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.61.0: each note's trail
         rack->blackHole.process (block, getBlackHoleSettings());   // 0.62.0: the haze
         rack->dilation.process (block, getDilationSettings());     // 0.63.0: time slowing down (the reverb and echoes too)
+        rack->remnant.process (block, getRemnantSettings());       // 0.64.0: the layers beneath
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

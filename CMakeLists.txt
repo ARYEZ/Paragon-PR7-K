@@ -75,6 +75,7 @@ target_sources(ParagonX1
         source/dsp/effects/LightTrail.cpp
         source/dsp/effects/BlackHole.cpp
         source/dsp/effects/Dilation.cpp
+        source/dsp/effects/Remnant.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -114,6 +115,7 @@ target_sources(ParagonX1
         source/ui/LightTrailPage.cpp
         source/ui/BlackHolePage.cpp
         source/ui/DilationPage.cpp
+        source/ui/RemnantPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
