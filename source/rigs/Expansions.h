@@ -41,7 +41,7 @@ namespace expansions
         { "LAST LIGHT", "LL",
           "Inspired by the score of a film about space, time and leaving the people you love: a soft cinematic felt "
           "piano, an enormous church organ, aching strings, a ticking clock and vast cold spaces. Sad and longing. "
-          "Our own sounds." },
+          "Built round BLACKHOLE (0.62.0), the last moments stretched into a haze, and MACRO 3, GRAVITY. Our own sounds." },
         { "SIMULACRUM", "SM",
           "Inspired by the score and soundtrack of a 1999 film about a simulated world: a dark, atonal orchestra with "
           "brass in clashing keys, late-'90s industrial and big-beat basses and breaks, fast trance arpeggios, falling "
