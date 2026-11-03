@@ -81,7 +81,8 @@ namespace ModDestinations
                 { "FX Remnant", "Mix" }, { "FX Remnant", "Tone" }, { "FX Remnant", "Taper" },
                 { "FX Proximity", "Noise" }, { "FX Proximity", "Room" }, { "FX Proximity", "Close" },
                 { "FX Haze", "Depth" }, { "FX Haze", "Doppler" }, { "FX Haze", "Whoosh" },
-                { "FX Spectre", "Mix" }, { "FX Spectre", "Linger" }, { "FX Spectre", "Shift" } };
+                { "FX Spectre", "Mix" }, { "FX Spectre", "Linger" }, { "FX Spectre", "Shift" },
+                { "FX Leviathan", "Mix" }, { "FX Leviathan", "Growl" }, { "FX Leviathan", "Drift" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

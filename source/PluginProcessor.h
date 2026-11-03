@@ -214,6 +214,7 @@ public:
         rack->proximity.seedRandom ((std::uint32_t) seed);
         rack->haze.seedRandom ((std::uint32_t) seed);
         rack->spectre.seedRandom ((std::uint32_t) seed);
+        rack->leviathan.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -333,6 +334,9 @@ public:
     // SPECTRE (0.67.0): its settings (MIX, LINGER, SHIFT as the matrix moves them).
     effects::Spectre::Settings getSpectreSettings() const noexcept;
     const effects::Spectre& getSpectre() const noexcept { return rack->spectre; }
+    // LEVIATHAN (0.68.0): its settings (MIX, GROWL, DRIFT as the matrix moves them).
+    effects::Leviathan::Settings getLeviathanSettings() const noexcept;
+    const effects::Leviathan& getLeviathan() const noexcept { return rack->leviathan; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

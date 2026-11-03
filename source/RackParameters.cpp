@@ -22,6 +22,7 @@
 #include "dsp/effects/Proximity.h"
 #include "dsp/effects/Haze.h"
 #include "dsp/effects/Spectre.h"
+#include "dsp/effects/Leviathan.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -694,4 +695,22 @@ void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout& 
     layout.add (makeFloat (ParamIDs::spectreAir, "Spectre Air", { 0.0f, 1.0f, 0.01f }, d.air, v, asAir));
     layout.add (makeFloat (ParamIDs::spectreDrift, "Spectre Drift", { 0.0f, 1.0f, 0.01f }, d.drift, v, asPercent));
     layout.add (makeFloat (ParamIDs::spectreShift, "Spectre Shift", { -1.0f, 1.0f, 0.01f }, d.shift, v, asShift));
+}
+
+void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LEVIATHAN (0.68.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 40;
+    using L = effects::Leviathan;
+    const L::Settings d;
+    const ToText asDelay = [] (float value, int) { return juce::String (L::delaySeconds (value), 2) + " s"; };
+    const ToText asDrift = [] (float value, int) { return "every " + juce::String (L::driftSeconds (value), 1) + " s"; };
+    const ToText asSize = [] (float value, int) { return "x" + juce::String (1.0f / L::sizeScale (value), 2); };
+    layout.add (makeSwitch (ParamIDs::leviathanOn, "Leviathan On", v, false));
+    layout.add (makeFloat (ParamIDs::leviathanMix, "Leviathan Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::leviathanDepth, "Leviathan Depth", v, L::depthNames, d.depth));
+    layout.add (makeFloat (ParamIDs::leviathanDrift, "Leviathan Drift", { 0.0f, 1.0f, 0.01f }, d.drift, v, asDrift));
+    layout.add (makeFloat (ParamIDs::leviathanGrowl, "Leviathan Growl", { 0.0f, 1.0f, 0.01f }, d.growl, v, asPercent));
+    layout.add (makeFloat (ParamIDs::leviathanDelay, "Leviathan Delay", { 0.0f, 1.0f, 0.01f }, d.delay, v, asDelay));
+    layout.add (makeFloat (ParamIDs::leviathanSize, "Leviathan Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
 }

@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 16> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 17> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 16> specs;
+    std::array<RackUnit::Spec, 17> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1243,6 +1243,53 @@ std::array<RackUnit::Spec, 16> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (15); };
+    }
+
+    // LEVIATHAN (0.68.0): the note it sings in big letters, how deep and how rough; the keys set how near it comes:
+    // DISTANT, CALLING, RISING (MIX and GROWL together).
+    {
+        auto& s = specs[16];
+        s.name = "LEVIATHAN";
+        s.kind = "VOICE BENEATH  MIX  GROWL";
+        s.onParameterIds = { ParamIDs::leviathanOn };
+        s.powerTooltip = "LEVIATHAN on or off: a vast voice singing far beneath what you play. Click POWER (the word) or EDIT for its page";
+        struct Call { const char* name; float mix, growl; const char* tip; };
+        static constexpr Call calls[] = { { "DISTANT", 0.3f, 0.15f, "A low hum from far off, under the fog" },
+                                          { "CALLING", 0.55f, 0.35f, "A clear, slow voice answering beneath you" },
+                                          { "RISING", 0.85f, 0.65f, "Huge and near, groaning and creaking" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& c = calls[k];
+            s.keys[(size_t) k] = RackUnit::Key { c.name, c.tip,
+                                                 [&p, c] { return std::abs (valueOf (p, ParamIDs::leviathanMix) - c.mix) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::leviathanGrowl) - c.growl) < 0.01f; },
+                                                 [&p, c]
+                                                 {
+                                                     setValue (p, ParamIDs::leviathanMix, c.mix);
+                                                     setValue (p, ParamIDs::leviathanGrowl, c.growl);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::leviathanMix, "MIX" }, RackUnit::Knob { ParamIDs::leviathanGrowl, "GROWL" } };
+        s.ladderTitle = "VOICE";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getLeviathanSettings().on ? p.getLeviathan().getLevelDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto sung = p.getLeviathanSettings().on ? p.getLeviathan().getSungNote() : -1.0f;
+            const auto hz = sung < 0.0f ? 0.0 : 440.0 * std::pow (2.0, (sung - 69.0) / 12.0);
+            const auto end = drawNumber (g, juce::String (hz, 1), left.getTopLeft(), h);
+            line (g, "HZ", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, sung < 0.0f ? juce::String ("SILENT") : "SINGING " + juce::MidiMessage::getMidiNoteName (juce::roundToInt (sung), true, true, 4),
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "DEPTH " + textOf (p, ParamIDs::leviathanDepth), "MIX " + textOf (p, ParamIDs::leviathanMix),
+                                  "GROWL " + textOf (p, ParamIDs::leviathanGrowl), "DELAY " + textOf (p, ParamIDs::leviathanDelay) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (16); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

@@ -4205,6 +4205,35 @@ namespace
         passing (heartline, "ECHO (longer echoes)", { 1, 0.6f, 0.45f, 0.3f, 0.9f, 0.45f });
         x.add (heartline);
     }
+    // UNSPOKEN's centrepiece (0.68.0, the owner's ask): LEVIATHAN on every preset, MACRO 3 LEVIATHAN. Each preset gets
+    // its own voice beneath it (how deep, how restless its vowel, how rough, how slow to answer, how big) at MIX 0, so
+    // at the macro's left it sounds exactly as approved; the macro brings the voice up and roughens it a little. Its
+    // old MACRO 3 job rides along (the notes say so).
+    struct Beast
+    {
+        float mixTop = 0.45f;                                   // the macro's MIX at full
+        int depth = 0;                                          // 1 OCTAVE, 2 OCTAVES
+        float drift = 0.4f, growl = 0.25f, delay = 0.2f, size = 0.6f;
+        float growlRise = 0.2f;                                 // the macro's GROWL on top at full
+    };
+
+    void awaken (Builder& b, const juce::String& oldJob, Beast v)
+    {
+        b.set (ParamIDs::leviathanOn, 1.0f).set (ParamIDs::leviathanMix, 0.0f).set (ParamIDs::leviathanDepth, (float) v.depth)
+         .set (ParamIDs::leviathanDrift, v.drift).set (ParamIDs::leviathanGrowl, v.growl).set (ParamIDs::leviathanDelay, v.delay)
+         .set (ParamIDs::leviathanSize, v.size);
+        route (b, "macro3", ParamIDs::leviathanMix, v.mixTop);
+        route (b, "macro3", ParamIDs::leviathanGrowl, v.growlRise);
+        b.rig.modulation.macroNames[2] = "LEVIATHAN";
+        // "VOWEL (towards "oo")" reads "plus VOWEL: towards "oo"" inside LEVIATHAN's own brackets.
+        auto plus = oldJob;
+        if (plus.endsWith (")") && plus.contains (" ("))
+            plus = plus.upToFirstOccurrenceOf (" (", false, false) + ": " + plus.fromFirstOccurrenceOf (" (", false, false).dropLastCharacters (1);
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, LEVIATHAN (a vast voice singing beneath it, plus " + plus + ")");
+    }
+
     // UNSPOKEN (the owner's name): inspired by the score of a 2016 film about first contact and a language that
     // changes how you see time: human voices breathing, murmuring and stuttering in eerie layers, vast swelling
     // drones, circular phrases that run forwards and back, cold fog, quiet awe and grief. No title, characters,
@@ -4243,6 +4272,7 @@ namespace
         eqBand (voice, 0, eq::Shape::lowCut, 150.0f, 0.0f);
         space (voice);
         voice.set (ParamIDs::patchLevel, 0.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (voice, "VOWEL (towards \"oo\")", { 0.5f, 0, 0.4f, 0.2f, 0.15f, 0.6f });
         x.add (voice);
 
         auto call = x.make ("Distant Call", 2, { "Lead", "Pitch Envelope", "Glide", "Mono" },
@@ -4267,6 +4297,7 @@ namespace
         reverb (call, RT::cathedral, 0.6f, 0.3f, 60.0f, 3.5f);
         space (call);
         call.set (ParamIDs::patchLevel, -4.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (call, "SCOOP (a deeper bend)", { 0.55f, 1, 0.3f, 0.4f, 0.3f, 0.8f });
         x.add (call);
 
         auto signal = x.make ("Signal Tone", 3, { "Lead", "Sine", "Tremolo", "Mono" },
@@ -4292,6 +4323,7 @@ namespace
         reverb (signal, RT::plate, 0.7f, 0.25f);
         space (signal);
         signal.set (ParamIDs::patchLevel, -4.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (signal, "WOBBLE (a slow vibrato on top)", { 0.45f, 0, 0.6f, 0.15f, 0.1f, 0.4f });
         x.add (signal);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -4323,6 +4355,7 @@ namespace
         eqBand (choir, 0, eq::Shape::lowCut, 120.0f, 0.0f);
         space (choir);
         choir.set (ParamIDs::patchLevel, 0.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (choir, "BREATH (more air)", { 0.5f, 0, 0.25f, 0.1f, 0.25f, 0.6f });
         x.add (choir);
 
         auto circle = x.make ("Circle Drone", 5, { "Pad", "Drone", "Wavetable", "Travel" },
@@ -4351,6 +4384,7 @@ namespace
         reverb (circle, RT::hall, 0.9f, 0.3f, 30.0f, 4.0f);
         space (circle);
         circle.set (ParamIDs::patchLevel, -6.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (circle, "MOTION (a wider turn)", { 0.55f, 1, 0.2f, 0.3f, 0.4f, 0.9f });
         x.add (circle);
 
         auto mist = x.make ("Low Mist", 6, { "Pad", "Reverse", "Noise", "Phaser" },
@@ -4372,6 +4406,7 @@ namespace
         eqBand (mist, 0, eq::Shape::lowCut, 70.0f, 0.0f);
         space (mist);
         mist.set (ParamIDs::patchLevel, -4.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (mist, "FOG (more of the noise)", { 0.5f, 0, 0.35f, 0.5f, 0.3f, 0.7f });
         x.add (mist);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -4396,6 +4431,7 @@ namespace
         reverb (hull, RT::hall, 0.7f, 0.22f, 20.0f, 3.0f);
         space (hull);
         hull.set (ParamIDs::patchLevel, -7.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (hull, "METAL (more FM)", { 0.35f, 0, 0.3f, 0.6f, 0.0f, 0.8f });
         x.add (hull);
 
         auto tide = x.make ("Tidal Swell", 8, { "Bass", "Brass", "Swell", "Unison" },
@@ -4420,6 +4456,7 @@ namespace
         reverb (tide, RT::hall, 0.8f, 0.2f, 30.0f, 3.5f);
         space (tide);
         tide.set (ParamIDs::patchLevel, -3.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (tide, "BRASS (more of the pulse)", { 0.35f, 0, 0.4f, 0.4f, 0.1f, 0.7f });
         x.add (tide);
 
         auto murmur = x.make ("Deep Murmur", 9, { "Bass", "Vowel", "Sub", "Noise" },
@@ -4444,6 +4481,7 @@ namespace
         reverb (murmur, RT::room, 0.5f, 0.15f);
         space (murmur);
         murmur.set (ParamIDs::patchLevel, -3.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (murmur, "MOUTH (the vowel open towards \"ah\")", { 0.35f, 0, 0.5f, 0.3f, 0.15f, 0.6f });
         x.add (murmur);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -4471,6 +4509,7 @@ namespace
         reverb (bells, RT::plate, 0.8f, 0.28f, 30.0f, 4.5f);
         space (bells);
         bells.set (ParamIDs::patchLevel, -4.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (bells, "BLOOM (more of the swell)", { 0.45f, 1, 0.3f, 0.15f, 0.5f, 0.8f });
         x.add (bells);
 
         auto memory = x.make ("Memory Loop", 11, { "Keys", "Piano", "Reverse", "Delay" },
@@ -4484,6 +4523,7 @@ namespace
         reverb (memory, RT::reverse, 0.7f, 0.35f, 10.0f, 4.0f);
         space (memory);
         memory.set (ParamIDs::patchLevel, -7.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (memory, "ECHO (more of the echoes)", { 0.45f, 0, 0.4f, 0.2f, 0.6f, 0.6f });
         x.add (memory);
 
         auto fog = x.make ("Fog Glass", 12, { "Keys", "Wavetable", "Chorder", "Glass" },
@@ -4506,6 +4546,7 @@ namespace
         eqBand (fog, 0, eq::Shape::lowCut, 120.0f, 0.0f);
         space (fog);
         fog.set (ParamIDs::patchLevel, -7.5f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (fog, "SHINE (further along the table)", { 0.45f, 1, 0.2f, 0.25f, 0.4f, 0.9f });
         x.add (fog);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -4544,6 +4585,7 @@ namespace
         eqBand (stutter, 0, eq::Shape::lowCut, 120.0f, 0.0f);
         space (stutter);
         stutter.set (ParamIDs::patchLevel, -4.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (stutter, "VOWEL (the syllables open sooner)", { 0.4f, 0, 0.7f, 0.3f, 0.2f, 0.5f });
         x.add (stutter);
 
         auto circular = x.make ("Circular Time", 14, { "Arp", "Pluck", "Palindrome", "Delay" },
@@ -4578,6 +4620,7 @@ namespace
         reverb (circular, RT::hall, 0.7f, 0.25f);
         space (circular);
         circular.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (circular, "GLOW (filter resonance)", { 0.45f, 1, 0.35f, 0.2f, 0.3f, 0.8f });
         x.add (circular);
 
         auto breath = x.make ("Breath Pulse", 15, { "Arp", "Noise", "Step Sequencer", "Glitch" },
@@ -4617,6 +4660,7 @@ namespace
         eqBand (breath, 0, eq::Shape::lowCut, 150.0f, 0.0f);
         space (breath);
         breath.set (ParamIDs::patchLevel, 5.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        awaken (breath, "BREATH (more noise against the voices)", { 0.4f, 0, 0.6f, 0.45f, 0.15f, 0.6f });
         x.add (breath);
     }
 

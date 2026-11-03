@@ -482,6 +482,14 @@ namespace ParamIDs
     inline constexpr auto spectreAir    = "spectreAir";      // 0 hollow to 1 breathy
     inline constexpr auto spectreDrift  = "spectreDrift";    // 0 to 1
     inline constexpr auto spectreShift  = "spectreShift";    // -1 to 1: an octave down to an octave up
+    // LEVIATHAN (0.68.0, version hint 40, effects::Leviathan): UNSPOKEN's signature.
+    inline constexpr auto leviathanOn    = "leviathanOn";
+    inline constexpr auto leviathanMix   = "leviathanMix";     // 0 to 1
+    inline constexpr auto leviathanDepth = "leviathanDepth";   // Leviathan::depthNames: 1 or 2 octaves below
+    inline constexpr auto leviathanDrift = "leviathanDrift";   // 0 to 1: the vowel moves every 6 s down to 0.8 s
+    inline constexpr auto leviathanGrowl = "leviathanGrowl";   // 0 to 1
+    inline constexpr auto leviathanDelay = "leviathanDelay";   // 0 to 1: 0 to 1.5 s behind
+    inline constexpr auto leviathanSize  = "leviathanSize";    // 0 to 1: formants x 1 down to x 0.55
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -569,4 +577,5 @@ void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout&)
 void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.65.0)
 void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.66.0)
 void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.67.0)
+void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.68.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

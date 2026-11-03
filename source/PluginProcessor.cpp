@@ -283,6 +283,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->proximity.prepare (sampleRate, preparedBlockSize);
     rack->haze.prepare (sampleRate, preparedBlockSize);
     rack->spectre.prepare (sampleRate, preparedBlockSize);
+    rack->leviathan.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1199,6 +1200,19 @@ effects::Haze::Settings ParagonX1AudioProcessor::getHazeSettings() const noexcep
     return s;
 }
 
+effects::Leviathan::Settings ParagonX1AudioProcessor::getLeviathanSettings() const noexcept
+{
+    effects::Leviathan::Settings s;
+    s.on = isOn (ParamIDs::leviathanOn);
+    s.mix = effectParam (ModDestinations::effect ("leviathanMix"), ParamIDs::leviathanMix);
+    s.depth = juce::roundToInt (param (ParamIDs::leviathanDepth));
+    s.drift = effectParam (ModDestinations::effect ("leviathanDrift"), ParamIDs::leviathanDrift);
+    s.growl = effectParam (ModDestinations::effect ("leviathanGrowl"), ParamIDs::leviathanGrowl);
+    s.delay = param (ParamIDs::leviathanDelay);
+    s.size = param (ParamIDs::leviathanSize);
+    return s;
+}
+
 effects::Spectre::Settings ParagonX1AudioProcessor::getSpectreSettings() const noexcept
 {
     effects::Spectre::Settings s;
@@ -1476,6 +1490,13 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->proximity.process (block, getProximitySettings());   // 0.65.0: the sound of playing, up close
         rack->haze.process (block, getHazeSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.66.0: streetlights passing
         rack->spectre.process (block, getSpectreSettings());   // 0.67.0: the ghost behind the sound
+        // 0.68.0: the voice beneath, on the lowest note sounding (only worked out while it's on or settling).
+        if (const auto deep = getLeviathanSettings(); (deep.on && deep.mix > 0.0f) || ! rack->leviathan.isResting())
+        {
+            std::array<float, effects::Leviathan::maxNotes> sounding {};
+            rack->leviathan.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->leviathan.process (block, deep);
+        }
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

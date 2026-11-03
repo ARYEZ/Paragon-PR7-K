@@ -355,6 +355,26 @@ TEST_CASE ("NIGHTDRIVE: MACRO 3 is HAZE on every preset, no movement at its left
     CHECK (count == 15);
 }
 
+TEST_CASE ("UNSPOKEN: MACRO 3 is LEVIATHAN on every preset, no voice at its left", "[rigs][expansions][leviathan]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 10)   // UNSPOKEN: the eleventh expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "LEVIATHAN");
+        CHECK (rig.notes.contains ("LEVIATHAN (a vast voice singing beneath it, plus "));
+        CHECK (rig.parameters.at (ParamIDs::leviathanOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::leviathanMix) == 0.0f);   // no voice until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::leviathanMix && r.amount >= 0.15f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its left", "[rigs][expansions][spectre]")
 {
     int count = 0;

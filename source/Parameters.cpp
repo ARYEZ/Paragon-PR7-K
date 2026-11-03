@@ -562,5 +562,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addProximityParameters (layout);  // PROXIMITY (0.65.0): RackParameters.cpp
     addHazeParameters (layout);       // HAZE (0.66.0): RackParameters.cpp
     addSpectreParameters (layout);    // SPECTRE (0.67.0): RackParameters.cpp
+    addLeviathanParameters (layout);  // LEVIATHAN (0.68.0): RackParameters.cpp
     return layout;
 }

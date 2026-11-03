@@ -61,7 +61,9 @@ namespace ModDestinations
                                                  // 0.66.0: HAZE: how much, the pitch's bend, the wind
                                                  "hazeDepth", "hazeDoppler", "hazeWhoosh",
                                                  // 0.67.0: SPECTRE: how loud the ghost, how long it lingers, its outline moved
-                                                 "spectreMix", "spectreLinger", "spectreShift" };
+                                                 "spectreMix", "spectreLinger", "spectreShift",
+                                                 // 0.68.0: LEVIATHAN: how loud the voice, how rough, how fast its vowel wanders
+                                                 "leviathanMix", "leviathanGrowl", "leviathanDrift" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

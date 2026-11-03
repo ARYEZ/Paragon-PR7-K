@@ -21,6 +21,7 @@
 #include "dsp/effects/Proximity.h"
 #include "dsp/effects/Haze.h"
 #include "dsp/effects/Spectre.h"
+#include "dsp/effects/Leviathan.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -102,6 +103,8 @@ struct Rack
     effects::Haze haze;
     // SPECTRE (0.67.0): the ghost behind the sound, after HAZE.
     effects::Spectre spectre;
+    // LEVIATHAN (0.68.0): the voice beneath, after SPECTRE.
+    effects::Leviathan leviathan;
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

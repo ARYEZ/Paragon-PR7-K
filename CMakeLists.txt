@@ -79,6 +79,7 @@ target_sources(ParagonX1
         source/dsp/effects/Proximity.cpp
         source/dsp/effects/Haze.cpp
         source/dsp/effects/Spectre.cpp
+        source/dsp/effects/Leviathan.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -122,6 +123,7 @@ target_sources(ParagonX1
         source/ui/ProximityPage.cpp
         source/ui/HazePage.cpp
         source/ui/SpectrePage.cpp
+        source/ui/LeviathanPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
