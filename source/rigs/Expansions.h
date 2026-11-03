@@ -68,7 +68,8 @@ namespace expansions
         { "CYBERSHRINE", "CS",
           "Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an "
           "ancient chorus of women's voices in close, clashing harmony, a huge, slow temple drum played as a bass, deep temple bells, and "
-          "a cold, rainy, reverberant machine world. Our own sounds." },
+          "a cold, rainy, reverberant machine world. Built round SPECTRE (0.67.0), a whispered ghost following your "
+          "sound, and MACRO 3, SPECTRE. Our own sounds." },
         { "STOWAWAY", "SW",
           "Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship "
           "in deep space: echoing woodwinds, primitive horns, trembling string harmonics, low brass clusters, the "

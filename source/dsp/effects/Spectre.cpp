@@ -101,7 +101,7 @@ namespace effects
         const auto trailTarget = (float) (maxTrail * juce::jlimit (0.0f, 1.0f, s.trail) * sampleRate);
         if (trailNow < 0.0f)
             trailNow = trailTarget;
-        constexpr float makeUp = 0.62f;   // the bands overlap: a sound lands in two or three, measured on pink noise
+        constexpr float makeUp = 1.7f;   // measured: pink noise and a saw come back within about 1-2 dB of their own level
         constexpr float floorPower = 1.0e-12f;   // -120 dB
 
         // Each band's place between the sides now (the swing moves slowly: once a block is plenty), and where each

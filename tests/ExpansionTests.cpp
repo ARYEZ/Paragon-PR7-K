@@ -355,6 +355,26 @@ TEST_CASE ("NIGHTDRIVE: MACRO 3 is HAZE on every preset, no movement at its left
     CHECK (count == 15);
 }
 
+TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its left", "[rigs][expansions][spectre]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 11)   // CYBERSHRINE: the twelfth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "SPECTRE");
+        CHECK (rig.notes.contains ("SPECTRE (a whispered ghost following it, plus "));
+        CHECK (rig.parameters.at (ParamIDs::spectreOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::spectreMix) == 0.0f);   // no ghost until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::spectreMix && r.amount >= 0.4f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;

@@ -4580,6 +4580,34 @@ namespace
         circular.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (circular);
 
+    // CYBERSHRINE's centrepiece (0.67.0, the owner's ask): SPECTRE on every preset, MACRO 3 SPECTRE. Each preset gets
+    // its own ghost (how far behind, how long it lingers, how breathy, how far it drifts, its outline moved) at MIX 0,
+    // so at the macro's left it sounds exactly as approved; the macro brings the ghost in and lets it linger a little
+    // longer. Its old MACRO 3 job rides along (the notes say so).
+    struct Ghost
+    {
+        float mixTop = 0.55f;                                         // the macro's MIX at full
+        float trail = 0.3f, linger = 0.45f, air = 0.6f, drift = 0.6f, shift = 0.0f;
+        float lingerRise = 0.15f;                                     // the macro's LINGER on top at full
+    };
+
+    void haunt (Builder& b, const juce::String& oldJob, Ghost g)
+    {
+        b.set (ParamIDs::spectreOn, 1.0f).set (ParamIDs::spectreMix, 0.0f).set (ParamIDs::spectreTrail, g.trail)
+         .set (ParamIDs::spectreLinger, g.linger).set (ParamIDs::spectreAir, g.air).set (ParamIDs::spectreDrift, g.drift)
+         .set (ParamIDs::spectreShift, g.shift);
+        route (b, "macro3", ParamIDs::spectreMix, g.mixTop);
+        route (b, "macro3", ParamIDs::spectreLinger, g.lingerRise);
+        b.rig.modulation.macroNames[2] = "SPECTRE";
+        // "ORNAMENT (a wider flick)" reads "plus ORNAMENT: a wider flick" inside SPECTRE's own brackets.
+        auto plus = oldJob;
+        if (plus.endsWith (")") && plus.contains (" ("))
+            plus = plus.upToFirstOccurrenceOf (" (", false, false) + ": " + plus.fromFirstOccurrenceOf (" (", false, false).dropLastCharacters (1);
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, SPECTRE (a whispered ghost following it, plus " + plus + ")");
+    }
+
         auto breath = x.make ("Breath Pulse", 15, { "Arp", "Noise", "Step Sequencer", "Glitch" },
             "A rhythm of breaths and soft voices: a held chord of quiet \"ah\" voices and breathy noise cut into a "
             "pattern of sixteenths by the STEP SEQUENCER (some steps tied into longer breaths, the right side "
@@ -4655,6 +4683,7 @@ namespace
         eqBand (folk, 0, eq::Shape::lowCut, 180.0f, 0.0f);
         space (folk);
         folk.set (ParamIDs::patchLevel, 4.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (folk, "ORNAMENT (a wider flick)", { 0.6f, 0.3f, 0.45f, 0.55f, 0.6f, 0.0f });
         x.add (folk);
 
         auto wire = x.make ("Wire Song", 2, { "Lead", "Sync", "Digital", "Mono" },
@@ -4676,6 +4705,7 @@ namespace
         reverb (wire, RT::plate, 0.6f, 0.2f);
         space (wire);
         wire.set (ParamIDs::patchLevel, -1.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (wire, "SYNC (more of it)", { 0.55f, 0.25f, 0.4f, 0.4f, 0.7f, 0.0f });
         x.add (wire);
 
         auto half = x.make ("Half There", 3, { "Lead", "Shimmer", "Random", "Mono" },
@@ -4699,6 +4729,7 @@ namespace
         reverb (half, RT::cathedral, 0.5f, 0.3f);
         space (half);
         half.set (ParamIDs::patchLevel, 1.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (half, "SHIMMER (more phaser)", { 0.6f, 0.4f, 0.55f, 0.7f, 0.8f, 0.0f });
         x.add (half);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -4730,6 +4761,7 @@ namespace
         eqBand (chorus1, 0, eq::Shape::lowCut, 150.0f, 0.0f);
         space (chorus1);
         chorus1.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (chorus1, "CLASH (more of the second)", { 0.55f, 0.5f, 0.6f, 0.65f, 0.8f, -0.25f });
         x.add (chorus1);
 
         auto city = x.make ("Rain City", 5, { "Pad", "Noise", "Dark", "Auto-Pan" },
@@ -4753,6 +4785,7 @@ namespace
         eqBand (city, 0, eq::Shape::lowCut, 70.0f, 0.0f);
         space (city);
         city.set (ParamIDs::patchLevel, -8.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (city, "RAIN", { 0.5f, 0.45f, 0.6f, 0.8f, 0.9f, 0.0f });
         x.add (city);
 
         auto dive = x.make ("Deep Dive", 6, { "Pad", "Wavetable", "Travel", "Phaser" },
@@ -4777,6 +4810,7 @@ namespace
         reverb (dive, RT::hall, 0.9f, 0.3f, 30.0f, 3.5f);
         space (dive);
         dive.set (ParamIDs::patchLevel, -4.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (dive, "DEPTH (a deeper swirl)", { 0.55f, 0.55f, 0.65f, 0.5f, 0.8f, -0.25f });
         x.add (dive);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -4801,6 +4835,7 @@ namespace
         reverb (drum, RT::hall, 0.8f, 0.2f, 20.0f, 3.5f);
         space (drum);
         drum.set (ParamIDs::patchLevel, -1.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (drum, "BOOM (a deeper drop)", { 0.6f, 0.2f, 0.45f, 0.75f, 0.6f, 0.75f });
         x.add (drum);
 
         auto current = x.make ("Cold Current", 8, { "Bass", "Step Sequencer", "Resonant", "Mono" },
@@ -4835,6 +4870,7 @@ namespace
         reverb (current, RT::room, 0.5f, 0.12f);
         space (current);
         current.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (current, "PULSE (deeper cuts)", { 0.55f, 0.15f, 0.3f, 0.8f, 0.5f, 1.0f });
         x.add (current);
 
         auto heart = x.make ("Machine Heart", 9, { "Bass", "Sub", "Step Sequencer", "Shaper" },
@@ -4864,6 +4900,7 @@ namespace
         reverb (heart, RT::room, 0.5f, 0.12f);
         space (heart);
         heart.set (ParamIDs::patchLevel, 10.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (heart, "GROWL (more drive)", { 0.55f, 0.2f, 0.35f, 0.75f, 0.5f, 1.0f });
         x.add (heart);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -4888,6 +4925,7 @@ namespace
         reverb (bell, RT::cathedral, 0.6f, 0.3f, 30.0f, 4.5f);
         space (bell);
         bell.set (ParamIDs::patchLevel, -8.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (bell, "BEAT (faster beating)", { 0.5f, 0.35f, 0.7f, 0.3f, 0.7f, 0.0f });
         x.add (bell);
 
         auto silk = x.make ("Silk Strings", 11, { "Keys", "Pluck", "Pitch Envelope", "Zither" },
@@ -4908,6 +4946,7 @@ namespace
         reverb (silk, RT::hall, 0.6f, 0.22f);
         space (silk);
         silk.set (ParamIDs::patchLevel, 0.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (silk, "BEND (a wider press)", { 0.5f, 0.3f, 0.6f, 0.45f, 0.7f, 0.25f });
         x.add (silk);
 
         auto net = x.make ("Glass Net", 12, { "Keys", "FM", "Digital", "Chorus" },
@@ -4930,6 +4969,7 @@ namespace
         reverb (net, RT::plate, 0.6f, 0.22f);
         space (net);
         net.set (ParamIDs::patchLevel, -8.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (net, "BITS (a touch of bit crush)", { 0.5f, 0.35f, 0.6f, 0.3f, 0.8f, 0.0f });
         x.add (net);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -4955,6 +4995,7 @@ namespace
         reverb (ritual, RT::hall, 0.8f, 0.25f, 30.0f, 4.0f);
         space (ritual);
         ritual.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: re-measured as an arp (0.55.0; measured, not by ear)
+        haunt (ritual, "VOWEL (the choir towards \"oo\")", { 0.5f, 0.3f, 0.55f, 0.6f, 0.9f, -0.25f });
         x.add (ritual);
 
         auto ghost = x.make ("Signal Ghost", 14, { "Arp", "Randomizer", "FM", "Delay" },
@@ -4986,6 +5027,7 @@ namespace
         reverb (ghost, RT::cathedral, 0.5f, 0.28f);
         space (ghost);
         ghost.set (ParamIDs::patchLevel, 3.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (ghost, "ECHO (more echoes)", { 0.55f, 0.25f, 0.5f, 0.5f, 0.9f, 0.0f });
         x.add (ghost);
 
         auto sequence = x.make ("Dive Sequence", 15, { "Arp", "Rising", "Phaser", "Delay" },
@@ -5013,6 +5055,7 @@ namespace
         reverb (sequence, RT::hall, 0.7f, 0.25f);
         space (sequence);
         sequence.set (ParamIDs::patchLevel, 1.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        haunt (sequence, "DEPTH (a deeper phaser)", { 0.5f, 0.25f, 0.45f, 0.6f, 0.9f, 0.0f });
         x.add (sequence);
     }
     // STOWAWAY (the owner's name): inspired by the score and sound of a 1979 science-fiction horror film about
