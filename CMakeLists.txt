@@ -80,6 +80,7 @@ target_sources(ParagonX1
         source/dsp/effects/Haze.cpp
         source/dsp/effects/Spectre.cpp
         source/dsp/effects/Leviathan.cpp
+        source/dsp/effects/NuclearSpring.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
