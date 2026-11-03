@@ -212,6 +212,7 @@ public:
         rack->infernal.seedRandom ((std::uint32_t) seed);
         rack->blackHole.seedRandom ((std::uint32_t) seed);
         rack->proximity.seedRandom ((std::uint32_t) seed);
+        rack->haze.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -325,6 +326,9 @@ public:
     // PROXIMITY (0.65.0): its settings (NOISE, ROOM, CLOSE as the matrix moves them).
     effects::Proximity::Settings getProximitySettings() const noexcept;
     const effects::Proximity& getProximity() const noexcept { return rack->proximity; }
+    // HAZE (0.66.0): its settings (DEPTH, DOPPLER, WHOOSH as the matrix moves them).
+    effects::Haze::Settings getHazeSettings() const noexcept;
+    const effects::Haze& getHaze() const noexcept { return rack->haze; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

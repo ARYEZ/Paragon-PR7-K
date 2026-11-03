@@ -62,6 +62,8 @@ add_executable(ParagonX1Tests
     RemnantPluginTests.cpp
     ProximityTests.cpp
     ProximityPluginTests.cpp
+    HazeTests.cpp
+    HazePluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

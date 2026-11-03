@@ -57,7 +57,9 @@ namespace ModDestinations
                                                  // 0.64.0: REMNANT: how loud the layers, how dark, how much quieter each deeper one
                                                  "remnantMix", "remnantTone", "remnantTaper",
                                                  // 0.65.0: PROXIMITY: the touches, the room, how close
-                                                 "proximityNoise", "proximityRoom", "proximityClose" };
+                                                 "proximityNoise", "proximityRoom", "proximityClose",
+                                                 // 0.66.0: HAZE: how much, the pitch's bend, the wind
+                                                 "hazeDepth", "hazeDoppler", "hazeWhoosh" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

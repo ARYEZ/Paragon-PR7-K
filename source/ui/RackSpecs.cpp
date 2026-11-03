@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 14> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 15> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 14> specs;
+    std::array<RackUnit::Spec, 15> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1150,6 +1150,52 @@ std::array<RackUnit::Spec, 14> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (13); };
+    }
+
+    // HAZE (0.66.0): the pass in big digits, how far it bends and how often; the keys set how hard it passes:
+    // CRUISE, PASSING, RUSH (DEPTH and DOPPLER together).
+    {
+        auto& s = specs[14];
+        s.name = "HAZE";
+        s.kind = "PASSING LIGHTS  DEPTH  DOPPLER";
+        s.onParameterIds = { ParamIDs::hazeOn };
+        s.powerTooltip = "HAZE on or off: your sound sweeping past like streetlights, in time with your song. Click POWER (the word) or EDIT for its page";
+        struct Pace { const char* name; float depth, doppler; const char* tip; };
+        static constexpr Pace paces[] = { { "CRUISE", 0.3f, 0.2f, "A gentle drift past, barely bending" },
+                                          { "PASSING", 0.55f, 0.45f, "Lights sweeping by, the pitch leaning as they pass" },
+                                          { "RUSH", 0.85f, 0.8f, "Rushing past, close and fast" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& pc = paces[k];
+            s.keys[(size_t) k] = RackUnit::Key { pc.name, pc.tip,
+                                                 [&p, pc] { return std::abs (valueOf (p, ParamIDs::hazeDepth) - pc.depth) < 0.01f
+                                                                   && std::abs (valueOf (p, ParamIDs::hazeDoppler) - pc.doppler) < 0.01f; },
+                                                 [&p, pc]
+                                                 {
+                                                     setValue (p, ParamIDs::hazeDepth, pc.depth);
+                                                     setValue (p, ParamIDs::hazeDoppler, pc.doppler);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::hazeDepth, "DEPTH" }, RackUnit::Knob { ParamIDs::hazeDoppler, "DOPPLER" } };
+        s.ladderTitle = "PASS";
+        s.ladderMarks = { 12.0f, 9.0f, 6.0f, 3.0f, 1.0f };
+        s.ladderLabels = { "-12", "-9", "-6", "-3", "-1" };
+        s.ladderReading = [&p] { return -p.getHaze().getLevelDb(); };   // how far it has fallen: further away, more lit
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getHazeSettings();
+            const auto shift = settings.on ? p.getHaze().getShiftCents() : 0.0f;
+            const auto end = drawNumber (g, (shift >= 0.0f ? "+" : "") + juce::String (juce::roundToInt (shift)), left.getTopLeft(), h);
+            line (g, "CENTS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "PASSING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "EVERY " + textOf (p, ParamIDs::hazeDivision), "DEPTH " + textOf (p, ParamIDs::hazeDepth),
+                                  "DOPPLER " + textOf (p, ParamIDs::hazeDoppler), "WHOOSH " + textOf (p, ParamIDs::hazeWhoosh) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (14); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

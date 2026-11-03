@@ -79,7 +79,8 @@ namespace ModDestinations
                 { "FX Blackhole", "Hold" }, { "FX Blackhole", "Pull" }, { "FX Blackhole", "Tone" }, { "FX Blackhole", "Mix" },
                 { "FX Dilation", "Slow" }, { "FX Dilation", "Tone" }, { "FX Dilation", "Mix" },
                 { "FX Remnant", "Mix" }, { "FX Remnant", "Tone" }, { "FX Remnant", "Taper" },
-                { "FX Proximity", "Noise" }, { "FX Proximity", "Room" }, { "FX Proximity", "Close" } };
+                { "FX Proximity", "Noise" }, { "FX Proximity", "Room" }, { "FX Proximity", "Close" },
+                { "FX Haze", "Depth" }, { "FX Haze", "Doppler" }, { "FX Haze", "Whoosh" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

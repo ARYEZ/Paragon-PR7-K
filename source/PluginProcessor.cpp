@@ -281,6 +281,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->dilation.prepare (sampleRate, preparedBlockSize);
     rack->remnant.prepare (sampleRate, preparedBlockSize);
     rack->proximity.prepare (sampleRate, preparedBlockSize);
+    rack->haze.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1184,6 +1185,19 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::Haze::Settings ParagonX1AudioProcessor::getHazeSettings() const noexcept
+{
+    effects::Haze::Settings s;
+    s.on = isOn (ParamIDs::hazeOn);
+    s.division = juce::roundToInt (param (ParamIDs::hazeDivision));
+    s.depth = effectParam (ModDestinations::effect ("hazeDepth"), ParamIDs::hazeDepth);
+    s.doppler = effectParam (ModDestinations::effect ("hazeDoppler"), ParamIDs::hazeDoppler);
+    s.width = param (ParamIDs::hazeWidth);
+    s.tone = param (ParamIDs::hazeTone);
+    s.whoosh = effectParam (ModDestinations::effect ("hazeWhoosh"), ParamIDs::hazeWhoosh);
+    return s;
+}
+
 effects::Proximity::Settings ParagonX1AudioProcessor::getProximitySettings() const noexcept
 {
     effects::Proximity::Settings s;
@@ -1446,6 +1460,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->dilation.process (block, getDilationSettings());     // 0.63.0: time slowing down (the reverb and echoes too)
         rack->remnant.process (block, getRemnantSettings());       // 0.64.0: the layers beneath
         rack->proximity.process (block, getProximitySettings());   // 0.65.0: the sound of playing, up close
+        rack->haze.process (block, getHazeSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.66.0: streetlights passing
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

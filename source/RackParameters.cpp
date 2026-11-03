@@ -20,6 +20,7 @@
 #include "dsp/effects/Dilation.h"
 #include "dsp/effects/Remnant.h"
 #include "dsp/effects/Proximity.h"
+#include "dsp/effects/Haze.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -651,4 +652,20 @@ void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeChoice (ParamIDs::proximityHum, "Proximity Hum", v, effects::Proximity::humNames, d.hum));
     layout.add (makeFloat (ParamIDs::proximityClose, "Proximity Close", { 0.0f, 1.0f, 0.01f }, d.close, v, asClose));
     layout.add (makeFloat (ParamIDs::proximityWidth, "Proximity Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // HAZE (0.66.0, our own design): off and at DEPTH 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 38;
+    const effects::Haze::Settings d;
+    const ToText asDoppler = [] (float value, int) { return juce::String (effects::Haze::dopplerCents (value), 0) + " cents"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::Haze::farHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::hazeOn, "Haze On", v, false));
+    layout.add (makeChoice (ParamIDs::hazeDivision, "Haze Pass", v, effects::Haze::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::hazeDepth, "Haze Depth", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::hazeDoppler, "Haze Doppler", { 0.0f, 1.0f, 0.01f }, d.doppler, v, asDoppler));
+    layout.add (makeFloat (ParamIDs::hazeWidth, "Haze Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::hazeTone, "Haze Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::hazeWhoosh, "Haze Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
 }

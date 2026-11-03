@@ -466,6 +466,14 @@ namespace ParamIDs
     inline constexpr auto proximityHum   = "proximityHum";     // Proximity::humNames
     inline constexpr auto proximityClose = "proximityClose";   // 0 to 1: 0 to +6 dB at 180 Hz
     inline constexpr auto proximityWidth = "proximityWidth";   // 0 to 1
+    // HAZE (0.66.0, version hint 38, effects::Haze): NIGHTDRIVE's signature.
+    inline constexpr auto hazeOn       = "hazeOn";
+    inline constexpr auto hazeDivision = "hazeDivision";   // Haze::divisionNames: a pass every half bar to 4 bars
+    inline constexpr auto hazeDepth    = "hazeDepth";      // 0 to 1
+    inline constexpr auto hazeDoppler  = "hazeDoppler";    // 0 to 1: 0 to 40 cents at the steepest
+    inline constexpr auto hazeWidth    = "hazeWidth";      // 0 to 1
+    inline constexpr auto hazeTone     = "hazeTone";       // 0 to 1: far cutoff 1.5 to 12 kHz
+    inline constexpr auto hazeWhoosh   = "hazeWhoosh";     // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -551,4 +559,5 @@ void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.63.0)
 void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.64.0)
 void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.65.0)
+void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.66.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

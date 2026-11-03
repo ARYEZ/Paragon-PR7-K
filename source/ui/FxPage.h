@@ -14,6 +14,7 @@
 #include "ui/DilationPage.h"
 #include "ui/RemnantPage.h"
 #include "ui/ProximityPage.h"
+#include "ui/HazePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -49,7 +50,8 @@ public:
                       blackHole,                                            // 0.62.0 (the SIGNATURE slot)
                       dilation,                                             // 0.63.0 (the SIGNATURE slot)
                       remnant,                                              // 0.64.0 (the SIGNATURE slot)
-                      proximity };                                          // 0.65.0 (the SIGNATURE slot)
+                      proximity,                                            // 0.65.0 (the SIGNATURE slot)
+                      haze };                                               // 0.66.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -72,6 +74,7 @@ public:
     DilationPage& getDilationPage() noexcept { return dilationPage; }
     RemnantPage& getRemnantPage() noexcept { return remnantPage; }
     ProximityPage& getProximityPage() noexcept { return proximityPage; }
+    HazePage& getHazePage() noexcept { return hazePage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -97,7 +100,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 14> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 15> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -120,6 +123,7 @@ private:
     DilationPage dilationPage;
     RemnantPage remnantPage;
     ProximityPage proximityPage;
+    HazePage hazePage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

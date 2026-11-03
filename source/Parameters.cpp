@@ -560,5 +560,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addDilationParameters (layout);   // DILATION (0.63.0): RackParameters.cpp
     addRemnantParameters (layout);    // REMNANT (0.64.0): RackParameters.cpp
     addProximityParameters (layout);  // PROXIMITY (0.65.0): RackParameters.cpp
+    addHazeParameters (layout);       // HAZE (0.66.0): RackParameters.cpp
     return layout;
 }
