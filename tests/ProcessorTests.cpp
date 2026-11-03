@@ -231,5 +231,9 @@ TEST_CASE ("Fuzz: any settings, changed as notes play, never crash it or make it
             }
     }
     CHECK (finite);
-    CHECK (loudest < 1000.0f);   // nothing ran away (it can be loud: 8 oscillators at +6 dB through a resonant filter)
+    // Nothing ran away. It can be very loud without anything running away: 0.63.0's run (the picks move whenever
+    // parameters are added) stacked EQ bands at +29, +26 and +17 dB, shaper drives near full, the LIMITER's make-up
+    // with the LIMITER off, and reached 1609 (1708 on CI) with every stage stable. A runaway (feedback that keeps
+    // growing) heads for infinity, so the line is +100 dB.
+    CHECK (loudest < 1.0e5f);
 }
