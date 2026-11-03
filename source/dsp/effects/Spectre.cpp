@@ -34,6 +34,8 @@ namespace effects
             side.fill ({});
         for (auto& side : breathState)
             side.fill ({});
+        for (auto& side : breathState2)
+            side.fill ({});
         for (auto& side : power)
             side.fill (0.0f);
         for (auto& l : lines)
@@ -57,9 +59,10 @@ namespace effects
         {
             const auto hz = juce::jmin (bandHz (b), 0.45 * sampleRate);
             breath[(size_t) b].set (hz, q, sampleRate);
-            // White noise (power 1/3 for -1..1) through a unity-peak band-pass keeps about pi f / (Q rate) of it:
-            // the gain that brings each band back to unit power, so it comes out at the level it went in.
-            breathGain[(size_t) b] = (float) std::sqrt (3.0 * q * sampleRate / (juce::MathConstants<double>::pi * hz));
+            // White noise (power 1/3 for -1..1) through a unity-peak band-pass keeps about pi f / (Q rate) of it, and
+            // through two of them half that: the gain that brings each band back to unit power, so it comes out at
+            // the level it went in.
+            breathGain[(size_t) b] = (float) std::sqrt (6.0 * q * sampleRate / (juce::MathConstants<double>::pi * hz));
         }
     }
 
@@ -145,13 +148,14 @@ namespace effects
                 const auto& mine = power[(size_t) side];
                 const auto& other = power[(size_t) (1 - side)];
                 auto& st = breathState[(size_t) side];
+                auto& st2 = breathState2[(size_t) side];
                 for (int b = 0; b < numBands; ++b)
                 {
                     // The outline at this band's place (SHIFT reads between bands; outside the bank, nothing).
                     const auto from = readFrom[(size_t) b];
                     if (from < 0.0f || from > (float) (numBands - 1))
                     {
-                        st[(size_t) b].run (breath[(size_t) b], noise);
+                        st2[(size_t) b].run (breath[(size_t) b], st[(size_t) b].run (breath[(size_t) b], noise));
                         continue;
                     }
                     const auto k = juce::jmin ((int) from, numBands - 2);
@@ -160,7 +164,7 @@ namespace effects
                     const auto otherPower = other[(size_t) k] + f * (other[(size_t) k + 1] - other[(size_t) k]);
                     const auto t = toOther[(size_t) b];
                     const auto bandPower = (1.0f - t) * ownPower + t * otherPower;
-                    const auto y = st[(size_t) b].run (breath[(size_t) b], noise);
+                    const auto y = st2[(size_t) b].run (breath[(size_t) b], st[(size_t) b].run (breath[(size_t) b], noise));
                     if (bandPower <= 0.0f)
                         continue;
                     const auto level = std::sqrt (bandPower) * weight[(size_t) b];
@@ -204,6 +208,8 @@ namespace effects
             for (auto& side : analysisState2)
                 side.fill ({});
             for (auto& side : breathState)
+                side.fill ({});
+            for (auto& side : breathState2)
                 side.fill ({});
             for (auto& l : lines)
                 std::fill (l.begin(), l.end(), 0.0f);

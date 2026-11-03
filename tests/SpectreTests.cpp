@@ -31,7 +31,7 @@ namespace
         std::vector<float> l ((size_t) blockSize), r ((size_t) blockSize);
         float* ptrs[] = { l.data(), r.data() };
         long long t = 0;
-        for (int b = 0; b < (int) (seconds * sampleRate / blockSize); ++b)
+        for (int b = 0; b < (int) std::ceil (seconds * sampleRate / blockSize); ++b)   // at least `seconds`, so a measurement up to the end stays inside
         {
             std::vector<float> inL ((size_t) blockSize), inR ((size_t) blockSize);
             for (size_t i = 0; i < (size_t) blockSize; ++i)
@@ -159,7 +159,9 @@ TEST_CASE ("SPECTRE: the ghost keeps the outline but not the pitch", "[spectre]"
     CHECK (nearHigh > 20.0 * lowDown);
     // A 400 Hz tone's ghost sits low.
     const auto low = run (3.0, [] (long long i) { return sine (400.0, i); }, ghostly());
-    CHECK (powerBetween (low.ghost[0], 1.0, 3.0, 280.0, 560.0) > 20.0 * powerBetween (low.ghost[0], 1.0, 3.0, 2000.0, 8000.0));
+    const auto lowHome = powerBetween (low.ghost[0], 1.0, 3.0, 280.0, 560.0), lowUp = powerBetween (low.ghost[0], 1.0, 3.0, 2000.0, 8000.0);
+    INFO ("400 Hz tone's ghost: round 400 Hz " << 10.0 * std::log10 (lowHome) << " dB, 2-8 kHz " << 10.0 * std::log10 (lowUp) << " dB");
+    CHECK (lowHome > 20.0 * lowUp);
 
     // No pitch: a 200 Hz saw's ghost is breath. Between its harmonics (fifty hertz either side of halfway) it's
     // about as loud as on them; the saw itself is 40 dB and more quieter there.
@@ -185,7 +187,9 @@ TEST_CASE ("SPECTRE: SHIFT moves the outline up or down an octave", "[spectre]")
     auto down = ghostly();
     down.shift = -1.0f;
     const auto d = run (3.0, [] (long long i) { return sine (1000.0, i); }, down);
-    CHECK (powerBetween (d.ghost[0], 1.0, 3.0, 400.0, 620.0) > 4.0 * powerBetween (d.ghost[0], 1.0, 3.0, 800.0, 1250.0));
+    const auto octaveDown = powerBetween (d.ghost[0], 1.0, 3.0, 400.0, 620.0), stayed = powerBetween (d.ghost[0], 1.0, 3.0, 800.0, 1250.0);
+    INFO ("1 kHz, SHIFT -1: round 500 Hz " << 10.0 * std::log10 (octaveDown) << " dB, round 1 kHz " << 10.0 * std::log10 (stayed) << " dB");
+    CHECK (octaveDown > 4.0 * stayed);
 }
 
 TEST_CASE ("SPECTRE: TRAIL puts it behind, LINGER holds it after", "[spectre]")
@@ -246,3 +250,4 @@ TEST_CASE ("CPU: SPECTRE, a drifting ghost", "[spectre][cpu]")
     WARN ("SPECTRE, stereo: " << seconds / 20.0 * 100.0 << "% of a core (the test's own input and bookkeeping included)");
     CHECK (seconds / 20.0 * 100.0 < 8.0);
 }
+

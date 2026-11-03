@@ -17,7 +17,8 @@ namespace effects
     // (4 ms up, LINGER down: the time to fall 60 dB, 0.1 to 4 s); then breath noise through 24 more band-passes at
     // the same places, each set to its band's level (the noise's level through a band worked out from its width, so
     // a band comes out as loud as it went in), the lows thinned under 250 Hz (dark breath is rumble).
-    // - AIR: the breath's bands from narrow (hollow, whistling: Q 17.6) to wide (breathy: Q 2.2).
+    // - AIR: the breath's bands from narrow (hollow, whistling) to wide (breathy); two stages each too, so a band's
+    //   breath stays near its band (one stage spread a low note's ghost up into the top).
     // - SHIFT: the outline moved up or down to an octave (a third of an octave a band, read between bands), a
     //   smaller or larger ghost.
     // - DRIFT: each band wanders between the sides on its own slow swing, and the breath on each side its own
@@ -48,7 +49,7 @@ namespace effects
         static float trailMs (float trail) noexcept { return 1000.0f * (float) maxTrail * juce::jlimit (0.0f, 1.0f, trail); }
         static float lingerSeconds (float linger) noexcept { return 0.1f * std::pow (40.0f, juce::jlimit (0.0f, 1.0f, linger)); }
         static float shiftSemitones (float shift) noexcept { return 12.0f * juce::jlimit (-1.0f, 1.0f, shift); }
-        static float breathQ (float air) noexcept { return 2.2f * std::pow (8.0f, 1.0f - juce::jlimit (0.0f, 1.0f, air)); }
+        static float breathQ (float air) noexcept { return 1.4f * std::pow (8.0f, 1.0f - juce::jlimit (0.0f, 1.0f, air)); }   // each stage
 
         void prepare (double sampleRate, int maxBlockSize);
         void reset() noexcept;
@@ -100,7 +101,7 @@ namespace effects
 
         double sampleRate = 48000.0;
         std::array<Band, numBands> analysis {}, breath {};
-        std::array<std::array<State, numBands>, 2> analysisState {}, analysisState2 {}, breathState {};
+        std::array<std::array<State, numBands>, 2> analysisState {}, analysisState2 {}, breathState {}, breathState2 {};
         std::array<std::array<float, numBands>, 2> power {};   // each band's followed power, per side
         std::array<float, numBands> breathGain {}, weight {}, swingPhase {}, swingRate {};
         float breathAir = -1.0f;
