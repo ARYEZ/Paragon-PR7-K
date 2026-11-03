@@ -312,6 +312,29 @@ TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left"
     CHECK (count == 15);
 }
 
+TEST_CASE ("NEGATIVE SPACE: MACRO 3 is CLOSER on every preset, nothing added at its left", "[rigs][expansions][proximity]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 8)   // NEGATIVE SPACE: the ninth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "CLOSER");
+        CHECK (rig.notes.contains ("CLOSER (the sound of playing, up close, plus "));
+        CHECK (rig.parameters.at (ParamIDs::proximityOn) == 1.0f);
+        for (const auto* id : { ParamIDs::proximityNoise, ParamIDs::proximityRoom, ParamIDs::proximityClose })
+        {
+            CHECK (rig.parameters.at (id) == 0.0f);   // nothing until the macro: the sound as approved
+            const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [id] (const auto& r)
+                                             { return r.source == "macro3" && r.destination == id && r.amount >= 0.1f; });
+            CHECK (routed);
+        }
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;

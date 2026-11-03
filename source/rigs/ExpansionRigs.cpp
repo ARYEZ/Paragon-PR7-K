@@ -3431,6 +3431,32 @@ namespace
         eqBand (b, 0, eq::Shape::lowShelf, 150.0f, -4.0f);
     }
 
+    // NEGATIVE SPACE's centrepiece (0.65.0, the owner's ask): PROXIMITY on every preset, MACRO 3 CLOSER. Each preset gets
+    // its own closeness (how loud the touches, the room and hum, the close-up low end, how bright the felt) at 0, so at
+    // the macro's left it sounds exactly as approved; the macro brings you up close. Its old MACRO 3 job rides along
+    // (the notes say so).
+    struct Near
+    {
+        float noiseTop = 0.5f, roomTop = 0.45f, closeTop = 0.35f;   // the macro's NOISE, ROOM and CLOSE at full
+        float tone = 0.5f;
+        int hum = 1;                                                // OFF, 50 HZ, 60 HZ
+        float width = 0.6f;
+    };
+
+    void closer (Builder& b, const juce::String& oldJob, Near n)
+    {
+        b.set (ParamIDs::proximityOn, 1.0f).set (ParamIDs::proximityNoise, 0.0f).set (ParamIDs::proximityRoom, 0.0f)
+         .set (ParamIDs::proximityClose, 0.0f).set (ParamIDs::proximityTone, n.tone).set (ParamIDs::proximityHum, (float) n.hum)
+         .set (ParamIDs::proximityWidth, n.width);
+        route (b, "macro3", ParamIDs::proximityNoise, n.noiseTop);
+        route (b, "macro3", ParamIDs::proximityRoom, n.roomTop);
+        route (b, "macro3", ParamIDs::proximityClose, n.closeTop);
+        b.rig.modulation.macroNames[2] = "CLOSER";
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, CLOSER (the sound of playing, up close, plus " + oldJob + ")");
+    }
+
     // NEGATIVE SPACE (the owner's name): inspired by the modern dark-ambient film and TV scores of the 2010s: a
     // fragile, lonely piano close-up over cold, rumbling electronics, hypnotic sequenced analog pulses, glitchy,
     // broken textures and buzzing grit. Cold, tense, quietly melancholy. No titles, composers or music: our own sounds.
@@ -3459,6 +3485,7 @@ namespace
         reverb (staticLead, RT::room, 0.4f, 0.15f);
         space (staticLead);
         staticLead.set (ParamIDs::patchLevel, 1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (staticLead, "BUZZ (more SHAPER 1 into the drive)", { 0.55f, 0.5f, 0.4f, 0.6f, 1 });
         x.add (staticLead);
 
         auto hollow = x.make ("Hollow Signal", 2, { "Lead", "Filter", "Resonance", "Mono" },
@@ -3476,6 +3503,7 @@ namespace
         reverb (hollow, RT::plate, 0.5f, 0.15f);
         space (hollow);
         hollow.set (ParamIDs::patchLevel, 8.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (hollow, "RESONANCE", { 0.5f, 0.45f, 0.35f, 0.5f, 1 });
         x.add (hollow);
 
         auto glassTone = x.make ("Glass Tone", 3, { "Lead", "Sine", "Clean", "Mono" },
@@ -3493,6 +3521,7 @@ namespace
         reverb (glassTone, RT::plate, 0.7f, 0.25f, 30.0f, 4.5f);
         space (glassTone);
         glassTone.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (glassTone, "FIFTH (more of the fifth)", { 0.45f, 0.4f, 0.3f, 0.55f, 0 });
         x.add (glassTone);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -3518,6 +3547,7 @@ namespace
         reverb (hum, RT::hall, 0.6f, 0.2f);
         space (hum);
         hum.set (ParamIDs::patchLevel, -4.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (hum, "GRIT (more SHAPER 1 into the drive)", { 0.35f, 0.55f, 0.1f, 0.4f, 1 });   // (CLOSE 0.4 took the drone to +1.1 dBFS)
         x.add (hum);
 
         auto coldRoom = x.make ("Cold Room", 5, { "Pad", "Airy", "Noise", "Sterile" },
@@ -3539,6 +3569,7 @@ namespace
         eqBand (coldRoom, 0, eq::Shape::lowCut, 150.0f, 0.0f);
         space (coldRoom);
         coldRoom.set (ParamIDs::patchLevel, -3.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (coldRoom, "AIR (more breath)", { 0.35f, 0.6f, 0.3f, 0.6f, 0 });
         x.add (coldRoom);
 
         auto broken = x.make ("Broken Signal", 6, { "Pad", "Glitch", "Step Seq", "Unison" },
@@ -3572,6 +3603,7 @@ namespace
         reverb (broken, RT::hall, 0.7f, 0.25f);
         space (broken);
         broken.set (ParamIDs::patchLevel, -6.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (broken, "DROPOUT (deeper cuts)", { 0.5f, 0.5f, 0.35f, 0.55f, 1 });
         x.add (broken);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -3595,6 +3627,7 @@ namespace
         reverb (grit, RT::room, 0.4f, 0.08f);
         space (grit);
         grit.set (ParamIDs::patchLevel, -0.5f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (grit, "GRIT (more SHAPER 1 into the drive)", { 0.4f, 0.45f, 0.25f, 0.45f, 1 });
         x.add (grit);
 
         auto pulseBass = x.make ("Pulse Bass", 8, { "Bass", "Arp", "Analog", "Sequence" },
@@ -3625,6 +3658,7 @@ namespace
         reverb (pulseBass, RT::room, 0.4f, 0.08f);
         space (pulseBass);
         pulseBass.set (ParamIDs::patchLevel, 1.8f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        closer (pulseBass, "SNAP (more filter snap)", { 0.45f, 0.4f, 0.25f, 0.5f, 1 });
         x.add (pulseBass);
 
         auto throb = x.make ("Sub Throb", 9, { "Bass", "Sub", "LFO", "Tremolo" },
@@ -3647,6 +3681,7 @@ namespace
         reverb (throb, RT::room, 0.4f, 0.1f);
         space (throb);
         throb.set (ParamIDs::patchLevel, -4.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (throb, "BODY (more of the triangle, heard on small speakers)", { 0.3f, 0.4f, 0.2f, 0.4f, 1 });
         x.add (throb);
 
         // ---- KEYS: the three pianos ----------------------------------------------------------------------------
@@ -3662,6 +3697,7 @@ namespace
         reverb (soft, RT::room, 0.45f, 0.15f, 5.0f, 4.0f);
         space (soft);
         soft.set (ParamIDs::patchLevel, -4.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (soft, "FELT (less felt: a clearer strike)", { 0.75f, 0.45f, 0.6f, 0.3f, 0 });
         x.add (soft);
 
         auto upright = x.make ("Broken Upright", 11, { "Keys", "Piano", "Detuned", "Drive" },
@@ -3683,6 +3719,7 @@ namespace
         reverb (upright, RT::room, 0.5f, 0.18f, 10.0f, 3.5f);
         space (upright);
         upright.set (ParamIDs::patchLevel, -0.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (upright, "DRONE (more drone)", { 0.7f, 0.5f, 0.5f, 0.4f, 1 });
         x.add (upright);
 
         auto ghost = x.make ("Ghost Piano", 12, { "Keys", "Piano", "Reverse", "Cinematic" },
@@ -3704,6 +3741,7 @@ namespace
         reverb (ghost, RT::reverse, 0.7f, 0.35f);
         space (ghost);
         ghost.set (ParamIDs::patchLevel, -4.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (ghost, "SHIMMER", { 0.65f, 0.5f, 0.5f, 0.35f, 0 });
         x.add (ghost);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -3731,6 +3769,7 @@ namespace
         reverb (motion, RT::room, 0.5f, 0.12f);
         space (motion);
         motion.set (ParamIDs::patchLevel, -2.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (motion, "SNAP", { 0.5f, 0.45f, 0.35f, 0.55f, 1 });
         x.add (motion);
 
         auto glitchPulse = x.make ("Glitch Pulse", 14, { "Arp", "Glitch", "Crush", "Inserts" },
@@ -3755,6 +3794,7 @@ namespace
         reverb (glitchPulse, RT::plate, 0.5f, 0.15f);
         space (glitchPulse);
         glitchPulse.set (ParamIDs::patchLevel, 5.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        closer (glitchPulse, "CRUSH", { 0.55f, 0.45f, 0.3f, 0.6f, 1 });
         x.add (glitchPulse);
 
         auto rows = x.make ("Steady Rows", 15, { "Arp", "Rhythm", "Saw", "Sequencer" },
@@ -3773,6 +3813,7 @@ namespace
         reverb (rows, RT::room, 0.5f, 0.12f);
         space (rows);
         rows.set (ParamIDs::patchLevel, 3.1f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        closer (rows, "DRIVE (pushes harder)", { 0.5f, 0.45f, 0.35f, 0.5f, 1 });
         x.add (rows);
     }
 

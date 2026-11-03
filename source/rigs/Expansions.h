@@ -54,8 +54,8 @@ namespace expansions
           "beneath it, each deeper one slower, and MACRO 3, DREAM. Our own sounds." },
         { "NEGATIVE SPACE", "NS",
           "Inspired by the modern dark-ambient film and TV scores of the 2010s: a fragile, intimate felt piano close up "
-          "over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Our own "
-          "sounds." },
+          "over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Built round "
+          "PROXIMITY (0.65.0), the sound of playing heard up close, and MACRO 3, CLOSER. Our own sounds." },
         { "NIGHTDRIVE", "ND",
           "Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro "
           "synthwave, all the way up: lush chorused polysynths, glassy '80s keys, pulsing octave basses, "
