@@ -4580,34 +4580,6 @@ namespace
         circular.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (circular);
 
-    // CYBERSHRINE's centrepiece (0.67.0, the owner's ask): SPECTRE on every preset, MACRO 3 SPECTRE. Each preset gets
-    // its own ghost (how far behind, how long it lingers, how breathy, how far it drifts, its outline moved) at MIX 0,
-    // so at the macro's left it sounds exactly as approved; the macro brings the ghost in and lets it linger a little
-    // longer. Its old MACRO 3 job rides along (the notes say so).
-    struct Ghost
-    {
-        float mixTop = 0.55f;                                         // the macro's MIX at full
-        float trail = 0.3f, linger = 0.45f, air = 0.6f, drift = 0.6f, shift = 0.0f;
-        float lingerRise = 0.15f;                                     // the macro's LINGER on top at full
-    };
-
-    void haunt (Builder& b, const juce::String& oldJob, Ghost g)
-    {
-        b.set (ParamIDs::spectreOn, 1.0f).set (ParamIDs::spectreMix, 0.0f).set (ParamIDs::spectreTrail, g.trail)
-         .set (ParamIDs::spectreLinger, g.linger).set (ParamIDs::spectreAir, g.air).set (ParamIDs::spectreDrift, g.drift)
-         .set (ParamIDs::spectreShift, g.shift);
-        route (b, "macro3", ParamIDs::spectreMix, g.mixTop);
-        route (b, "macro3", ParamIDs::spectreLinger, g.lingerRise);
-        b.rig.modulation.macroNames[2] = "SPECTRE";
-        // "ORNAMENT (a wider flick)" reads "plus ORNAMENT: a wider flick" inside SPECTRE's own brackets.
-        auto plus = oldJob;
-        if (plus.endsWith (")") && plus.contains (" ("))
-            plus = plus.upToFirstOccurrenceOf (" (", false, false) + ": " + plus.fromFirstOccurrenceOf (" (", false, false).dropLastCharacters (1);
-        const auto oldText = "SPACE, " + oldJob;
-        jassert (b.rig.notes.contains (oldText));
-        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, SPECTRE (a whispered ghost following it, plus " + plus + ")");
-    }
-
         auto breath = x.make ("Breath Pulse", 15, { "Arp", "Noise", "Step Sequencer", "Glitch" },
             "A rhythm of breaths and soft voices: a held chord of quiet \"ah\" voices and breathy noise cut into a "
             "pattern of sixteenths by the STEP SEQUENCER (some steps tied into longer breaths, the right side "
@@ -4647,6 +4619,35 @@ namespace
         breath.set (ParamIDs::patchLevel, 5.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (breath);
     }
+
+    // CYBERSHRINE's centrepiece (0.67.0, the owner's ask): SPECTRE on every preset, MACRO 3 SPECTRE. Each preset gets
+    // its own ghost (how far behind, how long it lingers, how breathy, how far it drifts, its outline moved) at MIX 0,
+    // so at the macro's left it sounds exactly as approved; the macro brings the ghost in and lets it linger a little
+    // longer. Its old MACRO 3 job rides along (the notes say so).
+    struct Ghost
+    {
+        float mixTop = 0.55f;                                         // the macro's MIX at full
+        float trail = 0.3f, linger = 0.45f, air = 0.6f, drift = 0.6f, shift = 0.0f;
+        float lingerRise = 0.15f;                                     // the macro's LINGER on top at full
+    };
+
+    void haunt (Builder& b, const juce::String& oldJob, Ghost g)
+    {
+        b.set (ParamIDs::spectreOn, 1.0f).set (ParamIDs::spectreMix, 0.0f).set (ParamIDs::spectreTrail, g.trail)
+         .set (ParamIDs::spectreLinger, g.linger).set (ParamIDs::spectreAir, g.air).set (ParamIDs::spectreDrift, g.drift)
+         .set (ParamIDs::spectreShift, g.shift);
+        route (b, "macro3", ParamIDs::spectreMix, g.mixTop);
+        route (b, "macro3", ParamIDs::spectreLinger, g.lingerRise);
+        b.rig.modulation.macroNames[2] = "SPECTRE";
+        // "ORNAMENT (a wider flick)" reads "plus ORNAMENT: a wider flick" inside SPECTRE's own brackets.
+        auto plus = oldJob;
+        if (plus.endsWith (")") && plus.contains (" ("))
+            plus = plus.upToFirstOccurrenceOf (" (", false, false) + ": " + plus.fromFirstOccurrenceOf (" (", false, false).dropLastCharacters (1);
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, SPECTRE (a whispered ghost following it, plus " + plus + ")");
+    }
+
     // CYBERSHRINE (the owner's name): inspired by the score of a 1995 animated cyberpunk film about a mind that may
     // be a ghost in a machine: an ancient chorus of women's voices in close, clashing harmony, ornamented like a
     // folk ritual, huge slow drums and deep temple bells, and a cold, rainy, reverberant machine world. No title,
