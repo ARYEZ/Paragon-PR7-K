@@ -441,6 +441,14 @@ namespace ParamIDs
     inline constexpr auto blackholeTone  = "blackholeTone";    // 0 to 1
     inline constexpr auto blackholeWidth = "blackholeWidth";   // 0 to 1
     inline constexpr auto blackholeMix   = "blackholeMix";     // 0 to 1
+    // DILATION (0.63.0, version hint 35, effects::Dilation): SIMULACRUM's signature.
+    inline constexpr auto dilationOn     = "dilationOn";
+    inline constexpr auto dilationSlow   = "dilationSlow";     // 0 to 1: speed 1 to 1/4
+    inline constexpr auto dilationRamp   = "dilationRamp";     // 0 to 1: 0.05 s to 4 s
+    inline constexpr auto dilationReturn = "dilationReturn";   // Dilation::returnNames
+    inline constexpr auto dilationReach  = "dilationReach";    // 0 to 1: 1 s to 8 s behind at most
+    inline constexpr auto dilationTone   = "dilationTone";     // 0 to 1
+    inline constexpr auto dilationMix    = "dilationMix";      // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -523,4 +531,5 @@ void addInfernalParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
 void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.60.0)
 void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.61.0)
 void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.62.0)
+void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.63.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

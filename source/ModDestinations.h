@@ -51,7 +51,9 @@ namespace ModDestinations
                                                  // 0.61.0: LIGHTTRAIL: how long, how far each repeat steps, its shine, how much
                                                  "trailLength", "trailRise", "trailTone", "trailMix",
                                                  // 0.62.0: BLACKHOLE: how long the haze hangs, how it sinks, its shade, how much
-                                                 "blackholeHold", "blackholePull", "blackholeTone", "blackholeMix" };
+                                                 "blackholeHold", "blackholePull", "blackholeTone", "blackholeMix",
+                                                 // 0.63.0: DILATION: how slow, how dark, how much
+                                                 "dilationSlow", "dilationTone", "dilationMix" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

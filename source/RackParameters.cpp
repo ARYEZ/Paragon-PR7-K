@@ -17,6 +17,7 @@
 #include "dsp/effects/Afterglow.h"
 #include "dsp/effects/LightTrail.h"
 #include "dsp/effects/BlackHole.h"
+#include "dsp/effects/Dilation.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -592,4 +593,24 @@ void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::blackholeTone, "Blackhole Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::blackholeWidth, "Blackhole Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
     layout.add (makeFloat (ParamIDs::blackholeMix, "Blackhole Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // DILATION (0.63.0, our own design): off and at SLOW 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 35;
+    const effects::Dilation::Settings d;
+    const ToText asSlow = [] (float value, int)
+    {
+        return "x" + juce::String (effects::Dilation::speedFor (value), 2) + " (" + juce::String (effects::Dilation::semitonesFor (value), 1) + " st)";
+    };
+    const ToText asRamp = [] (float value, int) { return juce::String (effects::Dilation::rampSeconds (value), 2) + " s"; };
+    const ToText asReach = [] (float value, int) { return juce::String (effects::Dilation::reachSeconds (value), 1) + " s"; };
+    layout.add (makeSwitch (ParamIDs::dilationOn, "Dilation On", v, false));
+    layout.add (makeFloat (ParamIDs::dilationSlow, "Dilation Slow", { 0.0f, 1.0f, 0.01f }, d.slow, v, asSlow));
+    layout.add (makeFloat (ParamIDs::dilationRamp, "Dilation Ramp", { 0.0f, 1.0f, 0.01f }, d.ramp, v, asRamp));
+    layout.add (makeChoice (ParamIDs::dilationReturn, "Dilation Return", v, effects::Dilation::returnNames, d.returnMode));
+    layout.add (makeFloat (ParamIDs::dilationReach, "Dilation Reach", { 0.0f, 1.0f, 0.01f }, d.reach, v, asReach));
+    layout.add (makeFloat (ParamIDs::dilationTone, "Dilation Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
+    layout.add (makeFloat (ParamIDs::dilationMix, "Dilation Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
 }
