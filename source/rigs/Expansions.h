@@ -50,7 +50,8 @@ namespace expansions
         { "DREAMSTATE", "DR",
           "Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a "
           "crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy "
-          "reverb-soaked guitar, sparse piano and ticking clocks. Our own sounds." },
+          "reverb-soaked guitar, sparse piano and ticking clocks. Built round REMNANT (0.64.0), layers of your sound "
+          "beneath it, each deeper one slower, and MACRO 3, DREAM. Our own sounds." },
         { "NEGATIVE SPACE", "NS",
           "Inspired by the modern dark-ambient film and TV scores of the 2010s: a fragile, intimate felt piano close up "
           "over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Our own "

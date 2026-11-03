@@ -292,6 +292,26 @@ TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its 
     CHECK (count == 15);
 }
 
+TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left", "[rigs][expansions][remnant]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 7)   // DREAMSTATE: the eighth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "DREAM");
+        CHECK (rig.notes.contains ("DREAM (layers beneath, each deeper one slower, plus "));
+        CHECK (rig.parameters.at (ParamIDs::remnantOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::remnantMix) == 0.0f);   // no layers until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::remnantMix && r.amount >= 0.3f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;

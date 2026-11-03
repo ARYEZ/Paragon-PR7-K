@@ -3008,6 +3008,30 @@ namespace
         x.add (firefight);
     }
 
+    // DREAMSTATE's centrepiece (0.64.0, the owner's ask): REMNANT on every preset, MACRO 3 DREAM. Each preset gets its
+    // own layers (how many, how far down each, how long a stretch, how much quieter and darker, how wide) at MIX 0, so
+    // at the macro's left it sounds exactly as approved; the macro brings the layers in beneath it. Its old MACRO 3 job
+    // rides along (the notes say so).
+    struct Depths
+    {
+        int layers = 1;          // Remnant::layerNames index: 2 layers
+        int step = 0;            // OCTAVE, FIFTH, FOURTH
+        float length = 0.5f, taper = 0.3f, tone = 0.45f, width = 0.7f;
+        float mixTop = 0.5f;     // the macro's MIX at full
+    };
+
+    void dream (Builder& b, const juce::String& oldJob, Depths d)
+    {
+        b.set (ParamIDs::remnantOn, 1.0f).set (ParamIDs::remnantLayers, (float) d.layers).set (ParamIDs::remnantStep, (float) d.step)
+         .set (ParamIDs::remnantLength, d.length).set (ParamIDs::remnantTaper, d.taper).set (ParamIDs::remnantTone, d.tone)
+         .set (ParamIDs::remnantWidth, d.width).set (ParamIDs::remnantMix, 0.0f);
+        route (b, "macro3", ParamIDs::remnantMix, d.mixTop);
+        b.rig.modulation.macroNames[2] = "DREAM";
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, DREAM (layers beneath, each deeper one slower, plus " + oldJob + ")");
+    }
+
     // DREAMSTATE (the owner's name): inspired by the score of a 2010 film about dreams within dreams: a huge, low
     // brass blast, time slowed to a crawl and running at different speeds in each layer, relentless string ostinatos
     // over slow, heavy minor chords, a twangy reverb-soaked guitar, sparse piano, deep swells and ticking clocks. No
@@ -3035,6 +3059,7 @@ namespace
         reverb (twang, RT::spring, 0.6f, 0.3f);
         space (twang);
         twang.set (ParamIDs::patchLevel, 1.7f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        dream (twang, "TWANG (a sharper snap)", { 1, 0, 0.45f, 0.3f, 0.45f, 0.7f, 0.5f });
         x.add (twang);
 
         auto horn = x.make ("Fading Horn", 2, { "Lead", "Brass", "Aftertouch", "Mono" },
@@ -3056,6 +3081,7 @@ namespace
         reverb (horn, RT::hall, 0.8f, 0.3f, 30.0f, 4.0f);
         space (horn);
         horn.set (ParamIDs::patchLevel, -5.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (horn, "BRASS (a brassier swell)", { 1, 1, 0.55f, 0.3f, 0.4f, 0.6f, 0.55f });
         x.add (horn);
 
         auto weightless = x.make ("Weightless", 3, { "Lead", "Formant", "Glide", "Breath" },
@@ -3076,6 +3102,7 @@ namespace
         eqBand (weightless, 0, eq::Shape::lowCut, 180.0f, 0.0f);   // the breath's low end: rumble, not breath
         space (weightless);
         weightless.set (ParamIDs::patchLevel, 8.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (weightless, "VOICE (the formant moved)", { 2, 1, 0.6f, 0.25f, 0.5f, 0.8f, 0.4f });   // (already +5 dBFS at full MACRO 3 from VOICE)
         x.add (weightless);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -3097,6 +3124,7 @@ namespace
         reverb (folding, RT::hall, 0.8f, 0.3f, 40.0f, 4.0f);
         space (folding);
         folding.set (ParamIDs::patchLevel, -11.5f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (folding, "FOLD (folded without the wheel)", { 2, 0, 0.65f, 0.25f, 0.45f, 0.8f, 0.6f });
         x.add (folding);
 
         auto dilation = x.make ("Time Dilation", 5, { "Pad", "Pitch", "Reverse", "Slow" },
@@ -3117,6 +3145,7 @@ namespace
         reverb (dilation, RT::reverse, 0.7f, 0.35f);
         space (dilation);
         dilation.set (ParamIDs::patchLevel, -6.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (dilation, "DRAG (sinks further)", { 2, 0, 0.8f, 0.2f, 0.4f, 0.7f, 0.6f });
         x.add (dilation);
 
         auto heavy = x.make ("Heavy Chords", 6, { "Pad", "Brass", "Strings", "Unison" },
@@ -3137,6 +3166,7 @@ namespace
         reverb (heavy, RT::hall, 0.85f, 0.3f, 30.0f, 4.0f);
         space (heavy);
         heavy.set (ParamIDs::patchLevel, -9.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (heavy, "WEIGHT (more of the low octave)", { 1, 0, 0.6f, 0.4f, 0.35f, 0.6f, 0.45f });
         x.add (heavy);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -3165,6 +3195,7 @@ namespace
         reverb (colossus, RT::hall, 0.8f, 0.2f, 20.0f, 3.5f);
         space (colossus);
         colossus.set (ParamIDs::patchLevel, -5.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (colossus, "SAG (sinks further)", { 0, 2, 0.5f, 0.3f, 0.3f, 0.5f, 0.4f });
         x.add (colossus);
 
         auto undertow = x.make ("Undertow", 8, { "Bass", "Sub", "Swell", "Filter" },
@@ -3182,6 +3213,7 @@ namespace
         reverb (undertow, RT::hall, 0.7f, 0.2f);
         space (undertow);
         undertow.set (ParamIDs::patchLevel, -5.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (undertow, "SURGE (a bigger opening)", { 0, 2, 0.6f, 0.3f, 0.3f, 0.4f, 0.35f });
         x.add (undertow);
 
         auto ostBass = x.make ("Ostinato Bass", 9, { "Bass", "Arp", "Strings", "Driving" },
@@ -3210,6 +3242,7 @@ namespace
         reverb (ostBass, RT::hall, 0.6f, 0.1f);
         space (ostBass);
         ostBass.set (ParamIDs::patchLevel, 1.5f);   // LEVEL: set by its peaks, -3 dBFS (measured, not by ear)
+        dream (ostBass, "BITE (more snap)", { 0, 1, 0.35f, 0.3f, 0.35f, 0.5f, 0.35f });
         x.add (ostBass);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -3225,6 +3258,7 @@ namespace
         macros (echoPiano, "BRIGHT", "SPACE", "FELT");
         space (echoPiano);
         echoPiano.set (ParamIDs::patchLevel, 0.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (echoPiano, "FELT (a clearer strike)", { 2, 0, 0.55f, 0.3f, 0.45f, 0.7f, 0.55f });
         x.add (echoPiano);
 
         auto chorale = x.make ("Slowed Chorale", 11, { "Keys", "Lo-Fi", "Pitch", "Tape" },
@@ -3246,6 +3280,7 @@ namespace
         reverb (chorale, RT::hall, 0.7f, 0.25f);
         space (chorale);
         chorale.set (ParamIDs::patchLevel, -1.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (chorale, "WARBLE (more wobble)", { 1, 2, 0.6f, 0.3f, 0.4f, 0.7f, 0.55f });
         x.add (chorale);
 
         auto glassMem = x.make ("Glass Memory", 12, { "Keys", "FM", "Bell", "Glass" },
@@ -3267,6 +3302,7 @@ namespace
         reverb (glassMem, RT::plate, 0.7f, 0.25f, 30.0f, 5.0f);
         space (glassMem);
         glassMem.set (ParamIDs::patchLevel, -0.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (glassMem, "SHIMMER (the octave)", { 2, 1, 0.5f, 0.25f, 0.55f, 0.8f, 0.5f });
         x.add (glassMem);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -3292,6 +3328,7 @@ namespace
         reverb (ostStrings, RT::hall, 0.7f, 0.2f);
         space (ostStrings);
         ostStrings.set (ParamIDs::patchLevel, -0.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (ostStrings, "BITE (more snap)", { 1, 0, 0.4f, 0.35f, 0.45f, 0.7f, 0.5f });
         x.add (ostStrings);
 
         auto layers = x.make ("Layers Deep", 14, { "Arp", "Arps Together", "Stereo", "Time" },
@@ -3319,6 +3356,7 @@ namespace
         reverb (layers, RT::hall, 0.7f, 0.25f);
         space (layers);
         layers.set (ParamIDs::patchLevel, -0.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        dream (layers, "DEPTH (louder slow layer)", { 2, 0, 0.5f, 0.3f, 0.45f, 0.8f, 0.25f });   // (0.5 peaked +0.6 dBFS, 0.35 0.0)
         x.add (layers);
 
         auto countdown = x.make ("Countdown", 15, { "Arp", "Pulse", "Tension", "Muted" },
@@ -3337,6 +3375,7 @@ namespace
         reverb (countdown, RT::hall, 0.6f, 0.2f);
         space (countdown);
         countdown.set (ParamIDs::patchLevel, -0.8f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        dream (countdown, "TENSION (the filter opens)", { 1, 1, 0.35f, 0.35f, 0.4f, 0.6f, 0.45f });
         x.add (countdown);
     }
 
