@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.66.0
+
+**HAZE, and NIGHTDRIVE gets its centrepiece.**
+
+**HAZE** (a new signature effect, our own design, in the SIGNATURE slot): streetlights passing a car at night. In time with the song, your sound sweeps past you, left to right, then back right to left on the next pass.
+- **DEPTH:** how much it moves. As it passes it's nearer, brighter and louder; out at the edges it's further, darker and quieter. It slows as it turns at each edge, so nothing jumps. A whole pass stays as loud as your sound.
+- **PASS:** half a bar, 1 bar, 2 bars or 4 bars a pass, following the song (its own count while stopped).
+- **DOPPLER:** the pitch bends a little up as it comes and down as it goes (up to 40 cents), from its distance changing, as in the air.
+- **WIDTH:** how far it leans to each side. **TONE:** how dark it gets far off.
+- **WHOOSH:** a breath of wind as it goes by, only while you play, so silence stays silent.
+- At 0 your sound passes untouched. CRUISE, PASSING and RUSH on its unit set how much. Its page shows a night road with streetlights and the headlights where your sound is.
+- DEPTH, DOPPLER and WHOOSH can be moved by the mod matrix (FX Haze).
+
+**NIGHTDRIVE: MACRO 3 is now HAZE on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up sends the sound past you: leads and keys a pass a bar, pads every two bars, arps and Retro Stab every half bar, the basses moving less so the low end stays centred.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
 ## 0.65.0
 
 **PROXIMITY, and NEGATIVE SPACE gets its centrepiece.**
