@@ -490,6 +490,15 @@ namespace ParamIDs
     inline constexpr auto leviathanGrowl = "leviathanGrowl";   // 0 to 1
     inline constexpr auto leviathanDelay = "leviathanDelay";   // 0 to 1: 0 to 1.5 s behind
     inline constexpr auto leviathanSize  = "leviathanSize";    // 0 to 1: formants x 1 down to x 0.55
+    // NUCLEARSPRING (0.69.0, version hint 41, effects::NuclearSpring): ATOMIC AGE's signature.
+    inline constexpr auto springOn    = "springOn";
+    inline constexpr auto springMix   = "springMix";     // 0 to 1
+    inline constexpr auto springDecay = "springDecay";   // 0 to 1: 0.8 to 5 s
+    inline constexpr auto springDrip  = "springDrip";    // 0 to 1
+    inline constexpr auto springTone  = "springTone";    // 0 to 1: 2 to 8 kHz
+    inline constexpr auto springSize  = "springSize";    // 0 to 1: the springs x 0.7 to x 1.4
+    inline constexpr auto springBoing = "springBoing";   // 0 to 1
+    inline constexpr auto springWidth = "springWidth";   // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -578,4 +587,5 @@ void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.66.0)
 void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.67.0)
 void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.68.0)
+void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.69.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

@@ -67,7 +67,7 @@ TEST_CASE ("The SIGNATURE slot: four units on MOD / LO-FI, one signature shown, 
     view->showPage (MainView::Page::fx);
     auto& fx = view->getFxPage();
     fx.show (FxPage::View::modFx);
-    CHECK (signatureNames() == juce::StringArray { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN" });
+    CHECK (signatureNames() == juce::StringArray { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING" });
     for (int s = 0; s < signatureNames().size(); ++s)
     {
         fx.showSignature (s);

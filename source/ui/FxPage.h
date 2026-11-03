@@ -17,6 +17,7 @@
 #include "ui/HazePage.h"
 #include "ui/SpectrePage.h"
 #include "ui/LeviathanPage.h"
+#include "ui/NuclearSpringPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -55,7 +56,8 @@ public:
                       proximity,                                            // 0.65.0 (the SIGNATURE slot)
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
-                      leviathan };                                          // 0.68.0 (the SIGNATURE slot)
+                      leviathan,                                            // 0.68.0 (the SIGNATURE slot)
+                      nuclearSpring };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -81,6 +83,7 @@ public:
     HazePage& getHazePage() noexcept { return hazePage; }
     SpectrePage& getSpectrePage() noexcept { return spectrePage; }
     LeviathanPage& getLeviathanPage() noexcept { return leviathanPage; }
+    NuclearSpringPage& getNuclearSpringPage() noexcept { return nuclearSpringPage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -106,7 +109,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 17> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 18> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -132,6 +135,7 @@ private:
     HazePage hazePage;
     SpectrePage spectrePage;
     LeviathanPage leviathanPage;
+    NuclearSpringPage nuclearSpringPage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

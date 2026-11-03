@@ -23,6 +23,7 @@
 #include "dsp/effects/Haze.h"
 #include "dsp/effects/Spectre.h"
 #include "dsp/effects/Leviathan.h"
+#include "dsp/effects/NuclearSpring.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -713,4 +714,23 @@ void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::leviathanGrowl, "Leviathan Growl", { 0.0f, 1.0f, 0.01f }, d.growl, v, asPercent));
     layout.add (makeFloat (ParamIDs::leviathanDelay, "Leviathan Delay", { 0.0f, 1.0f, 0.01f }, d.delay, v, asDelay));
     layout.add (makeFloat (ParamIDs::leviathanSize, "Leviathan Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+}
+
+void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // NUCLEARSPRING (0.69.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 41;
+    using N = effects::NuclearSpring;
+    const N::Settings d;
+    const ToText asDecay = [] (float value, int) { return juce::String (N::decaySeconds (value), 1) + " s"; };
+    const ToText asTone = [] (float value, int) { return juce::String (N::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    const ToText asSize = [] (float value, int) { return "x" + juce::String (N::sizeScale (value), 2); };
+    layout.add (makeSwitch (ParamIDs::springOn, "Nuclearspring On", v, false));
+    layout.add (makeFloat (ParamIDs::springMix, "Nuclearspring Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::springDecay, "Nuclearspring Decay", { 0.0f, 1.0f, 0.01f }, d.decay, v, asDecay));
+    layout.add (makeFloat (ParamIDs::springDrip, "Nuclearspring Drip", { 0.0f, 1.0f, 0.01f }, d.drip, v, asPercent));
+    layout.add (makeFloat (ParamIDs::springTone, "Nuclearspring Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::springSize, "Nuclearspring Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeFloat (ParamIDs::springBoing, "Nuclearspring Boing", { 0.0f, 1.0f, 0.01f }, d.boing, v, asPercent));
+    layout.add (makeFloat (ParamIDs::springWidth, "Nuclearspring Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

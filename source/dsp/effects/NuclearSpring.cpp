@@ -25,7 +25,9 @@ namespace effects
         fastRate = (float) (1.0 - std::exp (-1.0 / (0.003 * rate)));
         slowRate = (float) (1.0 - std::exp (-1.0 / (0.06 * rate)));
         kickRelease = (float) (1.0 - std::exp (-1.0 / (0.08 * rate)));
-        lowCutRate = (float) (1.0 - std::exp (-juce::MathConstants<double>::twoPi * 100.0 / rate));
+        lowCutRate = (float) (1.0 - std::exp (-juce::MathConstants<double>::twoPi * 110.0 / rate));
+        loopCutRate = (float) (1.0 - std::exp (-juce::MathConstants<double>::twoPi * 80.0 / rate));
+        spread = juce::jlimit (1, maxSpread, (int) std::round (rate / 9600.0));
         smoothing = (float) (1.0 - std::exp (-1.0 / (0.03 * rate)));
         reset();
     }
@@ -37,11 +39,14 @@ namespace effects
             {
                 std::fill (sp.line.begin(), sp.line.end(), 0.0f);
                 sp.write = 0;
-                sp.xPrev.fill (0.0f);
-                sp.yPrev.fill (0.0f);
-                sp.tone = sp.feedback = sp.swing = 0.0f;
+                for (auto& h : sp.xHistory)
+                    h.fill (0.0f);
+                for (auto& h : sp.yHistory)
+                    h.fill (0.0f);
+                sp.tone = sp.feedback = sp.swing = sp.loopCut = 0.0f;
             }
-        lowCut = {};
+        lowCut = lowCut2 = {};
+        spreadAt = 0;
         fastLevel = slowLevel = 0.0f;
         kick = 1.0f;
         mixNow = 0.0f;
@@ -75,7 +80,7 @@ namespace effects
                 auto& sp = springs[(size_t) side][(size_t) k];
                 const auto samples = juce::jlimit (2.0f, (float) sp.line.size() - 3.0f, sp.lengthMs * scale * 0.001f * (float) sampleRate);
                 delays[(size_t) side][(size_t) k] = samples;
-                const auto loopSeconds = (samples + (float) stages * (1.0f - a) / (1.0f + a)) / (float) sampleRate;
+                const auto loopSeconds = (samples + (float) (stages * spread) * (1.0f - a) / (1.0f + a)) / (float) sampleRate;
                 gains[(size_t) side][(size_t) k] = std::pow (10.0f, -3.0f * loopSeconds / decay);
             }
 
@@ -101,7 +106,9 @@ namespace effects
             {
                 // Into the tank: nothing under 100 Hz, harder on a hit, softly clipped (a kicked tank clangs).
                 lowCut[(size_t) side] += (in[side] - lowCut[(size_t) side]) * lowCutRate;
-                const auto pushed = (in[side] - lowCut[(size_t) side]) * kick;
+                const auto once = in[side] - lowCut[(size_t) side];
+                lowCut2[(size_t) side] += (once - lowCut2[(size_t) side]) * lowCutRate;
+                const auto pushed = (once - lowCut2[(size_t) side]) * kick;
                 const auto drive = pushed / (1.0f + 0.5f * std::abs (pushed));
                 for (int k = 0; k < springsPerSide; ++k)
                 {
@@ -110,9 +117,12 @@ namespace effects
                     auto x = drive + sp.feedback;
                     for (int st = 0; st < stages; ++st)
                     {
-                        const auto y = a * x + sp.xPrev[(size_t) st] - a * sp.yPrev[(size_t) st];
-                        sp.xPrev[(size_t) st] = x;
-                        sp.yPrev[(size_t) st] = y;
+                        // (a + z^-M) / (1 + a z^-M): y = a x + x[n - M] - a y[n - M].
+                        auto& xs = sp.xHistory[(size_t) st];
+                        auto& ys = sp.yHistory[(size_t) st];
+                        const auto y = a * x + xs[(size_t) spreadAt] - a * ys[(size_t) spreadAt];
+                        xs[(size_t) spreadAt] = x;
+                        ys[(size_t) spreadAt] = y;
                         x = y;
                     }
                     const auto size = (int) sp.line.size();
@@ -125,12 +135,14 @@ namespace effects
                     const auto travelled = r0 + frac * (r1 - r0);
                     sp.write = sp.write + 1 == size ? 0 : sp.write + 1;
                     sp.tone += (travelled - sp.tone) * toneCut;
-                    sp.feedback = sp.tone * gains[(size_t) side][(size_t) k];
+                    sp.loopCut += (sp.tone - sp.loopCut) * loopCutRate;   // the lows don't build up going round
+                    sp.feedback = (sp.tone - sp.loopCut) * gains[(size_t) side][(size_t) k];
                     sp.swing += (std::abs (sp.tone) - sp.swing) * 0.001f;
                     wet[side] += sp.tone;
                 }
                 wet[side] *= makeUp / (float) springsPerSide;
             }
+            spreadAt = spreadAt + 1 == spread ? 0 : spreadAt + 1;
             // WIDTH: the sides' tails kept apart, or mixed to the middle.
             const auto mid = 0.5f * (wet[0] + wet[1]), sideDiff = 0.5f * (wet[0] - wet[1]) * width;
             const auto outL = mid + sideDiff, outR = mid - sideDiff;

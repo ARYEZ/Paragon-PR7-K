@@ -125,6 +125,7 @@ target_sources(ParagonX1
         source/ui/HazePage.cpp
         source/ui/SpectrePage.cpp
         source/ui/LeviathanPage.cpp
+        source/ui/NuclearSpringPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

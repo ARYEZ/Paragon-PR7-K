@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 17> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 18> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 17> specs;
+    std::array<RackUnit::Spec, 18> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1290,6 +1290,53 @@ std::array<RackUnit::Spec, 17> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (16); };
+    }
+
+    // NUCLEARSPRING (0.69.0): the tank's decay in big digits, its drip and size; the keys pick a tank: AMP (a small
+    // amp's short, quick one), ORGAN (a long, lush organ tank), SURF (all drip).
+    {
+        auto& s = specs[17];
+        s.name = "NUCLEARSPRING";
+        s.kind = "SPRING TANK  MIX  DRIP";
+        s.onParameterIds = { ParamIDs::springOn };
+        s.powerTooltip = "NUCLEARSPRING on or off: a vintage spring reverb tank, drippy and twangy. Click POWER (the word) or EDIT for its page";
+        struct Tank { const char* name; float size, decay, drip; const char* tip; };
+        static constexpr Tank tanks[] = { { "AMP", 0.2f, 0.25f, 0.45f, "A small amp's short, quick tank" },
+                                          { "ORGAN", 0.85f, 0.65f, 0.55f, "A long, lush organ tank" },
+                                          { "SURF", 0.5f, 0.5f, 1.0f, "All drip: the wet, twangy splash" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = tanks[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::springSize) - t.size) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::springDrip) - t.drip) < 0.01f; },
+                                                 [&p, t]
+                                                 {
+                                                     setValue (p, ParamIDs::springSize, t.size);
+                                                     setValue (p, ParamIDs::springDecay, t.decay);
+                                                     setValue (p, ParamIDs::springDrip, t.drip);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::springMix, "MIX" }, RackUnit::Knob { ParamIDs::springDrip, "DRIP" } };
+        s.ladderTitle = "TANK";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getNuclearSpringSettings().on ? p.getNuclearSpring().getLevelDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            using N = effects::NuclearSpring;
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getNuclearSpringSettings();
+            const auto end = drawNumber (g, juce::String (N::decaySeconds (settings.decay), 1), left.getTopLeft(), h);
+            line (g, "S", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "DECAY", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "MIX " + textOf (p, ParamIDs::springMix), "DRIP " + textOf (p, ParamIDs::springDrip),
+                                  "SIZE " + textOf (p, ParamIDs::springSize), "BOING " + textOf (p, ParamIDs::springBoing) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (17); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

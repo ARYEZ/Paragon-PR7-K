@@ -337,6 +337,9 @@ public:
     // LEVIATHAN (0.68.0): its settings (MIX, GROWL, DRIFT as the matrix moves them).
     effects::Leviathan::Settings getLeviathanSettings() const noexcept;
     const effects::Leviathan& getLeviathan() const noexcept { return rack->leviathan; }
+    // NUCLEARSPRING (0.69.0): its settings (MIX, DRIP, BOING as the matrix moves them).
+    effects::NuclearSpring::Settings getNuclearSpringSettings() const noexcept;
+    const effects::NuclearSpring& getNuclearSpring() const noexcept { return rack->nuclearSpring; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {
