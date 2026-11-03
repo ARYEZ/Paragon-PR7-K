@@ -559,5 +559,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addBlackHoleParameters (layout);  // BLACKHOLE (0.62.0): RackParameters.cpp
     addDilationParameters (layout);   // DILATION (0.63.0): RackParameters.cpp
     addRemnantParameters (layout);    // REMNANT (0.64.0): RackParameters.cpp
+    addProximityParameters (layout);  // PROXIMITY (0.65.0): RackParameters.cpp
     return layout;
 }

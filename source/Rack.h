@@ -18,6 +18,7 @@
 #include "dsp/effects/BlackHole.h"
 #include "dsp/effects/Dilation.h"
 #include "dsp/effects/Remnant.h"
+#include "dsp/effects/Proximity.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -93,6 +94,8 @@ struct Rack
     effects::Dilation dilation;
     // REMNANT (0.64.0): dreams within dreams, after DILATION.
     effects::Remnant remnant;
+    // PROXIMITY (0.65.0): the sound of playing, up close, after REMNANT.
+    effects::Proximity proximity;
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

@@ -78,6 +78,20 @@ namespace synth
         // up to `capacity`; how many.
         int getSoundingNotes (float* pitches, int capacity, bool* isAnswer = nullptr) const noexcept;   // 0.58.0: and which are SIROCCO's answers
 
+        // 0.64.0, for PROXIMITY: the touches of playing, on the sample they happened (`clock`, on the samples rendered
+        // since the start: compare with getSampleClock()): a note starting (keys and arps; SIROCCO's answers aren't
+        // touched by anyone), a note let go, the sustain pedal down or up. Kept until taken, at most maxTouches.
+        struct Touch
+        {
+            enum class Kind : std::uint8_t { press, release, pedalDown, pedalUp };
+            std::int64_t clock = 0;
+            float note = 60.0f, velocity = 1.0f;
+            Kind kind = Kind::press;
+        };
+        static constexpr int maxTouches = 32;
+        int takeTouches (Touch* out, int capacity) noexcept;
+        std::int64_t getSampleClock() const noexcept { return sampleClock; }
+
         // Oscillators running now, every unison and chord copy counted (as Avenger's
         // info screen counts them): what the CPU is spent on.
         int getNumActiveOscillators (const Settings&) const noexcept;
@@ -406,6 +420,13 @@ namespace synth
         void runAnswers (const Settings&) noexcept;                             // starts the answers due now
         std::vector<std::uint64_t> pairAges = std::vector<std::uint64_t> (maxArpEvents);   // the voice each pair started (by its age)
         std::int64_t sampleClock = 0, blockStartClock = 0;
+        std::array<Touch, maxTouches> touches {};   // 0.64.0, PROXIMITY's
+        int numTouches = 0;
+        void touch (Touch::Kind kind, float note, float velocity) noexcept
+        {
+            if (numTouches < maxTouches)
+                touches[(size_t) numTouches++] = { sampleClock, note, velocity, kind };
+        }
         std::uint8_t keyMask = 0xff;                            // the oscillators the keys play themselves
         // AUTODICE (0.16.0): each arp's pattern rolled for this cycle (on the heap), and which cycle.
         std::vector<arp::Pattern> livePatterns = std::vector<arp::Pattern> (arp::numArps);

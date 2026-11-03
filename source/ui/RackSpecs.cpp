@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 13> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 14> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 13> specs;
+    std::array<RackUnit::Spec, 14> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1104,6 +1104,52 @@ std::array<RackUnit::Spec, 13> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (12); };
+    }
+
+    // PROXIMITY (0.65.0): CLOSE's boost in big digits, the touches and the room; the keys set how close the
+    // microphone is: DISTANT, NEAR, INSIDE (NOISE, ROOM and CLOSE together).
+    {
+        auto& s = specs[13];
+        s.name = "PROXIMITY";
+        s.kind = "PLAYING UP CLOSE  NOISE  CLOSE";
+        s.onParameterIds = { ParamIDs::proximityOn };
+        s.powerTooltip = "PROXIMITY on or off: the sound of playing, heard up close. Click POWER (the word) or EDIT for its page";
+        struct Place { const char* name; float noise, room, close; const char* tip; };
+        static constexpr Place places[] = { { "DISTANT", 0.25f, 0.2f, 0.1f, "A step back: the touches faint, a little room" },
+                                            { "NEAR", 0.5f, 0.35f, 0.4f, "Close: every touch heard, the room around it" },
+                                            { "INSIDE", 0.8f, 0.5f, 0.8f, "Inside the instrument: the mechanism loud, the low end close" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& pl = places[k];
+            s.keys[(size_t) k] = RackUnit::Key { pl.name, pl.tip,
+                                                 [&p, pl] { return std::abs (valueOf (p, ParamIDs::proximityNoise) - pl.noise) < 0.01f
+                                                                   && std::abs (valueOf (p, ParamIDs::proximityClose) - pl.close) < 0.01f; },
+                                                 [&p, pl]
+                                                 {
+                                                     setValue (p, ParamIDs::proximityNoise, pl.noise);
+                                                     setValue (p, ParamIDs::proximityRoom, pl.room);
+                                                     setValue (p, ParamIDs::proximityClose, pl.close);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::proximityNoise, "NOISE" }, RackUnit::Knob { ParamIDs::proximityClose, "CLOSE" } };
+        s.ladderTitle = "TOUCH";
+        s.ladderMarks = { -12.0f, -24.0f, -36.0f, -48.0f, -60.0f };
+        s.ladderLabels = { "-12", "-24", "-36", "-48", "-60" };
+        s.ladderReading = [&p] { return p.getProximity().getNoiseDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getProximitySettings();
+            const auto end = drawNumber (g, "+" + juce::String (effects::Proximity::closeDb (settings.close), 1), left.getTopLeft(), h);
+            line (g, "DB", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "UP CLOSE", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "NOISE " + textOf (p, ParamIDs::proximityNoise), "ROOM " + textOf (p, ParamIDs::proximityRoom),
+                                  "HUM " + textOf (p, ParamIDs::proximityHum), "TONE " + textOf (p, ParamIDs::proximityTone) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (13); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

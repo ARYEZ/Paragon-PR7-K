@@ -458,6 +458,14 @@ namespace ParamIDs
     inline constexpr auto remnantTone   = "remnantTone";     // 0 to 1
     inline constexpr auto remnantWidth  = "remnantWidth";    // 0 to 1
     inline constexpr auto remnantMix    = "remnantMix";      // 0 to 1
+    // PROXIMITY (0.65.0, version hint 37, effects::Proximity): NEGATIVE SPACE's signature.
+    inline constexpr auto proximityOn    = "proximityOn";
+    inline constexpr auto proximityNoise = "proximityNoise";   // 0 to 1: the touches, -48 to -6 dB (0 none)
+    inline constexpr auto proximityTone  = "proximityTone";    // 0 to 1: 800 Hz to 6.4 kHz
+    inline constexpr auto proximityRoom  = "proximityRoom";    // 0 to 1: -72 to -30 dB (0 none)
+    inline constexpr auto proximityHum   = "proximityHum";     // Proximity::humNames
+    inline constexpr auto proximityClose = "proximityClose";   // 0 to 1: 0 to +6 dB at 180 Hz
+    inline constexpr auto proximityWidth = "proximityWidth";   // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -542,4 +550,5 @@ void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayou
 void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.62.0)
 void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.63.0)
 void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.64.0)
+void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.65.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

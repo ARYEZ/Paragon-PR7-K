@@ -280,6 +280,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->blackHole.prepare (sampleRate, preparedBlockSize);
     rack->dilation.prepare (sampleRate, preparedBlockSize);
     rack->remnant.prepare (sampleRate, preparedBlockSize);
+    rack->proximity.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1183,6 +1184,19 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::Proximity::Settings ParagonX1AudioProcessor::getProximitySettings() const noexcept
+{
+    effects::Proximity::Settings s;
+    s.on = isOn (ParamIDs::proximityOn);
+    s.noise = effectParam (ModDestinations::effect ("proximityNoise"), ParamIDs::proximityNoise);
+    s.tone = param (ParamIDs::proximityTone);
+    s.room = effectParam (ModDestinations::effect ("proximityRoom"), ParamIDs::proximityRoom);
+    s.hum = juce::roundToInt (param (ParamIDs::proximityHum));
+    s.close = effectParam (ModDestinations::effect ("proximityClose"), ParamIDs::proximityClose);
+    s.width = param (ParamIDs::proximityWidth);
+    return s;
+}
+
 effects::Remnant::Settings ParagonX1AudioProcessor::getRemnantSettings() const noexcept
 {
     effects::Remnant::Settings s;
@@ -1281,6 +1295,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
     if (sendsReady)
         for (auto& send : rack->sends)
             send.clear (0, numSamples);
+    const auto chunkClock = engine.getSampleClock();   // 0.64.0: PROXIMITY's touches are placed from here
     for (int done = 0; done < numSamples; done += (int) std::size (scratchRight))
     {
         const auto n = juce::jmin ((int) std::size (scratchRight), numSamples - done);
@@ -1364,6 +1379,14 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
     // limiter); then BYPASS (to silence: there's nothing "clean" to pass through on an instrument).
     const auto block = juce::dsp::AudioBlock<float> (buffer).getSubBlock ((size_t) start, (size_t) numSamples)
                                                             .getSubsetChannelBlock (0, (size_t) juce::jmin (numChannels, 2));
+    {
+        // PROXIMITY (0.65.0): this piece's touches of playing (notes, arps, the pedal), on their samples.
+        std::array<synth::Engine::Touch, synth::Engine::maxTouches> touches;
+        const auto count = engine.takeTouches (touches.data(), (int) touches.size());
+        for (int k = 0; k < count; ++k)
+            rack->proximity.addTouch ((int) juce::jlimit<std::int64_t> (0, numSamples - 1, touches[(size_t) k].clock - chunkClock),
+                                      touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
+    }
     if (sendsReady)
     {
         // The song position at this piece's start (for the WAH's synced LFO): -1 while it's stopped.
@@ -1422,6 +1445,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->blackHole.process (block, getBlackHoleSettings());   // 0.62.0: the haze
         rack->dilation.process (block, getDilationSettings());     // 0.63.0: time slowing down (the reverb and echoes too)
         rack->remnant.process (block, getRemnantSettings());       // 0.64.0: the layers beneath
+        rack->proximity.process (block, getProximitySettings());   // 0.65.0: the sound of playing, up close
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

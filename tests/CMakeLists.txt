@@ -60,6 +60,8 @@ add_executable(ParagonX1Tests
     DilationPluginTests.cpp
     RemnantTests.cpp
     RemnantPluginTests.cpp
+    ProximityTests.cpp
+    ProximityPluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

@@ -202,6 +202,9 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::remnantOn, 1.0f);
             set (ParamIDs::remnantLayers, 2.0f);
             set (ParamIDs::remnantMix, 0.6f);
+            // 0.65.0: PROXIMITY, close up.
+            set (ParamIDs::proximityOn, 1.0f);
+            set (ParamIDs::proximityNoise, 0.6f);
                         // 0.51.0: its WAH in AUTO, opened by the chord.
             set (ParamIDs::ins (0, "WahOn"), 1.0f);
             set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
@@ -232,8 +235,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : FxPage::View::rack);
-        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW, 6 LIGHTTRAIL, 7 BLACKHOLE, 8 DILATION, 9 REMNANT).
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : fx == "proximity" ? FxPage::View::proximity : FxPage::View::rack);
+        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW, 6 LIGHTTRAIL, 7 BLACKHOLE, 8 DILATION, 9 REMNANT, 10 PROXIMITY).
         if (const auto signature = env ("PARAGON_SNAPSHOT_SIGNATURE"); signature.isNotEmpty())
             fxPage.showSignature (signature.getIntValue());
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot

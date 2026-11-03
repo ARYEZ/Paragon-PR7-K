@@ -19,6 +19,7 @@
 #include "dsp/effects/BlackHole.h"
 #include "dsp/effects/Dilation.h"
 #include "dsp/effects/Remnant.h"
+#include "dsp/effects/Proximity.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -632,4 +633,22 @@ void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout& 
     layout.add (makeFloat (ParamIDs::remnantTone, "Remnant Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::remnantWidth, "Remnant Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
     layout.add (makeFloat (ParamIDs::remnantMix, "Remnant Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // PROXIMITY (0.65.0, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 37;
+    const effects::Proximity::Settings d;
+    const ToText asNoise = [] (float value, int) { return value <= 0.0f ? juce::String ("off") : juce::String (effects::Proximity::noiseDb (value), 1) + " dB"; };
+    const ToText asRoom = [] (float value, int) { return value <= 0.0f ? juce::String ("off") : juce::String (effects::Proximity::roomDb (value), 1) + " dB"; };
+    const ToText asClose = [] (float value, int) { return "+" + juce::String (effects::Proximity::closeDb (value), 1) + " dB"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::Proximity::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::proximityOn, "Proximity On", v, false));
+    layout.add (makeFloat (ParamIDs::proximityNoise, "Proximity Noise", { 0.0f, 1.0f, 0.01f }, d.noise, v, asNoise));
+    layout.add (makeFloat (ParamIDs::proximityTone, "Proximity Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::proximityRoom, "Proximity Room", { 0.0f, 1.0f, 0.01f }, d.room, v, asRoom));
+    layout.add (makeChoice (ParamIDs::proximityHum, "Proximity Hum", v, effects::Proximity::humNames, d.hum));
+    layout.add (makeFloat (ParamIDs::proximityClose, "Proximity Close", { 0.0f, 1.0f, 0.01f }, d.close, v, asClose));
+    layout.add (makeFloat (ParamIDs::proximityWidth, "Proximity Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

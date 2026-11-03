@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : audio (processor), insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), lightTrailPage (processor), blackHolePage (processor), dilationPage (processor), remnantPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), lightTrailPage (processor), blackHolePage (processor), dilationPage (processor), remnantPage (processor), proximityPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,8 +46,8 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation, View::remnant };
-        show (views[juce::jlimit (0, 12, unit)]);
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation, View::remnant, View::proximity };
+        show (views[juce::jlimit (0, 13, unit)]);
     }, [this] { chooseSignature(); });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
@@ -91,6 +91,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // REMNANT (0.64.0): its page.
     remnantPage.onClose = [this] { show (View::modFx); };
     addChildComponent (remnantPage);
+    // PROXIMITY (0.65.0): its page.
+    proximityPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (proximityPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -170,6 +173,7 @@ void FxPage::show (View newView)
     blackHolePage.setVisible (view == View::blackHole);
     dilationPage.setVisible (view == View::dilation);
     remnantPage.setVisible (view == View::remnant);
+    proximityPage.setVisible (view == View::proximity);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -229,7 +233,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage, &lightTrailPage, &blackHolePage, &dilationPage, &remnantPage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage, &lightTrailPage, &blackHolePage, &dilationPage, &remnantPage, &proximityPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.

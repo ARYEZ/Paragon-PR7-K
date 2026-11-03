@@ -367,6 +367,7 @@ namespace synth
         numArpEvents = 0;
         numPendingAnswers = 0;
         sampleClock = blockStartClock = 0;
+        numTouches = 0;
         liveCycles.fill (-1);
         keysDown.fill (false);
         numKeysDown = 0;
@@ -753,8 +754,18 @@ namespace synth
         numKeysDown = 0;
     }
 
+    int Engine::takeTouches (Touch* out, int capacity) noexcept
+    {
+        const auto n = juce::jmin (capacity, numTouches);
+        std::copy (touches.begin(), touches.begin() + n, out);
+        numTouches = 0;
+        return n;
+    }
+
     void Engine::sustainPedal (bool down) noexcept
     {
+        if (down != pedalDown)
+            touch (down ? Touch::Kind::pedalDown : Touch::Kind::pedalUp, 0.0f, 1.0f);
         pedalDown = down;
         if (down)
             return;
@@ -798,6 +809,8 @@ namespace synth
 
     void Engine::startVoice (Voice& voice, int note, float velocity, float fromPitch, const Settings& settings, int source, std::uint8_t mask) noexcept
     {
+        if (source != answerSource)
+            touch (Touch::Kind::press, (float) note, velocity);
         free (voice);
         voice.source = source;
         voice.oscMask = mask;
@@ -974,6 +987,8 @@ namespace synth
 
     void Engine::releaseVoice (Voice& voice) noexcept
     {
+        if (voice.source != answerSource)
+            touch (Touch::Kind::release, (float) voice.note, voice.velocity);
         voice.amp.release();
         voice.filter.release();
         for (auto& envelope : voice.envelopes)
