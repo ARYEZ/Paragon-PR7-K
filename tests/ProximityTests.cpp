@@ -27,7 +27,7 @@ namespace
         std::vector<float> l ((size_t) blockSize), r ((size_t) blockSize);
         float* ptrs[] = { l.data(), r.data() };
         long long t = 0;
-        for (int b = 0; b < (int) (seconds * sampleRate / blockSize); ++b)
+        for (int b = 0; b < (int) std::ceil (seconds * sampleRate / blockSize); ++b)   // at least `seconds`: a measurement up to the end stays inside
         {
             for (size_t i = 0; i < (size_t) blockSize; ++i)
             {
