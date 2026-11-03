@@ -2,6 +2,30 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.68.0
+
+**LEVIATHAN, UNSPOKEN gets its centrepiece, and PR7-K runs lighter with the sound unchanged.**
+
+**LEVIATHAN** (a new signature effect, our own design, in the SIGNATURE slot): a vast, slow, wordless voice singing far beneath what you play, like something answering from the fog. It's a new voice, not a copy of your sound.
+- **Its note:** the lowest note the synth is playing, one or two octaves down (DEPTH), sliding slowly to each new note. It takes the note from the synth itself, so a chord gets one deep voice under its lowest note and nothing can fool it.
+- **Its throat:** a soft buzz shaped into vowels that wander on their own between OO and EE (DRIFT). SIZE makes the throat bigger.
+- **GROWL:** rougher, creaking, with clicks in its throat. **DELAY:** it answers up to 1.5 s behind you.
+- **MIX:** how loud it is. Its level follows yours, so it breathes with your playing, and silence stays silent. At 0 your sound passes untouched.
+- DISTANT, CALLING and RISING on its unit set how near it comes. Its page shows the voice as a vast shape in the dark, the note it's singing and its vowel.
+- MIX, GROWL and DRIFT can be moved by the mod matrix (FX Leviathan). About 0.8% of a core.
+
+**UNSPOKEN: MACRO 3 is now LEVIATHAN on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings in each preset's voice beneath it, some one octave down, some two, each with its own vowel, roughness and delay.
+- At full it adds about 0.5 to 1.5 dB. Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+**Lighter on your computer, the sound unchanged.** Five parts now do the same work with less waiting. Recordings of each, made before and after, are identical sample for sample. Measured on a held chord (share of one processor core, including the synth):
+- **DOMINION:** 12.2% down to 6.5% (in Hard mode with Mid/Side, 15.7% to 11.1%).
+- **LIMITER with true peak:** 7.2% to 5.6%.
+- **Everything, always:** settings are now found through a quick index instead of a search, 1.28% to 0.96% for a plain chord. This also removes a rare cause of glitches when the mod matrix moved an effect knob.
+- **INFERNAL:** about 15-20% lighter. **SPECTRE** at DRIFT 0 a little lighter.
+- Your own computer's numbers will differ, but the proportions should hold.
+
 ## 0.67.0
 
 **SPECTRE, and CYBERSHRINE gets its centrepiece.**
