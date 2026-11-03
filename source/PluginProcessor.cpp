@@ -181,7 +181,7 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
         position = std::numeric_limits<float>::quiet_NaN();   // no route moves an effect yet
     // The parameters' hash table (findParam): open addressing, at most half full.
     {
-        for (auto* p : getParameters())
+        for (auto* p : juce::AudioProcessor::getParameters())
             if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (p))
                 paramIds.push_back (withId->paramID);
         std::uint32_t size = 1;
