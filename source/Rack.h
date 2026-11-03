@@ -15,6 +15,7 @@
 #include "dsp/effects/Infernal.h"
 #include "dsp/effects/Afterglow.h"
 #include "dsp/effects/LightTrail.h"
+#include "dsp/effects/BlackHole.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -84,6 +85,8 @@ struct Rack
     effects::Afterglow afterglow;
     // LIGHTTRAIL (0.61.0): each note's trail, after AFTERGLOW.
     effects::LightTrail lightTrail;
+    // BLACKHOLE (0.62.0): the haze, after LIGHTTRAIL.
+    effects::BlackHole blackHole;
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

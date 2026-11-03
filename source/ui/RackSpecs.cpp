@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 10> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 11> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 10> specs;
+    std::array<RackUnit::Spec, 11> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -982,6 +982,46 @@ std::array<RackUnit::Spec, 10> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (9); };
+    }
+
+    // BLACKHOLE (0.62.0): HOLD in big digits as seconds, the pull and the size; the keys set how long the haze hangs:
+    // FAINT, DEEP, ENDLESS.
+    {
+        auto& s = specs[10];
+        s.name = "BLACKHOLE";
+        s.kind = "FROZEN HAZE  HOLD  PULL";
+        s.onParameterIds = { ParamIDs::blackholeOn };
+        s.powerTooltip = "BLACKHOLE on or off: the last moments of your sound stretched into a haze. Click POWER (the word) or EDIT for its page";
+        struct Depth { const char* name; float hold; const char* tip; };
+        static constexpr Depth depths[] = { { "FAINT", 0.25f, "A brief shimmer behind the notes" },
+                                            { "DEEP", 0.6f, "A haze hanging a few seconds" },
+                                            { "ENDLESS", 0.95f, "Clouds that hang for many seconds" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& d = depths[k];
+            s.keys[(size_t) k] = RackUnit::Key { d.name, d.tip,
+                                                 [&p, d] { return std::abs (valueOf (p, ParamIDs::blackholeHold) - d.hold) < 0.01f; },
+                                                 [&p, d] { setValue (p, ParamIDs::blackholeHold, d.hold); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::blackholeHold, "HOLD" }, RackUnit::Knob { ParamIDs::blackholeMix, "MIX" } };
+        s.ladderTitle = "HAZE";
+        s.ladderMarks = { 0.0f, -6.0f, -12.0f, -24.0f, -48.0f };
+        s.ladderLabels = { "0", "-6", "-12", "-24", "-48" };
+        s.ladderReading = [&p] { return p.getBlackHole().getHazeDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getBlackHoleSettings();
+            const auto end = drawNumber (g, juce::String (effects::BlackHole::holdSeconds (settings.hold), 1), left.getTopLeft(), h);
+            line (g, "S", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "THE HAZE HANGS", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "PULL " + textOf (p, ParamIDs::blackholePull), "SIZE " + textOf (p, ParamIDs::blackholeSize),
+                                  "TONE " + textOf (p, ParamIDs::blackholeTone), "MIX " + textOf (p, ParamIDs::blackholeMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (10); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

@@ -277,6 +277,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->infernal.prepare (sampleRate, preparedBlockSize);
     rack->afterglow.prepare (sampleRate, preparedBlockSize);
     rack->lightTrail.prepare (sampleRate, preparedBlockSize);
+    rack->blackHole.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1180,6 +1181,19 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::BlackHole::Settings ParagonX1AudioProcessor::getBlackHoleSettings() const noexcept
+{
+    effects::BlackHole::Settings s;
+    s.on = isOn (ParamIDs::blackholeOn);
+    s.hold = effectParam (ModDestinations::effect ("blackholeHold"), ParamIDs::blackholeHold);
+    s.size = param (ParamIDs::blackholeSize);
+    s.pull = effectParam (ModDestinations::effect ("blackholePull"), ParamIDs::blackholePull);
+    s.tone = effectParam (ModDestinations::effect ("blackholeTone"), ParamIDs::blackholeTone);
+    s.width = param (ParamIDs::blackholeWidth);
+    s.mix = effectParam (ModDestinations::effect ("blackholeMix"), ParamIDs::blackholeMix);
+    return s;
+}
+
 effects::LightTrail::Settings ParagonX1AudioProcessor::getLightTrailSettings() const noexcept
 {
     effects::LightTrail::Settings s;
@@ -1376,6 +1390,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
         rack->afterglow.process (block, getAfterglowSettings());   // 0.60.0: the ensemble and the tape
         rack->lightTrail.process (block, getLightTrailSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.61.0: each note's trail
+        rack->blackHole.process (block, getBlackHoleSettings());   // 0.62.0: the haze
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

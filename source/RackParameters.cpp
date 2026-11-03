@@ -16,6 +16,7 @@
 #include "dsp/effects/Infernal.h"
 #include "dsp/effects/Afterglow.h"
 #include "dsp/effects/LightTrail.h"
+#include "dsp/effects/BlackHole.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -573,4 +574,22 @@ void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayou
     layout.add (makeFloat (ParamIDs::trailTone, "Lighttrail Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::trailSpread, "Lighttrail Spread", { 0.0f, 1.0f, 0.01f }, d.spread, v, asPercent));
     layout.add (makeFloat (ParamIDs::trailMix, "Lighttrail Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // BLACKHOLE (0.62.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 34;
+    const effects::BlackHole::Settings d;
+    const ToText asHold = [] (float value, int) { return juce::String (effects::BlackHole::holdSeconds (value), 1) + " s"; };
+    const ToText asSize = [] (float value, int) { return juce::String (effects::BlackHole::sizeSeconds (value), 1) + " s"; };
+    const ToText asPull = [] (float value, int) { return juce::String (effects::BlackHole::pullSemitones (value), 2) + " st"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::BlackHole::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::blackholeOn, "Blackhole On", v, false));
+    layout.add (makeFloat (ParamIDs::blackholeHold, "Blackhole Hold", { 0.0f, 1.0f, 0.01f }, d.hold, v, asHold));
+    layout.add (makeFloat (ParamIDs::blackholeSize, "Blackhole Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeFloat (ParamIDs::blackholePull, "Blackhole Pull", { 0.0f, 1.0f, 0.01f }, d.pull, v, asPull));
+    layout.add (makeFloat (ParamIDs::blackholeTone, "Blackhole Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::blackholeWidth, "Blackhole Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::blackholeMix, "Blackhole Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
 }
