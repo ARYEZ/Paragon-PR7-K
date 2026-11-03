@@ -369,7 +369,7 @@ TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its lef
         CHECK (rig.parameters.at (ParamIDs::spectreOn) == 1.0f);
         CHECK (rig.parameters.at (ParamIDs::spectreMix) == 0.0f);   // no ghost until the macro: the sound as approved
         const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
-                                         { return r.source == "macro3" && r.destination == ParamIDs::spectreMix && r.amount >= 0.4f; });
+                                         { return r.source == "macro3" && r.destination == ParamIDs::spectreMix && r.amount >= 0.15f; });
         CHECK (routed);
     }
     CHECK (count == 15);
