@@ -88,14 +88,16 @@ TEST_CASE ("HAZE: off and at DEPTH 0 the sound passes exactly as it was", "[haze
     CHECK (run (2.0, input, off)[0] == l);
 }
 
-TEST_CASE ("HAZE: full as it passes, about -13.5 dB at the edges, leaning to its side and back on the next pass", "[haze]")
+TEST_CASE ("HAZE: loudest as it passes, about 13.5 dB down at the edges, a whole pass as loud as the sound; leaning to its side", "[haze]")
 {
     const auto out = run (4.0, sine440, passing (1.0f));
     const auto passingDb = both (out, 0.9, 1.1), edgeDb = both (out, 1.97, 2.03), input = db (0.4 / std::sqrt (2.0));
-    INFO ("passing " << passingDb << " dB, at the edge " << edgeDb << " dB, the sound " << input << " dB");
-    CHECK (std::abs (passingDb - input) < 1.0);
-    CHECK (edgeDb - input < -11.0);
-    CHECK (edgeDb - input > -16.0);
+    const auto wholeDb = both (out, 0.5, 2.5);   // a whole pass, from the middle of one to the middle of the next
+    INFO ("passing " << passingDb << " dB, at the edge " << edgeDb << " dB, a whole pass " << wholeDb << " dB, the sound " << input << " dB");
+    CHECK (passingDb > input);   // the make-up: above the sound as it passes
+    CHECK (edgeDb - passingDb < -11.0);
+    CHECK (edgeDb - passingDb > -16.0);
+    CHECK (std::abs (wholeDb - input) < 1.0);
     // First pass left to right: early it's on the left, late on the right; the second pass the other way.
     CHECK (rms (out[0], at (0.3), at (0.5)) > rms (out[1], at (0.3), at (0.5)) * 1.5);
     CHECK (rms (out[1], at (1.5), at (1.7)) > rms (out[0], at (1.5), at (1.7)) * 1.5);
@@ -131,9 +133,9 @@ TEST_CASE ("HAZE: further away is darker as well as quieter", "[haze]")
 
 TEST_CASE ("HAZE: it follows the song's position", "[haze]")
 {
-    // Started at beat 1.8 of a bar-long pass, it's passing (halfway, beat 2) a tenth of a second in: full level there.
+    // Started at beat 1.8 of a bar-long pass, it's passing (halfway, beat 2) a tenth of a second in: loudest there.
     const auto out = run (0.3, sine440, passing (1.0f), 1.8);
-    CHECK (std::abs (both (out, 0.09, 0.11) - db (0.4 / std::sqrt (2.0))) < 0.5);
+    CHECK (std::abs (both (out, 0.09, 0.11) - (db (0.4 / std::sqrt (2.0)) + db (effects::Haze::makeUpFor (1.0f)))) < 0.5);
 }
 
 TEST_CASE ("HAZE: the sides stay apart; the whoosh stops in silence", "[haze]")

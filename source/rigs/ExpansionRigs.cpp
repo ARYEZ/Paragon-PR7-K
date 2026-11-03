@@ -3817,6 +3817,31 @@ namespace
         x.add (rows);
     }
 
+    // NIGHTDRIVE's centrepiece (0.66.0, the owner's ask): HAZE on every preset, MACRO 3 HAZE. Each preset gets its own
+    // pass (how often, how far it leans and bends, the wind, how dark far off) at DEPTH 0, so at the macro's left it
+    // sounds exactly as approved; the macro sends it sweeping past like streetlights. Its old MACRO 3 job rides along
+    // (the notes say so).
+    struct Lights
+    {
+        int division = 1;                                           // 1/2 BAR, 1 BAR, 2 BARS, 4 BARS
+        float depthTop = 0.6f, dopplerTop = 0.45f, whooshTop = 0.3f;   // the macro's DEPTH, DOPPLER, WHOOSH at full
+        float width = 0.8f, tone = 0.45f;
+    };
+
+    void passing (Builder& b, const juce::String& oldJob, Lights l)
+    {
+        b.set (ParamIDs::hazeOn, 1.0f).set (ParamIDs::hazeDivision, (float) l.division).set (ParamIDs::hazeDepth, 0.0f)
+         .set (ParamIDs::hazeDoppler, 0.0f).set (ParamIDs::hazeWhoosh, 0.0f).set (ParamIDs::hazeWidth, l.width)
+         .set (ParamIDs::hazeTone, l.tone);
+        route (b, "macro3", ParamIDs::hazeDepth, l.depthTop);
+        route (b, "macro3", ParamIDs::hazeDoppler, l.dopplerTop);
+        route (b, "macro3", ParamIDs::hazeWhoosh, l.whooshTop);
+        b.rig.modulation.macroNames[2] = "HAZE";
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, HAZE (streetlights passing, plus " + oldJob + ")");
+    }
+
     // NIGHTDRIVE (the owner's name): inspired by the score and soundtrack of a 2011 neo-noir film about a getaway
     // driver: late-night retro synthwave, turned all the way up (the owner's ask): warm analog polysynths, chorus on
     // everything, big reverbs and echoes, pulsing octave basses, glassy '80s keys, punchy drum-machine beats, dreamy,
@@ -3845,6 +3870,7 @@ namespace
         reverb (cruise, RT::hall, 0.8f, 0.25f, 30.0f, 4.5f);
         space (cruise);
         cruise.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (cruise, "VIBRATO", { 1, 0.6f, 0.5f, 0.3f, 0.8f, 0.45f });
         x.add (cruise);
 
         auto whistle = x.make ("Chrome Whistle", 2, { "Lead", "Square", "Vibrato", "Mono" },
@@ -3868,6 +3894,7 @@ namespace
         reverb (whistle, RT::plate, 0.6f, 0.22f);
         space (whistle);
         whistle.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (whistle, "OCTAVE (more of the upper square)", { 1, 0.55f, 0.45f, 0.25f, 0.8f, 0.5f });
         x.add (whistle);
 
         auto romance = x.make ("Romance Sync", 3, { "Lead", "Sync", "Chorus", "Mono" },
@@ -3889,6 +3916,7 @@ namespace
         reverb (romance, RT::hall, 0.7f, 0.22f);
         space (romance);
         romance.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (romance, "SOAR (more sync)", { 1, 0.6f, 0.5f, 0.3f, 0.8f, 0.45f });
         x.add (romance);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -3910,6 +3938,7 @@ namespace
         reverb (haze, RT::hall, 0.9f, 0.3f, 30.0f, 4.5f);
         space (haze);
         haze.set (ParamIDs::patchLevel, -12.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (haze, "LUSH (more detune)", { 2, 0.6f, 0.35f, 0.35f, 0.9f, 0.4f });
         x.add (haze);
 
         auto strings = x.make ("Midnight Strings", 5, { "Pad", "Strings", "Ensemble", "Swell" },
@@ -3931,6 +3960,7 @@ namespace
         reverb (strings, RT::hall, 0.85f, 0.28f, 30.0f, 4.5f);
         space (strings);
         strings.set (ParamIDs::patchLevel, -11.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (strings, "ENSEMBLE (deeper shimmer)", { 2, 0.55f, 0.3f, 0.3f, 0.9f, 0.45f });
         x.add (strings);
 
         auto afterglow = x.make ("Afterglow", 6, { "Pad", "Step Seq", "Swell", "Shimmer" },
@@ -3952,6 +3982,7 @@ namespace
         reverb (afterglow, RT::cathedral, 0.5f, 0.3f, 40.0f, 4.5f);
         space (afterglow);
         afterglow.set (ParamIDs::patchLevel, -8.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (afterglow, "GATE (deeper gating)", { 2, 0.55f, 0.3f, 0.3f, 0.9f, 0.45f });
         x.add (afterglow);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -3985,6 +4016,7 @@ namespace
         reverb (octave, RT::room, 0.5f, 0.1f);
         space (octave);
         octave.set (ParamIDs::patchLevel, -0.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (octave, "SNAP (more filter snap)", { 1, 0.35f, 0.2f, 0.15f, 0.3f, 0.55f });
         x.add (octave);
 
         auto velvet = x.make ("Velvet Bass", 8, { "Bass", "Analog", "Warm", "Mono" },
@@ -4006,6 +4038,7 @@ namespace
         reverb (velvet, RT::room, 0.4f, 0.08f);
         space (velvet);
         velvet.set (ParamIDs::patchLevel, -4.4f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (velvet, "WARMTH (SHAPER 1's tube)", { 1, 0.3f, 0.2f, 0.15f, 0.3f, 0.55f });
         x.add (velvet);
 
         auto rubber = x.make ("Rubber Pulse", 9, { "Bass", "Resonance", "Filter", "Bouncy" },
@@ -4029,6 +4062,7 @@ namespace
         reverb (rubber, RT::room, 0.4f, 0.08f);
         space (rubber);
         rubber.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (rubber, "BOUNCE (a bigger snap)", { 1, 0.35f, 0.2f, 0.15f, 0.3f, 0.55f });
         x.add (rubber);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -4058,6 +4092,7 @@ namespace
         reverb (tine, RT::plate, 0.6f, 0.2f);
         space (tine);
         tine.set (ParamIDs::patchLevel, -13.5f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (tine, "BARK (more body FM)", { 1, 0.55f, 0.4f, 0.25f, 0.8f, 0.5f });
         x.add (tine);
 
         auto stab = x.make ("Retro Stab", 11, { "Keys", "Polysynth", "Stab", "Chorus" },
@@ -4078,6 +4113,7 @@ namespace
         reverb (stab, RT::hall, 0.7f, 0.22f);
         space (stab);
         stab.set (ParamIDs::patchLevel, -9.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (stab, "PUNCH (a bigger snap)", { 0, 0.5f, 0.35f, 0.3f, 0.8f, 0.5f });
         x.add (stab);
 
         auto cassette = x.make ("Cassette Keys", 12, { "Keys", "Lo-Fi", "Tape", "Warm" },
@@ -4099,6 +4135,7 @@ namespace
         reverb (cassette, RT::room, 0.5f, 0.18f);
         space (cassette);
         cassette.set (ParamIDs::patchLevel, -7.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (cassette, "WOBBLE (more warble)", { 1, 0.55f, 0.45f, 0.25f, 0.8f, 0.4f });
         x.add (cassette);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -4121,6 +4158,7 @@ namespace
         reverb (lights, RT::hall, 0.7f, 0.2f);
         space (lights);
         lights.set (ParamIDs::patchLevel, -3.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (lights, "SPARKLE (a sine an octave up)", { 0, 0.6f, 0.45f, 0.3f, 0.9f, 0.5f });
         x.add (lights);
 
         auto runner = x.make ("Night Runner", 14, { "Arp", "Pluck", "Sequencer", "Driving" },
@@ -4141,6 +4179,7 @@ namespace
         reverb (runner, RT::plate, 0.6f, 0.15f);
         space (runner);
         runner.set (ParamIDs::patchLevel, 1.8f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        passing (runner, "SNAP", { 0, 0.55f, 0.4f, 0.3f, 0.9f, 0.5f });
         x.add (runner);
 
         auto heartline = x.make ("Heartline", 15, { "Arp", "Emotional", "Delay", "Soft" },
@@ -4163,6 +4202,7 @@ namespace
         reverb (heartline, RT::cathedral, 0.5f, 0.28f);
         space (heartline);
         heartline.set (ParamIDs::patchLevel, -3.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        passing (heartline, "ECHO (longer echoes)", { 1, 0.6f, 0.45f, 0.3f, 0.9f, 0.45f });
         x.add (heartline);
     }
     // UNSPOKEN (the owner's name): inspired by the score of a 2016 film about first contact and a language that

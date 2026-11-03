@@ -4,6 +4,33 @@
 
 namespace effects
 {
+    float Haze::makeUpFor (float depth) noexcept
+    {
+        if (depth <= 0.0f)
+            return 1.0f;
+        // The power of a pass, its passes spread evenly in time (x = -L cos pi p).
+        static const auto table = []
+        {
+            std::array<float, 33> t {};
+            for (size_t k = 0; k < t.size(); ++k)
+            {
+                const auto e = (float) k / (float) (t.size() - 1);
+                double power = 0.0;
+                constexpr int steps = 2048;
+                for (int i = 0; i < steps; ++i)
+                {
+                    const auto g = (double) levelAt (-roadLength * std::cos (juce::MathConstants<double>::pi * (i + 0.5) / steps), e);
+                    power += g * g;
+                }
+                t[k] = (float) (1.0 / std::sqrt (power / steps));
+            }
+            return t;
+        }();
+        const auto position = juce::jlimit (0.0f, 1.0f, depth) * (float) (table.size() - 1);
+        const auto k = juce::jmin ((int) position, (int) table.size() - 2);
+        return table[(size_t) k] + (position - (float) k) * (table[(size_t) k + 1] - table[(size_t) k]);
+    }
+
     void Haze::prepare (double rate, int)
     {
         sampleRate = rate;
@@ -111,7 +138,7 @@ namespace effects
 
             // Darker and quieter further away; the balance leaning to its side.
             const auto cutoff = 20000.0f * std::pow (far / 20000.0f, e * away);
-            const auto gain = 1.0f - e * away;
+            const auto gain = (1.0f - e * away) * makeUpFor (e);
             const auto lean = (float) (e * width * 0.85 * x / d);
             const auto gainLeft = std::sqrt (1.0f - lean), gainRight = std::sqrt (1.0f + lean);
             if (cutoff < 19000.0f)

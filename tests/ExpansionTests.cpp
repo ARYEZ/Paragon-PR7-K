@@ -335,6 +335,26 @@ TEST_CASE ("NEGATIVE SPACE: MACRO 3 is CLOSER on every preset, nothing added at 
     CHECK (count == 15);
 }
 
+TEST_CASE ("NIGHTDRIVE: MACRO 3 is HAZE on every preset, no movement at its left", "[rigs][expansions][haze]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 9)   // NIGHTDRIVE: the tenth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "HAZE");
+        CHECK (rig.notes.contains ("HAZE (streetlights passing, plus "));
+        CHECK (rig.parameters.at (ParamIDs::hazeOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::hazeDepth) == 0.0f);   // no movement until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::hazeDepth && r.amount >= 0.25f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;

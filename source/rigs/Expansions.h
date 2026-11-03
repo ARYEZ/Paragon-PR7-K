@@ -59,7 +59,8 @@ namespace expansions
         { "NIGHTDRIVE", "ND",
           "Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro "
           "synthwave, all the way up: lush chorused polysynths, glassy '80s keys, pulsing octave basses, "
-          "dreamy romantic leads, big reverbs and echoes. Our own sounds." },
+          "dreamy romantic leads, big reverbs and echoes. Built round HAZE (0.66.0), your sound sweeping past like "
+          "streetlights, and MACRO 3, HAZE. Our own sounds." },
         { "UNSPOKEN", "UN",
           "Inspired by the score of a 2016 film about first contact and a language that changes how you see time: "
           "human voices breathing, murmuring and stuttering in eerie layers, vast swelling drones, circular phrases "

@@ -20,7 +20,9 @@ namespace effects
     // (1 - nearness) (about -13.5 dB at the edges at full), the top darkens towards TONE's far cutoff, the balance
     // leans with x / d x WIDTH (each side kept its own), and the sound is delayed by its distance (sound's travel
     // time, scaled so the steepest pitch change is DOPPLER's cents): the Doppler comes from that delay changing, as
-    // it does in the air. WHOOSH: a breath of wind as it passes, following the music (silence stays silent).
+    // it does in the air. A make-up gain keeps a whole pass as loud on average as the sound was (most of a pass is
+    // spent far off: without it full DEPTH lost 3-4 dB on NIGHTDRIVE's presets), so it swells above as it passes and
+    // falls below at the edges; exactly 1 at DEPTH 0. WHOOSH: a breath of wind as it passes, following the music (silence stays silent).
     // At DEPTH 0 (or off, once settled) the sound passes untouched, bit for bit.
     class Haze
     {
@@ -42,6 +44,12 @@ namespace effects
         static constexpr double roadLength = 1.6, closest = 0.35;
         static float dopplerCents (float doppler) noexcept { return 40.0f * juce::jlimit (0.0f, 1.0f, doppler); }
         static float farHz (float tone) noexcept { return 1500.0f * std::pow (8.0f, juce::jlimit (0.0f, 1.0f, tone)); }
+        // The level at a point on the road for a DEPTH, and the make-up that keeps a whole pass at the sound's level.
+        static float levelAt (double x, float depth) noexcept
+        {
+            return 1.0f - depth * (1.0f - (float) (closest / std::sqrt (x * x + closest * closest)));
+        }
+        static float makeUpFor (float depth) noexcept;
 
         void prepare (double sampleRate, int maxBlockSize);
         void reset() noexcept;
