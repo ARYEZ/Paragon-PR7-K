@@ -36,7 +36,8 @@ namespace expansions
           "choir. Our own sounds." },
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
-          "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Our own sounds." },
+          "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Built round "
+          "LIGHTTRAIL (0.61.0), every note's glowing trail, and MACRO 3, TRAIL. Our own sounds." },
         { "LAST LIGHT", "LL",
           "Inspired by the score of a film about space, time and leaving the people you love: a soft cinematic felt "
           "piano, an enormous church organ, aching strings, a ticking clock and vast cold spaces. Sad and longing. "

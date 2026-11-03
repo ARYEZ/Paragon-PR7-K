@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 9> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 10> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 9> specs;
+    std::array<RackUnit::Spec, 10> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -942,6 +942,46 @@ std::array<RackUnit::Spec, 9> makeModFxSpecs (ParagonX1AudioProcessor& p, std::f
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (8); };
+    }
+
+    // LIGHTTRAIL (0.61.0): the division in big digits, the rise and the length; the keys set the trail's way:
+    // FLAT (on the note), CLIMB (a fifth up each repeat), FALL (an octave down).
+    {
+        auto& s = specs[9];
+        s.name = "LIGHTTRAIL";
+        s.kind = "SYNCED TRAIL  RISE  SPREAD";
+        s.onParameterIds = { ParamIDs::trailOn };
+        s.powerTooltip = "LIGHTTRAIL on or off: every note leaves a glowing trail. Click POWER (the word) or EDIT for its page";
+        struct Way { const char* name; float rise; const char* tip; };
+        static constexpr Way ways[] = { { "FLAT", 0.0f, "Each repeat on the note: a plain trail" },
+                                        { "CLIMB", 7.0f, "Each repeat a fifth higher: the trail climbs" },
+                                        { "FALL", -12.0f, "Each repeat an octave lower: the trail falls away" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& w = ways[k];
+            s.keys[(size_t) k] = RackUnit::Key { w.name, w.tip,
+                                                 [&p, w] { return std::abs (valueOf (p, ParamIDs::trailRise) - w.rise) < 0.05f; },
+                                                 [&p, w] { setValue (p, ParamIDs::trailRise, w.rise); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::trailLength, "LENGTH" }, RackUnit::Knob { ParamIDs::trailMix, "MIX" } };
+        s.ladderTitle = "TRAIL";
+        s.ladderMarks = { 0.0f, -6.0f, -12.0f, -24.0f, -48.0f };
+        s.ladderLabels = { "0", "-6", "-12", "-24", "-48" };
+        s.ladderReading = [&p] { return p.getLightTrail().getTrailDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getLightTrailSettings();
+            const auto end = drawNumber (g, juce::String (settings.riseSemitones, 0), left.getTopLeft(), h);
+            line (g, "ST", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "EACH REPEAT", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "EVERY " + textOf (p, ParamIDs::trailDivision), "LENGTH " + textOf (p, ParamIDs::trailLength),
+                                  "TONE " + textOf (p, ParamIDs::trailTone), "MIX " + textOf (p, ParamIDs::trailMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (9); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

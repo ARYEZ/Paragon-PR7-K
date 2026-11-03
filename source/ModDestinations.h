@@ -47,7 +47,9 @@ namespace ModDestinations
                                                  // 0.59.0: INFERNAL: how hard, how much, the noise's growl, the bloom
                                                  "infernalDrive", "infernalMix", "infernalNoise", "infernalFeedback",
                                                  // 0.60.0: AFTERGLOW: each note's character and wander, the ensemble, the tape
-                                                 "afterglowAge", "afterglowDrift", "afterglowEnsemble", "afterglowTape" };
+                                                 "afterglowAge", "afterglowDrift", "afterglowEnsemble", "afterglowTape",
+                                                 // 0.61.0: LIGHTTRAIL: how long, how far each repeat steps, its shine, how much
+                                                 "trailLength", "trailRise", "trailTone", "trailMix" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

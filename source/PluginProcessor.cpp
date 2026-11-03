@@ -276,6 +276,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->downpour.prepare (sampleRate, preparedBlockSize);
     rack->infernal.prepare (sampleRate, preparedBlockSize);
     rack->afterglow.prepare (sampleRate, preparedBlockSize);
+    rack->lightTrail.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1179,6 +1180,19 @@ effects::Downpour::Settings ParagonX1AudioProcessor::getDownpourSettings() const
     return s;
 }
 
+effects::LightTrail::Settings ParagonX1AudioProcessor::getLightTrailSettings() const noexcept
+{
+    effects::LightTrail::Settings s;
+    s.on = isOn (ParamIDs::trailOn);
+    s.division = juce::jlimit (0, effects::LightTrail::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::trailDivision)));
+    s.length = effectParam (ModDestinations::effect ("trailLength"), ParamIDs::trailLength);
+    s.riseSemitones = effectParam (ModDestinations::effect ("trailRise"), ParamIDs::trailRise);
+    s.tone = effectParam (ModDestinations::effect ("trailTone"), ParamIDs::trailTone);
+    s.spread = param (ParamIDs::trailSpread);
+    s.mix = effectParam (ModDestinations::effect ("trailMix"), ParamIDs::trailMix);
+    return s;
+}
+
 effects::Afterglow::Settings ParagonX1AudioProcessor::getAfterglowSettings() const noexcept
 {
     effects::Afterglow::Settings s;
@@ -1361,6 +1375,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
         rack->echoes.process (block, getEchoesSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.53.0: the past under the present
         rack->afterglow.process (block, getAfterglowSettings());   // 0.60.0: the ensemble and the tape
+        rack->lightTrail.process (block, getLightTrailSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.61.0: each note's trail
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

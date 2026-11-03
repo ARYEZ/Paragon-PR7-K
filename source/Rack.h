@@ -14,6 +14,7 @@
 #include "dsp/effects/Downpour.h"
 #include "dsp/effects/Infernal.h"
 #include "dsp/effects/Afterglow.h"
+#include "dsp/effects/LightTrail.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -81,6 +82,8 @@ struct Rack
     juce::AudioBuffer<float> infernalBefore;
     // AFTERGLOW (0.60.0): the ensemble and tape, after ECHOES (the notes' own character is in the synth).
     effects::Afterglow afterglow;
+    // LIGHTTRAIL (0.61.0): each note's trail, after AFTERGLOW.
+    effects::LightTrail lightTrail;
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

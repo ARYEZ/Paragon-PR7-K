@@ -52,6 +52,8 @@ add_executable(ParagonX1Tests
     InfernalPluginTests.cpp
     AfterglowTests.cpp
     AfterglowPluginTests.cpp
+    LightTrailTests.cpp
+    LightTrailPluginTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp
