@@ -2581,6 +2581,31 @@ namespace
         x.add (tesseract);
     }
 
+    // SIMULACRUM's centrepiece (0.63.0, the owner's ask): DILATION on every preset, MACRO 3 DILATE. Each preset gets
+    // its own slowing (how far down, how fast it slides, how it comes back, how far behind it can fall, how dark) at
+    // SLOW 0, so at the macro's left it sounds exactly as approved; the macro slows time. Its old MACRO 3 job rides
+    // along (the notes say so).
+    struct Pace
+    {
+        float slowTop = 0.5f;   // the macro's SLOW at full (0.5: half speed, an octave down)
+        float ramp = 0.5f;
+        bool snap = false;      // RETURN: GLIDE or SNAP
+        float reach = 2.0f / 3.0f;
+        float tone = 0.5f;
+    };
+
+    void dilate (Builder& b, const juce::String& oldJob, Pace pace)
+    {
+        b.set (ParamIDs::dilationOn, 1.0f).set (ParamIDs::dilationSlow, 0.0f).set (ParamIDs::dilationRamp, pace.ramp)
+         .set (ParamIDs::dilationReturn, pace.snap ? 1.0f : 0.0f).set (ParamIDs::dilationReach, pace.reach)
+         .set (ParamIDs::dilationTone, pace.tone).set (ParamIDs::dilationMix, 1.0f);
+        route (b, "macro3", ParamIDs::dilationSlow, pace.slowTop);
+        b.rig.modulation.macroNames[2] = "DILATE";
+        const auto oldText = "SPACE, " + oldJob;
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, "SPACE, DILATE (time slowing down, plus " + oldJob + ")");
+    }
+
     // SIMULACRUM (the owner's name): inspired by the score and soundtrack of a 1999 science-fiction film about a
     // simulated world: a dark, atonal orchestra (brass in clashing keys, stabbing strings), late-'90s industrial and
     // big-beat (distorted basses, chopped breakbeats), fast trance arpeggios, falling digital rain, time slowing down.
@@ -2614,6 +2639,7 @@ namespace
         reverb (chase, RT::room, 0.5f, 0.12f);
         space (chase);
         chase.set (ParamIDs::patchLevel, 4.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (chase, "SCREAM (more sync)", { 0.5f, 0.45f, false, 2.0f / 3.0f, 0.4f });
         x.add (chase);
 
         auto phantom = x.make ("Phantom Line", 2, { "Lead", "Pulse", "Delay", "Mono" },
@@ -2632,6 +2658,7 @@ namespace
         reverb (phantom, RT::plate, 0.6f, 0.18f);
         space (phantom);
         phantom.set (ParamIDs::patchLevel, -5.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (phantom, "ECHO (longer echoes)", { 0.5f, 0.55f, false, 2.0f / 3.0f, 0.5f });
         x.add (phantom);
 
         auto slow = x.make ("Slow Time", 3, { "Lead", "Pitch", "Reverse", "Mono" },
@@ -2653,6 +2680,7 @@ namespace
         reverb (slow, RT::reverse, 0.6f, 0.3f);
         space (slow);
         slow.set (ParamIDs::patchLevel, -3.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (slow, "SAG", { 0.6f, 0.7f, false, 2.0f / 3.0f, 0.35f });
         x.add (slow);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -2681,6 +2709,7 @@ namespace
         reverb (rain, RT::hall, 0.7f, 0.25f);
         space (rain);
         rain.set (ParamIDs::patchLevel, -6.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (rain, "GLITTER (more sparkle)", { 0.45f, 0.6f, false, 2.0f / 3.0f, 0.5f });
         x.add (rain);
 
         auto cluster = x.make ("Brass Cluster", 5, { "Pad", "Brass", "Unison", "Swell" },
@@ -2704,6 +2733,7 @@ namespace
         reverb (cluster, RT::hall, 0.8f, 0.3f, 30.0f, 4.0f);
         space (cluster);
         cluster.set (ParamIDs::patchLevel, -9.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (cluster, "CLASH (louder clashing notes)", { 0.55f, 0.65f, false, 2.0f / 3.0f, 0.3f });
         x.add (cluster);
 
         auto field = x.make ("Endless Field", 6, { "Pad", "Drone", "Step Seq", "Wavetable" },
@@ -2736,6 +2766,7 @@ namespace
         reverb (field, RT::cathedral, 0.5f, 0.35f, 40.0f, 3.5f);
         space (field);
         field.set (ParamIDs::patchLevel, -4.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (field, "PUMP (deeper pumping)", { 0.5f, 0.7f, false, 1.0f, 0.5f });
         x.add (field);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -2766,6 +2797,7 @@ namespace
         reverb (pulseBass, RT::room, 0.4f, 0.08f);
         space (pulseBass);
         pulseBass.set (ParamIDs::patchLevel, 7.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (pulseBass, "DESTROY (SHAPER 1's tube into the drive)", { 0.3f, 0.3f, true, 2.0f / 3.0f, 0.4f });
         x.add (pulseBass);
 
         auto breakBass = x.make ("Breakbeat Bass", 8, { "Bass", "Unison", "LFO", "Mod Wheel" },
@@ -2792,6 +2824,7 @@ namespace
         reverb (breakBass, RT::room, 0.4f, 0.08f);
         space (breakBass);
         breakBass.set (ParamIDs::patchLevel, -5.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (breakBass, "GROWL (SHAPER 1's grit)", { 0.25f, 0.35f, true, 2.0f / 3.0f, 0.5f });
         x.add (breakBass);
 
         auto mainframe = x.make ("Mainframe Sub", 9, { "Bass", "Sub", "Glitch", "Inserts" },
@@ -2813,6 +2846,7 @@ namespace
         reverb (mainframe, RT::room, 0.3f, 0.05f);
         space (mainframe);
         mainframe.set (ParamIDs::patchLevel, -3.6f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (mainframe, "MALFUNCTION (the LO-FI bitcrusher brought in)", { 0.25f, 0.4f, false, 2.0f / 3.0f, 0.5f });
         x.add (mainframe);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -2834,6 +2868,7 @@ namespace
         reverb (terminal, RT::plate, 0.5f, 0.15f);
         space (terminal);
         terminal.set (ParamIDs::patchLevel, -4.0f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (terminal, "RATIO (a stranger ratio)", { 0.5f, 0.5f, false, 2.0f / 3.0f, 0.5f });
         x.add (terminal);
 
         auto glass = x.make ("Glass Code", 11, { "Keys", "Crush", "Lo-Fi", "Pluck" },
@@ -2853,6 +2888,7 @@ namespace
         reverb (glass, RT::room, 0.5f, 0.15f);
         space (glass);
         glass.set (ParamIDs::patchLevel, -4.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (glass, "CRUSH (more crush)", { 0.5f, 0.4f, true, 2.0f / 3.0f, 0.6f });
         x.add (glass);
 
         auto warped = x.make ("Warped Keys", 12, { "Keys", "Shape", "Mod Wheel", "Electric" },
@@ -2878,6 +2914,7 @@ namespace
         reverb (warped, RT::room, 0.6f, 0.15f);
         space (warped);
         warped.set (ParamIDs::patchLevel, -12.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (warped, "WARP (bent without the wheel)", { 0.45f, 0.6f, false, 2.0f / 3.0f, 0.4f });
         x.add (warped);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -2901,6 +2938,7 @@ namespace
         reverb (breach, RT::room, 0.5f, 0.1f);
         space (breach);
         breach.set (ParamIDs::patchLevel, 4.0f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
+        dilate (breach, "DESTROY (SHAPER 1's tube into the drive)", { 0.5f, 0.35f, true, 0.5f, 0.5f });
         x.add (breach);
 
         auto cascade = x.make ("Rain Cascade", 14, { "Arp", "Randomizer", "Phrygian", "Glitch" },
@@ -2937,6 +2975,7 @@ namespace
         reverb (cascade, RT::hall, 0.5f, 0.15f);
         space (cascade);
         cascade.set (ParamIDs::patchLevel, 1.2f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (cascade, "CRUSH (bit-crushed plucks)", { 0.5f, 0.45f, false, 0.5f, 0.6f });
         x.add (cascade);
 
         auto firefight = x.make ("Firefight", 15, { "Arp", "Trance", "LFO", "Build" },
@@ -2965,6 +3004,7 @@ namespace
         reverb (firefight, RT::hall, 0.5f, 0.12f);
         space (firefight);
         firefight.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        dilate (firefight, "BITE (more resonance)", { 0.5f, 0.3f, true, 0.5f, 0.5f });
         x.add (firefight);
     }
 
