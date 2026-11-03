@@ -75,7 +75,8 @@ namespace ModDestinations
                 { "FX Sirocco", "Level" }, { "FX Sirocco", "Detune" }, { "FX Sirocco", "Spread" },
                 { "FX Infernal", "Drive" }, { "FX Infernal", "Mix" }, { "FX Infernal", "Noise" }, { "FX Infernal", "Feedback" },
                 { "FX Afterglow", "Age" }, { "FX Afterglow", "Drift" }, { "FX Afterglow", "Ensemble" }, { "FX Afterglow", "Tape" },
-                { "FX Lighttrail", "Length" }, { "FX Lighttrail", "Rise" }, { "FX Lighttrail", "Tone" }, { "FX Lighttrail", "Mix" } };
+                { "FX Lighttrail", "Length" }, { "FX Lighttrail", "Rise" }, { "FX Lighttrail", "Tone" }, { "FX Lighttrail", "Mix" },
+                { "FX Blackhole", "Hold" }, { "FX Blackhole", "Pull" }, { "FX Blackhole", "Tone" }, { "FX Blackhole", "Mix" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

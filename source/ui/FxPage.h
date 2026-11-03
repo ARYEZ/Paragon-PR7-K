@@ -10,6 +10,7 @@
 #include "ui/InfernalPage.h"
 #include "ui/AfterglowPage.h"
 #include "ui/LightTrailPage.h"
+#include "ui/BlackHolePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -41,7 +42,8 @@ public:
                       sirocco,                                              // 0.58.0 (the SIGNATURE slot)
                       infernal,                                             // 0.59.0 (the SIGNATURE slot)
                       afterglow,                                            // 0.60.0 (the SIGNATURE slot)
-                      lightTrail };                                         // 0.61.0 (the SIGNATURE slot)
+                      lightTrail,                                           // 0.61.0 (the SIGNATURE slot)
+                      blackHole };                                          // 0.62.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -60,6 +62,7 @@ public:
     InfernalPage& getInfernalPage() noexcept { return infernalPage; }
     AfterglowPage& getAfterglowPage() noexcept { return afterglowPage; }
     LightTrailPage& getLightTrailPage() noexcept { return lightTrailPage; }
+    BlackHolePage& getBlackHolePage() noexcept { return blackHolePage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -85,7 +88,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 10> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 11> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -104,6 +107,7 @@ private:
     InfernalPage infernalPage;
     AfterglowPage afterglowPage;
     LightTrailPage lightTrailPage;
+    BlackHolePage blackHolePage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

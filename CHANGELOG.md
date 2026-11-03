@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.62.0
+
+**BLACKHOLE, and LAST LIGHT gets its centrepiece.**
+
+**BLACKHOLE** (a new signature effect, our own design, in the SIGNATURE slot): the last moments of your sound caught and stretched into a haze that hangs under the next notes, as if time were slowing down.
+- Short slices of what you've just played are lifted out, overlapped and blurred into a steady haze, which goes on after you let go.
+- **HOLD:** how long the haze hangs, from half a second to twenty. It always dies away in the end.
+- **PULL:** the haze sinks in pitch a little more each time round, falling in.
+- **SIZE:** how far back it reaches. **TONE:** darker or brighter. **WIDTH:** each side its own haze, or both alike. **MIX:** how much haze.
+- The sound itself passes unchanged; at MIX 0 nothing at all is added.
+- FAINT, DEEP and ENDLESS on its unit set how long it hangs. Its page shows the slices circling a dark disc, drawn inward as they play.
+- HOLD, PULL, TONE and MIX can be moved by the mod matrix (FX Blackhole).
+
+**LAST LIGHT: MACRO 3 is now GRAVITY on all 15 presets.**
+- At 0 every preset sounds exactly as before: no haze at all.
+- Turning it up pulls each preset into its own haze: long and barely sinking behind the pianos, deep wide clouds that sink further on the pads, a light dark haze on the basses so the low end stays clear.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
 ## 0.61.0
 
 **LIGHTTRAIL, and DATASTREAM gets its centrepiece.**

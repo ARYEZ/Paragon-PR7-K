@@ -210,6 +210,7 @@ public:
         rack->crackle.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
+        rack->blackHole.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -311,6 +312,9 @@ public:
     // LIGHTTRAIL (0.61.0): its settings (LENGTH, RISE, TONE, MIX as the matrix moves them).
     effects::LightTrail::Settings getLightTrailSettings() const noexcept;
     const effects::LightTrail& getLightTrail() const noexcept { return rack->lightTrail; }
+    // BLACKHOLE (0.62.0): its settings (HOLD, PULL, TONE, MIX as the matrix moves them).
+    effects::BlackHole::Settings getBlackHoleSettings() const noexcept;
+    const effects::BlackHole& getBlackHole() const noexcept { return rack->blackHole; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

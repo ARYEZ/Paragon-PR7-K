@@ -433,6 +433,14 @@ namespace ParamIDs
     inline constexpr auto trailTone     = "trailTone";       // 0 to 1
     inline constexpr auto trailSpread   = "trailSpread";     // 0 to 1
     inline constexpr auto trailMix      = "trailMix";        // 0 to 1
+    // BLACKHOLE (0.62.0, version hint 34, effects::BlackHole): LAST LIGHT's signature.
+    inline constexpr auto blackholeOn    = "blackholeOn";
+    inline constexpr auto blackholeHold  = "blackholeHold";    // 0 to 1: 0.5 s to 20 s
+    inline constexpr auto blackholeSize  = "blackholeSize";    // 0 to 1: 0.3 s to 3 s back
+    inline constexpr auto blackholePull  = "blackholePull";    // 0 to 1: 0 to -2 semitones a pass
+    inline constexpr auto blackholeTone  = "blackholeTone";    // 0 to 1
+    inline constexpr auto blackholeWidth = "blackholeWidth";   // 0 to 1
+    inline constexpr auto blackholeMix   = "blackholeMix";     // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -514,4 +522,5 @@ void addDownpourParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
 void addInfernalParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.59.0)
 void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.60.0)
 void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.61.0)
+void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.62.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

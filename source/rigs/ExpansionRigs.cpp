@@ -2248,6 +2248,27 @@ namespace
     // LAST LIGHT (the owner's name): inspired by the score of a film about space, time and leaving the people you love:
     // an enormous church organ, quiet repeating piano, a ticking clock, slow swells, vast cold spaces. Sad, longing,
     // melancholy. No title, characters, places or music from the film: our own sounds.
+    // LAST LIGHT's centrepiece (0.62.0, the owner's ask): BLACKHOLE on every preset, MACRO 3 GRAVITY. Each preset gets
+    // its own haze (hold, size, pull, tone, width) at MIX 0, so at the macro's left it sounds exactly as approved; the
+    // macro brings the haze in and lengthens it. Its old MACRO 3 job rides along (the notes say so).
+    struct Haze
+    {
+        float hold = 0.7f, size = 0.5f, pull = 0.15f, tone = 0.5f, width = 0.8f;
+        float mixTop = 0.45f;   // the macro's MIX at full
+    };
+
+    void gravity (Builder& b, const juce::String& oldText, const juce::String& newText, Haze h)
+    {
+        b.set (ParamIDs::blackholeOn, 1.0f).set (ParamIDs::blackholeHold, h.hold).set (ParamIDs::blackholeSize, h.size)
+         .set (ParamIDs::blackholePull, h.pull).set (ParamIDs::blackholeTone, h.tone).set (ParamIDs::blackholeWidth, h.width)
+         .set (ParamIDs::blackholeMix, 0.0f);
+        route (b, "macro3", ParamIDs::blackholeMix, h.mixTop);
+        route (b, "macro3", ParamIDs::blackholeHold, 0.1f);
+        b.rig.modulation.macroNames[2] = "GRAVITY";
+        jassert (b.rig.notes.contains (oldText));
+        b.rig.notes = b.rig.notes.replace (oldText, newText);
+    }
+
     void lastLight (Expansion x)
     {
         using SP5 = synth::mod::ShapePoint;
@@ -2267,11 +2288,12 @@ namespace
         route (signal, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (signal, "macro3", ParamIDs::osc (0, "VibAmount"), 0.25f);
         route (signal, "macro3", ParamIDs::osc (1, "VibAmount"), 0.25f);
-        macros (signal, "BRIGHT", "SPACE", "VIBRATO");
+        macros (signal, "BRIGHT", "SPACE", "GRAVITY");
         delay (signal, "1/4", 0.3f, 0.15f, true, 4.0f);
         signal.set (ParamIDs::delayToReverb, 0.4f);
         reverb (signal, RT::cathedral, 0.5f, 0.32f, 60.0f, 4.0f);
         space (signal);
+        gravity (signal, "VIBRATO", "GRAVITY (the haze, plus VIBRATO)", { 0.7f, 0.4f, 0.15f, 0.6f, 0.8f, 0.45f });
         signal.set (ParamIDs::patchLevel, -4.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (signal);
 
@@ -2292,9 +2314,10 @@ namespace
         route (cello, "aftertouch", ParamIDs::ampVolume, 0.08f, 120.0f);
         route (cello, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (cello, "macro3", ParamIDs::osc (0, "Noise"), 0.04f);
-        macros (cello, "BRIGHT", "SPACE", "BOW");
+        macros (cello, "BRIGHT", "SPACE", "GRAVITY");
         reverb (cello, RT::hall, 0.7f, 0.25f, 30.0f, 4.0f);
         space (cello);
+        gravity (cello, "BOW (more bow noise)", "GRAVITY (the haze, plus BOW (more bow noise))", { 0.65f, 0.5f, 0.2f, 0.45f, 0.7f, 0.4f });
         cello.set (ParamIDs::patchLevel, -3.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (cello);
 
@@ -2309,9 +2332,10 @@ namespace
              .mono (100.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::always);
         route (elegy, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (elegy, "macro3", ParamIDs::osc (0, "WtIndex"), -0.25f);
-        macros (elegy, "BRIGHT", "SPACE", "VOWEL");
+        macros (elegy, "BRIGHT", "SPACE", "GRAVITY");
         reverb (elegy, RT::cathedral, 0.5f, 0.35f, 50.0f, 4.0f);
         space (elegy);
+        gravity (elegy, "VOWEL (opening to \"oh\")", "GRAVITY (the haze, plus VOWEL (opening to \"oh\"))", { 0.75f, 0.5f, 0.15f, 0.55f, 0.9f, 0.45f });
         elegy.set (ParamIDs::patchLevel, -0.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (elegy);
 
@@ -2330,9 +2354,10 @@ namespace
         route (organ, "modWheel", ParamIDs::fltCutoff, 0.25f, 200.0f);
         route (organ, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (organ, "macro3", ParamIDs::osc (0, "WtIndex"), 0.3f);
-        macros (organ, "BRIGHT", "SPACE", "STOPS");
+        macros (organ, "BRIGHT", "SPACE", "GRAVITY");
         reverb (organ, RT::cathedral, 0.5f, 0.4f, 40.0f, 4.0f);
         space (organ);
+        gravity (organ, "STOPS (more upper ranks)", "GRAVITY (the haze, plus STOPS (more upper ranks))", { 0.8f, 0.7f, 0.1f, 0.45f, 0.9f, 0.4f });
         organ.set (ParamIDs::patchLevel, -5.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (organ);
 
@@ -2351,11 +2376,12 @@ namespace
         route (strings, "aftertouch", ParamIDs::ampVolume, 0.1f, 200.0f);
         route (strings, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (strings, "macro3", ParamIDs::fltEnv, 0.3f);
-        macros (strings, "BRIGHT", "SPACE", "SWELL");
+        macros (strings, "BRIGHT", "SPACE", "GRAVITY");
         chorus (strings, ParamIDs::modIds, MT::chorus, 0.4f, 0.4f, 0.35f);
         strings.set (ParamIDs::modStereo, 1.0f);
         reverb (strings, RT::hall, 0.85f, 0.3f, 40.0f, 4.0f);
         space (strings);
+        gravity (strings, "SWELL (a bigger opening)", "GRAVITY (the haze, plus SWELL (a bigger opening))", { 0.8f, 0.6f, 0.25f, 0.5f, 1.0f, 0.45f });
         strings.set (ParamIDs::patchLevel, -10.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (strings);
 
@@ -2373,9 +2399,10 @@ namespace
         route (fading, "lfo2", ParamIDs::fltCutoff, 0.15f);
         route (fading, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (fading, "macro3", ParamIDs::osc (0, "UniDetune"), 0.3f);
-        macros (fading, "BRIGHT", "SPACE", "DRIFT");
+        macros (fading, "BRIGHT", "SPACE", "GRAVITY");
         reverb (fading, RT::cathedral, 0.4f, 0.35f, 40.0f, 3.5f);
         space (fading);
+        gravity (fading, "DRIFT (a wider unison)", "GRAVITY (the haze, plus DRIFT (a wider unison))", { 0.85f, 0.8f, 0.4f, 0.35f, 1.0f, 0.5f });
         fading.set (ParamIDs::patchLevel, -10.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (fading);
 
@@ -2390,9 +2417,10 @@ namespace
              .ampEnvelope (150.0f, 1000.0f, 1.0f, 1500.0f);
         route (pedal, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (pedal, "macro3", ParamIDs::osc (0, "WtIndex"), 0.3f);
-        macros (pedal, "BRIGHT", "SPACE", "RANKS");
+        macros (pedal, "BRIGHT", "SPACE", "GRAVITY");
         reverb (pedal, RT::cathedral, 0.3f, 0.25f, 40.0f, 3.0f);
         space (pedal);
+        gravity (pedal, "RANKS (more upper ranks)", "GRAVITY (the haze, plus RANKS (more upper ranks))", { 0.55f, 0.4f, 0.1f, 0.25f, 0.4f, 0.25f });
         pedal.set (ParamIDs::patchLevel, 1.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (pedal);
 
@@ -2407,9 +2435,10 @@ namespace
             .ampEnvelope (1500.0f, 1000.0f, 1.0f, 2500.0f);
         route (well, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (well, "macro3", ParamIDs::shp (0, "Drive"), 0.4f);
-        macros (well, "BRIGHT", "SPACE", "WARMTH");
+        macros (well, "BRIGHT", "SPACE", "GRAVITY");
         reverb (well, RT::hall, 0.7f, 0.2f);
         space (well);
+        gravity (well, "WARMTH", "GRAVITY (the haze, plus WARMTH)", { 0.7f, 0.6f, 0.6f, 0.25f, 0.5f, 0.3f });
         well.set (ParamIDs::patchLevel, -4.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (well);
 
@@ -2425,9 +2454,10 @@ namespace
         heart.rig.modulation.pitchEnvelope = { { SP5 { 0.0f, 1.0f, -0.6f }, SP5 { 0.06f, 0.5f, 0.0f } }, -1, -1, -1 };
         route (heart, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (heart, "macro3", ParamIDs::pitchEnvRange, 0.2f);
-        macros (heart, "BRIGHT", "SPACE", "THUMP");
+        macros (heart, "BRIGHT", "SPACE", "GRAVITY");
         reverb (heart, RT::hall, 0.5f, 0.15f);
         space (heart);
+        gravity (heart, "THUMP (a bigger drop)", "GRAVITY (the haze, plus THUMP (a bigger drop))", { 0.5f, 0.3f, 0.2f, 0.3f, 0.4f, 0.25f });
         heart.set (ParamIDs::patchLevel, -0.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (heart);
 
@@ -2439,9 +2469,10 @@ namespace
             "recorded: an impression of a felt piano. The MOD WHEEL adds the keys' mechanical noise. MACROS: BRIGHT, "
             "SPACE, FELT (less felt: a clearer strike).");
         feltPiano (memory);
-        macros (memory, "BRIGHT", "SPACE", "FELT");
+        macros (memory, "BRIGHT", "SPACE", "GRAVITY");
         reverb (memory, RT::room, 0.6f, 0.2f, 15.0f, 4.0f);
         space (memory);
+        gravity (memory, "FELT (less felt: a clearer strike)", "GRAVITY (the haze, plus FELT (less felt: a clearer strike))", { 0.75f, 0.4f, 0.1f, 0.55f, 0.8f, 0.45f });
         memory.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (memory);
 
@@ -2455,12 +2486,13 @@ namespace
                                                               [] (const ModRouteData& r) { return r.source == "macro3"; }),
                                               distant.rig.modulation.routes.end());
         route (distant, "macro3", ParamIDs::lofiAmount, 0.4f);
-        macros (distant, "BRIGHT", "SPACE", "WEAR");
+        macros (distant, "BRIGHT", "SPACE", "GRAVITY");
         delay (distant, "1/4 dotted", 0.3f, 0.1f, true, 3.5f);
         distant.set (ParamIDs::delayToReverb, 0.5f);
         reverb (distant, RT::hall, 0.85f, 0.4f, 80.0f, 3.5f);
         eqBand (distant, 0, eq::Shape::highCut, 6000.0f, 0.0f);
         space (distant);
+        gravity (distant, "WEAR (more cassette)", "GRAVITY (the haze, plus WEAR (more cassette))", { 0.8f, 0.5f, 0.15f, 0.4f, 0.8f, 0.45f });
         distant.set (ParamIDs::patchLevel, -1.7f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (distant);
 
@@ -2479,10 +2511,11 @@ namespace
         route (musicBox, "env1", ParamIDs::osc (0, "FmAmount"), 0.2f);
         route (musicBox, "macro1", ParamIDs::osc (0, "FmAmount"), 0.2f);
         route (musicBox, "macro3", ParamIDs::osc (2, "Volume"), 0.12f);
-        macros (musicBox, "BRIGHT", "SPACE", "TINE");
+        macros (musicBox, "BRIGHT", "SPACE", "GRAVITY");
         delay (musicBox, "1/4", 0.3f, 0.12f, true, 5.0f);
         reverb (musicBox, RT::hall, 0.7f, 0.3f, 30.0f, 5.0f);
         space (musicBox);
+        gravity (musicBox, "TINE (the high tine)", "GRAVITY (the haze, plus TINE (the high tine))", { 0.8f, 0.4f, 0.15f, 0.7f, 0.9f, 0.45f });
         musicBox.set (ParamIDs::patchLevel, -2.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (musicBox);
 
@@ -2496,9 +2529,10 @@ namespace
         clock.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
              .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
              .set (ParamIDs::arp (0, "Gate"), 0.9f);
-        macros (clock, "BRIGHT", "SPACE", "FELT");
+        macros (clock, "BRIGHT", "SPACE", "GRAVITY");
         reverb (clock, RT::hall, 0.6f, 0.22f);
         space (clock);
+        gravity (clock, "FELT", "GRAVITY (the haze, plus FELT)", { 0.7f, 0.35f, 0.1f, 0.55f, 0.8f, 0.4f });
         clock.set (ParamIDs::patchLevel, -3.7f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (clock);
 
@@ -2521,9 +2555,10 @@ namespace
         route (docking, "lfo1", ParamIDs::fltCutoff, 0.3f);
         route (docking, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (docking, "macro3", ParamIDs::osc (0, "WtIndex"), 0.3f);
-        macros (docking, "BRIGHT", "SPACE", "RANKS");
+        macros (docking, "BRIGHT", "SPACE", "GRAVITY");
         reverb (docking, RT::cathedral, 0.35f, 0.3f, 30.0f, 4.0f);
         space (docking);
+        gravity (docking, "RANKS", "GRAVITY (the haze, plus RANKS)", { 0.75f, 0.6f, 0.1f, 0.5f, 0.9f, 0.4f });
         docking.set (ParamIDs::patchLevel, 5.2f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (docking);
 
@@ -2537,10 +2572,11 @@ namespace
         tesseract.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
                  .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
                  .set (ParamIDs::arp (0, "Gate"), 1.0f);
-        macros (tesseract, "BRIGHT", "SPACE", "FELT");
+        macros (tesseract, "BRIGHT", "SPACE", "GRAVITY");
         delay (tesseract, "1/4 dotted", 0.3f, 0.12f, true, 4.0f);
         reverb (tesseract, RT::reverse, 0.7f, 0.35f);
         space (tesseract);
+        gravity (tesseract, "FELT", "GRAVITY (the haze, plus FELT)", { 0.85f, 0.7f, 0.2f, 0.5f, 1.0f, 0.5f });
         tesseract.set (ParamIDs::patchLevel, -3.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (tesseract);
     }
