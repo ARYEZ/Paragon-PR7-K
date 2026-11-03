@@ -4431,7 +4431,7 @@ namespace
         reverb (hull, RT::hall, 0.7f, 0.22f, 20.0f, 3.0f);
         space (hull);
         hull.set (ParamIDs::patchLevel, -7.6f);   // LEVEL: balanced against the others (measured, not by ear)
-        awaken (hull, "METAL (more FM)", { 0.35f, 0, 0.3f, 0.6f, 0.0f, 0.8f });
+        awaken (hull, "METAL (more FM)", { 0.2f, 0, 0.3f, 0.6f, 0.0f, 0.8f });
         x.add (hull);
 
         auto tide = x.make ("Tidal Swell", 8, { "Bass", "Brass", "Swell", "Unison" },
@@ -4509,7 +4509,7 @@ namespace
         reverb (bells, RT::plate, 0.8f, 0.28f, 30.0f, 4.5f);
         space (bells);
         bells.set (ParamIDs::patchLevel, -4.8f);   // LEVEL: balanced against the others (measured, not by ear)
-        awaken (bells, "BLOOM (more of the swell)", { 0.45f, 1, 0.3f, 0.15f, 0.5f, 0.8f });
+        awaken (bells, "BLOOM (more of the swell)", { 0.6f, 1, 0.3f, 0.15f, 0.5f, 0.8f });
         x.add (bells);
 
         auto memory = x.make ("Memory Loop", 11, { "Keys", "Piano", "Reverse", "Delay" },

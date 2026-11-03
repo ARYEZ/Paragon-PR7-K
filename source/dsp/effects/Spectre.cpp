@@ -36,6 +36,7 @@ namespace effects
             side.fill ({});
         for (auto& side : breathState2)
             side.fill ({});
+        breathInStep = true;
         for (auto& side : power)
             side.fill (0.0f);
         for (auto& l : lines)
@@ -114,6 +115,18 @@ namespace effects
             readFrom[(size_t) b] = (float) b - shiftBands;
         }
 
+        // (0.68.0, for speed, the same sound bit for bit) At DRIFT 0 both sides get exactly the same breath noise,
+        // and their breath filters, cleared together, stay in exactly the same state: so the filters run once and
+        // both sides use them. When DRIFT comes up, the right side's filters are first set to the left's (where
+        // they'd have been), and from then on each side runs its own until everything is cleared again.
+        if (own != 0.0f && breathInStep)
+        {
+            breathState[1] = breathState[0];
+            breathState2[1] = breathState2[0];
+            breathInStep = false;
+        }
+        const auto sharing = own == 0.0f && breathInStep;
+
         double ghostPower = 0.0;
         std::array<double, numBands> shownIn {}, shownGhost {};
         for (int i = 0; i < n; ++i)
@@ -142,9 +155,12 @@ namespace effects
 
             const auto shared = random();
             float ghost[2] = { 0.0f, 0.0f };
+            std::array<float, numBands> sharedBreath;
             for (int side = 0; side < 2; ++side)
             {
                 const auto noise = common * shared + own * random();
+                // Sharing (DRIFT 0, the sides in step): the right side's breath is the left's, already filtered.
+                const auto reuse = sharing && side == 1;
                 const auto& mine = power[(size_t) side];
                 const auto& other = power[(size_t) (1 - side)];
                 auto& st = breathState[(size_t) side];
@@ -155,7 +171,8 @@ namespace effects
                     const auto from = readFrom[(size_t) b];
                     if (from < 0.0f || from > (float) (numBands - 1))
                     {
-                        st2[(size_t) b].run (breath[(size_t) b], st[(size_t) b].run (breath[(size_t) b], noise));
+                        if (! reuse)
+                            sharedBreath[(size_t) b] = st2[(size_t) b].run (breath[(size_t) b], st[(size_t) b].run (breath[(size_t) b], noise));
                         continue;
                     }
                     const auto k = juce::jmin ((int) from, numBands - 2);
@@ -164,7 +181,8 @@ namespace effects
                     const auto otherPower = other[(size_t) k] + f * (other[(size_t) k + 1] - other[(size_t) k]);
                     const auto t = toOther[(size_t) b];
                     const auto bandPower = (1.0f - t) * ownPower + t * otherPower;
-                    const auto y = st2[(size_t) b].run (breath[(size_t) b], st[(size_t) b].run (breath[(size_t) b], noise));
+                    const auto y = reuse ? sharedBreath[(size_t) b]
+                                         : (sharedBreath[(size_t) b] = st2[(size_t) b].run (breath[(size_t) b], st[(size_t) b].run (breath[(size_t) b], noise)));
                     if (bandPower <= 0.0f)
                         continue;
                     const auto level = std::sqrt (bandPower) * weight[(size_t) b];
@@ -211,6 +229,7 @@ namespace effects
                 side.fill ({});
             for (auto& side : breathState2)
                 side.fill ({});
+            breathInStep = true;
             for (auto& l : lines)
                 std::fill (l.begin(), l.end(), 0.0f);
             trailNow = -1.0f;

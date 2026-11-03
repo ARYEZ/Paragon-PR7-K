@@ -102,6 +102,7 @@ namespace effects
         double sampleRate = 48000.0;
         std::array<Band, numBands> analysis {}, breath {};
         std::array<std::array<State, numBands>, 2> analysisState {}, analysisState2 {}, breathState {}, breathState2 {};
+        bool breathInStep = true;   // the two sides' breath filters in exactly the same state (cleared together, DRIFT 0 since)
         std::array<std::array<float, numBands>, 2> power {};   // each band's followed power, per side
         std::array<float, numBands> breathGain {}, weight {}, swingPhase {}, swingRate {};
         float breathAir = -1.0f;

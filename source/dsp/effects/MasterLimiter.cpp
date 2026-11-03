@@ -110,14 +110,33 @@ namespace effects
         void TruePeakDetector::reset() noexcept
         {
             history.fill (0.0f);
+            mirrored.fill (0.0f);
             position = 0;
             previousBetween = 0.0f;
+        }
+
+        // (0.68.0, for speed) The table turned on its side: by tap, then point (seven used, an eighth of zeros so
+        // the processor can work on eight at once).
+        using TableByTap = std::array<std::array<float, limiter::TruePeakDetector::points>, limiter::TruePeakDetector::taps>;
+        static const TableByTap& interpolationByTap()
+        {
+            static const auto byTap = []
+            {
+                TableByTap t {};
+                const auto& table = interpolation();
+                for (size_t point = 0; point < table.size(); ++point)
+                    for (size_t j = 0; j < (size_t) limiter::TruePeakDetector::taps; ++j)
+                        t[j][point] = table[point][j];
+                return t;
+            }();
+            return byTap;
         }
 
         float TruePeakDetector::push (float sample, float atLeast) noexcept
         {
             history[(size_t) position] = sample;
-            const auto& table = interpolation();
+            mirrored[(size_t) position] = sample;
+            mirrored[(size_t) position + 128] = sample;
             // The points between m and m + 1, m = `delay` samples back: from the
             // samples m - (delay - 1) to m + delay (the newest).
             constexpr int mask = 127;
@@ -125,13 +144,22 @@ namespace effects
             const auto next = std::abs (history[(size_t) ((position - delay + 1) & mask)]);
             float between = 0.0f;
             if (juce::jmax (centre, next) >= atLeast * 0.5f)
-                for (const auto& point : table)
+            {
+                // Each point's sum goes tap 0 to 63 in order, as before (the same sound bit for bit); the seven
+                // points are now summed side by side, a tap at a time, instead of one after another.
+                const auto& table = interpolationByTap();
+                const auto* line = mirrored.data() + (((position - (taps - 1)) & mask));
+                alignas (32) std::array<float, points> value {};
+                for (int j = 0; j < taps; ++j)
                 {
-                    float value = 0.0f;
-                    for (int j = 0; j < taps; ++j)
-                        value += point[(size_t) j] * history[(size_t) ((position - (taps - 1) + j) & mask)];
-                    between = juce::jmax (between, std::abs (value));
+                    const auto h = line[j];
+                    const auto& row = table[(size_t) j];
+                    for (size_t q = 0; q < (size_t) points; ++q)
+                        value[q] += row[q] * h;
                 }
+                for (size_t q = 0; q + 1 < (size_t) points; ++q)
+                    between = juce::jmax (between, std::abs (value[q]));
+            }
             const auto result = juce::jmax (centre, previousBetween, between);
             previousBetween = between;
             position = (position + 1) & mask;

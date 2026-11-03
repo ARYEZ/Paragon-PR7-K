@@ -382,6 +382,19 @@ private:
     effects::LoFi::Settings loFiSettingsFor (int bus) const noexcept;   // -1: the whole sound's
     float param (const char* id) const;
     bool isOn (const char* id) const { return param (id) > 0.5f; }
+    // (0.68.0, for speed) Every parameter's value and its range, found by ID through a hash table made once when
+    // the plugin starts and never changed after (so the audio thread and the screen can both read it): the same
+    // values the parameter tree gives, without its sorted-map search (a dozen string compares) each time.
+    struct ParamSlot
+    {
+        const char* id = nullptr;
+        std::atomic<float>* value = nullptr;
+        juce::RangedAudioParameter* parameter = nullptr;
+    };
+    const ParamSlot* findParam (const char* id) const noexcept;
+    std::vector<juce::String> paramIds;
+    std::vector<ParamSlot> paramTable;
+    std::uint32_t paramMask = 0;
 
     void timerCallback() override;
     void parameterChanged (const juce::String& parameterId, float newValue) override;

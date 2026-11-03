@@ -68,6 +68,7 @@ add_executable(ParagonX1Tests
     SpectrePluginTests.cpp
     LeviathanTests.cpp
     LeviathanPluginTests.cpp
+    SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

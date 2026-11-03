@@ -1,4 +1,6 @@
 #include "PluginProcessor.h"
+
+#include <cstring>
 #include "dsp/synth/Mimic.h"
 
 #include "ModDestinations.h"
@@ -177,6 +179,27 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
         }
     for (auto& position : effectPositions)
         position = std::numeric_limits<float>::quiet_NaN();   // no route moves an effect yet
+    // The parameters' hash table (findParam): open addressing, at most half full.
+    {
+        for (auto* p : getParameters())
+            if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (p))
+                paramIds.push_back (withId->paramID);
+        std::uint32_t size = 1;
+        while (size < (std::uint32_t) paramIds.size() * 2u)
+            size <<= 1;
+        paramTable.assign (size, {});
+        paramMask = size - 1;
+        for (const auto& id : paramIds)
+        {
+            const auto* key = id.toRawUTF8();
+            auto h = 2166136261u;
+            for (const auto* c = key; *c != 0; ++c)
+                h = (h ^ (std::uint8_t) *c) * 16777619u;
+            while (paramTable[h & paramMask].id != nullptr)
+                ++h;
+            paramTable[h & paramMask] = { key, parameters.getRawParameterValue (id), parameters.getParameter (id) };
+        }
+    }
     compileMatrix();   // the PITCH envelope's points, ready from the start
 
     playingFactoryTable.fill (-1);
@@ -778,10 +801,28 @@ juce::AudioProcessorParameter* ParagonX1AudioProcessor::getBypassParameter() con
     return parameters.getParameter (ParamIDs::bypass);
 }
 
+const ParagonX1AudioProcessor::ParamSlot* ParagonX1AudioProcessor::findParam (const char* id) const noexcept
+{
+    auto h = 2166136261u;
+    for (const auto* c = id; *c != 0; ++c)
+        h = (h ^ (std::uint8_t) *c) * 16777619u;
+    for (;; ++h)
+    {
+        const auto& slot = paramTable[h & paramMask];
+        if (slot.id == nullptr)
+            return nullptr;
+        if (std::strcmp (slot.id, id) == 0)
+            return &slot;
+    }
+}
+
 float ParagonX1AudioProcessor::param (const char* id) const
 {
-    // Looked up by ID each block. APVTS keeps these in a sorted map, so the
-    // lookup is a handful of string compares and never allocates.
+    // Looked up by ID each block, through the hash table made at the start (0.68.0; it was the parameter tree's
+    // sorted map: about 300 lookups a block, each a dozen string compares). Never allocates.
+    if (const auto* slot = findParam (id))
+        return slot->value->load();
+    jassertfalse;   // an ID the plugin doesn't have
     return parameters.getRawParameterValue (id)->load();
 }
 
@@ -1627,6 +1668,10 @@ float ParagonX1AudioProcessor::effectParam (int effect, const char* id) const
     const auto position = effectPositions[(size_t) effect].load (std::memory_order_relaxed);
     if (std::isnan (position))
         return param (id);
+    // The parameter's own range, read where it lives (0.68.0: getParameterRange copied it, and a range carries
+    // small functions whose copy could ask for memory on the audio thread).
+    if (const auto* slot = findParam (id); slot != nullptr && slot->parameter != nullptr)
+        return slot->parameter->getNormalisableRange().convertFrom0to1 (position);
     return parameters.getParameterRange (id).convertFrom0to1 (position);
 }
 
