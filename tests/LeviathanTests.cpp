@@ -22,11 +22,9 @@ namespace
 
     // Runs the input through LEVIATHAN with `notes` sounding (changed to `later` at `switchAt` seconds, if given).
     template <typename Input>
-    Result run (double seconds, Input input, Settings s, std::vector<float> notes, std::vector<float> later = {}, double switchAt = 1.0e9,
-                effects::Leviathan* keep = nullptr)
+    Result run (double seconds, Input input, Settings s, std::vector<float> notes, std::vector<float> later = {}, double switchAt = 1.0e9)
     {
-        effects::Leviathan local;
-        auto& fx = keep != nullptr ? *keep : local;
+        effects::Leviathan fx;
         fx.prepare (sampleRate, blockSize);
         fx.seedRandom (7);
         Result result;
@@ -191,13 +189,22 @@ TEST_CASE ("LEVIATHAN: GROWL creaks, a lower shadow between the harmonics; the v
     INFO ("on the harmonics against between them: GROWL 0 " << smooth << " dB, GROWL 1 " << creaking << " dB");
     CHECK (creaking < smooth - 10.0);
 
+    // One long run, the vowel read every block: it moves (a new place about every 0.8 s at DRIFT 1).
     effects::Leviathan fx;
+    fx.prepare (sampleRate, blockSize);
+    fx.seedRandom (7);
     auto wandering = calling();
-    wandering.drift = 1.0f;   // a new place about every 0.8 s
+    wandering.drift = 1.0f;
+    const float note = 57.0f;
     float lowest = 1.0f, highest = 0.0f;
-    for (int k = 0; k < 8; ++k)
+    std::vector<float> l ((size_t) blockSize), r ((size_t) blockSize);
+    float* ptrs[] = { l.data(), r.data() };
+    for (int b = 0; b < (int) (8.0 * sampleRate / blockSize); ++b)
     {
-        run (1.0, [] (long long i) { return sine (220.0, i); }, wandering, { 57.0f }, {}, 1.0e9, &fx);
+        for (size_t i = 0; i < (size_t) blockSize; ++i)
+            l[i] = r[i] = sine (220.0, (long long) b * blockSize + (long long) i).first;
+        fx.setNotes (&note, 1);
+        fx.process (juce::dsp::AudioBlock<float> (ptrs, 2, (size_t) blockSize), wandering);
         lowest = std::min (lowest, fx.getVowel());
         highest = std::max (highest, fx.getVowel());
     }

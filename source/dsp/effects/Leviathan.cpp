@@ -8,7 +8,8 @@ namespace effects
     {
         sampleRate = rate;
         powerUp = (float) (1.0 - std::exp (-1.0 / (0.04 * rate)));
-        powerDown = (float) (1.0 - std::exp (-1.0 / (0.5 * rate)));
+        powerDown = (float) (1.0 - std::exp (-1.0 / (0.25 * rate)));
+        powerSmooth = (float) (1.0 - std::exp (-1.0 / (0.05 * rate)));
         voicePowerRate = (float) (1.0 - std::exp (-1.0 / (0.15 * rate)));
         glide = (float) (1.0 - std::exp (-1.0 / (0.12 * rate)));
         smoothing = (float) (1.0 - std::exp (-1.0 / (0.03 * rate)));
@@ -31,7 +32,7 @@ namespace effects
         heldNote = -1.0f;
         heldPower = 0.0f;
         pitchNow = -1.0f;
-        inPower = voicePower = levelNow = mixNow = 0.0f;
+        inPower = smoothPower = voicePower = levelNow = mixNow = 0.0f;
         vowelNow = vowelTarget = vowelShownValue = 0.3f;
         vowelTimer = 0.0f;
         countdown = 0;
@@ -118,9 +119,12 @@ namespace effects
                 mixNow = 0.0f;
 
             const float in[2] = { left[i], right[i] };
+            // Your level: the power smoothed evenly first (a fast rise on the raw power rode a tone's ripple and
+            // read 2 dB high), then up quickly and down slowly; under -80 dB it's silence.
             const auto power = 0.5f * (in[0] * in[0] + in[1] * in[1]);
-            inPower += (power - inPower) * (power > inPower ? powerUp : powerDown);
-            if (inPower < 1.0e-12f)
+            smoothPower += (power - smoothPower) * powerSmooth;
+            inPower += (smoothPower - inPower) * (smoothPower > inPower ? powerUp : powerDown);
+            if (inPower < 1.0e-8f)
                 inPower = 0.0f;
 
             // Every control step: the note and the level into DELAY's line, the delayed ones out, the vowel.

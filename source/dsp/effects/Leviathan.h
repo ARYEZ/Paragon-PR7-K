@@ -22,7 +22,7 @@ namespace effects
     // - GROWL: rougher each cycle (pitch and level jitter), every other cycle weaker (creak: a lower shadow), and
     //   clicks in the throat (short noise bursts, 2 to 12 a second, through the same vowel).
     // - Each side its own throat, a few cents apart, its vowel a step away: a wide voice.
-    // - Its level follows yours (power 40 ms up, 0.5 s down) and is kept at it (the voice's own level measured and
+    // - Its level follows yours (power smoothed over 50 ms, then 40 ms up, 0.25 s down, silence under -80 dB) and is kept at it (the voice's own level measured and
     //   matched, whatever the vowel), x MIX: so it breathes with your playing and silence stays silent.
     // - DELAY: it answers 0 to 1.5 s behind (its note and level both).
     // MIX under 0.001 counts as 0; at 0 untouched bit for bit, and everything let go so it wakes clean (`isResting`).
@@ -88,8 +88,8 @@ namespace effects
         float lowestNote = -1.0f, pitchNow = -1.0f;
         float vowelNow = 0.3f, vowelTarget = 0.3f, vowelTimer = 0.0f, vowelShownValue = 0.3f;
         float waverPhase = 0.0f, clickTimer = 0.5f;
-        float inPower = 0.0f, voicePower = 0.0f, levelNow = 0.0f, mixNow = 0.0f;
-        float powerUp = 0.0f, powerDown = 0.0f, voicePowerRate = 0.0f, glide = 0.0f, smoothing = 0.0f;
+        float inPower = 0.0f, smoothPower = 0.0f, voicePower = 0.0f, levelNow = 0.0f, mixNow = 0.0f;
+        float powerUp = 0.0f, powerDown = 0.0f, powerSmooth = 0.0f, voicePowerRate = 0.0f, glide = 0.0f, smoothing = 0.0f;
         // DELAY: the note and the level going in, every `controlStep` samples.
         static constexpr int controlStep = 32;
         std::vector<float> delayedNote, delayedPower;
