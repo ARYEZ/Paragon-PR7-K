@@ -10277,6 +10277,34 @@ namespace
 
     void atomicAge (Expansion x)
     {
+        using SPA = synth::mod::ShapePoint;
+        // A section of players or singers: unison copies, each with its own vibrato (so they drift apart as people do).
+        const auto section = [] (Builder& b, int o, int voices, float detune, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", 0.85f).osc (o, "UniDetune", detune).osc (o, "UniSpread", 0.85f)
+             .osc (o, "VibMode", (float) synth::VibratoMode::independent).osc (o, "VibAmount", cents).osc (o, "VibRate", rate)
+             .osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        // Noise on its own oscillator (the wave off): breath, a bow, a pick.
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        // A one-shot modulation envelope: `points` as (seconds, level 0-1, curve).
+        const auto shot = [] (Builder& b, int env, std::vector<SPA> points)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { std::move (points), -1, -1, -1 };
+        };
+        // The PITCH envelope from `startSemis` to the note over `seconds` (range rounded up to cover it).
+        const auto bend = [] (Builder& b, float startSemis, float seconds, float curve)
+        {
+            const auto range = std::ceil (std::abs (startSemis) * 2.0f) / 2.0f;
+            b.set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, range);
+            b.rig.modulation.pitchEnvelope = { { SPA { 0.0f, 0.5f + 0.5f * startSemis / range, curve }, SPA { seconds, 0.5f, 0.0f } }, -1, -1, -1 };
+        };
+
         // ---- LEADS -------------------------------------------------------------------------------------------
         auto saucer = x.make ("Saucer Song", 1, { "Lead", "Sine", "Vibrato", "Mono" },
             "The B-movie sci-fi singer, as if played with a hand waving in the air: a pure sine with a faint triangle "
@@ -10300,83 +10328,115 @@ namespace
         springTank (saucer, { 0.5f, 0.6f, 0.8f, 0.55f, 0.55f, 0.5f, 0.8f, 0.2f });
         x.add (saucer);
 
-        auto twang = x.make ("Desert Twang", 2, { "Lead", "Pluck", "Tremolo", "Mono" },
-            "The dusty wasteland outside the shiny door: a twangy baritone-guitar lead, a narrow pulse and a saw "
-            "plucked through a resonant filter that snaps shut, a throbbing tremolo, a slapback echo and a small "
-            "room. MACROS: BRIGHT, SPACE, SPRING (a surf tank, all drip). MOD WHEEL: deeper tremolo.");
-        twang.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.6f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.35f).osc (1, "Fine", 6.0f)
-             .filter (FilterType::lp24, 2400.0f, 0.28f, 0.45f).filterEnvelope (2.0f, 260.0f, 0.35f, 300.0f)
-             .ampEnvelope (2.0f, 700.0f, 0.55f, 380.0f)
-             .mono (25.0f);
+        auto twang = x.make ("Surf Baritone", 2, { "Lead", "Guitar", "Pluck", "Whammy" },
+            "A twangy baritone guitar on a dusty road, built as a guitar plays: a thin, bright pulse (a bridge pickup) and "
+            "a faint saw an octave up for the string's shine, each note starting a hair sharp as a struck string does and "
+            "settling, a pick's click of noise, the tone snapping from bright to warm, a small tube amp breaking up. No "
+            "tremolo now: the MOD WHEEL is the whammy bar (a wide, slow vibrato). MACROS: BRIGHT, SPACE, SPRING (a surf "
+            "tank, all drip and splash).");
+        twang.osc (0, "Wave", pulse).osc (0, "Width", 0.18f).osc (0, "Volume", 0.65f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.14f)
+             .osc (0, "VibRate", 4.2f).osc (1, "VibRate", 4.2f)
+             .filter (FilterType::lp12, 1500.0f, 0.18f, 0.5f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.3f)
+             .filterEnvelope (1.0f, 220.0f, 0.15f, 250.0f)
+             .ampEnvelope (1.0f, 1400.0f, 0.3f, 280.0f)
+             .shaper (0, synth::ShaperModel::tube, 0.3f, true)
+             .mono (15.0f);
+        noiseOsc (twang, 2, 0.0f, 0.04f);   // the pick: a 25 ms click of bright noise
+        shot (twang, 0, { SPA { 0.0f, 1.0f, -0.5f }, SPA { 0.025f, 0.0f, 0.0f } });
+        route (twang, "env1", ParamIDs::osc (2, "Volume"), 0.35f);
+        bend (twang, 0.3f, 0.07f, -0.4f);
+        route (twang, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.5f);
+        route (twang, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.5f);
         route (twang, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (twang, "modWheel", ParamIDs::modIds.depth, 0.3f);
         macros (twang, "BRIGHT", "SPACE", "SPRING");
-        chorus (twang, ParamIDs::modIds, MT::tremolo, 0.45f, 0.45f, 1.0f);
-        delay (twang, "1/16", 0.12f, 0.22f, false, 5.0f);
-        reverb (twang, RT::room, 0.4f, 0.15f);
+        delay (twang, "1/16", 0.1f, 0.22f, false, 5.0f);
+        reverb (twang, RT::room, 0.4f, 0.12f);
         space (twang);
-        twang.set (ParamIDs::patchLevel, -3.1f);
-        springTank (twang, { 0.55f, 0.45f, 1.0f, 0.5f, 0.5f, 0.75f, 0.6f, 0.0f });
+        twang.set (ParamIDs::patchLevel, -2.0f);
+        springTank (twang, { 0.55f, 0.45f, 1.0f, 0.5f, 0.5f, 0.8f, 0.6f, 0.0f });
         x.add (twang);
 
-        auto mute = x.make ("Velvet Mute", 3, { "Lead", "Brass", "Filter", "Mono" },
-            "A smoky lounge horn with a cup mute: a saw and a pulse through a soft filter that blooms a little as each "
-            "note speaks, a short scoop up into every phrase, vibrato easing in late, a hall. MACROS: BRIGHT (opens "
-            "the mute), SPACE, SPRING (an organ tank). MOD WHEEL: opens the filter.");
-        mute.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
-            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.45f).osc (1, "Volume", 0.3f).osc (1, "Fine", -5.0f)
-            .osc (0, "VibAmount", 12.0f).osc (0, "VibRate", 5.4f).osc (0, "VibFade", 450.0f)
-            .osc (1, "VibAmount", 12.0f).osc (1, "VibRate", 5.4f).osc (1, "VibFade", 450.0f)
-            .filter (FilterType::lp12, 1100.0f, 0.3f, 0.28f).filterEnvelope (45.0f, 500.0f, 0.45f, 300.0f)
-            .ampEnvelope (35.0f, 300.0f, 0.85f, 260.0f)
-            .mono (60.0f);
+        auto mute = x.make ("Harmon Horn", 3, { "Lead", "Brass", "Voice", "Mono" },
+            "A muted lounge trumpet, its nasal \"wah\" made by the VOICE filter (a harmon mute's narrow, nasal formants are "
+            "much like a sung \"eh\"): a buzzy saw and a narrow pulse, a breath through the mute, each phrase scooped up "
+            "into from a semitone below, a little blat as the note speaks, vibrato easing in late. The MOD WHEEL is the "
+            "player's hand over the mute: down closed (\"oo\"), up open (\"ah\"), the classic wah-wah. MACROS: BRIGHT, "
+            "SPACE, SPRING (an organ tank).");
+        mute.osc (0, "Wave", saw).osc (0, "Volume", 0.6f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Volume", 0.3f).osc (1, "Fine", 3.0f)
+            .osc (0, "VibAmount", 10.0f).osc (0, "VibRate", 5.6f).osc (0, "VibFade", 500.0f)
+            .osc (1, "VibAmount", 10.0f).osc (1, "VibRate", 5.6f).osc (1, "VibFade", 500.0f)
+            .filter (FilterType::lp12, 4200.0f, 0.15f, 0.3f).set (ParamIDs::fltVel, 0.35f)
+            .filterEnvelope (8.0f, 160.0f, 0.4f, 200.0f)
+            .ampEnvelope (20.0f, 250.0f, 0.85f, 180.0f)
+            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.6f).set (ParamIDs::voiceSize, 0.75f)
+            .set (ParamIDs::voiceSharp, 0.8f).set (ParamIDs::voiceMix, 0.65f)   // some plain buzz past the mute: its brassy edge
+            .mono (40.0f);
+        noiseOsc (mute, 2, 0.03f, 0.1f);
+        bend (mute, -1.0f, 0.09f, -0.3f);
+        route (mute, "modWheel", ParamIDs::voiceVowel, -0.35f, 40.0f);
         route (mute, "macro1", ParamIDs::fltCutoff, 0.25f);
-        route (mute, "modWheel", ParamIDs::fltCutoff, 0.2f);
         macros (mute, "BRIGHT", "SPACE", "SPRING");
         reverb (mute, RT::hall, 0.6f, 0.2f);
         space (mute);
-        mute.set (ParamIDs::patchLevel, -3.6f);
+        mute.set (ParamIDs::patchLevel, -1.2f);
         springTank (mute, { 0.4f, 0.5f, 0.35f, 0.45f, 0.85f, 0.3f, 0.7f, 0.2f });
         x.add (mute);
 
         // ---- PADS --------------------------------------------------------------------------------------------
-        auto oohs = x.make ("Doo-Wop Oohs", 4, { "Pad", "Choir", "Vowel", "Unison" },
-            "Backing singers round one microphone: three soft saws sung through the VOICE filter on \"oo\", a gentle "
-            "vibrato each, swelling in and fading slowly, a hall. MACROS: VOWEL (opens to \"ah\"), SPACE, SPRING (a "
-            "lush tank). MOD WHEEL: vibrato.");
-        oohs.osc (0, "Wave", saw).osc (0, "Volume", 0.6f)
-            .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.09f).osc (0, "UniSpread", 0.7f)
-            .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 9.0f).osc (0, "VibRate", 5.0f)
-            .filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f)
-            .ampEnvelope (260.0f, 600.0f, 0.9f, 900.0f)
-            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.0f).set (ParamIDs::voiceSize, 0.55f)
-            .set (ParamIDs::voiceSharp, 0.45f).set (ParamIDs::voiceMix, 1.0f);
-        route (oohs, "macro1", ParamIDs::voiceVowel, 0.45f);
-        route (oohs, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        auto oohs = x.make ("Doo-Wop Oohs", 4, { "Pad", "Choir", "Voice", "Vintage" },
+            "Backing singers round one microphone, built as a vocal group: two sections (a section of saw voices and one "
+            "of narrow pulses), each singer with their own vibrato, sung through the VOICE filter, every chord hummed "
+            "and opening into \"ooh\", the singers sliding up into the notes together, a breath through it, the voices' "
+            "size following the keys (low notes a baritone's, high a soprano's), a 1950s plate. MACROS: VOWEL (towards "
+            "\"ah\"), SPACE, SPRING (a lush tank). MOD WHEEL: more vibrato.");
+        oohs.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.22f).osc (1, "Volume", 0.32f)
+            .filter (FilterType::lp12, 5000.0f, 0.05f, 0.0f)
+            .ampEnvelope (160.0f, 600.0f, 0.92f, 700.0f)
+            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.0f).set (ParamIDs::voiceSize, 0.0f)
+            .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.85f);
+        section (oohs, 0, 4, 0.07f, 9.0f, 5.2f, 450.0f);
+        section (oohs, 1, 3, 0.06f, 11.0f, 5.6f, 550.0f);
+        noiseOsc (oohs, 2, 0.04f, 0.08f);
+        for (int k = 0; k < 2; ++k)   // SIZE by key: 2 x (note / 127)^2, a baritone at C2 to a soprano at C6
+            oohs.rig.modulation.routes.push_back ({ true, "keytrack", ParamIDs::voiceSize, 1.0f, false, 0.0f, 0.5f });
+        shot (oohs, 0, { SPA { 0.0f, 0.0f, 0.3f }, SPA { 0.3f, 1.0f, 0.0f } });   // hummed "mm" opening into "ooh"
+        route (oohs, "env1", ParamIDs::voiceVowel, 0.2f);   // between "oo" and "oh": a clear "ooh"
+        bend (oohs, -1.0f, 0.12f, -0.3f);
+        route (oohs, "macro1", ParamIDs::voiceVowel, 0.4f);
+        route (oohs, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        route (oohs, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
         macros (oohs, "VOWEL", "SPACE", "SPRING");
-        reverb (oohs, RT::hall, 0.7f, 0.25f);
+        reverb (oohs, RT::plate, 0.75f, 0.25f);
+        eqBand (oohs, 0, eq::Shape::lowCut, 80.0f, 0.0f);
         space (oohs);
-        oohs.set (ParamIDs::patchLevel, -8.7f);
+        oohs.set (ParamIDs::patchLevel, -10.3f);
         springTank (oohs, { 0.5f, 0.55f, 0.4f, 0.45f, 0.7f, 0.2f, 0.9f, 0.15f });
         x.add (oohs);
 
-        auto strings = x.make ("Sunday Strings", 5, { "Pad", "Strings", "Unison", "Chorus" },
-            "A lush 1950s string section for the happy ending: five sawtooth players a side, softly filtered, bowing in "
-            "slowly, a wide ensemble chorus and a big hall. MACROS: BRIGHT, SPACE, SPRING (a long organ tank). MOD "
-            "WHEEL: opens the filter.");
+        auto strings = x.make ("Sunday Strings", 5, { "Pad", "Strings", "Section", "Bowed" },
+            "A 1950s studio string section for the happy ending, built as an orchestra plays: violins (six saw players, "
+            "each with their own vibrato easing in) and cellos an octave down, the bows' rosin as a faint noise, each "
+            "chord bowed in with the tone opening as the bow bites, harder playing brighter, the mud cut from the bottom, "
+            "a big hall. No chorus now: the players drifting apart is the ensemble. MACROS: BRIGHT, SPACE, SPRING (a long "
+            "organ tank). MOD WHEEL: opens the tone.");
         strings.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
-               .osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.7f).osc (0, "UniDetune", 0.14f).osc (0, "UniSpread", 0.9f)
-               .osc (0, "VibAmount", 6.0f).osc (0, "VibRate", 5.5f).osc (0, "VibFade", 600.0f)
-               .filter (FilterType::lp24, 4200.0f, 0.1f, 0.0f)
-               .ampEnvelope (420.0f, 800.0f, 0.9f, 1300.0f);
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.28f)
+               .filter (FilterType::lp24, 1800.0f, 0.08f, 0.3f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.4f)
+               .filterEnvelope (380.0f, 900.0f, 0.6f, 900.0f)
+               .ampEnvelope (320.0f, 800.0f, 0.95f, 1000.0f);
+        section (strings, 0, 6, 0.08f, 12.0f, 5.6f, 600.0f);
+        section (strings, 1, 3, 0.06f, 9.0f, 5.0f, 700.0f);
+        noiseOsc (strings, 2, 0.02f, 0.25f);
         route (strings, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (strings, "modWheel", ParamIDs::fltCutoff, 0.2f);
         macros (strings, "BRIGHT", "SPACE", "SPRING");
-        chorus (strings, ParamIDs::mod2Ids, MT::dimension, 0.3f, 0.45f, 0.4f);
-        reverb (strings, RT::hall, 0.8f, 0.28f);
+        reverb (strings, RT::hall, 0.85f, 0.3f);
+        eqBand (strings, 0, eq::Shape::lowCut, 90.0f, 0.0f);
         space (strings);
-        strings.set (ParamIDs::patchLevel, -6.2f);
+        strings.set (ParamIDs::patchLevel, -11.7f);
         springTank (strings, { 0.5f, 0.6f, 0.3f, 0.45f, 0.85f, 0.2f, 0.9f, 0.2f });
         x.add (strings);
 
