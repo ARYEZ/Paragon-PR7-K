@@ -10252,6 +10252,334 @@ namespace
         alarm.set (ParamIDs::patchLevel, -2.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (alarm);
     }
+
+    // ATOMIC AGE (0.69.0, the owner's name): inspired by a 2024 series' retro-futurist mid-century look, played for
+    // its bright side (the owner's ask: MELTDOWN already had the bleakness): 1950s atomic-age optimism, space-age
+    // lounge and exotica, doo-wop "oohs", a B-movie sci-fi singing sine, cheerful jingles, a dusty desert-western
+    // twang underneath. No title, places, factions, products, characters, slogans or the old songs the series uses:
+    // our own sounds. MACRO 3 on every preset is SPRING: NUCLEARSPRING's tank (0.69.0), each preset its own (a small
+    // amp's quick tank, a long organ tank, all drip), the macro bringing it in and adding a little drip.
+    struct Tank
+    {
+        float mixTop = 0.45f;   // the macro's MIX at full
+        float decay = 0.4f, drip = 0.5f, tone = 0.5f, size = 0.5f, boing = 0.4f, width = 0.7f;
+        float dripRise = 0.2f;  // the macro's DRIP on top at full
+    };
+
+    void springTank (Builder& b, Tank t)
+    {
+        b.set (ParamIDs::springOn, 1.0f).set (ParamIDs::springMix, 0.0f).set (ParamIDs::springDecay, t.decay)
+         .set (ParamIDs::springDrip, t.drip).set (ParamIDs::springTone, t.tone).set (ParamIDs::springSize, t.size)
+         .set (ParamIDs::springBoing, t.boing).set (ParamIDs::springWidth, t.width);
+        route (b, "macro3", ParamIDs::springMix, t.mixTop);
+        route (b, "macro3", ParamIDs::springDrip, t.dripRise);
+    }
+
+    void atomicAge (Expansion x)
+    {
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto saucer = x.make ("Saucer Song", 1, { "Lead", "Sine", "Vibrato", "Mono" },
+            "The B-movie sci-fi singer, as if played with a hand waving in the air: a pure sine with a faint triangle "
+            "an octave up, a long slide between notes and a wide, wobbly vibrato, dotted-quarter echoes and a plate. "
+            "MACROS: BRIGHT (more of the octave), SPACE, SPRING (a drippy tank). MOD WHEEL: more wobble.");
+        saucer.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "VibAmount", 28.0f).osc (0, "VibRate", 6.3f)
+              .osc (0, "VibFade", 250.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.08f)
+              .osc (1, "VibAmount", 28.0f).osc (1, "VibRate", 6.3f).osc (1, "VibFade", 250.0f)
+              .filter (FilterType::lp12, 6000.0f, 0.05f, 0.0f)
+              .ampEnvelope (70.0f, 300.0f, 0.95f, 450.0f)
+              .mono (220.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::always);
+        route (saucer, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.3f);
+        route (saucer, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.3f);
+        route (saucer, "macro1", ParamIDs::osc (1, "Volume"), 0.25f);
+        macros (saucer, "BRIGHT", "SPACE", "SPRING");
+        delay (saucer, "1/4 dotted", 0.35f, 0.18f, false, 4.5f);
+        reverb (saucer, RT::plate, 0.6f, 0.2f);
+        space (saucer);
+        saucer.set (ParamIDs::patchLevel, -4.8f);
+        springTank (saucer, { 0.5f, 0.6f, 0.8f, 0.55f, 0.55f, 0.5f, 0.8f, 0.2f });
+        x.add (saucer);
+
+        auto twang = x.make ("Desert Twang", 2, { "Lead", "Pluck", "Tremolo", "Mono" },
+            "The dusty wasteland outside the shiny door: a twangy baritone-guitar lead, a narrow pulse and a saw "
+            "plucked through a resonant filter that snaps shut, a throbbing tremolo, a slapback echo and a small "
+            "room. MACROS: BRIGHT, SPACE, SPRING (a surf tank, all drip). MOD WHEEL: deeper tremolo.");
+        twang.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.6f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.35f).osc (1, "Fine", 6.0f)
+             .filter (FilterType::lp24, 2400.0f, 0.28f, 0.45f).filterEnvelope (2.0f, 260.0f, 0.35f, 300.0f)
+             .ampEnvelope (2.0f, 700.0f, 0.55f, 380.0f)
+             .mono (25.0f);
+        route (twang, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (twang, "modWheel", ParamIDs::modIds.depth, 0.3f);
+        macros (twang, "BRIGHT", "SPACE", "SPRING");
+        chorus (twang, ParamIDs::modIds, MT::tremolo, 0.45f, 0.45f, 1.0f);
+        delay (twang, "1/16", 0.12f, 0.22f, false, 5.0f);
+        reverb (twang, RT::room, 0.4f, 0.15f);
+        space (twang);
+        twang.set (ParamIDs::patchLevel, -3.1f);
+        springTank (twang, { 0.55f, 0.45f, 1.0f, 0.5f, 0.5f, 0.75f, 0.6f, 0.0f });
+        x.add (twang);
+
+        auto mute = x.make ("Velvet Mute", 3, { "Lead", "Brass", "Filter", "Mono" },
+            "A smoky lounge horn with a cup mute: a saw and a pulse through a soft filter that blooms a little as each "
+            "note speaks, a short scoop up into every phrase, vibrato easing in late, a hall. MACROS: BRIGHT (opens "
+            "the mute), SPACE, SPRING (an organ tank). MOD WHEEL: opens the filter.");
+        mute.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.45f).osc (1, "Volume", 0.3f).osc (1, "Fine", -5.0f)
+            .osc (0, "VibAmount", 12.0f).osc (0, "VibRate", 5.4f).osc (0, "VibFade", 450.0f)
+            .osc (1, "VibAmount", 12.0f).osc (1, "VibRate", 5.4f).osc (1, "VibFade", 450.0f)
+            .filter (FilterType::lp12, 1100.0f, 0.3f, 0.28f).filterEnvelope (45.0f, 500.0f, 0.45f, 300.0f)
+            .ampEnvelope (35.0f, 300.0f, 0.85f, 260.0f)
+            .mono (60.0f);
+        route (mute, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (mute, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (mute, "BRIGHT", "SPACE", "SPRING");
+        reverb (mute, RT::hall, 0.6f, 0.2f);
+        space (mute);
+        mute.set (ParamIDs::patchLevel, -3.6f);
+        springTank (mute, { 0.4f, 0.5f, 0.35f, 0.45f, 0.85f, 0.3f, 0.7f, 0.2f });
+        x.add (mute);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto oohs = x.make ("Doo-Wop Oohs", 4, { "Pad", "Choir", "Vowel", "Unison" },
+            "Backing singers round one microphone: three soft saws sung through the VOICE filter on \"oo\", a gentle "
+            "vibrato each, swelling in and fading slowly, a hall. MACROS: VOWEL (opens to \"ah\"), SPACE, SPRING (a "
+            "lush tank). MOD WHEEL: vibrato.");
+        oohs.osc (0, "Wave", saw).osc (0, "Volume", 0.6f)
+            .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.09f).osc (0, "UniSpread", 0.7f)
+            .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 9.0f).osc (0, "VibRate", 5.0f)
+            .filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f)
+            .ampEnvelope (260.0f, 600.0f, 0.9f, 900.0f)
+            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.0f).set (ParamIDs::voiceSize, 0.55f)
+            .set (ParamIDs::voiceSharp, 0.45f).set (ParamIDs::voiceMix, 1.0f);
+        route (oohs, "macro1", ParamIDs::voiceVowel, 0.45f);
+        route (oohs, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        macros (oohs, "VOWEL", "SPACE", "SPRING");
+        reverb (oohs, RT::hall, 0.7f, 0.25f);
+        space (oohs);
+        oohs.set (ParamIDs::patchLevel, -8.7f);
+        springTank (oohs, { 0.5f, 0.55f, 0.4f, 0.45f, 0.7f, 0.2f, 0.9f, 0.15f });
+        x.add (oohs);
+
+        auto strings = x.make ("Sunday Strings", 5, { "Pad", "Strings", "Unison", "Chorus" },
+            "A lush 1950s string section for the happy ending: five sawtooth players a side, softly filtered, bowing in "
+            "slowly, a wide ensemble chorus and a big hall. MACROS: BRIGHT, SPACE, SPRING (a long organ tank). MOD "
+            "WHEEL: opens the filter.");
+        strings.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+               .osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.7f).osc (0, "UniDetune", 0.14f).osc (0, "UniSpread", 0.9f)
+               .osc (0, "VibAmount", 6.0f).osc (0, "VibRate", 5.5f).osc (0, "VibFade", 600.0f)
+               .filter (FilterType::lp24, 4200.0f, 0.1f, 0.0f)
+               .ampEnvelope (420.0f, 800.0f, 0.9f, 1300.0f);
+        route (strings, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (strings, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (strings, "BRIGHT", "SPACE", "SPRING");
+        chorus (strings, ParamIDs::mod2Ids, MT::dimension, 0.3f, 0.45f, 0.4f);
+        reverb (strings, RT::hall, 0.8f, 0.28f);
+        space (strings);
+        strings.set (ParamIDs::patchLevel, -6.2f);
+        springTank (strings, { 0.5f, 0.6f, 0.3f, 0.45f, 0.85f, 0.2f, 0.9f, 0.2f });
+        x.add (strings);
+
+        auto dawn = x.make ("Atomic Dawn", 6, { "Pad", "Shimmer", "Phaser", "Wide" },
+            "The bright tomorrow of 1955, all chrome and sunrise: a warm triangle chord with a saw shimmer an octave "
+            "up and a bell-like sine two octaves up, rising in slowly, a slow phaser turning it like a gleaming dial, "
+            "a cathedral. MACROS: BRIGHT (more shimmer), SPACE, SPRING (a long, wide tank). MOD WHEEL: faster phaser.");
+        dawn.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f)
+            .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.07f).osc (0, "UniSpread", 0.8f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.14f)
+            .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 24.0f).osc (2, "Volume", 0.08f)
+            .filter (FilterType::lp12, 5000.0f, 0.1f, 0.0f)
+            .ampEnvelope (900.0f, 1000.0f, 0.9f, 1600.0f);
+        route (dawn, "macro1", ParamIDs::osc (1, "Volume"), 0.2f);
+        route (dawn, "modWheel", ParamIDs::modIds.rate, 0.3f);
+        macros (dawn, "BRIGHT", "SPACE", "SPRING");
+        chorus (dawn, ParamIDs::modIds, MT::phaser, 0.12f, 0.6f, 0.35f);
+        reverb (dawn, RT::cathedral, 0.6f, 0.3f);
+        space (dawn);
+        dawn.set (ParamIDs::patchLevel, -6.0f);
+        springTank (dawn, { 0.4f, 0.8f, 0.5f, 0.5f, 0.7f, 0.2f, 1.0f, 0.2f });
+        x.add (dawn);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto upright = x.make ("Walking Upright", 7, { "Bass", "Pluck", "Upright", "Jazz" },
+            "A plucked upright bass walking under a lounge combo: a triangle and a clean sine an octave down, the "
+            "pluck a quick filter snap, each note dying away like a real string, a small room. MACROS: BRIGHT (more "
+            "pluck), SPACE, SPRING (a small amp's quick tank).");
+        upright.osc (0, "Wave", triangle).osc (0, "Volume", 0.7f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f).osc (1, "Filter", 0.0f)
+               .filter (FilterType::lp12, 700.0f, 0.15f, 0.35f).filterEnvelope (1.0f, 160.0f, 0.1f, 140.0f)
+               .ampEnvelope (2.0f, 900.0f, 0.0f, 160.0f);
+        route (upright, "macro1", ParamIDs::fltEnv, 0.2f);
+        macros (upright, "BRIGHT", "SPACE", "SPRING");
+        reverb (upright, RT::room, 0.4f, 0.12f);
+        space (upright);
+        upright.set (ParamIDs::patchLevel, -2.2f);
+        springTank (upright, { 0.8f, 0.2f, 0.35f, 0.4f, 0.15f, 0.3f, 0.4f, 0.15f });
+        x.add (upright);
+
+        auto pedal = x.make ("Pedal Organ", 8, { "Bass", "Organ", "Rotary", "Sustained" },
+            "The low pedals of a mid-century home organ: a hollow square and a sine an octave down, steady as long as "
+            "a key is held, through a slow rotary speaker. MACROS: BRIGHT (more of the square), SPACE, SPRING (the "
+            "organ's own long tank). MOD WHEEL: the rotor speeds up.");
+        pedal.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.35f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.7f)
+             .filter (FilterType::lp12, 1100.0f, 0.05f, 0.0f)
+             .ampEnvelope (8.0f, 200.0f, 1.0f, 120.0f);
+        route (pedal, "macro1", ParamIDs::osc (0, "Volume"), 0.25f);
+        route (pedal, "modWheel", ParamIDs::modIds.rate, 0.5f);
+        macros (pedal, "BRIGHT", "SPACE", "SPRING");
+        chorus (pedal, ParamIDs::modIds, MT::rotary, 0.15f, 0.4f, 1.0f);
+        reverb (pedal, RT::room, 0.5f, 0.1f);
+        space (pedal);
+        pedal.set (ParamIDs::patchLevel, -4.7f);
+        springTank (pedal, { 0.8f, 0.5f, 0.4f, 0.4f, 0.85f, 0.2f, 0.5f, 0.15f });
+        x.add (pedal);
+
+        auto tube = x.make ("Tube Swing", 9, { "Bass", "Tube", "Drive", "Pluck" },
+            "An electric bass through a little tube amp, swinging: a saw and a pulse warmed by a tube shaper, a "
+            "punchy filter, a short decay into a held body. MACROS: BRIGHT, SPACE, SPRING (the amp's tank, kicked on "
+            "every note). MOD WHEEL: more drive.");
+        tube.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f)
+            .filter (FilterType::lp24, 1300.0f, 0.2f, 0.35f).filterEnvelope (2.0f, 220.0f, 0.3f, 200.0f)
+            .ampEnvelope (3.0f, 400.0f, 0.7f, 180.0f)
+            .shaper (0, synth::ShaperModel::tube, 0.35f);
+        route (tube, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (tube, "modWheel", ParamIDs::shp (0, "Drive"), 0.3f);
+        macros (tube, "BRIGHT", "SPACE", "SPRING");
+        reverb (tube, RT::room, 0.4f, 0.1f);
+        space (tube);
+        tube.set (ParamIDs::patchLevel, -4.6f);
+        springTank (tube, { 0.8f, 0.25f, 0.45f, 0.45f, 0.3f, 0.7f, 0.4f, 0.15f });
+        x.add (tube);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto vibes = x.make ("Spinning Vibes", 10, { "Keys", "Vibraphone", "Tremolo", "Mallet" },
+            "A vibraphone with its motor on: a soft mallet tone (a sine with a quieter partial two octaves up) ringing "
+            "a long time, the spinning discs' shimmer as a steady tremolo, a plate. MACROS: BRIGHT (more of the upper "
+            "partial), SPACE, SPRING (a drippy tank). MOD WHEEL: the motor speeds up.");
+        vibes.osc (0, "Wave", sine).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.12f)
+             .filter (FilterType::lp12, 8000.0f, 0.0f, 0.0f)
+             .ampEnvelope (1.0f, 2200.0f, 0.0f, 1400.0f);
+        route (vibes, "macro1", ParamIDs::osc (1, "Volume"), 0.2f);
+        route (vibes, "modWheel", ParamIDs::modIds.rate, 0.4f);
+        macros (vibes, "BRIGHT", "SPACE", "SPRING");
+        chorus (vibes, ParamIDs::modIds, MT::tremolo, 0.55f, 0.35f, 1.0f);
+        reverb (vibes, RT::plate, 0.6f, 0.2f);
+        space (vibes);
+        vibes.set (ParamIDs::patchLevel, -9.3f);
+        springTank (vibes, { 0.5f, 0.55f, 0.6f, 0.6f, 0.5f, 0.4f, 0.8f, 0.2f });
+        x.add (vibes);
+
+        auto cocktail = x.make ("Cocktail Organ", 11, { "Keys", "Organ", "Rotary", "Lounge" },
+            "The combo organ in a space-age cocktail lounge: drawbar-like sines (the note, an octave and a twelfth up) "
+            "and a breathy square, on as long as a key is held, through a fast rotary speaker. MACROS: BRIGHT (more "
+            "upper drawbars), SPACE, SPRING (the organ's tank). MOD WHEEL: the rotor slows down.");
+        cocktail.osc (0, "Wave", sine).osc (0, "Volume", 0.5f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.35f)
+                .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 19.0f).osc (2, "Volume", 0.2f)
+                .osc (3, "On", 1.0f).osc (3, "Wave", pulse).osc (3, "Width", 0.5f).osc (3, "Volume", 0.1f)
+                .filter (FilterType::lp12, 6000.0f, 0.0f, 0.0f)
+                .ampEnvelope (6.0f, 200.0f, 1.0f, 90.0f);
+        route (cocktail, "macro1", ParamIDs::osc (2, "Volume"), 0.25f);
+        route (cocktail, "modWheel", ParamIDs::modIds.rate, -0.4f);
+        macros (cocktail, "BRIGHT", "SPACE", "SPRING");
+        chorus (cocktail, ParamIDs::modIds, MT::rotary, 0.7f, 0.5f, 1.0f);
+        reverb (cocktail, RT::room, 0.5f, 0.15f);
+        space (cocktail);
+        cocktail.set (ParamIDs::patchLevel, -8.0f);
+        springTank (cocktail, { 0.4f, 0.55f, 0.5f, 0.5f, 0.75f, 0.3f, 0.7f, 0.2f });
+        x.add (cocktail);
+
+        auto celesta = x.make ("Jukebox Celesta", 12, { "Keys", "Bell", "Bright", "Sparkle" },
+            "A bright jukebox celesta, sparkling over the top of a record: a triangle with sines two and three octaves "
+            "up, a quick, chiming decay, a plate. MACROS: BRIGHT (more sparkle), SPACE, SPRING (a splashy tank, kicked "
+            "on every note).");
+        celesta.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.18f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 36.0f).osc (2, "Volume", 0.06f)
+               .filter (FilterType::lp12, 9000.0f, 0.0f, 0.0f)
+               .ampEnvelope (1.0f, 1000.0f, 0.0f, 700.0f);
+        route (celesta, "macro1", ParamIDs::osc (2, "Volume"), 0.15f);
+        macros (celesta, "BRIGHT", "SPACE", "SPRING");
+        delay (celesta, "1/8 dotted", 0.25f, 0.15f, true, 6.0f);
+        reverb (celesta, RT::plate, 0.6f, 0.2f);
+        space (celesta);
+        celesta.set (ParamIDs::patchLevel, -4.2f);
+        springTank (celesta, { 0.4f, 0.45f, 0.7f, 0.7f, 0.4f, 0.65f, 0.8f, 0.2f });
+        x.add (celesta);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto jingle = x.make ("Jingle Sparkle", 13, { "Arp", "Glockenspiel", "Cheerful", "Up" },
+            "A cheerful advertising jingle's glockenspiel: ARP 1 runs up the held chord over two octaves in sixteenths, "
+            "a bright bell (a triangle with a sine two octaves up) on each step, a plate. Hold a chord. MACROS: BRIGHT, "
+            "SPACE, SPRING (a boingy tank).");
+        jingle.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.15f).osc (1, "Arp", 1.0f)
+              .filter (FilterType::lp12, 9000.0f, 0.0f, 0.0f)
+              .ampEnvelope (1.0f, 350.0f, 0.0f, 250.0f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+              .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        route (jingle, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
+        macros (jingle, "BRIGHT", "SPACE", "SPRING");
+        reverb (jingle, RT::plate, 0.5f, 0.2f);
+        space (jingle);
+        jingle.set (ParamIDs::patchLevel, -0.2f);
+        springTank (jingle, { 0.4f, 0.4f, 0.6f, 0.65f, 0.4f, 0.7f, 0.8f, 0.2f });
+        x.add (jingle);
+
+        auto computer = x.make ("Punch Card Brain", 14, { "Arp", "Computer", "Randomizer", "Bleeps" },
+            "A room-sized retro computer thinking out loud: ARP 1's randomizer picks bright square bleeps from the "
+            "major scale over three octaves in sixteenths, with rests, a new pattern every pass, quick ping-pong "
+            "echoes. Hold a chord. MACROS: BRIGHT, SPACE, SPRING (all drip).");
+        computer.osc (0, "Wave", pulse).osc (0, "Width", 0.25f).osc (0, "Volume", 0.45f).osc (0, "Arp", 1.0f)
+                .filter (FilterType::lp12, 5000.0f, 0.15f, 0.0f)
+                .ampEnvelope (1.0f, 120.0f, 0.0f, 60.0f)
+                .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::random)
+                .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+                .set (ParamIDs::arp (0, "Gate"), 0.35f);
+        {
+            auto& r = computer.rig.modulation.arpRandomizers[0];
+            r.scale = synth::arp::scaleNames.indexOf ("Major");
+            r.restChance = 0.35f;
+            r.lengthChances = { 1.0f, 0.15f, 0.0f, 0.0f };
+            r.velocityLow = 0.6f;
+            r.autoDice = true;
+            r.seed = 55;
+            auto& pattern = computer.rig.modulation.arps[0].patterns[0];
+            pattern = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
+        }
+        route (computer, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (computer, "BRIGHT", "SPACE", "SPRING");
+        delay (computer, "1/8", 0.3f, 0.2f, true, 5.0f);
+        reverb (computer, RT::room, 0.4f, 0.12f);
+        space (computer);
+        computer.set (ParamIDs::patchLevel, 5.0f);
+        springTank (computer, { 0.4f, 0.4f, 1.0f, 0.6f, 0.4f, 0.5f, 0.9f, 0.0f });
+        x.add (computer);
+
+        auto tiki = x.make ("Tiki Marimba", 15, { "Arp", "Marimba", "Exotica", "Up/Down" },
+            "Exotica by the pool: ARP 1 rolls up and down the held chord in eighths on a mellow marimba (a sine with "
+            "a soft triangle an octave up, knocked quickly and dying away), dotted-eighth echoes and a warm hall. Hold "
+            "a chord. MACROS: BRIGHT, SPACE, SPRING (a drippy tank).");
+        tiki.osc (0, "Wave", sine).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f).osc (1, "Arp", 1.0f)
+            .filter (FilterType::lp12, 4000.0f, 0.0f, 0.2f).filterEnvelope (1.0f, 120.0f, 0.0f, 100.0f)
+            .ampEnvelope (1.0f, 500.0f, 0.0f, 300.0f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+            .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.7f);
+        route (tiki, "macro1", ParamIDs::osc (1, "Volume"), 0.2f);
+        macros (tiki, "BRIGHT", "SPACE", "SPRING");
+        delay (tiki, "1/8 dotted", 0.3f, 0.15f, false, 4.5f);
+        reverb (tiki, RT::hall, 0.6f, 0.2f);
+        space (tiki);
+        tiki.set (ParamIDs::patchLevel, -3.8f);
+        springTank (tiki, { 0.4f, 0.5f, 0.6f, 0.5f, 0.55f, 0.4f, 0.7f, 0.2f });
+        x.add (tiki);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -10281,5 +10609,6 @@ std::vector<Rig> makeExpansionRigs()
     slingblade ({ Rig::numBanks + 21, rigs });
     paradox ({ Rig::numBanks + 22, rigs });
     meltdown ({ Rig::numBanks + 23, rigs });
+    atomicAge ({ Rig::numBanks + 24, rigs });
     return rigs;
 }

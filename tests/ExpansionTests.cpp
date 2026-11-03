@@ -395,6 +395,26 @@ TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its lef
     CHECK (count == 15);
 }
 
+TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in by the macro", "[rigs][expansions][nuclearspring]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 24)   // ATOMIC AGE: the twenty-fifth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "SPRING");
+        CHECK (rig.notes.contains ("SPRING ("));
+        CHECK (rig.parameters.at (ParamIDs::springOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::springMix) == 0.0f);
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::springMix && r.amount >= 0.3f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;
@@ -503,8 +523,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
         const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
         const auto melt = rig.bank == Rig::numBanks + 23;      // MELTDOWN: 66 BPM in D minor, slow, with half-step clusters
+        const auto atomic = rig.bank == Rig::numBanks + 24;    // ATOMIC AGE: 116 BPM in C major, a cheerful lounge, C6 Fmaj7 Dm7 G7
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -650,6 +671,60 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     rock (0.0, 4.0);
                     rock (8.0, 12.0);
                 }
+                length = 19.0 * beat;
+            }
+        }
+        else if (atomic)
+        {
+            // Short notes and gaps throughout, so NUCLEARSPRING's drip and boing can be heard between them.
+            if (type == "Lead")
+            {
+                // A cheerful tune in C major, a leap up, a held note, an answer.
+                line ({ { 0, 0.5, 67 }, { 0.5, 0.5, 69 }, { 1, 1, 72 }, { 2, 0.5, 76 }, { 2.5, 0.5, 74 }, { 3, 1, 72 },
+                        { 4, 2.5, 69 }, { 8, 0.5, 65 }, { 8.5, 0.5, 67 }, { 9, 1, 69 }, { 10, 0.5, 74 }, { 10.5, 0.5, 72 },
+                        { 11, 1, 71 }, { 12, 3, 72 } }, 100);
+                wheel (12.0, 15.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                chord (e, at (0), at (3.9), { 48, 60, 64, 67, 69 }, 90);    // C6
+                chord (e, at (4), at (7.9), { 41, 57, 60, 64, 65 }, 90);    // Fmaj7
+                chord (e, at (8), at (11.9), { 38, 57, 60, 62, 65 }, 90);   // Dm7
+                chord (e, at (12), at (15.6), { 43, 59, 62, 65, 67 }, 90);  // G7
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // A walking line, a note a beat, with a stop at the end.
+                line ({ { 0, 0.9, 36 }, { 1, 0.9, 40 }, { 2, 0.9, 43 }, { 3, 0.9, 45 }, { 4, 0.9, 41 }, { 5, 0.9, 45 },
+                        { 6, 0.9, 48 }, { 7, 0.9, 47 }, { 8, 0.9, 38 }, { 9, 0.9, 41 }, { 10, 0.9, 45 }, { 11, 0.9, 42 },
+                        { 12, 0.9, 43 }, { 13, 0.9, 47 }, { 14, 0.9, 41 }, { 15, 1.5, 36 } }, 105);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // Comping: chords on the beat and the off-beat, then a held chord.
+                const auto comp = [&] (double bar, std::initializer_list<int> notes)
+                {
+                    chord (e, at (bar), at (bar + 0.8), notes, 95);
+                    chord (e, at (bar + 1.5), at (bar + 1.9), notes, 85);
+                    chord (e, at (bar + 3.0), at (bar + 3.4), notes, 85);
+                };
+                comp (0.0, { 60, 64, 67, 69 });
+                comp (4.0, { 57, 60, 64, 65 });
+                comp (8.0, { 57, 60, 62, 65 });
+                chord (e, at (12), at (15), { 59, 62, 65, 67 }, 95);
+                length = 19.0 * beat;
+            }
+            else
+            {
+                chord (e, at (0), at (3.9), { 60, 64, 67, 69 }, 100);
+                chord (e, at (4), at (7.9), { 57, 60, 64, 65 }, 100);
+                chord (e, at (8), at (11.9), { 57, 60, 62, 65 }, 100);
+                chord (e, at (12), at (15.9), { 59, 62, 65, 67 }, 100);
                 length = 19.0 * beat;
             }
         }

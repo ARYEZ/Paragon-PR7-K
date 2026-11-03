@@ -109,8 +109,9 @@ void RackUnit::paint (juce::Graphics& g)
         const auto plate = at (214.0f, 26.0f, 196.0f, 80.0f);
         auto name = plate.withHeight (plate.getHeight() * 0.48f);
         auto font = juce::FontOptions (31.0f * scale, juce::Font::bold | juce::Font::italic);
-        auto width = (float) juce::GlyphArrangement::getStringWidthInt (font, spec.name);
-        if (width > name.getWidth())   // a long name (CONSTRICTOR) set a little smaller to fit
+        // The heavy italic draws about 9% wider than it measures (its slant and weight), so the measure is padded.
+        auto width = 1.09f * (float) juce::GlyphArrangement::getStringWidthInt (font, spec.name);
+        if (width > name.getWidth())   // a long name (CONSTRICTOR, NUCLEARSPRING) set a little smaller to fit
         {
             font = font.withHeight (font.getHeight() * name.getWidth() / width);
             width = name.getWidth();
@@ -178,7 +179,7 @@ void RackUnit::paint (juce::Graphics& g)
         g.setColour (LedDisplay::ledOrange);
         g.setFont (juce::FontOptions (glass.getHeight() * 0.5f));
         g.drawFittedText (spec.footText ? spec.footText().toUpperCase() : juce::String(), glass.reduced (4.0f * scale, 0.0f).toNearestInt(),
-                          juce::Justification::centred, 1, 0.7f);
+                          juce::Justification::centred, 1, 0.5f);   // squeezed rather than cut: NUCLEARSPRING
         LedDisplay::paintGlassOverlay (g, glass, 0.4f * scale);
     }
 }

@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 24> list
+    inline constexpr std::array<Expansion, 25> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -125,5 +125,10 @@ namespace expansions
           "power plant: pressure drones, groaning and ringing metal, pumps breathing, a counter's crackle, a lone voice "
           "rising out of the noise. Invisible danger, dread and grief. Built round CRACKLE, a counter's random clicks, "
           "and MACRO 3, DOSE: turn it up and the clicks thicken into a roar as the sound corrodes. Our own sounds." },
+        { "ATOMIC AGE", "AA",
+          "Inspired by the retro-futurist mid-century look of a 2024 series, played for its bright side: 1950s "
+          "atomic-age optimism, space-age lounge and exotica, doo-wop \"oohs\", a B-movie sci-fi singing sine, cheerful "
+          "jingles and a dusty desert-western twang. Built round NUCLEARSPRING (0.69.0), a vintage spring reverb tank, "
+          "and MACRO 3, SPRING. Our own sounds." },
     }};
 }
