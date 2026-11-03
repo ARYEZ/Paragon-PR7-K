@@ -59,7 +59,9 @@ namespace ModDestinations
                                                  // 0.65.0: PROXIMITY: the touches, the room, how close
                                                  "proximityNoise", "proximityRoom", "proximityClose",
                                                  // 0.66.0: HAZE: how much, the pitch's bend, the wind
-                                                 "hazeDepth", "hazeDoppler", "hazeWhoosh" };
+                                                 "hazeDepth", "hazeDoppler", "hazeWhoosh",
+                                                 // 0.67.0: SPECTRE: how loud the ghost, how long it lingers, its outline moved
+                                                 "spectreMix", "spectreLinger", "spectreShift" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

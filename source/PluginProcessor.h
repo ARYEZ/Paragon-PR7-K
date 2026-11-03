@@ -213,6 +213,7 @@ public:
         rack->blackHole.seedRandom ((std::uint32_t) seed);
         rack->proximity.seedRandom ((std::uint32_t) seed);
         rack->haze.seedRandom ((std::uint32_t) seed);
+        rack->spectre.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -329,6 +330,9 @@ public:
     // HAZE (0.66.0): its settings (DEPTH, DOPPLER, WHOOSH as the matrix moves them).
     effects::Haze::Settings getHazeSettings() const noexcept;
     const effects::Haze& getHaze() const noexcept { return rack->haze; }
+    // SPECTRE (0.67.0): its settings (MIX, LINGER, SHIFT as the matrix moves them).
+    effects::Spectre::Settings getSpectreSettings() const noexcept;
+    const effects::Spectre& getSpectre() const noexcept { return rack->spectre; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

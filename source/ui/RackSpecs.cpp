@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 15> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 16> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 15> specs;
+    std::array<RackUnit::Spec, 16> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1196,6 +1196,53 @@ std::array<RackUnit::Spec, 15> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (14); };
+    }
+
+    // SPECTRE (0.67.0): the ghost's level in big digits, how far behind and how long it stays; the keys set how
+    // strongly it haunts: WHISPER, SHADOW, WRAITH (MIX and AIR together, WRAITH hollow and lingering).
+    {
+        auto& s = specs[15];
+        s.name = "SPECTRE";
+        s.kind = "GHOST ON BREATH  MIX  LINGER";
+        s.onParameterIds = { ParamIDs::spectreOn };
+        s.powerTooltip = "SPECTRE on or off: a whispered ghost of your sound following it. Click POWER (the word) or EDIT for its page";
+        struct Haunt { const char* name; float mix, air, linger; const char* tip; };
+        static constexpr Haunt haunts[] = { { "WHISPER", 0.3f, 0.85f, 0.3f, "A faint breath behind each note" },
+                                            { "SHADOW", 0.55f, 0.55f, 0.45f, "A clear ghost, close behind" },
+                                            { "WRAITH", 0.85f, 0.2f, 0.7f, "Hollow and lingering, haunting every phrase" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& h = haunts[k];
+            s.keys[(size_t) k] = RackUnit::Key { h.name, h.tip,
+                                                 [&p, h] { return std::abs (valueOf (p, ParamIDs::spectreMix) - h.mix) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::spectreAir) - h.air) < 0.01f; },
+                                                 [&p, h]
+                                                 {
+                                                     setValue (p, ParamIDs::spectreMix, h.mix);
+                                                     setValue (p, ParamIDs::spectreAir, h.air);
+                                                     setValue (p, ParamIDs::spectreLinger, h.linger);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::spectreMix, "MIX" }, RackUnit::Knob { ParamIDs::spectreLinger, "LINGER" } };
+        s.ladderTitle = "GHOST";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getSpectreSettings().on ? p.getSpectre().getGhostDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            using Sp = effects::Spectre;
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getSpectreSettings();
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (Sp::trailMs (settings.trail))), left.getTopLeft(), h);
+            line (g, "MS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "BEHIND", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "MIX " + textOf (p, ParamIDs::spectreMix), "LINGER " + textOf (p, ParamIDs::spectreLinger),
+                                  "AIR " + textOf (p, ParamIDs::spectreAir), "SHIFT " + textOf (p, ParamIDs::spectreShift) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (15); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

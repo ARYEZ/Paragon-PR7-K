@@ -21,6 +21,7 @@
 #include "dsp/effects/Remnant.h"
 #include "dsp/effects/Proximity.h"
 #include "dsp/effects/Haze.h"
+#include "dsp/effects/Spectre.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -668,4 +669,29 @@ void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& lay
     layout.add (makeFloat (ParamIDs::hazeWidth, "Haze Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
     layout.add (makeFloat (ParamIDs::hazeTone, "Haze Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::hazeWhoosh, "Haze Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
+}
+
+void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SPECTRE (0.67.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 39;
+    using S = effects::Spectre;
+    const S::Settings d;
+    const ToText asTrail = [] (float value, int) { return juce::String (juce::roundToInt (S::trailMs (value))) + " ms"; };
+    const ToText asLinger = [] (float value, int) { return juce::String (S::lingerSeconds (value), 2) + " s"; };
+    const ToText asShift = [] (float value, int)
+    {
+        const auto st = S::shiftSemitones (value);
+        return (st > 0.05f ? "+" : "") + juce::String (st, 1) + " st";
+    };
+    const ToText asAir = [] (float value, int) { return value < 0.34f ? juce::String ("HOLLOW ") + juce::String (juce::roundToInt (100.0f * value)) + "%"
+                                                       : value > 0.66f ? juce::String ("BREATHY ") + juce::String (juce::roundToInt (100.0f * value)) + "%"
+                                                                       : juce::String (juce::roundToInt (100.0f * value)) + "%"; };
+    layout.add (makeSwitch (ParamIDs::spectreOn, "Spectre On", v, false));
+    layout.add (makeFloat (ParamIDs::spectreMix, "Spectre Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::spectreTrail, "Spectre Trail", { 0.0f, 1.0f, 0.01f }, d.trail, v, asTrail));
+    layout.add (makeFloat (ParamIDs::spectreLinger, "Spectre Linger", { 0.0f, 1.0f, 0.01f }, d.linger, v, asLinger));
+    layout.add (makeFloat (ParamIDs::spectreAir, "Spectre Air", { 0.0f, 1.0f, 0.01f }, d.air, v, asAir));
+    layout.add (makeFloat (ParamIDs::spectreDrift, "Spectre Drift", { 0.0f, 1.0f, 0.01f }, d.drift, v, asPercent));
+    layout.add (makeFloat (ParamIDs::spectreShift, "Spectre Shift", { -1.0f, 1.0f, 0.01f }, d.shift, v, asShift));
 }

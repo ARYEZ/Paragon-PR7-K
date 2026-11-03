@@ -282,6 +282,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->remnant.prepare (sampleRate, preparedBlockSize);
     rack->proximity.prepare (sampleRate, preparedBlockSize);
     rack->haze.prepare (sampleRate, preparedBlockSize);
+    rack->spectre.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1198,6 +1199,19 @@ effects::Haze::Settings ParagonX1AudioProcessor::getHazeSettings() const noexcep
     return s;
 }
 
+effects::Spectre::Settings ParagonX1AudioProcessor::getSpectreSettings() const noexcept
+{
+    effects::Spectre::Settings s;
+    s.on = isOn (ParamIDs::spectreOn);
+    s.mix = effectParam (ModDestinations::effect ("spectreMix"), ParamIDs::spectreMix);
+    s.trail = param (ParamIDs::spectreTrail);
+    s.linger = effectParam (ModDestinations::effect ("spectreLinger"), ParamIDs::spectreLinger);
+    s.air = param (ParamIDs::spectreAir);
+    s.drift = param (ParamIDs::spectreDrift);
+    s.shift = effectParam (ModDestinations::effect ("spectreShift"), ParamIDs::spectreShift);
+    return s;
+}
+
 effects::Proximity::Settings ParagonX1AudioProcessor::getProximitySettings() const noexcept
 {
     effects::Proximity::Settings s;
@@ -1461,6 +1475,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->remnant.process (block, getRemnantSettings());       // 0.64.0: the layers beneath
         rack->proximity.process (block, getProximitySettings());   // 0.65.0: the sound of playing, up close
         rack->haze.process (block, getHazeSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.66.0: streetlights passing
+        rack->spectre.process (block, getSpectreSettings());   // 0.67.0: the ghost behind the sound
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

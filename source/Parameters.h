@@ -474,6 +474,14 @@ namespace ParamIDs
     inline constexpr auto hazeWidth    = "hazeWidth";      // 0 to 1
     inline constexpr auto hazeTone     = "hazeTone";       // 0 to 1: far cutoff 1.5 to 12 kHz
     inline constexpr auto hazeWhoosh   = "hazeWhoosh";     // 0 to 1
+    // SPECTRE (0.67.0, version hint 39, effects::Spectre): CYBERSHRINE's signature.
+    inline constexpr auto spectreOn     = "spectreOn";
+    inline constexpr auto spectreMix    = "spectreMix";      // 0 to 1
+    inline constexpr auto spectreTrail  = "spectreTrail";    // 0 to 1: 0 to 800 ms behind
+    inline constexpr auto spectreLinger = "spectreLinger";   // 0 to 1: 0.1 to 4 s to fall 60 dB
+    inline constexpr auto spectreAir    = "spectreAir";      // 0 hollow to 1 breathy
+    inline constexpr auto spectreDrift  = "spectreDrift";    // 0 to 1
+    inline constexpr auto spectreShift  = "spectreShift";    // -1 to 1: an octave down to an octave up
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -560,4 +568,5 @@ void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
 void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.64.0)
 void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.65.0)
 void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.66.0)
+void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.67.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)
