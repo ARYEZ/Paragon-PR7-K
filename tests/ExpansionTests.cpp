@@ -272,6 +272,26 @@ TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left"
     CHECK (count == 15);
 }
 
+TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 6)   // SIMULACRUM: the seventh expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "DILATE");
+        CHECK (rig.notes.contains ("DILATE (time slowing down, plus "));
+        CHECK (rig.parameters.at (ParamIDs::dilationOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::dilationSlow) == 0.0f);   // not slowed until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::dilationSlow && r.amount >= 0.25f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;
