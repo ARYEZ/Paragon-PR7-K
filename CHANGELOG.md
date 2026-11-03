@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.67.0
+
+**SPECTRE, and CYBERSHRINE gets its centrepiece.**
+
+**SPECTRE** (a new signature effect, our own design, in the SIGNATURE slot): a whispered ghost following your sound. Each note leaves a shadow of itself made of breath: the shape of its tone (its vowel, its brightness) without its pitch.
+- **MIX:** how loud the ghost is, under your sound (which passes unchanged).
+- **TRAIL:** how far behind it follows, up to 800 ms. **LINGER:** how long it stays after the sound has gone, 0.1 to 4 seconds.
+- **AIR:** hollow and whistling, or wide and breathy. **DRIFT:** how far the ghost wanders between the sides.
+- **SHIFT:** the ghost's outline moved up or down to an octave: a smaller ghost or a larger one.
+- At 0 your sound passes untouched, and silence stays silent. WHISPER, SHADOW and WRAITH on its unit set how strongly it haunts. Its page shows your sound's outline with its ghost as a pale veil around it.
+- MIX, LINGER and SHIFT can be moved by the mod matrix (FX Spectre).
+- About 3% of a core: more than most signature effects (it reads and rebuilds the sound in 24 bands on each side).
+
+**CYBERSHRINE: MACRO 3 is now SPECTRE on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings in each preset's ghost: the choirs a larger, lower shadow choir, the pads long drifting ghosts, the basses' ghosts lifted above them so the whisper can be heard.
+- At full it adds about 0.5 to 1.5 dB: a whisper under the sound, not a second sound.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
 ## 0.66.0
 
 **HAZE, and NIGHTDRIVE gets its centrepiece.**
