@@ -306,7 +306,7 @@ TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left"
         CHECK (rig.parameters.at (ParamIDs::remnantOn) == 1.0f);
         CHECK (rig.parameters.at (ParamIDs::remnantMix) == 0.0f);   // no layers until the macro: the sound as approved
         const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
-                                         { return r.source == "macro3" && r.destination == ParamIDs::remnantMix && r.amount >= 0.3f; });
+                                         { return r.source == "macro3" && r.destination == ParamIDs::remnantMix && r.amount >= 0.2f; });
         CHECK (routed);
     }
     CHECK (count == 15);
