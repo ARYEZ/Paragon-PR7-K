@@ -2,6 +2,29 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.69.0
+
+**NUCLEARSPRING, and a new expansion: ATOMIC AGE.**
+
+**NUCLEARSPRING** (a new signature effect, our own design, in the SIGNATURE slot): a vintage spring reverb tank, the drippy, twangy reverb of 1950s and 60s guitar amps and home organs.
+- **DRIP:** how wet and chirpy the springs sound: from a plain echo to the "boing-drip" of surf guitar. A real spring sends the high notes through faster than the low ones; this copies that.
+- **BOING:** how hard a sudden hit kicks the tank, like knocking an amp with a spring reverb in it.
+- **DECAY** (0.8 to 5 seconds), **TONE** (springs are dark), **SIZE** (a small amp's short tank to a long organ tank), **WIDTH**.
+- **MIX:** how much of the tank under your sound. At 0 your sound passes untouched.
+- Springs don't like bass, so the lows are cut going in, as on the real thing: on a bass sound you mostly hear the tank's upper twang.
+- AMP, ORGAN and SURF on its unit set the tank's size, decay and drip together. Its page shows the tank opened up, the six springs shaking as your sound runs through them, the frame flashing on a hard hit.
+- MIX, DRIP and BOING can be moved by the mod matrix (FX Nuclearspring). About 3% of a core.
+
+**ATOMIC AGE** (AA01-AA15, a new expansion): bright, cheerful 1950s atomic-age optimism, the retro-futurist, mid-century-modern side of a post-nuclear world (our own sounds; nothing from any show or game is named).
+- **Leads:** Saucer Song (a B-movie sci-fi singing sine, wide and wobbly), Surf Baritone (a twangy guitar: a pick click, each note starting a hair sharp like a struck string, a little tube amp; the mod wheel is a whammy bar), Harmon Horn (a muted jazz trumpet; the mod wheel is the hand over the mute, for the wah-wah).
+- **Pads:** Doo-Wop Oohs (a vocal group on "ooh", each singer with their own vibrato, sliding up into each chord), Sunday Strings (violins and cellos, each player with their own vibrato, the bow biting in), Atomic Dawn (a gleaming sunrise shimmer).
+- **Basses:** Walking Upright, Pedal Organ, Tube Swing.
+- **Keys:** Spinning Vibes (a vibraphone with its motor on), Cocktail Organ, Jukebox Celesta.
+- **Arps:** Jingle Sparkle (an advertising-jingle glockenspiel), Punch Card Brain (a retro computer thinking out loud, a new pattern every pass), Tiki Marimba.
+- **MACRO 3 is SPRING on every preset:** NUCLEARSPRING brought in, each preset with its own tank. At 0 there's no tank; at full it sits under the sound like a real amp's reverb, adding less than 1 dB.
+
+**Also:** long effect names on the rack units (NUCLEARSPRING) now fit their title and the small screen under EDIT, instead of running into the lights or being cut off.
+
 ## 0.68.0
 
 **LEVIATHAN, UNSPOKEN gets its centrepiece, and PR7-K runs lighter with the sound unchanged.**
