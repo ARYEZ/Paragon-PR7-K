@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.64.0
+
+**REMNANT, and DREAMSTATE gets its centrepiece.**
+
+**REMNANT** (a new signature effect, our own design, in the SIGNATURE slot): dreams within dreams. Your sound plays exactly as you play it; beneath it, up to three layers of what you just played, each a level deeper: slower and lower than the one above, all running at once.
+- Each layer is a dream of the one above it: the second hears the first, not you, so each deeper one is slower and more smeared again.
+- **LAYERS:** one to three. **STEP:** how much slower and lower each layer is than the one above: an octave (half speed), a fifth or a fourth.
+- **LENGTH:** how long a stretch of the past each layer replays (0.4 to 4 seconds) before renewing itself, smoothly, from the present. Nothing slides or jumps: unlike DILATION, your sound is never slowed or held back.
+- **TAPER:** each deeper layer quieter. **TONE:** each deeper layer darker. **WIDTH:** the layers leaning to alternate sides. **MIX:** how loud the layers are; at 0 nothing at all is added.
+- SHALLOW, DEEPER and DEEPEST on its unit set how many layers. Its page shows nested rings: your sound outside, each layer further in, turning slower.
+- MIX, TONE and TAPER can be moved by the mod matrix (FX Remnant).
+
+**DREAMSTATE: MACRO 3 is now DREAM on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings the layers in beneath: deep stacks on the pads, keys and arps, a single layer a fourth or fifth down on the basses so the low end stays clean.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+**Also:** a test that throws random settings at the synth now allows extreme but stable loudness (it failed 0.63.0's first build without anything being wrong); no sound changed.
+
 ## 0.63.0
 
 **DILATION, and SIMULACRUM gets its centrepiece.**
