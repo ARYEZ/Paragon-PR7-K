@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.61.0
+
+**LIGHTTRAIL, and DATASTREAM gets its centrepiece.**
+
+**LIGHTTRAIL** (a new signature effect, our own design, in the SIGNATURE slot): every note leaves a glowing trail behind it, in time with your song.
+- **DIVISION:** how far apart the repeats come (1/32 to a quarter note, triplets too).
+- **RISE:** each repeat steps up or down in pitch: up, the trail climbs; down, it falls away; at 0 it stays on the note.
+- **SPREAD:** each repeat swings to the other side, so the trail crosses the stereo field.
+- **LENGTH:** from a short flick to a long streak. **TONE:** each repeat darker, or keeping its shine. **MIX:** how loud the trail is under your sound.
+- The sound itself passes unchanged; at MIX 0 nothing at all is added.
+- FLAT, CLIMB (a fifth a repeat) and FALL (an octave down) on its unit set the direction. Its page draws the trail as it's set.
+- LENGTH, RISE, TONE and MIX can be moved by the mod matrix (FX Lighttrail).
+- One limit: when RISE is on, the pitch step makes each repeat land a few milliseconds behind the beat.
+
+**DATASTREAM: MACRO 3 is now TRAIL on all 15 presets.**
+- At 0 every preset sounds exactly as before: no trail at all.
+- Turning it up brings each preset's own trail in and lengthens it: Light Trail climbs a fifth every sixteenth, Bitfall Bass falls an octave, Grid Horizon rises an octave every quarter note, Digital Sky swings side to side on the note.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
 ## 0.60.0
 
 **AFTERGLOW, and STARCOURT rebuilt to exaggerate the 1980s synths.**
