@@ -102,7 +102,7 @@ void NuclearSpringDisplay::paint (juce::Graphics& g)
     {
         g.setColour (juce::Colour (0xffff9a3c).withAlpha (lit * flash));
         g.setFont (juce::FontOptions (16.0f, juce::Font::bold));
-        g.drawText ("BOING", tank.removeFromRight (120.0f).removeFromTop (30.0f), juce::Justification::centred, false);
+        g.drawText ("BOING", juce::Rectangle<float> (tank.getRight() - 120.0f, tank.getY(), 120.0f, 30.0f), juce::Justification::centred, false);
     }
 }
 
