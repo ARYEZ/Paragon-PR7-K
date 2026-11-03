@@ -2,6 +2,23 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.65.0
+
+**PROXIMITY, and NEGATIVE SPACE gets its centrepiece.**
+
+**PROXIMITY** (a new signature effect, our own design, in the SIGNATURE slot): the sound of playing, heard up close. Every noise is made by the synth itself (no recordings), on the exact moment of each note, the arpeggiator's included.
+- **NOISE:** the touches of playing. A felt hammer's thump as each note starts (lower and longer on low notes, louder the harder you play), a key's click and the damper settling as you let go, the sustain pedal's thud going down and the dampers' hush coming back up.
+- **TONE:** the felt and clicks soft or crisp. **WIDTH:** each note's noises placed where it is on the keyboard, low notes left, high notes right.
+- **ROOM:** the room's air and a mains **HUM** (off, 50 or 60 Hz), rising with the music and stopping a moment after it, so silence stays silent.
+- **CLOSE:** the extra bass a microphone picks up close to an instrument (up to +6 dB).
+- At 0 your sound passes untouched. DISTANT, NEAR and INSIDE on its unit set how close. Its page shows a keyboard from above, each touch lighting its key, with a microphone that lowers as CLOSE rises.
+- NOISE, ROOM and CLOSE can be moved by the mod matrix (FX Proximity).
+
+**NEGATIVE SPACE: MACRO 3 is now CLOSER on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings you up close: the pianos' soft felt and room, the electronics' clicks and hum, a little of the close-up low end on the basses.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
 ## 0.64.0
 
 **REMNANT, and DREAMSTATE gets its centrepiece.**
