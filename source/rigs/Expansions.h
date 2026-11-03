@@ -45,7 +45,8 @@ namespace expansions
         { "SIMULACRUM", "SM",
           "Inspired by the score and soundtrack of a 1999 film about a simulated world: a dark, atonal orchestra with "
           "brass in clashing keys, late-'90s industrial and big-beat basses and breaks, fast trance arpeggios, falling "
-          "digital rain and time slowing down. Our own sounds." },
+          "digital rain and time slowing down. Built round DILATION (0.63.0), time itself slowing, and MACRO 3, DILATE. "
+          "Our own sounds." },
         { "DREAMSTATE", "DR",
           "Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a "
           "crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy "

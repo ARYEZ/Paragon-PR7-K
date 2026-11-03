@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.63.0
+
+**DILATION, and SIMULACRUM gets its centrepiece.**
+
+**DILATION** (a new signature effect, our own design, in the SIGNATURE slot): time slowing down. Not a haze or an echo added to your sound: the sound itself is played back slower, pitch and speed dropping together like a tape winding down, so what you play comes out stretched, lower and dragging behind real time.
+- **SLOW:** how slow, down to a quarter speed (two octaves down).
+- **RAMP:** how long the slide into slow motion (and back) takes, from a sudden lurch to a four-second wind-down.
+- **RETURN:** how time catches up when SLOW comes back. GLIDE speeds up past real time (the pitch rises a little) until it's caught up; SNAP jumps straight back to the present.
+- **REACH:** how far behind real time it can fall (1 to 8 seconds). There it fades back to the present and starts slowing again: it can't stay behind for ever.
+- **TONE:** slowed tape loses its top; low, the slower it goes the darker it gets. **MIX:** the slowed sound against the sound as played.
+- Your reverb and echoes slow down too. At SLOW 0 your sound passes untouched.
+- DRIFT, SLOWMO and CRAWL on its unit set how slow. Its page is a clock: the dim hand keeps real time, the bright hand is what you hear, trailing behind with ghost hands as it slows.
+- SLOW, TONE and MIX can be moved by the mod matrix (FX Dilation).
+
+**SIMULACRUM: MACRO 3 is now DILATE on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up slows time: the leads and pads an octave or more with slow slides, the basses only about half an octave so the low end stays usable, the arps snapping back in time.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
 ## 0.62.0
 
 **BLACKHOLE, and LAST LIGHT gets its centrepiece.**

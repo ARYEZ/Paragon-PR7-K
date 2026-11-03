@@ -557,5 +557,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addAfterglowParameters (layout); // AFTERGLOW (0.60.0): RackParameters.cpp
     addLightTrailParameters (layout); // LIGHTTRAIL (0.61.0): RackParameters.cpp
     addBlackHoleParameters (layout);  // BLACKHOLE (0.62.0): RackParameters.cpp
+    addDilationParameters (layout);   // DILATION (0.63.0): RackParameters.cpp
     return layout;
 }

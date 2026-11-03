@@ -75,7 +75,8 @@ namespace
         }
         // Plays `seconds` with MIDI events (seconds, message) into `out` (left, right), the song running.
         void play (double seconds, std::vector<std::pair<double, juce::MidiMessage>> events, std::vector<float>* left = nullptr,
-                   std::vector<float>* right = nullptr, float* loudest = nullptr, bool* finite = nullptr)
+                   std::vector<float>* right = nullptr, float* loudest = nullptr, bool* finite = nullptr,
+                   std::function<void (double)> beforeBlock = {})
         {
             std::stable_sort (events.begin(), events.end(), [] (const auto& a, const auto& b) { return a.first < b.first; });   // stable: a note-off before a note-on at the same time stays first
             juce::AudioBuffer<float> buffer (2, block);
@@ -92,6 +93,8 @@ namespace
                     ++next;
                 }
                 buffer.clear();
+                if (beforeBlock)
+                    beforeBlock ((double) start / rate);   // (0.63.0: a knob moved during the clip)
                 processor.processBlock (buffer, midi);
                 song.ppq += block / rate * song.bpm / 60.0;
                 for (int i = 0; i < block; ++i)
@@ -264,6 +267,26 @@ TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left"
         CHECK (rig.parameters.at (ParamIDs::siroccoKey) == 2.0f);     // D
         const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
                                          { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
+        CHECK (routed);
+    }
+    CHECK (count == 15);
+}
+
+TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 6)   // SIMULACRUM: the seventh expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "DILATE");
+        CHECK (rig.notes.contains ("DILATE (time slowing down, plus "));
+        CHECK (rig.parameters.at (ParamIDs::dilationOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::dilationSlow) == 0.0f);   // not slowed until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::dilationSlow && r.amount >= 0.25f; });
         CHECK (routed);
     }
     CHECK (count == 15);
@@ -1797,7 +1820,18 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
 
         std::vector<float> left, right;
-        p.play (length, e, &left, &right);
+        // PARAGON_RENDER_SWEEP=macro3: MACRO 3 up from a quarter of the clip to two thirds, then down again (to hear
+        // DILATION slide into slow motion and come back, 0.63.0).
+        std::function<void (double)> sweep;
+        if (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_SWEEP", {}) == "macro3")
+            sweep = [&p, length] (double seconds)
+            {
+                auto* macro = p.processor.getParameters().getParameter (ParamIDs::macros[2]);
+                const auto up = seconds >= 0.25 * length && seconds < 0.66 * length;
+                if (macro->getValue() != (up ? 1.0f : 0.0f))
+                    macro->setValueNotifyingHost (up ? 1.0f : 0.0f);
+            };
+        p.play (length, e, &left, &right, nullptr, nullptr, sweep);
         juce::AudioBuffer<float> buffer (2, (int) left.size());
         for (size_t i = 0; i < left.size(); ++i)
         {

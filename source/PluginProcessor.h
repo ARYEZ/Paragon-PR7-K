@@ -315,6 +315,9 @@ public:
     // BLACKHOLE (0.62.0): its settings (HOLD, PULL, TONE, MIX as the matrix moves them).
     effects::BlackHole::Settings getBlackHoleSettings() const noexcept;
     const effects::BlackHole& getBlackHole() const noexcept { return rack->blackHole; }
+    // DILATION (0.63.0): its settings (SLOW, TONE, MIX as the matrix moves them).
+    effects::Dilation::Settings getDilationSettings() const noexcept;
+    const effects::Dilation& getDilation() const noexcept { return rack->dilation; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

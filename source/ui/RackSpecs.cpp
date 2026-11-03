@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 11> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 12> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 11> specs;
+    std::array<RackUnit::Spec, 12> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1022,6 +1022,48 @@ std::array<RackUnit::Spec, 11> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (10); };
+    }
+
+    // DILATION (0.63.0): the speed in big digits, how far behind and how it comes back; the keys set how slow:
+    // DRIFT (a few semitones), SLOWMO (an octave), CRAWL (nearly two).
+    {
+        auto& s = specs[11];
+        s.name = "DILATION";
+        s.kind = "TIME SLOWING  SLOW  RAMP";
+        s.onParameterIds = { ParamIDs::dilationOn };
+        s.powerTooltip = "DILATION on or off: time slowing down, your sound dragged behind real time. Click POWER (the word) or EDIT for its page";
+        struct Pace { const char* name; float slow; const char* tip; };
+        static constexpr Pace paces[] = { { "DRIFT", 0.15f, "A little slower: a few semitones down" },
+                                          { "SLOWMO", 0.5f, "Half speed: an octave down" },
+                                          { "CRAWL", 0.9f, "Nearly a quarter speed: almost two octaves down" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& pace = paces[k];
+            s.keys[(size_t) k] = RackUnit::Key { pace.name, pace.tip,
+                                                 [&p, pace] { return std::abs (valueOf (p, ParamIDs::dilationSlow) - pace.slow) < 0.01f; },
+                                                 [&p, pace] { setValue (p, ParamIDs::dilationSlow, pace.slow); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::dilationSlow, "SLOW" }, RackUnit::Knob { ParamIDs::dilationRamp, "RAMP" } };
+        s.ladderTitle = "DRAG";
+        s.ladderMarks = { 24.0f, 18.0f, 12.0f, 6.0f, 0.5f };
+        s.ladderLabels = { "-24", "-18", "-12", "-6", "0" };
+        s.ladderReading = [&p] { return -12.0f * std::log2 (juce::jmax (0.01f, p.getDilation().getSpeed())); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getDilationSettings();
+            const auto speed = settings.on ? p.getDilation().getSpeed() : 1.0f;
+            const auto end = drawNumber (g, juce::String (speed, 2), left.getTopLeft(), h);
+            line (g, "X", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "REAL TIME", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "BEHIND " + juce::String (settings.on ? p.getDilation().getBehindSeconds() : 0.0f, 1) + " s",
+                                  "REACH " + textOf (p, ParamIDs::dilationReach), "RETURN " + textOf (p, ParamIDs::dilationReturn),
+                                  "MIX " + textOf (p, ParamIDs::dilationMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (11); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
