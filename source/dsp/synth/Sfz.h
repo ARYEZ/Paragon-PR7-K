@@ -5,6 +5,8 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 
 #include <atomic>
+#include <cmath>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -26,9 +28,17 @@
 //   - VOLUME (dB), AMPLITUDE (%), PAN, OFFSET (samples into the file).
 //   - AMPEG_RELEASE: only to let a sample ring on past the AMP's release (undamped strings); the AMP shapes the rest.
 //   - ON_LOCC64 / ON_HICC64: the sustain pedal's own sounds, played as it goes down or up.
-// Not read: filters, the other envelope stages, loops, keyswitches, other controllers' triggers, OFF_BY / GROUP.
+//   - LOOPS (0.73.0): LOOP_MODE loop_continuous / loop_sustain (looping until the key lets go) between LOOP_START and
+//     LOOP_END (inclusive), else the file's own loop (a WAV's "smpl" chunk, which loops unless LOOP_MODE says no);
+//     no_loop and one_shot play straight through. A looped sample is kept whole in memory (looped orchestral
+//     sustains are a few seconds), not streamed.
+//   - VELOCITY CROSSFADES (0.73.0): XFIN_LOVEL / XFIN_HIVEL fade a region in across those velocities, XFOUT_LOVEL /
+//     XFOUT_HIVEL out; XF_VELCURVE power (equal power, the default) or gain (straight).
+// Not read: filters, the other envelope stages, keyswitches, controller crossfades and gains (XFIN_LOCC, GAIN_CC),
+// other controllers' triggers, OFF_BY / GROUP.
 //
-// Every sample keeps its first quarter of a second in memory; the rest is streamed from disk (SfzStreamer.h).
+// Every sample keeps its first quarter of a second in memory (a looped one all of it); the rest is streamed from disk
+// (SfzStreamer.h).
 namespace synth::sfz
 {
     struct Sample
@@ -37,7 +47,8 @@ namespace synth::sfz
         double sampleRate = 48000.0;
         juce::int64 length = 0;                 // frames in the file
         std::vector<float> head[2];             // the first `headFrames` (mono files: both the same)
-        int headFrames = 0;
+        int headFrames = 0;                     // the whole file when a region loops it
+        juce::int64 fileLoopStart = -1, fileLoopEnd = -1;   // the file's own loop (a WAV's smpl chunk), -1: none
         std::unique_ptr<StreamSource> stream;   // the rest, from disk (null: the head is the whole file)
     };
 
@@ -61,6 +72,27 @@ namespace synth::sfz
                                                 // rings on after the key lets go (a piano's undamped top strings)
         bool pedalTrigger = false;              // ON_LOCC64 / ON_HICC64: played when the sustain pedal moves into
         int onLo = 0, onHi = -1;                // ...this range (the pedal's own sound), not by a key
+        enum class Loop : std::uint8_t { none, continuous, sustain };
+        Loop loop = Loop::none;                 // (0.73.0) loop_sustain stops looping when the key lets go
+        juce::int64 loopStart = 0, loopEnd = 0; // frames, LOOP_END inclusive
+        int xfinLo = 0, xfinHi = 0, xfoutLo = 127, xfoutHi = 127;   // velocity crossfades (0.73.0)
+        bool xfPower = true;                    // XF_VELCURVE: equal power, else straight
+
+        bool loops() const noexcept { return loop != Loop::none && loopEnd > loopStart; }
+        // The crossfades' level for a velocity (1-127): 1 outside both fades; 0 below XFIN_LOVEL or above XFOUT_HIVEL.
+        float crossfade (int velocity127) const noexcept
+        {
+            auto in = 1.0f, out = 1.0f;
+            if (velocity127 <= xfinLo && xfinHi > xfinLo)
+                in = 0.0f;
+            else if (velocity127 < xfinHi)
+                in = (float) (velocity127 - xfinLo) / (float) (xfinHi - xfinLo);
+            if (velocity127 >= xfoutHi && xfoutHi > xfoutLo)
+                out = 0.0f;
+            else if (velocity127 > xfoutLo)
+                out = (float) (xfoutHi - velocity127) / (float) (xfoutHi - xfoutLo);
+            return xfPower ? std::sqrt (in * out) : in * out;
+        }
 
         bool plays (int key, int velocity) const noexcept { return key >= loKey && key <= hiKey && velocity >= loVel && velocity <= hiVel; }
         // A note's level from its velocity (0-1) as AMP_VELTRACK says: at 100%, (velocity)^2 (SFZ's curve).

@@ -243,6 +243,125 @@ TEST_CASE ("SFZ: velocity layers, AMP_VELTRACK, VOLUME and AMPLITUDE", "[sfz]")
                 WithinAbs (std::pow (64.0 / 127.0, 2.0), 0.005));
 }
 
+TEST_CASE ("SFZ: loops hold a note for as long as it's held; LOOP_SUSTAIN lets go at the release; a WAV's own loop", "[sfz]")
+{
+    // 480 Hz at 48 kHz: 100 samples a cycle, so a loop of whole cycles is seamless. 0.5 s long; the loop 0.1-0.3 s.
+    Folder f;
+    writeSine (f.dir.getChildFile ("tone.wav"), 480.0, 0.5);
+    const auto loopStart = 4800, loopEnd = 4800 + 9600 - 1;
+    const auto make = [&] (const juce::String& extra)
+    {
+        auto inst = synth::sfz::load (writeSfz (f.dir, "<region> sample=tone.wav key=60 amp_veltrack=0 " + extra + "\n",
+                                                "t" + juce::String (juce::Random::getSystemRandom().nextInt (1000000)) + ".sfz"));
+        REQUIRE (inst != nullptr);
+        return inst;
+    };
+    const auto sustained = [&] (const synth::sfz::Instrument& inst, double holdSeconds, double totalSeconds, float releaseMs)
+    {
+        SfzPlayer p (&inst);
+        p.settings.amp.envelope.releaseMs = releaseMs;
+        p.on (60, 1.0f);
+        auto held = p.render (holdSeconds);
+        p.off (60);
+        auto rest = p.render (totalSeconds - holdSeconds);
+        held[0].insert (held[0].end(), rest[0].begin(), rest[0].end());
+        return held[0];
+    };
+    const auto at = [] (double seconds) { return (size_t) (seconds * sampleRate); };
+
+    // No loop: the note ends with its recording (0.5 s), however long it's held.
+    {
+        const auto plain = sustained (*make (""), 2.0, 2.2, 50.0f);
+        CHECK (rms (plain, at (1.0), at (1.5)) < 1.0e-6);
+    }
+    // LOOP_CONTINUOUS: still the tone at 1.5 s, at its level and pitch, without a click at the turns (the loop's
+    // whole cycles meet: every sample within the sine's own range and no jump bigger than a sine's step).
+    {
+        const auto inst = make ("loop_mode=loop_continuous loop_start=" + juce::String (loopStart) + " loop_end=" + juce::String (loopEnd));
+        REQUIRE (inst->regions[0].loops());
+        CHECK_FALSE (inst->streamed);   // kept whole in memory
+        const auto looped = sustained (*inst, 2.0, 2.2, 50.0f);
+        CHECK_THAT (rms (looped, at (1.0), at (1.5)), WithinAbs (0.5 / std::sqrt (2.0), 0.002));
+        CHECK_THAT (levelAt (looped, 480.0, at (1.0), at (0.5)), WithinAbs (0.5, 0.005));
+        auto biggestStep = 0.0f;
+        for (auto i = at (0.05); i < at (1.9); ++i)
+            biggestStep = juce::jmax (biggestStep, std::abs (looped[i] - looped[i - 1]));
+        CHECK (biggestStep < 0.5f * (float) (juce::MathConstants<double>::twoPi * 480.0 / sampleRate) * 1.05f);
+        // ...and it keeps going through a long AMP release.
+        const auto longRelease = sustained (*inst, 1.0, 2.0, 3000.0f);
+        CHECK (rms (longRelease, at (1.6), at (1.9)) > 0.05);
+    }
+    // LOOP_SUSTAIN: loops while held; let go, it plays on past the loop to the recording's end (0.2 s on), then stops,
+    // even under a long AMP release.
+    {
+        const auto inst = make ("loop_mode=loop_sustain loop_start=" + juce::String (loopStart) + " loop_end=" + juce::String (loopEnd));
+        const auto out = sustained (*inst, 1.0, 2.0, 3000.0f);
+        CHECK (rms (out, at (0.8), at (0.95)) > 0.3);
+        CHECK (rms (out, at (1.5), at (1.9)) < 1.0e-6);
+    }
+    // The file's own loop (a WAV "smpl" chunk) loops without LOOP_MODE; LOOP_MODE=no_loop turns it off.
+    {
+        const auto file = f.dir.getChildFile ("smpl.wav");
+        const auto frames = 24000;
+        juce::AudioBuffer<float> buffer (1, frames);
+        for (int i = 0; i < frames; ++i)
+            buffer.setSample (0, i, 0.5f * (float) std::sin (juce::MathConstants<double>::twoPi * 480.0 * i / sampleRate));
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        const std::unordered_map<juce::String, juce::String> meta { { "NumSampleLoops", "1" }, { "Loop0Start", juce::String (loopStart) },
+                                                                   { "Loop0End", juce::String (loopEnd) }, { "Loop0Type", "0" } };
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions().withSampleRate (sampleRate).withNumChannels (1)
+                                                       .withBitsPerSample (32).withMetadataValues (meta)
+                                                       .withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (buffer, 0, frames);
+        writer.reset();
+        const auto own = synth::sfz::load (writeSfz (f.dir, "<region> sample=smpl.wav key=60 amp_veltrack=0\n", "own.sfz"));
+        REQUIRE (own != nullptr);
+        CHECK (own->regions[0].loops());
+        CHECK (own->regions[0].loopStart == loopStart);
+        CHECK (own->regions[0].loopEnd == loopEnd);
+        CHECK (rms (sustained (*own, 2.0, 2.2, 50.0f), at (1.0), at (1.5)) > 0.3);
+        const auto off = synth::sfz::load (writeSfz (f.dir, "<region> sample=smpl.wav key=60 loop_mode=no_loop\n", "off.sfz"));
+        REQUIRE (off != nullptr);
+        CHECK_FALSE (off->regions[0].loops());
+    }
+}
+
+TEST_CASE ("SFZ: velocity crossfades (XFIN / XFOUT_LOVEL / HIVEL) blend layers, equal power or straight", "[sfz]")
+{
+    // A soft layer at 480 Hz fading out from velocity 40 to 100, a loud one at 720 Hz fading in across the same.
+    Folder f;
+    writeSine (f.dir.getChildFile ("soft.wav"), 480.0, 0.5);
+    writeSine (f.dir.getChildFile ("loud.wav"), 720.0, 0.5);
+    const auto levels = [&] (const juce::String& curve, int velocity127)
+    {
+        const auto inst = synth::sfz::load (writeSfz (f.dir,
+            "<group> key=60 amp_veltrack=0 " + curve + "\n"
+            "<region> sample=soft.wav xfout_lovel=40 xfout_hivel=100\n"
+            "<region> sample=loud.wav xfin_lovel=40 xfin_hivel=100\n", curve.isEmpty() ? "p.sfz" : "g.sfz"));
+        REQUIRE (inst != nullptr);
+        SfzPlayer p (inst.get());
+        p.on (60, (float) velocity127 / 127.0f);
+        const auto out = p.render (0.3);
+        return std::make_pair (levelAt (out[0], 480.0, 960, 9600) / 0.5, levelAt (out[0], 720.0, 960, 9600) / 0.5);
+    };
+    // Below the fades: the soft layer alone; above: the loud one alone.
+    auto [soft, loud] = levels ("", 30);
+    CHECK_THAT (soft, WithinAbs (1.0, 0.01));
+    CHECK (loud < 0.001);
+    std::tie (soft, loud) = levels ("", 110);
+    CHECK (soft < 0.001);
+    CHECK_THAT (loud, WithinAbs (1.0, 0.01));
+    // Halfway (velocity 70): equal power, each sqrt (1/2) (their powers add to one); straight (XF_VELCURVE=gain), each 1/2.
+    std::tie (soft, loud) = levels ("", 70);
+    CHECK_THAT (soft, WithinAbs (std::sqrt (0.5), 0.01));
+    CHECK_THAT (loud, WithinAbs (std::sqrt (0.5), 0.01));
+    std::tie (soft, loud) = levels ("xf_velcurve=gain", 70);
+    CHECK_THAT (soft, WithinAbs (0.5, 0.01));
+    CHECK_THAT (loud, WithinAbs (0.5, 0.01));
+}
+
 TEST_CASE ("SFZ: round-robins take turns, LORAND / HIRAND by chance, LOCC64 / HICC64 by the pedal", "[sfz]")
 {
     Folder f;

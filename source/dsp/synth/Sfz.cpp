@@ -1,5 +1,7 @@
 #include "dsp/synth/Sfz.h"
 
+#include <algorithm>
+#include <limits>
 #include <map>
 #include <set>
 
@@ -181,8 +183,27 @@ namespace synth::sfz
         }
 
         // Opcodes worth telling the user we don't play (their sound is shaped by the synth's own sections instead).
-        const char* const leftOut[] = { "loop_mode", "loopmode", "fil_type", "cutoff", "ampeg_attack", "ampeg_decay",
-                                        "ampeg_sustain", "sw_last", "sw_lokey", "off_by", "group" };
+        const char* const leftOut[] = { "fil_type", "cutoff", "ampeg_attack", "ampeg_decay", "ampeg_sustain", "sw_last",
+                                        "sw_lokey", "off_by", "group", "xfin_locc1", "xfout_locc1", "gain_cc1" };
+
+        // A sample read whole into memory (a looped one: its loop must be there to go back to).
+        void readWhole (Sample& s, juce::AudioFormatManager& formats)
+        {
+            std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (s.file));
+            if (reader == nullptr || s.length > (juce::int64) std::numeric_limits<int>::max())
+                return;
+            const auto frames = (int) s.length;
+            const auto channels = juce::jlimit (1, 2, (int) reader->numChannels);
+            juce::AudioBuffer<float> buffer (channels, frames);
+            reader->read (&buffer, 0, frames, 0, true, channels > 1);
+            for (int c = 0; c < 2; ++c)
+            {
+                const auto* from = buffer.getReadPointer (juce::jmin (c, channels - 1));
+                s.head[c].assign (from, from + frames);
+            }
+            s.headFrames = frames;
+            s.stream.reset();
+        }
     }
 
     int Instrument::select (int key, int velocity127, bool release, int seqCount, float chance, int pedal,
@@ -194,6 +215,8 @@ namespace synth::sfz
             if (n >= capacity)
                 break;
             if (r.pedalTrigger || r.release != release || ! r.plays (key, velocity127) || pedal < r.loPedal || pedal > r.hiPedal)
+                continue;
+            if (r.crossfade (velocity127) <= 0.0f)   // faded out at this velocity (0.73.0)
                 continue;
             if (r.seqLength > 1 && (seqCount % r.seqLength) + 1 != r.seqPosition)
                 continue;
@@ -244,6 +267,8 @@ namespace synth::sfz
                 if (has (op, name) && leftOutSeen.insert (name).second)
                     inst->problems.add ("not played: " + juce::String (name));
 
+            // LOOP_MODE (0.73.0): what the region asks for; without it, the file's own loop if it has one.
+            const auto loopMode = get (op, "loop_mode", get (op, "loopmode")).trim().toLowerCase();
             const auto relative = (defaultPath + samplePath).replaceCharacter ('\\', '/');
             const auto file = folder.getChildFile (relative);
             const auto path = file.getFullPathName();
@@ -260,6 +285,11 @@ namespace synth::sfz
                     s->sampleRate = reader->sampleRate > 0 ? reader->sampleRate : 48000.0;
                     s->length = reader->lengthInSamples;
                     s->headFrames = (int) juce::jmin<juce::int64> (s->length, (juce::int64) std::ceil (headSeconds * s->sampleRate));
+                    if (reader->metadataValues.getValue ("NumSampleLoops", "0").getIntValue() > 0)
+                    {
+                        s->fileLoopStart = reader->metadataValues.getValue ("Loop0Start", "-1").getLargeIntValue();
+                        s->fileLoopEnd = reader->metadataValues.getValue ("Loop0End", "-1").getLargeIntValue();
+                    }
                     const auto channels = juce::jlimit (1, 2, (int) reader->numChannels);
                     juce::AudioBuffer<float> buffer (channels, s->headFrames);
                     reader->read (&buffer, 0, s->headFrames, 0, true, channels > 1);
@@ -290,6 +320,33 @@ namespace synth::sfz
 
             Region r;
             r.sample = index;
+            {
+                auto& sample = *inst->samples[(size_t) index];
+                const auto fileLoops = sample.fileLoopStart >= 0 && sample.fileLoopEnd > sample.fileLoopStart;
+                if (loopMode == "loop_continuous" || loopMode == "loop_sustain" || (loopMode.isEmpty() && fileLoops))
+                {
+                    r.loop = loopMode == "loop_sustain" ? Region::Loop::sustain : Region::Loop::continuous;
+                    r.loopStart = has (op, "loop_start") ? get (op, "loop_start").getLargeIntValue()
+                                : has (op, "loopstart") ? get (op, "loopstart").getLargeIntValue()
+                                : fileLoops ? sample.fileLoopStart : 0;
+                    r.loopEnd = has (op, "loop_end") ? get (op, "loop_end").getLargeIntValue()
+                              : has (op, "loopend") ? get (op, "loopend").getLargeIntValue()
+                              : fileLoops ? sample.fileLoopEnd : sample.length - 1;
+                    r.loopStart = juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, sample.length - 1), r.loopStart);
+                    r.loopEnd = juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, sample.length - 1), r.loopEnd);
+                    if (r.loops() && sample.headFrames < sample.length)
+                    {
+                        readWhole (sample, formats);
+                        if (sample.headFrames < sample.length)
+                            r.loop = Region::Loop::none;   // (too long to hold: plays through)
+                    }
+                }
+            }
+            r.xfinLo = juce::jlimit (0, 127, get (op, "xfin_lovel", "0").getIntValue());
+            r.xfinHi = juce::jlimit (0, 127, get (op, "xfin_hivel", "0").getIntValue());
+            r.xfoutLo = juce::jlimit (0, 127, get (op, "xfout_lovel", "127").getIntValue());
+            r.xfoutHi = juce::jlimit (0, 127, get (op, "xfout_hivel", "127").getIntValue());
+            r.xfPower = get (op, "xf_velcurve", "power").trim().toLowerCase() != "gain";
             if (const auto key = noteNumber (get (op, "key")); key >= 0)
             {
                 r.loKey = r.hiKey = key;
@@ -360,6 +417,8 @@ namespace synth::sfz
         }
         if (progress)
             progress (1.0f);
+        // (a sample first read as a head and then kept whole for a loop no longer streams)
+        inst->streamed = std::any_of (inst->samples.begin(), inst->samples.end(), [] (const auto& s) { return s->stream != nullptr; });
         if (inst->regions.empty())
             return nullptr;
         return inst;

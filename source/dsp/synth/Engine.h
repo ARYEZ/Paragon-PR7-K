@@ -141,6 +141,7 @@ namespace synth
             float fade = 1.0f, fadeStep = 0.0f;    // a quick fade when a newer note takes its place
             float decay = 1.0f;                    // x each sample: AMPEG_RELEASE's fall, once its key has let go
             int stream = -1;                       // the disk stream reading the rest (-1: the head only)
+            bool looping = false;                  // (0.73.0) going round its region's loop (loop_sustain: until released)
         };
         static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
 

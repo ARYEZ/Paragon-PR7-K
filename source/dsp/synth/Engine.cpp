@@ -1030,6 +1030,11 @@ namespace synth
     {
         if (voice.source == tailSource)
             return;
+        // LOOP_SUSTAIN (0.73.0): those samples stop going round and play on past their loop.
+        for (auto& osc : voice.oscillators)
+            for (auto& player : osc.players)
+                if (player.region != nullptr && player.region->loop == sfz::Region::Loop::sustain)
+                    player.looping = false;
         // SFZ: the release samples of its sampled oscillators, played in a voice of their own (startTails).
         // Samples whose AMPEG_RELEASE outlasts the AMP's (a piano's undamped top strings) go with them, falling over
         // their own release (60 dB in that time) from the level the AMP had reached.
@@ -2881,7 +2886,9 @@ namespace synth
             player->fade = 1.0f;
             player->fadeStep = 0.0f;
             player->decay = 1.0f;
-            auto gain = region.gain * region.velocityGain (voice.velocity);
+            auto gain = region.gain * region.velocityGain (voice.velocity) * region.crossfade (velocity127);
+            // A loop needs the sample whole in memory (the reader keeps a looped one so).
+            player->looping = region.loops() && region.loopEnd + 2 < (juce::int64) sample.headFrames;
             if (release && region.rtDecayDb > 0.0f)
                 gain *= juce::Decibels::decibelsToGain (-region.rtDecayDb * held, -120.0f);
             float l, r;
@@ -2923,8 +2930,13 @@ namespace synth
             const auto* headL = sample.head[0].data();
             const auto* headR = sample.head[1].data();
             const auto heads = (juce::int64) sample.headFrames;
+            // LOOPS (0.73.0): past LOOP_END a read goes round to LOOP_START (the sample is whole in memory).
+            const auto looping = player.looping;
+            const auto loopStart = region.loopStart, loopEnd = region.loopEnd, loopLength = loopEnd - loopStart + 1;
             const auto frameAt = [&] (int channel, juce::int64 frame) -> float
             {
+                if (looping && frame > loopEnd)
+                    frame = loopStart + (frame - loopStart) % loopLength;
                 if (frame < 0 || frame >= readable)
                     return 0.0f;
                 if (frame < heads)
@@ -2947,7 +2959,7 @@ namespace synth
                 for (int c = 0; c < 2; ++c)
                 {
                     float y0, y1, y2, y3;
-                    if (frame >= 1 && frame + 2 < heads)
+                    if (frame >= 1 && frame + 2 < heads && (! looping || frame + 2 <= loopEnd))
                     {
                         const auto* h = (c == 0 ? headL : headR) + frame;
                         y0 = h[-1]; y1 = h[0]; y2 = h[1]; y3 = h[2];
@@ -2973,6 +2985,8 @@ namespace synth
                 if (player.decay < 1.0f && (player.fade *= player.decay) < 1.0e-4f)
                     player.fade = 0.0f;   // 80 dB down: over
                 pos += step;
+                if (looping && pos >= (double) (loopEnd + 1))
+                    pos -= (double) loopLength * std::floor ((pos - (double) loopStart) / (double) loopLength);
             }
             player.position = pos;
             if (player.region != nullptr && player.stream >= 0)
