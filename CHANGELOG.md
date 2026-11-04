@@ -2,6 +2,17 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.73.0
+
+**HYPERDRIVE, a new expansion with a real orchestra: GET THE ORCHESTRA, looping samples, and LIGHTSPEED.**
+
+- **HYPERDRIVE (HD01-HD18)**, inspired by the late-'70s and early-'80s space-opera film scores: heroic brass fanfares (Hero's Fanfare), a lonely horn at sunset (Desert Horizon), a robot's chirping whistle (Cockpit Chirp), a men's choir (Starbound Choir), shimmering strings (Galaxy Strings), an old mystical hum (Elder Hum), a marching low-brass ostinato (Iron March), a starfighter's idling engines (Sublight Drone), a spaceport dance band's plucked bass, combo organ and riff in seven (Dive Bar Bass, Spaceport Organ, Seven Step Band), a twinkling celesta (Starfield Celesta), a dark low piano (Ominous Piano), racing strings (Racing Strings), a navigation computer (Navigation Beeps), and three plucks (Royal Harp, Battle Pizzicato, Moon Tines). Our own sounds and phrases; nothing from the films is named.
+- **MACRO 3 is LIGHTSPEED on every HYPERDRIVE preset**: at the left the sound as built, turning it up makes the jump to lightspeed and back.
+- **LIGHTSPEED, a new signature effect** (the SIGNATURE slot's sixteenth): JUMP sends streaks of the sound up in pitch (up to two octaves, spooling up like engines and falling back), out to the sides, with a whoosh sweeping up behind them that follows how loud you play, while the sound itself rushes past. RISE, STREAKS, WHOOSH, WIDTH and TONE shape it; JUMP, RISE and WHOOSH can be moved by the mod matrix. Its page draws a starfield stretching into streaks. At JUMP 0 it leaves the sound untouched.
+- **GET THE ORCHESTRA.** Twelve HYPERDRIVE presets play real recordings once the free Sonatina Symphonic Orchestra (about 1.4 GB, by Mattias Westlund and Paul Eastman, CC Sampling Plus 1.0) is downloaded, the same way the piano presets use the Salamander: trumpets and horns, a solo horn, a large choir, the string section, trombones and tuba, a solo double bass, celesta, staccato strings, clarinet, harp and pizzicato (Ominous Piano uses the Salamander). Until then they play PR7-K's own synthesized orchestra. Loading one asks once whether to get it; once it's in, a preset you haven't edited switches over by itself. Galaxy Strings keeps its synth strings underneath, quieter: the library's section strings stop after about four seconds, so the synth layer carries long chords.
+- **SFZ: looped samples and velocity crossfades.** Samples with loop points (in the SFZ file or the WAV itself) now hold for as long as you hold the key, and loop-sustain ones stop looping when you let go. Instruments that blend velocity layers into each other (xfin/xfout) blend smoothly. Still not played: the files' own filters and envelopes (soft notes are quieter, not darker) and mod-wheel crossfades.
+- Every level was set by measurement (about -17 loudness, peaks under -3 dBFS at rest and under -2 at full LIGHTSPEED).
+
 ## 0.72.0
 
 **The real piano in the expansions: seven expansion piano presets play the Salamander Grand once it's downloaded.**
