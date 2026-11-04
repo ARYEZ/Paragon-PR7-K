@@ -164,18 +164,24 @@ namespace
         static const std::map<juce::String, float> levels {
             { "Ancient Harp", -5.8f },
             { "Bike Spokes", -8.1f },
+            { "Bloom Formant", -3.7f },
             { "Cassette Harp", -9.7f },
             { "Chain Snap", -5.4f },
-            { "Condensation Drip", -5.4f },
+            { "Neon Ping Pong", -0.1f },
+            { "Snowflake Pluck", 0.4f },
+            { "Chant Pluck", -2.8f },
             { "Choir Pluck", -6.4f },
             { "Chrome Pluck", -3.4f },
             { "Code Drip", -2.6f },
+            { "Condensation Drip", -5.4f },
             { "Dashboard Pulse", -10.1f },
             { "Deep Pizzicato", -3.2f },
             { "Desert Oud", -7.6f },
+            { "Either Way", -7.2f },
             { "Ember Pluck", 0.7f },
             { "Exhaust Stab", -8.1f },
             { "Folding Guitar", -4.3f },
+            { "Fungal Kalimba", -9.7f },
             { "Funhouse Mallet", -6.3f },
             { "Glass Ghost", -7.5f },
             { "Glass Rain Taps", -7.5f },
@@ -183,15 +189,22 @@ namespace
             { "Gridline Pluck", -5.5f },
             { "Heat Shimmer Pluck", -5.2f },
             { "Hellwire Pick", -0.3f },
+            { "Hologram Pluck", -2.8f },
             { "Hull Pizzicato", -2.3f },
             { "Hummed Pluck", -2.3f },
             { "Lantern Pluck", -6.9f },
             { "Laser Lattice", -2.4f },
             { "Monastery Mallet", -7.7f },
             { "Muted Felt", -5.2f },
+            { "Neon Spoke", -4.7f },
+            { "Observer Mallet", -8.3f },
             { "Orbit Kalimba", -9.0f },
             { "Pixel Ping", -3.0f },
             { "Prepared Strings", -1.9f },
+            { "Prism Pluck", -4.5f },
+            { "Probability Pluck", -6.5f },
+            { "Psychic Ping", -4.9f },
+            { "Rage Stab", -8.1f },
             { "Rivet Gun", -1.4f },
             { "Rooftop Pick", -7.2f },
             { "Sandglass Kanun", -7.3f },
@@ -205,6 +218,8 @@ namespace
             { "Street Zither", -2.3f },
             { "Tail Light Bell", -13.8f },
             { "Ticking Pizzicato", -6.2f },
+            { "VHS Pluck", -2.1f },
+            { "Wasteland Pick", -5.1f },
             { "Wet Neon Pluck", -9.8f },
             { "Wire Shamisen", -5.3f },
         };
@@ -7883,6 +7898,63 @@ namespace
         space (garden);
         garden.set (ParamIDs::patchLevel, 1.4f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (garden);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkPrism = x.make ("Prism Pluck", 16, { "Pluck", "String", "Microtonal", "Mutate" },
+            "A string bent by the light around it: two saws plucked together, the second landing a few cents off on "
+            "every note (each note its own, at random), a tick of the pick, the tone dimming as it rings. MACROS: "
+            "BRIGHT, SPACE, MUTATE (the second string pulled far out of tune: microtones).");
+        pkPrism.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.4f)
+               .filter (FilterType::lp12, 1500.0f, 0.3f, 0.45f).set (ParamIDs::fltKey, 0.6f)
+               .filterEnvelope (0.5f, 300.0f, 0.1f, 260.0f)
+               .ampEnvelope (0.5f, 900.0f, 0.0f, 350.0f);
+        route (pkPrism, "random", ParamIDs::osc (1, "Fine"), 0.06f);
+        pkStrike (pkPrism, 2, 0, 0.15f, 5.0f, 0.05f);
+        pkVelocity (pkPrism, 0.45f, 0.3f, 0.45f);
+        route (pkPrism, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkPrism, "macro3", ParamIDs::osc (1, "Fine"), 0.2f);
+        macros (pkPrism, "BRIGHT", "SPACE", "MUTATE");
+        delay (pkPrism, "1/8 dotted", 0.3f, 0.15f, true, 4.5f);
+        reverb (pkPrism, RT::hall, 0.7f, 0.25f);
+        space (pkPrism);
+        pkAdd (x, pkPrism);
+
+        auto pkFungal = x.make ("Fungal Kalimba", 17, { "Pluck", "FM", "Inharmonic", "Mutate" },
+            "A thumb piano grown over with something alive: a sine with FM from a sine 3.3 times its pitch (a ratio no "
+            "real instrument has: a strange, rubbery ring), bright at the touch and settling in a fifth of a second. "
+            "MACROS: BRIGHT, SPACE, MUTATE (the ratio pulled stranger).");
+        pkFungal.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+                .osc (0, "FmSource", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.715f).osc (0, "FmAmount", 0.04f)
+                .ampEnvelope (0.5f, 1300.0f, 0.0f, 700.0f).set (ParamIDs::ampVel, 0.45f);
+        pkShot (pkFungal, 0, { PK { 0.0f, 1.0f, -0.6f }, PK { 0.2f, 0.0f, 0.0f } });
+        route (pkFungal, "env1", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (pkFungal, "velocity", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkFungal, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkFungal, "macro3", ParamIDs::osc (0, "ModRate"), 0.06f);
+        macros (pkFungal, "BRIGHT", "SPACE", "MUTATE");
+        chorus (pkFungal, ParamIDs::modIds, MT::chorus, 0.3f, 0.4f, 0.35f);
+        reverb (pkFungal, RT::hall, 0.75f, 0.28f);
+        space (pkFungal);
+        pkAdd (x, pkFungal);
+
+        auto pkBloom = x.make ("Bloom Formant", 18, { "Pluck", "Formant", "Sweep", "Mutate" },
+            "A flower opening and closing in an instant: a saw played with its FORMANT pushed high at the strike and "
+            "sliding home in a quarter of a second (the tone's shape squeezing, a vocal \"weeow\"), through a soft "
+            "filter. MACROS: BRIGHT, SPACE, MUTATE (the formant pushed further).");
+        pkBloom.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "Formant", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.15f)
+               .filter (FilterType::lp12, 4000.0f, 0.1f, 0.0f)
+               .ampEnvelope (0.5f, 700.0f, 0.0f, 300.0f).set (ParamIDs::ampVel, 0.45f);
+        pkShot (pkBloom, 0, { PK { 0.0f, 1.0f, -0.4f }, PK { 0.25f, 0.0f, 0.0f } });
+        route (pkBloom, "env1", ParamIDs::osc (0, "Formant"), 0.6f);
+        route (pkBloom, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkBloom, "macro3", ParamIDs::osc (0, "Formant"), 0.2f);
+        macros (pkBloom, "BRIGHT", "SPACE", "MUTATE");
+        delay (pkBloom, "1/8", 0.3f, 0.15f, true, 4.5f);
+        reverb (pkBloom, RT::hall, 0.65f, 0.25f);
+        space (pkBloom);
+        pkAdd (x, pkBloom);
     }
 
     // PSI STORM: inspired by the score of a 1988 animated cyberpunk film about a biker gang and a boy whose psychic
@@ -8375,6 +8447,63 @@ namespace
         space (festival);
         festival.set (ParamIDs::patchLevel, -1.3f);   // LEVEL: re-measured as an arp (0.55.0; measured, not by ear)
         x.add (festival);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkChant = x.make ("Chant Pluck", 16, { "Pluck", "Voice", "Chant", "Rhythmic" },
+            "A crowd chanting one short syllable in rhythm: a saw and a pulse sung through the VOICE filter as a clipped "
+            "\"eh\" falling to \"ah\", a breath at the start of each, gone in a fifth of a second, a temple courtyard. "
+            "MACROS: BRIGHT, SPACE, POWER (a sharper voice and more edge).");
+        pkChant.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Fine", 5.0f).osc (1, "Volume", 0.3f)
+               .filter (FilterType::lp12, 3200.0f, 0.05f, 0.0f)
+               .ampEnvelope (2.0f, 260.0f, 0.0f, 150.0f).set (ParamIDs::ampVel, 0.5f);
+        voice (pkChant, 0.5f, 0.45f, 0.55f);
+        oneShot (pkChant, 0, { SP16 { 0.0f, 1.0f, -0.4f }, SP16 { 0.18f, 0.0f, 0.0f } });
+        route (pkChant, "env1", ParamIDs::voiceVowel, 0.25f);
+        pkStrike (pkChant, 2, 1, 0.08f, 20.0f, 0.05f);
+        route (pkChant, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkChant, "macro3", ParamIDs::voiceSharp, 0.3f);
+        route (pkChant, "macro3", ParamIDs::fltCutoff, 0.1f);
+        macros (pkChant, "BRIGHT", "SPACE", "POWER");
+        reverb (pkChant, RT::hall, 0.6f, 0.22f);
+        space (pkChant);
+        pkAdd (x, pkChant);
+
+        auto pkSpoke = x.make ("Neon Spoke", 17, { "Pluck", "Sync", "Wail", "Neon" },
+            "A light streaking off a speeding wheel: a saw hard-synced, its own sync envelope sweeping down over a third "
+            "of a second (a wailing \"yeow\" on every note), a pulse under it, the filter following. MACROS: BRIGHT, "
+            "SPACE, POWER (more sync).");
+        pkSpoke.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "SyncAmount", 0.05f)
+               .osc (0, "SyncEnv", 0.65f).osc (0, "SyncEnvTime", 320.0f).osc (0, "SyncEnvCurve", -0.4f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.28f)
+               .filter (FilterType::lp24, 2600.0f, 0.2f, 0.35f).filterEnvelope (0.5f, 320.0f, 0.1f, 250.0f)
+               .ampEnvelope (0.5f, 600.0f, 0.0f, 250.0f);
+        pkVelocity (pkSpoke, 0.4f, 0.3f, 0.45f);
+        route (pkSpoke, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkSpoke, "macro3", ParamIDs::osc (0, "SyncAmount"), 0.15f);
+        macros (pkSpoke, "BRIGHT", "SPACE", "POWER");
+        delay (pkSpoke, "1/8", 0.35f, 0.16f, true, 4.5f);
+        reverb (pkSpoke, RT::plate, 0.5f, 0.18f);
+        space (pkSpoke);
+        pkAdd (x, pkSpoke);
+
+        auto pkPsychic = x.make ("Psychic Ping", 18, { "Pluck", "AM", "Ping", "Telepathy" },
+            "A thought arriving in someone else's head: a sine struck five semitones high and dropping onto the note in "
+            "twenty milliseconds, ring-modulated at 1.5 times its pitch (sum and difference tones, a bright metal "
+            "halo) that fades faster than the note, ping-pong echoes. MACROS: BRIGHT, SPACE, POWER (more ring).");
+        pkPsychic.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+                 .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.573f).osc (0, "AmAmount", 0.15f)
+                 .ampEnvelope (0.3f, 800.0f, 0.0f, 400.0f).set (ParamIDs::ampVel, 0.45f);
+        oneShot (pkPsychic, 0, { SP16 { 0.0f, 1.0f, -0.5f }, SP16 { 0.3f, 0.0f, 0.0f } });
+        route (pkPsychic, "env1", ParamIDs::osc (0, "AmAmount"), 0.5f);
+        pkBend (pkPsychic, 5.0f, 0.02f, -0.3f);
+        route (pkPsychic, "macro1", ParamIDs::osc (0, "AmAmount"), 0.1f);
+        route (pkPsychic, "macro3", ParamIDs::osc (0, "AmAmount"), 0.2f);
+        macros (pkPsychic, "BRIGHT", "SPACE", "POWER");
+        delay (pkPsychic, "1/8 dotted", 0.4f, 0.2f, true, 5.0f);
+        reverb (pkPsychic, RT::hall, 0.6f, 0.22f);
+        space (pkPsychic);
+        pkAdd (x, pkPsychic);
     }
 
     // BLOODWAVE: inspired by the soundtrack of a 2012 top-down action game set in a neon-soaked 1989 city: the dark,
@@ -8791,6 +8920,68 @@ namespace
         space (machine);
         machine.set (ParamIDs::patchLevel, 2.7f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (machine);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkVhs = x.make ("VHS Pluck", 16, { "Pluck", "Tape", "Wobble", "Rage" },
+            "A pluck dubbed onto a worn videotape: a pulse and a saw through a filter that snaps shut, every note "
+            "wobbling a little as the tape stretches, LO-FI's cassette dulling and warping it. MACROS: BRIGHT, SPACE, "
+            "RAGE (the tape chewed: more wobble and wear).");
+        pkVhs.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.35f)
+             .osc (0, "VibWave", (float) synth::VibratoWave::random).osc (0, "VibRate", 3.0f).osc (0, "VibAmount", 8.0f)
+             .osc (1, "VibWave", (float) synth::VibratoWave::random).osc (1, "VibRate", 3.0f).osc (1, "VibAmount", 8.0f)
+             .filter (FilterType::lp24, 1000.0f, 0.3f, 0.5f).set (ParamIDs::fltKey, 0.4f)
+             .filterEnvelope (0.5f, 240.0f, 0.0f, 220.0f)
+             .ampEnvelope (0.5f, 600.0f, 0.0f, 300.0f);
+        lofi (pkVhs, effects::LoFi::Type::cassette, 0.35f, 0.6f);
+        pkVelocity (pkVhs, 0.45f, 0.3f, 0.45f);
+        route (pkVhs, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkVhs, "macro3", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (pkVhs, "macro3", ParamIDs::osc (1, "VibAmount"), 0.2f);
+        route (pkVhs, "macro3", ParamIDs::lofiAmount, 0.3f);
+        macros (pkVhs, "BRIGHT", "SPACE", "RAGE");
+        delay (pkVhs, "1/8 dotted", 0.3f, 0.15f, false, 4.0f);
+        reverb (pkVhs, RT::plate, 0.5f, 0.18f);
+        space (pkVhs);
+        pkAdd (x, pkVhs);
+
+        auto pkRage = x.make ("Rage Stab", 17, { "Pluck", "Chorder", "Minor 7th", "Rage" },
+            "A neon-lit chord stab: one key plays a minor-seventh chord (the chorder: a minor third, a fifth and a minor "
+            "seventh on top), through a filter that slams shut and a tube shaper. Levelled for one key: a held chord of "
+            "keys stacks up fast. MACROS: BRIGHT, SPACE, RAGE (more shaper).");
+        pkRage.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+              .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 3.0f).osc (0, "Ch1Vol", 0.8f)
+              .osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 7.0f).osc (0, "Ch2Vol", 0.8f)
+              .osc (0, "Ch3On", 1.0f).osc (0, "Ch3Coarse", 10.0f).osc (0, "Ch3Vol", 0.7f)
+              .filter (FilterType::lp24, 900.0f, 0.25f, 0.55f)
+              .filterEnvelope (0.5f, 180.0f, 0.0f, 150.0f)
+              .ampEnvelope (0.5f, 380.0f, 0.0f, 180.0f)
+              .shaper (0, synth::ShaperModel::tube, 0.3f, true);
+        pkVelocity (pkRage, 0.45f, 0.3f, 0.45f);
+        route (pkRage, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkRage, "macro3", ParamIDs::shp (0, "Drive"), 0.35f);
+        macros (pkRage, "BRIGHT", "SPACE", "RAGE");
+        chorus (pkRage, ParamIDs::modIds, MT::chorus, 0.5f, 0.4f, 0.35f);
+        reverb (pkRage, RT::room, 0.5f, 0.15f);
+        space (pkRage);
+        pkAdd (x, pkRage);
+
+        auto pkPingPong = x.make ("Neon Ping Pong", 18, { "Pluck", "Bit Crush", "Ping-Pong", "Rage" },
+            "A crushed 8-bit ping bouncing between the speakers: a saw reduced to a few levels a side (BIT crush: a stepped, "
+            "chiptune edge), "
+            "short and bright, sixteenth-note echoes flying left and right. MACROS: BRIGHT, SPACE, RAGE (crushed "
+            "harder).");
+        pkPingPong.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+                  .osc (0, "CrushMode", 1.0f).osc (0, "Crush", 0.35f)
+                  .filter (FilterType::lp12, 5000.0f, 0.1f, 0.2f).filterEnvelope (0.3f, 150.0f, 0.2f, 150.0f)
+                  .ampEnvelope (0.3f, 300.0f, 0.0f, 130.0f).set (ParamIDs::ampVel, 0.4f);
+        route (pkPingPong, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkPingPong, "macro3", ParamIDs::osc (0, "Crush"), 0.3f);
+        macros (pkPingPong, "BRIGHT", "SPACE", "RAGE");
+        delay (pkPingPong, "1/16", 0.45f, 0.25f, true, 5.0f);
+        reverb (pkPingPong, RT::room, 0.4f, 0.12f);
+        space (pkPingPong);
+        pkAdd (x, pkPingPong);
     }
 
     // DUSTFALL: inspired by the score of a 2017 science-fiction film, a sequel set thirty years on: colder, bigger and
@@ -9173,6 +9364,64 @@ namespace
         space (city);
         city.set (ParamIDs::patchLevel, -1.7f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (city);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkSnow = x.make ("Snowflake Pluck", 16, { "Pluck", "Resonance", "Cold", "Weight" },
+            "A snowflake landing on a cold window: a burst of noise ringing a narrow band-pass right on the note (a "
+            "glassy, whistling ping, the pitch made by the filter itself), a faint sine under it to steady the note, "
+            "a long, cold hall. MACROS: BRIGHT, SPACE, WEIGHT (a clean sine an octave down).");
+        pkSnow.osc (0, "On", 1.0f).osc (0, "Gain", 0.0f).osc (0, "Noise", 0.5f).osc (0, "NoiseColour", 0.0f)
+              .osc (0, "NoiseWidth", 2.0f).osc (0, "Volume", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.18f).osc (1, "PhaseRand", 0.0f)
+              .filter (FilterType::bp24, 261.63f, 0.92f, 0.0f).set (ParamIDs::fltKey, 1.0f)
+              .ampEnvelope (0.5f, 1400.0f, 0.0f, 900.0f).set (ParamIDs::ampVel, 0.45f);
+        clean (pkSnow, 1);
+        oneShot (pkSnow, 0, { SP18 { 0.0f, 1.0f, -0.5f }, SP18 { 0.04f, 0.0f, 0.0f } });
+        route (pkSnow, "env1", ParamIDs::osc (0, "Volume"), 0.9f);
+        weightSub (pkSnow, 2, 0.1f);
+        route (pkSnow, "macro1", ParamIDs::fltRes, -0.15f);
+        macros (pkSnow, "BRIGHT", "SPACE", "WEIGHT");
+        delay (pkSnow, "1/4", 0.35f, 0.15f, true, 5.0f);
+        reverb (pkSnow, RT::hall, 0.85f, 0.32f, 40.0f, 4.5f);
+        space (pkSnow);
+        pkAdd (x, pkSnow);
+
+        auto pkWaste = x.make ("Wasteland Pick", 17, { "Pluck", "String", "Heavy", "Weight" },
+            "A heavy low string picked in an orange haze: two saws an octave down, a few cents apart, the pick biting "
+            "and the tone sinking fast, a slight sag in pitch. MACROS: BRIGHT, SPACE, WEIGHT (a clean sine an octave "
+            "below it).");
+        pkWaste.osc (0, "Wave", saw).osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.5f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Fine", 8.0f).osc (1, "Volume", 0.4f)
+               .filter (FilterType::lp24, 500.0f, 0.25f, 0.5f).set (ParamIDs::fltKey, 0.5f)
+               .filterEnvelope (0.5f, 160.0f, 0.05f, 180.0f)
+               .ampEnvelope (0.5f, 800.0f, 0.0f, 300.0f);
+        pkStrike (pkWaste, 2, 0, 0.15f, 5.0f, 0.2f);
+        pkBend (pkWaste, 0.3f, 0.08f, -0.4f);
+        weightSub (pkWaste, 3, 0.35f);
+        pkVelocity (pkWaste, 0.45f, 0.3f, 0.45f);
+        route (pkWaste, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkWaste, "BRIGHT", "SPACE", "WEIGHT");
+        reverb (pkWaste, RT::hall, 0.7f, 0.22f, 30.0f, 3.5f);
+        space (pkWaste);
+        pkAdd (x, pkWaste);
+
+        auto pkHolo = x.make ("Hologram Pluck", 18, { "Pluck", "Wavetable", "Shimmer", "Weight" },
+            "A pluck that flickers like a projection: a wavetable (HARMONIC RISE) read from its bright end to its plain "
+            "end in a third of a second, harder playing brighter, a wide shimmering chorus and ping-pong echoes. MACROS: "
+            "BRIGHT, SPACE, WEIGHT (a clean sine an octave down).");
+        pkHolo.osc (0, "Wave", wavetable).osc (0, "Table", table ("Harmonic Rise")).osc (0, "WtIndex", 0.05f).osc (0, "Volume", 0.65f)
+              .ampEnvelope (0.5f, 900.0f, 0.0f, 400.0f).set (ParamIDs::ampVel, 0.45f);
+        oneShot (pkHolo, 0, { SP18 { 0.0f, 1.0f, -0.4f }, SP18 { 0.33f, 0.0f, 0.0f } });
+        route (pkHolo, "env1", ParamIDs::osc (0, "WtIndex"), 0.6f);
+        route (pkHolo, "velocity", ParamIDs::osc (0, "WtIndex"), 0.2f);
+        weightSub (pkHolo, 1, 0.3f);
+        route (pkHolo, "macro1", ParamIDs::osc (0, "WtIndex"), 0.15f);
+        macros (pkHolo, "BRIGHT", "SPACE", "WEIGHT");
+        chorus (pkHolo, ParamIDs::modIds, MT::dimension, 0.4f, 0.55f, 0.5f);
+        delay (pkHolo, "1/8 dotted", 0.35f, 0.18f, true, 4.5f);
+        reverb (pkHolo, RT::hall, 0.75f, 0.28f);
+        space (pkHolo);
+        pkAdd (x, pkHolo);
     }
 
     // SUPERPOSITION: inspired by the score of a 2024 science-fiction series about a physicist thrown into other versions
@@ -9559,6 +9808,67 @@ namespace
         space (threshold);
         threshold.set (ParamIDs::patchLevel, -6.1f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (threshold);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkEither = x.make ("Either Way", 16, { "Pluck", "Unison", "Split", "Filter" },
+            "One pluck that could go two ways: a saw in two-voice unison, the two copies on the same pitch and panned "
+            "together at first, a filter that snaps shut. Turn MACRO 3 and the copies split apart in pitch and space, "
+            "two versions of the same note. MACROS: BRIGHT, SPACE, SPLIT (the copies apart).");
+        pkEither.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+                .osc (0, "UniVoices", 2.0f).osc (0, "UniMix", 1.0f).osc (0, "UniDetune", 0.02f).osc (0, "UniSpread", 0.1f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+                .filter (FilterType::lp24, 1000.0f, 0.25f, 0.55f).set (ParamIDs::fltKey, 0.4f)
+                .filterEnvelope (0.5f, 220.0f, 0.0f, 200.0f)
+                .ampEnvelope (0.5f, 650.0f, 0.0f, 300.0f);
+        pkVelocity (pkEither, 0.45f, 0.3f, 0.45f);
+        route (pkEither, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkEither, "macro3", ParamIDs::osc (0, "UniDetune"), 0.25f);
+        route (pkEither, "macro3", ParamIDs::osc (0, "UniSpread"), 0.8f);
+        macros (pkEither, "BRIGHT", "SPACE", "SPLIT");
+        delay (pkEither, "1/8", 0.3f, 0.15f, true, 4.5f);
+        reverb (pkEither, RT::hall, 0.6f, 0.22f);
+        space (pkEither);
+        pkAdd (x, pkEither);
+
+        auto pkChance = x.make ("Probability Pluck", 17, { "Pluck", "Random", "Pulse", "Split" },
+            "No two notes the same: each note draws its own brightness, pulse width and pan when it starts (the RANDOM "
+            "source), so a repeated note never repeats. MACROS: BRIGHT, SPACE, SPLIT (a second pulse in, a fifth above, "
+            "drawn at random too).");
+        pkChance.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.55f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Transpose", 7.0f).osc (1, "Volume", 0.0f)
+                .filter (FilterType::lp24, 900.0f, 0.3f, 0.5f).set (ParamIDs::fltKey, 0.4f)
+                .filterEnvelope (0.5f, 230.0f, 0.0f, 200.0f)
+                .ampEnvelope (0.5f, 600.0f, 0.0f, 280.0f);
+        route (pkChance, "random", ParamIDs::fltCutoff, 0.15f);
+        route (pkChance, "random", ParamIDs::osc (0, "Width"), 0.3f);
+        route (pkChance, "random", ParamIDs::osc (0, "Pan"), 0.4f);
+        route (pkChance, "random", ParamIDs::osc (1, "Pan"), -0.4f);
+        pkVelocity (pkChance, 0.45f, 0.3f, 0.45f);
+        route (pkChance, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkChance, "macro3", ParamIDs::osc (1, "Volume"), 0.3f);
+        macros (pkChance, "BRIGHT", "SPACE", "SPLIT");
+        delay (pkChance, "1/8 dotted", 0.3f, 0.15f, true, 4.5f);
+        reverb (pkChance, RT::hall, 0.6f, 0.22f);
+        space (pkChance);
+        pkAdd (x, pkChance);
+
+        auto pkObserver = x.make ("Observer Mallet", 18, { "Pluck", "FM", "Mallet", "Split" },
+            "A mallet on a metal bar in a quiet lab: a sine with FM from oscillator 2 an octave up, bright at the strike "
+            "and settled in a quarter of a second. MACROS: BRIGHT, SPACE, SPLIT (the modulator drawn a little out of "
+            "tune, the bar beating like two bars at once).");
+        pkObserver.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+                  .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.05f)
+                  .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+                  .ampEnvelope (0.5f, 1100.0f, 0.0f, 600.0f).set (ParamIDs::ampVel, 0.45f);
+        oneShot (pkObserver, 0, { SP19 { 0.0f, 1.0f, -0.6f }, SP19 { 0.25f, 0.0f, 0.0f } });
+        route (pkObserver, "env1", ParamIDs::osc (0, "FmAmount"), 0.32f);
+        route (pkObserver, "velocity", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkObserver, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkObserver, "macro3", ParamIDs::osc (1, "Fine"), 0.05f);
+        macros (pkObserver, "BRIGHT", "SPACE", "SPLIT");
+        reverb (pkObserver, RT::hall, 0.65f, 0.24f);
+        space (pkObserver);
+        pkAdd (x, pkObserver);
     }
 
     // SEVERED: inspired by the score of a 2022 series about office workers whose work memories are surgically split
