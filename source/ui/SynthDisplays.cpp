@@ -181,6 +181,11 @@ void WaveDisplay::paint (juce::Graphics& g)
 
     const auto on = value (id ("On")) > 0.5f;
     const auto wave = (synth::OscWave) juce::roundToInt (value (id ("Wave")));
+    if (wave == synth::OscWave::sfz)
+    {
+        paintSfz (g, bounds.reduced (10.0f, 8.0f), on);
+        return;
+    }
     if (wave == synth::OscWave::wavetable || wave == synth::OscWave::freeform || (editedFor && editedFor (oscillator) != nullptr))
     {
         paintWavetable (g, bounds.reduced (10.0f, 8.0f), on);
@@ -215,6 +220,7 @@ void WaveDisplay::paint (juce::Graphics& g)
             case synth::OscWave::sine:     return read (synth::tables::Wave::sine, phase);
             case synth::OscWave::wavetable:
             case synth::OscWave::freeform:  return 0.0f;   // drawn as tables (paintWavetable)
+            case synth::OscWave::sfz:       return 0.0f;   // a sampled instrument: no cycle to draw
         }
         return 0.0f;
     };
@@ -290,6 +296,58 @@ void WaveDisplay::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
         g.drawText ("OFF", bounds.reduced (8.0f), juce::Justification::topRight, false);
     }
+}
+
+void WaveDisplay::paintSfz (juce::Graphics& g, juce::Rectangle<float> area, bool on) const
+{
+    // The key map: each region a block across its keys and up its velocities (soft at the bottom), its recorded key
+    // a dot, over a keyboard. Release samples aren't drawn (they play under the same keys).
+    const auto instrument = sfzFor ? sfzFor (oscillator) : nullptr;
+    const auto alpha = on ? 1.0f : 0.45f;
+    g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    if (instrument == nullptr)
+    {
+        g.setColour (ParagonColours::textDim);
+        g.drawText ("NO SFZ INSTRUMENT", area, juce::Justification::centred, false);
+        return;
+    }
+    const auto lo = juce::jmax (0, juce::jmin (21, instrument->loKey)), hi = juce::jmin (127, juce::jmax (108, instrument->hiKey));
+    auto map = area.withTrimmedTop (18.0f);
+    const auto keys = map.removeFromBottom (14.0f);
+    map.removeFromBottom (3.0f);
+    const auto keyWidth = map.getWidth() / (float) (hi - lo + 1);
+    const auto xOf = [&] (int key) { return map.getX() + (float) (key - lo) * keyWidth; };
+    const auto yOf = [&] (int velocity) { return map.getBottom() - map.getHeight() * (float) velocity / 128.0f; };
+
+    for (int key = lo; key <= hi; ++key)
+    {
+        const auto black = juce::MidiMessage::isMidiNoteBlack (key);
+        g.setColour ((black ? juce::Colour (0xff17141a) : ParagonColours::text.withAlpha (0.55f)).withMultipliedAlpha (alpha));
+        g.fillRect (juce::Rectangle<float> (xOf (key) + 0.5f, keys.getY(), juce::jmax (1.0f, keyWidth - 1.0f), keys.getHeight()));
+    }
+    for (const auto& region : instrument->regions)
+    {
+        if (region.release)
+            continue;
+        const juce::Rectangle<float> block (xOf (region.loKey), yOf (region.hiVel + 1), (float) (region.hiKey - region.loKey + 1) * keyWidth,
+                                            yOf (region.loVel) - yOf (region.hiVel + 1));
+        g.setColour (ParagonColours::accent.withAlpha (0.16f * alpha));
+        g.fillRect (block.reduced (0.5f));
+        g.setColour (ParagonColours::accent.withAlpha (0.55f * alpha));
+        g.drawRect (block.reduced (0.5f), 0.8f);
+        const auto centre = juce::roundToInt (region.keyCenter);
+        if (centre >= lo && centre <= hi)
+        {
+            g.setColour (ParagonColours::accent.withAlpha (alpha));
+            g.fillEllipse (juce::Rectangle<float> (3.0f, 3.0f).withCentre ({ xOf (centre) + keyWidth * 0.5f, block.getCentreY() }));
+        }
+    }
+    g.setColour (ParagonColours::text.withAlpha (alpha));
+    g.drawText (instrument->name.toUpperCase(), area.withHeight (16.0f), juce::Justification::centredLeft, true);
+    g.setColour (ParagonColours::textDim);
+    g.setFont (juce::FontOptions (10.5f));
+    g.drawText (juce::String ((int) instrument->regions.size()) + " REGIONS" + (instrument->hasRelease ? " + RELEASE" : "") + (on ? "" : "  OFF"),
+                area.withHeight (16.0f), juce::Justification::centredRight, false);
 }
 
 void WaveDisplay::paintWavetable (juce::Graphics& g, juce::Rectangle<float> area, bool on) const
@@ -428,6 +486,8 @@ void ShapeDisplay::paint (juce::Graphics& g)
                     const auto a = synth::Wavetable::read (table->get (position.below, level), x);
                     return a + (synth::Wavetable::read (table->get (position.above, level), x) - a) * position.between;
                 }
+            case synth::OscWave::sfz:
+                return 0.0f;
         }
         return 0.0f;
     };

@@ -47,6 +47,10 @@ struct Rig
     // FREEFORM drawings, by oscillator (only the ones drawn on).
     std::map<int, synth::FreeformDrawing> drawings;
 
+    // SFZ instruments (0.71.0), by oscillator: where each file is (a path, or "{sfz:<its folder's name>}/<file>",
+    // found through the folders the user has loaded from). The samples stay on the user's computer, never in the preset.
+    std::map<int, juce::String> sfz;
+
 
     // The MOD MATRIX's routes and the macros' names (stage 4a).
     ModMatrix modulation;

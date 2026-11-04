@@ -21,6 +21,8 @@ namespace
     const juce::Identifier parameterVersionKey { "parameterVersion" };
     // Wavetables loaded from files, kept in the project as presets keep them.
     const juce::Identifier wavetablesKey { "Wavetables" };
+    // SFZ instruments (0.71.0): where each oscillator's file is (the samples stay on disk).
+    const juce::Identifier sfzKey { "SfzInstruments" };
     const juce::Identifier drumSamplesKey { "DrumSamples" };   // only to drop it from old projects (0.54.0)
     const juce::Identifier wavetableKey { "Wavetable" };
     constexpr double retiredTableMs = 2000.0;   // how long a replaced table is kept, in case a block is still playing it
@@ -205,6 +207,10 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
     playingFactoryTable.fill (-1);
     for (auto& table : tablesForAudio)
         table = nullptr;
+    for (auto& instrument : sfzForAudio)
+        instrument = nullptr;
+    for (auto& progress : sfzProgress)
+        progress = std::make_shared<std::atomic<float>> (0.0f);
     for (auto* list : { &spectralForAudio, &spectralPulseForAudio })
         for (auto& table : *list)
             table = nullptr;
@@ -252,6 +258,8 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
 
 ParagonX1AudioProcessor::~ParagonX1AudioProcessor()
 {
+    sfzCancel->store (true);
+    sfzPool.reset();   // waits for a load under way (it stops at the next sample)
     spectralBuilder.reset();
     for (auto* parameter : AudioProcessor::getParameters())
         if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (parameter))
@@ -886,6 +894,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.insertBus = choice (get (oscSetting ("Insert")), ParamIDs::insertBusNames.size());
 
         o.table = tablesForAudio[i].load();
+        o.instrument = sfzForAudio[i].load();
         o.spectral = spectralForAudio[i].load();
         o.spectralPulse = spectralPulseForAudio[i].load();
         o.fftSweep = get (oscSetting ("FftSweep"));
@@ -1454,6 +1463,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             settings.modulation.effectSources = compiled->effectSources;
         }
         settings.modulation.ppq = hostPpq >= 0.0 ? hostPpq + (start + done) / getSampleRate() * settings.modulation.bpm / 60.0 : -1.0;
+        engine.setStreamer (sfzStreamerForAudio.load(), isNonRealtime());
         engine.process (left + done, right, n, midi, start + done, settings);
         updateEffectModulation (settings, n);
         {
@@ -1595,6 +1605,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
 void ParagonX1AudioProcessor::timerCallback()
 {
     finishMidiLearn();
+    installSfzLoads();
     updateWavetables();
     updateLatency();
     rack->eqMatch.update (rack->eqInputTap);   // EQ Match listens with its window closed too
@@ -1634,6 +1645,7 @@ void ParagonX1AudioProcessor::updateWavetables()
     }
     updateSpectra();
     std::erase_if (retiredTables, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
+    std::erase_if (retiredSfz, [now] (const auto& retired) { return now > retired.second; });
     std::erase_if (retiredMatrices, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredReferences, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
 }
@@ -2052,6 +2064,169 @@ void ParagonX1AudioProcessor::parameterChanged (const juce::String&, float)
     markModified();
 }
 
+//==============================================================================
+// SFZ (0.71.0)
+juce::File ParagonX1AudioProcessor::sfzLibrariesFile() const
+{
+    return rigLibrary->getFolder().getChildFile ("SFZ Libraries.xml");
+}
+
+juce::String ParagonX1AudioProcessor::sfzRefFor (const juce::File& file) const
+{
+    // "{sfz:<its folder's name>}/<file>|<where it was>": the path first, else found again through the remembered
+    // folders (on another computer, or after the library moved to another drive).
+    return "{sfz:" + file.getParentDirectory().getFileName() + "}/" + file.getFileName() + "|" + file.getFullPathName();
+}
+
+juce::File ParagonX1AudioProcessor::resolveSfz (const juce::String& ref) const
+{
+    if (ref.isEmpty())
+        return {};
+    const auto path = ref.containsChar ('|') ? ref.fromLastOccurrenceOf ("|", false, false) : ref;
+    if (juce::File::isAbsolutePath (path) && juce::File (path).existsAsFile())
+        return juce::File (path);
+    const auto named = ref.upToLastOccurrenceOf ("|", false, false);
+    if (! named.startsWith ("{sfz:"))
+        return {};
+    const auto folderName = named.fromFirstOccurrenceOf ("{sfz:", false, false).upToFirstOccurrenceOf ("}", false, false);
+    const auto fileName = named.fromFirstOccurrenceOf ("}/", false, false);
+    if (const auto xml = juce::XmlDocument::parse (sfzLibrariesFile()))
+        for (const auto* element : xml->getChildIterator())
+        {
+            const juce::File folder (element->getStringAttribute ("path"));
+            if (folder.getFileName() == folderName && folder.getChildFile (fileName).existsAsFile())
+                return folder.getChildFile (fileName);
+        }
+    return {};
+}
+
+juce::String ParagonX1AudioProcessor::getSfzName (int osc) const
+{
+    osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    if (const auto& instrument = sfzInstruments[(size_t) osc]; instrument != nullptr && sfzStates[(size_t) osc] == SfzState::loaded)
+        return instrument->name;
+    const auto named = sfzRefs[(size_t) osc].upToLastOccurrenceOf ("|", false, false);
+    return named.fromLastOccurrenceOf ("/", false, false).upToLastOccurrenceOf (".", false, false);
+}
+
+void ParagonX1AudioProcessor::loadSfz (int osc, const juce::File& file)
+{
+    osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    // Its folder remembered, so presets naming it find it.
+    {
+        auto xml = juce::XmlDocument::parse (sfzLibrariesFile());
+        if (xml == nullptr || ! xml->hasTagName ("SfzLibraries"))
+            xml = std::make_unique<juce::XmlElement> ("SfzLibraries");
+        const auto folder = file.getParentDirectory().getFullPathName();
+        auto known = false;
+        for (const auto* element : xml->getChildIterator())
+            known = known || element->getStringAttribute ("path") == folder;
+        if (! known)
+        {
+            xml->createNewChildElement ("Folder")->setAttribute ("path", folder);
+            xml->writeTo (sfzLibrariesFile());
+        }
+    }
+    startSfzLoad (osc, sfzRefFor (file));
+    if (auto* wave = parameters.getParameter (ParamIDs::osc (osc, "Wave")))
+        wave->setValueNotifyingHost (wave->convertTo0to1 ((float) synth::OscWave::sfz));
+    markModified();
+    requestCheckpoint();
+}
+
+void ParagonX1AudioProcessor::clearSfz (int osc)
+{
+    osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    startSfzLoad (osc, {});
+    markModified();
+    requestCheckpoint();
+}
+
+void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
+{
+    const auto index = (size_t) osc;
+    sfzRefs[index] = ref;
+    const auto generation = ++sfzGeneration[index];   // an older load still running is dropped when it ends
+    sfzProblems[index] = {};
+    if (ref.isEmpty())
+    {
+        sfzStates[index] = SfzState::none;
+        setSfzInstrument (osc, nullptr);
+        return;
+    }
+    const auto file = resolveSfz (ref);
+    if (! file.existsAsFile())
+    {
+        sfzStates[index] = SfzState::failed;
+        sfzProblems[index] = "Not found: " + getSfzName (osc) + " (load it once from its folder)";
+        setSfzInstrument (osc, nullptr);
+        return;
+    }
+    sfzStates[index] = SfzState::loading;
+    sfzProgress[index]->store (0.0f);
+    ++sfzLoadsRunning;
+    sfzPool->addJob ([this, osc, generation, file, progress = sfzProgress[index], cancel = sfzCancel]
+    {
+        auto instrument = synth::sfz::load (file, [progress] (float p) { progress->store (p); }, cancel.get());
+        if (cancel->load())
+            return;
+        SfzLoaded loaded { osc, generation, instrument, {} };
+        if (instrument == nullptr)
+            loaded.problem = "Couldn't read " + file.getFileName() + " (none of the samples it names could be played)";
+        const std::scoped_lock lock (sfzLoadedLock);
+        sfzLoaded.push_back (std::move (loaded));
+    });
+}
+
+void ParagonX1AudioProcessor::installSfzLoads()
+{
+    std::vector<SfzLoaded> done;
+    {
+        const std::scoped_lock lock (sfzLoadedLock);
+        done.swap (sfzLoaded);
+    }
+    for (auto& loaded : done)
+    {
+        --sfzLoadsRunning;
+        const auto index = (size_t) loaded.osc;
+        if (loaded.generation != sfzGeneration[index])
+            continue;   // replaced by a newer choice while it loaded
+        sfzStates[index] = loaded.instrument != nullptr ? SfzState::loaded : SfzState::failed;
+        sfzProblems[index] = loaded.problem;
+        if (loaded.instrument != nullptr && loaded.instrument->streamed && sfzStreamer == nullptr)
+        {
+            sfzStreamer = std::make_unique<synth::sfz::Streamer>();
+            sfzStreamerForAudio = sfzStreamer.get();
+        }
+        setSfzInstrument (loaded.osc, std::move (loaded.instrument));
+    }
+}
+
+void ParagonX1AudioProcessor::setSfzInstrument (int osc, std::shared_ptr<const synth::sfz::Instrument> instrument)
+{
+    const auto index = (size_t) osc;
+    if (instrument == sfzInstruments[index])
+        return;
+    // The old one kept while a note may still be reading it (a held piano note can ring its whole sample).
+    if (const auto& old = sfzInstruments[index]; old != nullptr)
+        retiredSfz.emplace_back (old, juce::Time::getMillisecondCounterHiRes() + 1000.0 * old->longestSeconds + 2000.0);
+    sfzInstruments[index] = std::move (instrument);
+    sfzForAudio[index] = sfzInstruments[index].get();
+    rigBroadcaster.sendChangeMessage();
+}
+
+bool ParagonX1AudioProcessor::waitForSfz (int timeoutMs)
+{
+    const auto until = juce::Time::getMillisecondCounter() + (juce::uint32) timeoutMs;
+    while (sfzLoadsRunning.load() > 0 && juce::Time::getMillisecondCounter() < until)
+    {
+        juce::Thread::sleep (2);
+        installSfzLoads();
+    }
+    installSfzLoads();
+    return sfzLoadsRunning.load() == 0;
+}
+
 void ParagonX1AudioProcessor::useRigFolder (const juce::File& folder)
 {
     rigLibrary = std::make_unique<RigLibrary> (folder);
@@ -2071,6 +2246,8 @@ Rig ParagonX1AudioProcessor::captureRig() const
     {
         if (const auto& table = loadedTables[(size_t) i])
             rig.wavetables[i] = table->getSource();
+        if (sfzRefs[(size_t) i].isNotEmpty())
+            rig.sfz[i] = sfzRefs[(size_t) i];
         if (! spectra[(size_t) i].isFlat())
             rig.spectra[i] = spectra[(size_t) i];
         if (! (drawings[(size_t) i] == synth::FreeformDrawing {}))
@@ -2105,6 +2282,11 @@ void ParagonX1AudioProcessor::applyRig (const Rig& rig)
     {
         const auto found = rig.wavetables.find (i);
         loadedTables[(size_t) i] = found != rig.wavetables.end() ? tableFor (found->second) : nullptr;
+        // SFZ: loaded again only when the preset names another file (undo and the same preset keep what's loaded).
+        const auto sfz = rig.sfz.find (i);
+        const auto ref = sfz != rig.sfz.end() ? sfz->second : juce::String();
+        if (ref != sfzRefs[(size_t) i] || (ref.isNotEmpty() && sfzStates[(size_t) i] == SfzState::failed))
+            startSfzLoad (i, ref);
         const auto spectrum = rig.spectra.find (i);
         spectra[(size_t) i] = spectrum != rig.spectra.end() ? spectrum->second : synth::SpectrumEdit {};
         const auto drawing = rig.drawings.find (i);
@@ -2273,6 +2455,12 @@ void ParagonX1AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
         }
     state.appendChild (tables, nullptr);
 
+    juce::ValueTree instruments (sfzKey);
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+        if (sfzRefs[(size_t) i].isNotEmpty())
+            instruments.appendChild (juce::ValueTree ("Sfz", { { "osc", i + 1 }, { "file", sfzRefs[(size_t) i] } }), nullptr);
+    state.appendChild (instruments, nullptr);
+
     juce::ValueTree curves (spectraKey);
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         if (! spectra[(size_t) i].isFlat())
@@ -2310,6 +2498,17 @@ void ParagonX1AudioProcessor::setStateInformation (const void* data, int sizeInB
             const auto osc = (int) table["osc"] - 1;
             if (osc >= 0 && osc < ParamIDs::numOscillators)
                 tables[(size_t) osc] = tableFor (synth::wavetableFiles::decode (table["name"].toString(), table["frameSize"], table["data"].toString()));
+        }
+        state.removeChild (saved, nullptr);
+    }
+    std::array<juce::String, ParamIDs::numOscillators> instrumentRefs {};
+    if (auto saved = state.getChildWithName (sfzKey); saved.isValid())
+    {
+        for (const auto& instrument : saved)
+        {
+            const auto osc = (int) instrument["osc"] - 1;
+            if (osc >= 0 && osc < ParamIDs::numOscillators)
+                instrumentRefs[(size_t) osc] = instrument["file"].toString();
         }
         state.removeChild (saved, nullptr);
     }
@@ -2360,6 +2559,9 @@ void ParagonX1AudioProcessor::setStateInformation (const void* data, int sizeInB
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         buildFreeform (i);
     loadedTables = tables;
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+        if (instrumentRefs[(size_t) i] != sfzRefs[(size_t) i] || sfzStates[(size_t) i] == SfzState::failed)
+            startSfzLoad (i, instrumentRefs[(size_t) i]);
     updateWavetables();
 
     // Restoring the project changed parameters, which marked the preset as

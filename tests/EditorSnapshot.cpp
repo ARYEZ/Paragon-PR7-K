@@ -28,6 +28,7 @@
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
 //   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
 //   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
+//   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
@@ -273,7 +274,15 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     }
     view->setRackShownForTest (env ("PARAGON_SNAPSHOT_RACKVIEW") == "1" || env ("PARAGON_SNAPSHOT_OSC").isNotEmpty()
                                || env ("PARAGON_SNAPSHOT_OSCPAGE").isNotEmpty() || env ("PARAGON_SNAPSHOT_FILTERPAGE").isNotEmpty()
-                               || env ("PARAGON_SNAPSHOT_FFT").isNotEmpty() || env ("PARAGON_SNAPSHOT_TRAVEL").isNotEmpty());
+                               || env ("PARAGON_SNAPSHOT_FFT").isNotEmpty() || env ("PARAGON_SNAPSHOT_TRAVEL").isNotEmpty()
+                               || env ("PARAGON_SNAPSHOT_SFZ").isNotEmpty());
+    if (const auto sfz = env ("PARAGON_SNAPSHOT_SFZ"); sfz.isNotEmpty())
+    {
+        processor.loadSfz (0, juce::File (sfz));
+        processor.waitForSfz();
+        view->getOscillatorPanel().selectOscillator (0);
+        view->getOscillatorPanel().getSfzChooser().refresh();
+    }
     if (const auto osc = env ("PARAGON_SNAPSHOT_OSC").getIntValue(); osc > 0)
         view->getOscillatorPanel().selectOscillator (osc - 1);
     if (env ("PARAGON_SNAPSHOT_TRAVEL") == "1")

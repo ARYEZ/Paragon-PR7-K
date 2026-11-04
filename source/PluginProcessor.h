@@ -13,6 +13,7 @@
 #include "dsp/synth/Freeform.h"
 #include "dsp/synth/Spectrum.h"
 #include "dsp/synth/Wavetable.h"
+#include "dsp/synth/Sfz.h"
 #include "rigs/RigLibrary.h"
 #include "rigs/UndoHistory.h"
 #include "rigs/MidiLinks.h"
@@ -142,6 +143,26 @@ public:
     bool loadWavetableFile (int osc, const juce::File&, const synth::wavetableFiles::CutOptions& options = {});
     // Chooses a factory table instead (forgetting a loaded one), and WAVETABLE.
     void chooseFactoryWavetable (int osc, int index);
+
+    //==========================================================================
+    // SFZ INSTRUMENTS (0.71.0, message thread)
+
+    // Loads an SFZ file into oscillator `osc` in the background and switches its WAVE to SFZ (one undo step). Its
+    // folder is remembered ("SFZ Libraries.xml" in the presets folder), so presets naming it find it again.
+    void loadSfz (int osc, const juce::File&);
+    void clearSfz (int osc);
+    enum class SfzState { none, loading, loaded, failed };
+    SfzState getSfzState (int osc) const noexcept { return sfzStates[(size_t) juce::jlimit (0, 7, osc)]; }
+    std::shared_ptr<const synth::sfz::Instrument> getSfzInstrument (int osc) const { return sfzInstruments[(size_t) juce::jlimit (0, 7, osc)]; }
+    juce::String getSfzRef (int osc) const { return sfzRefs[(size_t) juce::jlimit (0, 7, osc)]; }
+    juce::String getSfzName (int osc) const;     // the instrument's name, or the file's while loading
+    juce::String getSfzProblem (int osc) const { return sfzProblems[(size_t) juce::jlimit (0, 7, osc)]; }
+    float getSfzProgress (int osc) const noexcept { return sfzProgress[(size_t) juce::jlimit (0, 7, osc)]->load(); }
+    juce::File resolveSfz (const juce::String& ref) const;   // the file a reference names (missing: a nonexistent File)
+    juce::String sfzRefFor (const juce::File&) const;         // how a file is named in presets
+    bool waitForSfz (int timeoutMs = 20000);                  // tests: until every load has been installed
+    int getSfzUnderruns() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getUnderruns() : 0; }
+    int getSfzStreams() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getActiveStreams() : 0; }
 
     //==========================================================================
     // The FFT editor (message thread)
@@ -421,6 +442,7 @@ private:
         bool operator== (const Snapshot& other) const
         {
             return rig.parameters == other.rig.parameters && rig.wavetables == other.rig.wavetables && rig.spectra == other.rig.spectra
+                && rig.sfz == other.rig.sfz
                 && rig.drawings == other.rig.drawings && rig.modulation == other.rig.modulation && current == other.current;
         }
     };
@@ -464,6 +486,29 @@ private:
     std::array<std::atomic<const synth::Wavetable*>, ParamIDs::numOscillators> tablesForAudio {};
     std::array<int, ParamIDs::numOscillators> playingFactoryTable {};   // which factory table each plays (-1: none, or a loaded one)
     std::vector<std::pair<std::shared_ptr<const synth::Wavetable>, double>> retiredTables;
+
+    // SFZ (0.71.0): each oscillator's instrument (its reference, what's loaded, handed to the audio thread as a plain
+    // pointer); replaced ones kept until no note can still be reading them (their longest sample + 2 s).
+    std::array<juce::String, ParamIDs::numOscillators> sfzRefs;
+    std::array<std::shared_ptr<const synth::sfz::Instrument>, ParamIDs::numOscillators> sfzInstruments;
+    std::array<std::atomic<const synth::sfz::Instrument*>, ParamIDs::numOscillators> sfzForAudio {};
+    std::array<SfzState, ParamIDs::numOscillators> sfzStates {};
+    std::array<juce::String, ParamIDs::numOscillators> sfzProblems;
+    std::array<std::shared_ptr<std::atomic<float>>, ParamIDs::numOscillators> sfzProgress;
+    std::array<int, ParamIDs::numOscillators> sfzGeneration {};
+    std::vector<std::pair<std::shared_ptr<const synth::sfz::Instrument>, double>> retiredSfz;   // (until when, ms)
+    std::unique_ptr<synth::sfz::Streamer> sfzStreamer;           // made with the first streamed instrument, kept
+    std::atomic<synth::sfz::Streamer*> sfzStreamerForAudio { nullptr };
+    struct SfzLoaded { int osc = 0; int generation = 0; std::shared_ptr<const synth::sfz::Instrument> instrument; juce::String problem; };
+    std::mutex sfzLoadedLock;
+    std::vector<SfzLoaded> sfzLoaded;
+    std::atomic<int> sfzLoadsRunning { 0 };
+    std::shared_ptr<std::atomic<bool>> sfzCancel = std::make_shared<std::atomic<bool>> (false);
+    void startSfzLoad (int osc, const juce::String& ref);
+    void installSfzLoads();
+    void setSfzInstrument (int osc, std::shared_ptr<const synth::sfz::Instrument>);
+    juce::File sfzLibrariesFile() const;
+    std::unique_ptr<juce::ThreadPool> sfzPool = std::make_unique<juce::ThreadPool> (juce::ThreadPoolOptions{}.withNumberOfThreads (1).withThreadName ("PR7-K SFZ loading"));
 
     // FFT: each oscillator's curve, and the edited copies of its wave built
     // from it (in the background; then handed to the audio thread as the

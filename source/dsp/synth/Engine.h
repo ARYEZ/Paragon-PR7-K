@@ -7,6 +7,7 @@
 #include "OscModulation.h"
 #include "WaveBend.h"
 #include "VoiceFilter.h"
+#include "Sfz.h"
 
 #include <array>
 #include <vector>
@@ -43,6 +44,10 @@ namespace synth
         // every run. The plugin leaves them seeded from the clock.
         void seedRandom (juce::int64 seed) noexcept { random.setSeed (seed); glowRandom = (std::uint32_t) seed * 2654435761u + 12345u; }
         void reset() noexcept;   // silence at once, every note gone
+
+        // SFZ (0.71.0): the disk streamer for samples longer than their heads (the processor's; null: heads only),
+        // and whether to wait for the disk (bouncing) rather than play silence if it's late.
+        void setStreamer (sfz::Streamer* s, bool wait) noexcept { streamer = s; waitForDisk = wait; }
 
         // Writes `numSamples` of sound into `left` and `right`, playing the MIDI
         // in `midi` whose positions fall in [midiStart, midiStart + numSamples),
@@ -125,6 +130,19 @@ namespace synth
         // itself, 1 to 4 the chord notes; unison copy 0 is the note's own pitch.
         static constexpr int maxCopies = (1 + numChordVoices) * maxUnison;
 
+        // SFZ (0.71.0): one region of a sampled instrument playing in a note.
+        struct SfzPlayer
+        {
+            const sfz::Region* region = nullptr;   // null: free
+            const sfz::Sample* sample = nullptr;
+            double position = 0.0;                 // frames into the file
+            float gain = 0.0f;                     // the region's level, velocity and RT_DECAY, panned
+            float gainLeft = 0.0f, gainRight = 0.0f;
+            float fade = 1.0f, fadeStep = 0.0f;    // a quick fade when a newer note takes its place
+            int stream = -1;                       // the disk stream reading the rest (-1: the head only)
+        };
+        static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
+
         struct OscState
         {
             bool active = false;        // sounding in this voice (an oscillator can be taken by a newer note)
@@ -144,6 +162,11 @@ namespace synth
             float travelIndex = -1.0f, travelGain = 1.0f;    // ...where SMOOTH has it (-1: not yet), and SILENCE's fade
             WarpTable warp;                                  // SKEW / PINCH moved by the matrix: this note's own curve (stage 4f)
             std::array<Copy, maxCopies> copies;
+            // SFZ (0.71.0): the samples this note plays, and the instrument they come from.
+            std::array<SfzPlayer, maxSfzPlayers> players {};
+            const sfz::Instrument* instrument = nullptr;
+            int sfzKey = 60;                                 // the key the regions were chosen for
+            double heldSamples = 0.0;                        // since the note started (RT_DECAY)
         };
 
         // A route through the note: the FILTER (or not) and which SHAPERs, with their state.
@@ -409,6 +432,27 @@ namespace synth
 
         // SIROCCO (0.58.0): answers waiting for their DELAY, by their note's age.
         static constexpr int answerSource = arp::numArps + 1;   // an answer's voice source (keys 0, arps 1-8)
+        // SFZ (0.71.0): a released note's release samples play in a voice of their own, past the note's AMP.
+        static constexpr int tailSource = answerSource + 1;
+        struct PendingTail
+        {
+            int note = 60;
+            float velocity = 1.0f;
+            float heldSeconds = 0.0f;
+            std::uint8_t mask = 0;
+            std::array<const sfz::Instrument*, numOscillators> instruments {};
+        };
+        std::array<PendingTail, 32> pendingTails {};
+        int numPendingTails = 0;
+        const PendingTail* startingTail = nullptr;   // the tail startTails is starting (startSfz reads it)
+        std::array<float, controlInterval> sfzRight {};   // a sampled oscillator's right side (scratch is its left)
+        void startTails (const Settings&) noexcept;
+        void startSfz (Voice&, OscState&, size_t index, const OscSettings&, bool release) noexcept;
+        void renderSfz (Voice&, OscState&, const OscSettings&, float semitones, float* left, float* right, int n) noexcept;
+        std::array<std::array<std::uint8_t, 128>, numOscillators> sfzTurns {};   // round-robins: each key's turn
+        sfz::Streamer* streamer = nullptr;
+        bool waitForDisk = false;
+        std::array<bool, sfz::Streamer::maxStreams> streamsInUse {};
         struct PendingAnswer { std::uint64_t parent = 0; int layer = 0; std::int64_t time = 0; };
         std::array<PendingAnswer, 96> pendingAnswers {};
         int numPendingAnswers = 0;

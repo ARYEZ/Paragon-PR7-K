@@ -4,6 +4,7 @@
 
 #include "dsp/synth/SynthSettings.h"
 #include "dsp/synth/Wavetable.h"
+#include "dsp/synth/Sfz.h"
 
 // The synth page's pictures, each redrawn from the parameters as they change.
 
@@ -47,9 +48,12 @@ public:
 
     // Where to find the table an oscillator plays, and its FFT-edited copy (set by the panel).
     std::function<std::shared_ptr<const synth::Wavetable> (int oscillator)> tableFor, editedFor;
+    // ...and the SFZ instrument it plays (0.71.0): drawn as its key map.
+    std::function<std::shared_ptr<const synth::sfz::Instrument> (int oscillator)> sfzFor;
 
 private:
     std::vector<float> snapshot() const override;
+    void paintSfz (juce::Graphics&, juce::Rectangle<float> area, bool on) const;
     void paintWavetable (juce::Graphics&, juce::Rectangle<float> area, bool on) const;
     juce::String id (const char* what) const;
     int oscillator = 0;

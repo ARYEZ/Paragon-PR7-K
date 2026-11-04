@@ -35,6 +35,27 @@ private:
     static constexpr int loadedId = 1000, loadFileId = 1001;
 };
 
+// SFZ (0.71.0): the sampled instrument an oscillator plays when its WAVE is SFZ: its name (or LOADING / NOT FOUND),
+// and a menu to load another SFZ file or remove it. An SFZ file dropped on the oscillator loads too.
+class SfzChooser final : public juce::Component
+{
+public:
+    explicit SfzChooser (ParagonX1AudioProcessor&);
+    void setOscillator (int index);
+    void refresh();   // what's loaded, or how far a load has got
+    void resized() override;
+    void browse();
+    juce::String getShownText() const { return button.getButtonText(); }
+
+private:
+    void showMenu();
+    ParagonX1AudioProcessor& processor;
+    int oscillator = 0;
+    juce::Label label;
+    juce::TextButton button;
+    std::unique_ptr<juce::FileChooser> chooser;
+};
+
 // OSCILLATORS: eight tabs (each with its own on/off LED), and the selected
 // oscillator's wave picture and controls: its wave, level, pitch and start,
 // its NOISE and its SUB. A WAV file dropped on it loads as the oscillator's wavetable.
@@ -66,6 +87,7 @@ public:
     void filesDropped (const juce::StringArray& files, int x, int y) override;
 
     WavetableChooser& getWavetableChooser() noexcept { return tableChooser; }
+    SfzChooser& getSfzChooser() noexcept { return sfzChooser; }
     SpectrumEditor& getSpectrumEditor() noexcept { return spectrumEditor; }
     FreeformEditor& getFreeformEditor() noexcept { return freeformEditor; }
     MultiPointEditor& getTravelEnvelope() noexcept { return travelEnvelope; }
@@ -76,6 +98,7 @@ private:
     // WAVETABLE's controls show when the selected oscillator plays one; WIDTH when it doesn't.
     bool isWavetable() const;
     bool isFreeform() const;
+    bool isSfz() const;
     bool isTravelFree() const;   // TRAVEL's SYNC on FREE: RATE shows, not LENGTH
     bool isShown (const char* what) const;
     void updateVisibility();
@@ -95,6 +118,8 @@ private:
     juce::AudioProcessorValueTreeState& state;
     std::vector<std::unique_ptr<Tab>> tabs;
     WavetableChooser tableChooser;
+    SfzChooser sfzChooser;
+    bool showingSfz = false;
     bool showingWavetable = false, showingFreeform = false, showingTravelFree = false;
     juce::TextButton wavePageButton { "WAVE" }, shapePageButton { "SHAPE" }, fmPageButton { "FM" }, fftPageButton { "FFT" },
                      drawPageButton { "DRAW" }, travelPageButton { "TRAVEL" }, voicesPageButton { "VOICES" };

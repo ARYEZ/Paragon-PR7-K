@@ -54,6 +54,8 @@ target_sources(ParagonX1
         source/dsp/synth/Engine.cpp
         source/dsp/synth/Wavetable.cpp
         source/dsp/synth/Mimic.cpp
+        source/dsp/synth/Sfz.cpp
+        source/dsp/synth/SfzStreamer.cpp
         # PR7-E's effects, kept for the effects rack (a later stage): built and tested, not yet in the sound.
         source/dsp/dominion/Dominion.cpp
         source/dsp/effects/Compressor.cpp

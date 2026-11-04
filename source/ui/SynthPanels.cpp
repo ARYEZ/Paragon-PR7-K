@@ -109,6 +109,109 @@ void WavetableChooser::refresh()
         box.setSelectedId (juce::roundToInt (table->load()) + 1, juce::dontSendNotification);
 }
 
+SfzChooser::SfzChooser (ParagonX1AudioProcessor& processorToUse) : processor (processorToUse)
+{
+    label.setText ("SFZ", juce::dontSendNotification);
+    label.setJustificationType (juce::Justification::centredLeft);
+    label.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+    label.setColour (juce::Label::textColourId, ParagonColours::textDim);
+    label.setBorderSize ({});
+    label.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (label);
+    button.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff151217));
+    button.setColour (juce::TextButton::textColourOffId, ParagonColours::accent);
+    button.setTooltip ("A sampled instrument from an SFZ file (a piano, strings, any multi-sampled library you have): "
+                       "each key plays its own recording, through the FILTER, SHAPERs and effects like any wave. "
+                       "The samples stay where they are on your computer; presets and projects remember where.");
+    button.onClick = [this] { showMenu(); };
+    addAndMakeVisible (button);
+    refresh();
+}
+
+void SfzChooser::setOscillator (int index)
+{
+    oscillator = index;
+    refresh();
+}
+
+void SfzChooser::refresh()
+{
+    using State = ParagonX1AudioProcessor::SfzState;
+    juce::String text;
+    switch (processor.getSfzState (oscillator))
+    {
+        case State::none:    text = "LOAD AN SFZ FILE..."; break;
+        case State::loading: text = "LOADING " + processor.getSfzName (oscillator).toUpperCase() + " "
+                                    + juce::String (juce::roundToInt (100.0f * processor.getSfzProgress (oscillator))) + "%"; break;
+        case State::loaded:  text = processor.getSfzName (oscillator); break;
+        case State::failed:  text = "NOT LOADED: " + processor.getSfzName (oscillator); break;
+    }
+    if (button.getButtonText() != text)
+        button.setButtonText (text);
+}
+
+void SfzChooser::showMenu()
+{
+    juce::PopupMenu menu;
+    menu.addItem (1, "Load SFZ file...");
+    if (const auto instrument = processor.getSfzInstrument (oscillator))
+    {
+        menu.addSeparator();
+        menu.addItem (100, juce::String ((int) instrument->regions.size()) + " regions, " + juce::String ((int) instrument->samples.size())
+                               + " samples, keys " + juce::MidiMessage::getMidiNoteName (instrument->loKey, true, true, 4) + " to "
+                               + juce::MidiMessage::getMidiNoteName (instrument->hiKey, true, true, 4)
+                               + (instrument->hasRelease ? ", release samples" : ""), false, false);
+        for (int k = 0; k < juce::jmin (6, instrument->problems.size()); ++k)
+            menu.addItem (101 + k, instrument->problems[k], false, false);
+    }
+    else if (processor.getSfzProblem (oscillator).isNotEmpty())
+    {
+        menu.addSeparator();
+        menu.addItem (100, processor.getSfzProblem (oscillator), false, false);
+    }
+    if (processor.getSfzRef (oscillator).isNotEmpty())
+    {
+        menu.addSeparator();
+        menu.addItem (2, "Remove");
+    }
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (button),
+                        [safe = juce::Component::SafePointer<SfzChooser> (this)] (int result)
+                        {
+                            if (safe == nullptr)
+                                return;
+                            if (result == 1)
+                                safe->browse();
+                            else if (result == 2)
+                            {
+                                safe->processor.clearSfz (safe->oscillator);
+                                safe->refresh();
+                            }
+                        });
+}
+
+void SfzChooser::browse()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Load an SFZ instrument", juce::File(), "*.sfz");
+    const auto target = oscillator;
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                          [safe = juce::Component::SafePointer<SfzChooser> (this), target] (const juce::FileChooser& fc)
+                          {
+                              const auto file = fc.getResult();
+                              if (safe != nullptr && file.existsAsFile())
+                              {
+                                  safe->processor.loadSfz (target, file);
+                                  safe->refresh();
+                              }
+                          });
+}
+
+void SfzChooser::resized()
+{
+    auto area = getLocalBounds();
+    label.setBounds (area.removeFromLeft (46));
+    button.setBounds (area);
+}
+
 namespace
 {
     // The resampler (stage 3d, part 2): a file longer than one cycle asks how
@@ -204,7 +307,7 @@ void WavetableChooser::resized()
 //==============================================================================
 OscillatorPanel::OscillatorPanel (ParagonX1AudioProcessor& processorToUse)
     : SynthPanel ("OSCILLATORS"), processor (processorToUse), state (processorToUse.getParameters()),
-      tableChooser (processorToUse), wave (state), voicesDisplay (state), shapeDisplay (state), spectrumEditor (processorToUse),
+      tableChooser (processorToUse), sfzChooser (processorToUse), wave (state), voicesDisplay (state), shapeDisplay (state), spectrumEditor (processorToUse),
       freeformEditor (processorToUse), freeformControls (processorToUse), travelEnvelope (processorToUse), travelPattern (processorToUse)
 {
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
@@ -216,11 +319,13 @@ OscillatorPanel::OscillatorPanel (ParagonX1AudioProcessor& processorToUse)
     }
     wave.tableFor = [this] (int osc) { return processor.getWavetable (osc); };
     wave.editedFor = [this] (int osc) { return processor.getEditedTable (osc); };
+    wave.sfzFor = [this] (int osc) { return processor.getSfzInstrument (osc); };
     shapeDisplay.tableFor = wave.tableFor;
     addAndMakeVisible (wave);
     addChildComponent (voicesDisplay);
     addChildComponent (shapeDisplay);
     addChildComponent (tableChooser);
+    addChildComponent (sfzChooser);
 
     // WAVE / SHAPE / FM / FFT / VOICES: which of the oscillator's pages shows.
     for (auto* button : { &wavePageButton, &shapePageButton, &fmPageButton, &fftPageButton, &drawPageButton, &travelPageButton, &voicesPageButton })
@@ -427,6 +532,12 @@ bool OscillatorPanel::isFreeform() const
     return waveParameter != nullptr && juce::roundToInt (waveParameter->load()) == (int) synth::OscWave::freeform;
 }
 
+bool OscillatorPanel::isSfz() const
+{
+    const auto* waveParameter = state.getRawParameterValue (ParamIDs::osc (selected, "Wave"));
+    return waveParameter != nullptr && juce::roundToInt (waveParameter->load()) == (int) synth::OscWave::sfz;
+}
+
 bool OscillatorPanel::isTravelFree() const
 {
     const auto* sync = state.getRawParameterValue (ParamIDs::osc (selected, "TrSync"));
@@ -446,18 +557,20 @@ bool OscillatorPanel::isShown (const char* what) const
     if (name == "TrDivision")
         return ! showingTravelFree;
     if (name == "Width")
-        return ! showingWavetable && ! isFreeform();   // WIDTH shapes PULSE (and the basic waves' FFT copies), not a drawing
+        return ! showingWavetable && ! isFreeform() && ! showingSfz;   // WIDTH shapes PULSE (and the basic waves' FFT copies), not a drawing
     return true;
 }
 
 void OscillatorPanel::updateVisibility()
 {
     showingWavetable = isWavetable();
+    showingSfz = isSfz();
     showingFreeform = isFreeform();
     showingTravelFree = isTravelFree();
     for (size_t i = 0; i < controls.size(); ++i)
         controls[i]->setVisible (isShown (settingNames[i]));
     tableChooser.setVisible (page != Page::voices && showingWavetable);
+    sfzChooser.setVisible (page != Page::voices && showingSfz);
     resized();
     repaint();
 }
@@ -465,21 +578,33 @@ void OscillatorPanel::updateVisibility()
 void OscillatorPanel::timerCallback()
 {
     // The WAVE menu (or automation, a preset, undo) can switch WAVETABLE on or off.
-    if (isWavetable() != showingWavetable || isFreeform() != showingFreeform || isTravelFree() != showingTravelFree)
+    if (isWavetable() != showingWavetable || isFreeform() != showingFreeform || isTravelFree() != showingTravelFree || isSfz() != showingSfz)
         updateVisibility();
     if (showingWavetable)
         tableChooser.refresh();
+    if (showingSfz)
+    {
+        sfzChooser.refresh();
+        wave.repaint();
+    }
 }
 
 bool OscillatorPanel::isInterestedInFileDrag (const juce::StringArray& files)
 {
-    return files.size() == 1 && juce::File (files[0]).hasFileExtension ("wav;aif;aiff;flac");
+    return files.size() == 1 && juce::File (files[0]).hasFileExtension ("wav;aif;aiff;flac;sfz");
 }
 
 void OscillatorPanel::filesDropped (const juce::StringArray& files, int, int)
 {
     if (files.isEmpty())
         return;
+    if (juce::File (files[0]).hasFileExtension ("sfz"))
+    {
+        processor.loadSfz (selected, juce::File (files[0]));
+        updateVisibility();
+        sfzChooser.refresh();
+        return;
+    }
     loadWavetableAsking (processor, selected, juce::File (files[0]), [safe = juce::Component::SafePointer<OscillatorPanel> (this)]
     {
         if (safe != nullptr)
@@ -549,6 +674,7 @@ void OscillatorPanel::selectOscillator (int index)
     travelEnvelope.setTarget (MultiPointEditor::Kind::travel, selected);
     travelPattern.setOscillator (selected);
     tableChooser.setOscillator (selected);
+    sfzChooser.setOscillator (selected);
     updateVisibility();
 }
 
@@ -655,14 +781,17 @@ void OscillatorPanel::resized()
 
     // Left: the wave, with its WAVE menu, WIDTH and GAIN under it. A
     // wavetable's TABLE gets a line of its own between them (names are long).
-    wave.setBounds (left.removeFromTop (left.getHeight() - h - 10 - (showingWavetable ? 34 : 0)));
-    if (showingWavetable)
+    const auto chooserLine = showingWavetable || showingSfz;
+    wave.setBounds (left.removeFromTop (left.getHeight() - h - 10 - (chooserLine ? 34 : 0)));
+    if (chooserLine)
     {
         left.removeFromTop (6);
-        tableChooser.setBounds (left.removeFromTop (28));
+        const auto line = left.removeFromTop (28);
+        tableChooser.setBounds (line);
+        sfzChooser.setBounds (line);
     }
     left.removeFromTop (10);
-    if (showingWavetable)
+    if (showingWavetable || showingSfz)
         SynthPanel::layoutRow (left.removeFromTop (h), { &control ("Wave"), &control ("Gain") }, 96, 40);
     else
         SynthPanel::layoutRow (left.removeFromTop (h), { &control ("Wave"), &control ("Width"), &control ("Gain") }, 84);
