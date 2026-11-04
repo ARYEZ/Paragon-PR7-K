@@ -12734,7 +12734,7 @@ namespace
         reverb (march, RT::room, 0.55f, 0.14f);
         space (march);
         march.set (ParamIDs::patchLevel, -1.6f);
-        lightspeed (march, { 0.8f, 0.7f, 0.45f, 0.8f, 0.6f });
+        lightspeed (march, { 0.8f, 0.55f, 0.45f, 0.8f, 0.6f });
         orchestra (march, { { { 0, "Brass - Notation/Trombones Marcato (looped).sfz", 0.8f, 0.15f },
                               { 1, "Brass - Notation/Tuba Marcato (looped).sfz", 0.8f, -0.15f } },
                             { 0, 1, 2 }, 3.9f,
@@ -12769,7 +12769,7 @@ namespace
         reverb (engine, RT::hall, 0.5f, 0.1f);
         space (engine);
         engine.set (ParamIDs::patchLevel, -2.7f);
-        lightspeed (engine, { 0.9f, 0.7f, 0.5f, 0.9f, 0.6f });
+        lightspeed (engine, { 0.9f, 0.55f, 0.5f, 0.9f, 0.6f });
         x.add (engine);
 
         auto upright = x.make ("Dive Bar Bass", 9, { "Bass", "Pluck", "Upright", "Band" },
@@ -12889,7 +12889,7 @@ namespace
         reverb (racing, RT::hall, 0.6f, 0.18f);
         space (racing);
         racing.set (ParamIDs::patchLevel, 1.2f);
-        lightspeed (racing, { 0.6f, 0.6f, 0.45f, 0.9f, 0.6f });
+        lightspeed (racing, { 0.6f, 0.45f, 0.45f, 0.9f, 0.6f });
         orchestra (racing, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 0.9f } }, { 0, 1 }, 6.4f,
                              "Strings racing through an asteroid field, on the orchestra's whole string section playing "
                              "staccato: hold a chord and ARP 1 runs it up and down over two octaves in sixteenths, a hall.",
@@ -12960,7 +12960,7 @@ namespace
         space (band);
         band.set (ParamIDs::patchLevel, -0.8f);
         lightspeed (band, { 0.6f, 0.6f, 0.4f, 0.8f, 0.6f });
-        orchestra (band, { { { 0, "Woodwinds - Notation/Clarinet Solo Sustain (looped).sfz", 1.0f } }, { 0, 1 }, 0.0f,
+        orchestra (band, { { { 0, "Woodwinds - Notation/Clarinet Solo Sustain (looped).sfz", 1.0f } }, { 0, 1 }, 9.7f,
                            "The spaceport dance band's riff in seven, on the orchestra's solo clarinet (its held notes, cut "
                            "short by the AMP): hold a chord and ARP 1 plays a riff on its root in eighths, seven to the bar, "
                            "a small room.",

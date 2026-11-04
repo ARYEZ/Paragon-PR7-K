@@ -79,7 +79,7 @@ TEST_CASE ("LIGHTSPEED in the plugin: off and at JUMP 0 change nothing; jumped, 
     std::vector<float> added (out.size());
     for (size_t i = 0; i < out.size(); ++i)
         added[i] = out[i] - 0.67f * dry[i];
-    const auto from = (size_t) (2.0 * sampleRate), to = (size_t) (3.0 * sampleRate);
+    const auto from = (size_t) (2.0 * sampleRate), to = std::min (out.size(), dry.size());   // (3 s of whole blocks is a little under 3 s)
     INFO ("added " << db (rms (added, from, to)) << " dB against the note's " << db (rms (dry, from, to)) << " dB");
     CHECK (db (rms (added, from, to) / rms (dry, from, to)) > -12.0);
     CHECK (db (levelAt (added, 220.0, from, to - from) / levelAt (dry, 220.0, from, to - from)) < -30.0);
