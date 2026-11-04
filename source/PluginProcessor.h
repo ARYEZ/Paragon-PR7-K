@@ -14,6 +14,7 @@
 #include "dsp/synth/Spectrum.h"
 #include "dsp/synth/Wavetable.h"
 #include "dsp/synth/Sfz.h"
+#include "SampleLibraries.h"
 #include "rigs/RigLibrary.h"
 #include "rigs/UndoHistory.h"
 #include "rigs/MidiLinks.h"
@@ -161,6 +162,19 @@ public:
     juce::File resolveSfz (const juce::String& ref) const;   // the file a reference names (missing: a nonexistent File)
     juce::String sfzRefFor (const juce::File&) const;         // how a file is named in presets
     bool waitForSfz (int timeoutMs = 20000);                  // tests: until every load has been installed
+    // GET THE PIANO (0.71.0): the free libraries the factory presets play, downloaded into the presets folder's
+    // "Libraries" (`url` overrides the library's: tests). When it's in, oscillators waiting for it load it.
+    juce::File getLibrariesFolder() const { return rigLibrary->getFolder().getChildFile ("Libraries"); }
+    void startLibraryDownload (const juce::String& url = {});
+    void cancelLibraryDownload() { libraryDownload.cancel(); }
+    const libraries::Download& getLibraryDownload() const noexcept { return libraryDownload; }
+    bool isLibraryInstalled (const libraries::Library& library) const
+    {
+        return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()
+            || resolveSfz (libraries::refFor (library)).existsAsFile();
+    }
+    // The library an oscillator's SFZ couldn't be found for, if it's one PR7-K can download (else null).
+    const libraries::Library* missingLibrary (int osc) const;
     int getSfzUnderruns() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getUnderruns() : 0; }
     int getSfzStreams() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getActiveStreams() : 0; }
 
@@ -505,6 +519,8 @@ private:
     std::atomic<int> sfzLoadsRunning { 0 };
     std::shared_ptr<std::atomic<bool>> sfzCancel = std::make_shared<std::atomic<bool>> (false);
     void startSfzLoad (int osc, const juce::String& ref);
+    libraries::Download libraryDownload;
+    libraries::Download::State libraryStateSeen = libraries::Download::State::idle;
     void installSfzLoads();
     void setSfzInstrument (int osc, std::shared_ptr<const synth::sfz::Instrument>);
     juce::File sfzLibrariesFile() const;

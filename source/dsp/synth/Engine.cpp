@@ -403,6 +403,7 @@ namespace synth
                           const juce::MidiBuffer& midi, int midiStart, const Settings& settings) noexcept
     {
         followMode (settings);
+        ampReleaseSeconds = settings.amp.envelope.releaseMs * 0.001f;
 
         // The SHAPERs' EQ bands: the same for every note, so worked out once here.
         for (int k = 0; k < numShapers; ++k)
@@ -480,6 +481,11 @@ namespace synth
                         for (const auto& player : osc.players)
                             if (player.region != nullptr && player.stream >= 0)
                                 streamsInUse[(size_t) player.stream] = true;
+            for (int k = 0; k < numPendingTails; ++k)   // (samples handed to a tail not yet started)
+                for (const auto& osc : pendingTails[(size_t) k].handed)
+                    for (const auto& player : osc)
+                        if (player.region != nullptr && player.stream >= 0)
+                            streamsInUse[(size_t) player.stream] = true;
             streamer->release (streamsInUse);
         }
     }
@@ -781,7 +787,16 @@ namespace synth
     void Engine::sustainPedal (bool down) noexcept
     {
         if (down != pedalDown)
+        {
             touch (down ? Touch::Kind::pedalDown : Touch::Kind::pedalUp, 0.0f, 1.0f);
+            // SFZ: the pedal's own sounds (startTails finds the oscillators whose instrument has them).
+            if (numPendingTails < (int) pendingTails.size())
+            {
+                auto& tail = pendingTails[(size_t) numPendingTails++];
+                tail = {};
+                tail.pedal = down ? 127 : 0;
+            }
+        }
         pedalDown = down;
         if (down)
             return;
@@ -1016,22 +1031,43 @@ namespace synth
         if (voice.source == tailSource)
             return;
         // SFZ: the release samples of its sampled oscillators, played in a voice of their own (startTails).
-        PendingTail tail;
-        for (size_t i = 0; i < voice.oscillators.size(); ++i)
+        // Samples whose AMPEG_RELEASE outlasts the AMP's (a piano's undamped top strings) go with them, falling over
+        // their own release (60 dB in that time) from the level the AMP had reached.
+        if (numPendingTails < (int) pendingTails.size())
         {
-            const auto& osc = voice.oscillators[i];
-            if (osc.active && ! osc.fadingOut && osc.instrument != nullptr && osc.instrument->hasRelease)
+            auto& tail = pendingTails[(size_t) numPendingTails];
+            tail = {};
+            for (size_t i = 0; i < voice.oscillators.size(); ++i)
             {
-                tail.mask = (std::uint8_t) (tail.mask | (1u << i));
-                tail.instruments[i] = osc.instrument;
-                tail.heldSeconds = (float) (osc.heldSamples / sampleRate);
-                tail.note = osc.sfzKey;
+                auto& osc = voice.oscillators[i];
+                if (! osc.active || osc.fadingOut || osc.instrument == nullptr)
+                    continue;
+                auto handedAny = false;
+                for (auto& player : osc.players)
+                    if (player.region != nullptr && player.fadeStep >= 0.0f && ! player.region->release
+                        && player.region->releaseSeconds > ampReleaseSeconds)
+                    {
+                        auto& to = tail.handed[i][(size_t) (&player - osc.players.data())];
+                        to = player;
+                        to.gainLeft *= voice.amp.getLevel();
+                        to.gainRight *= voice.amp.getLevel();
+                        to.decay = (float) std::pow (10.0, -3.0 / (juce::jmax (0.01, (double) player.region->releaseSeconds) * sampleRate));
+                        player.region = nullptr;   // (its stream goes with it)
+                        handedAny = true;
+                    }
+                if (osc.instrument->hasRelease || handedAny)
+                {
+                    tail.mask = (std::uint8_t) (tail.mask | (1u << i));
+                    tail.instruments[i] = osc.instrument;
+                    tail.heldSeconds = (float) (osc.heldSamples / sampleRate);
+                    tail.note = osc.sfzKey;
+                }
             }
-        }
-        if (tail.mask != 0 && numPendingTails < (int) pendingTails.size())
-        {
-            tail.velocity = voice.velocity;
-            pendingTails[(size_t) numPendingTails++] = tail;
+            if (tail.mask != 0)
+            {
+                tail.velocity = voice.velocity;
+                ++numPendingTails;
+            }
         }
         if (voice.source != answerSource)
             touch (Touch::Kind::release, (float) voice.note, voice.velocity);
@@ -2813,8 +2849,10 @@ namespace synth
         const auto velocity127 = juce::jlimit (1, 127, juce::roundToInt (voice.velocity * 127.0f));
         auto& turn = sfzTurns[index][(size_t) key];
         std::array<const sfz::Region*, sfz::maxPlayers> chosen {};
-        const auto count = inst->select (key, velocity127, release, turn, random.nextFloat(), pedalDown ? 127 : 0,
-                                         chosen.data(), (int) chosen.size());
+        const auto pedalSounds = release && startingTail != nullptr && startingTail->pedal >= 0;
+        const auto count = pedalSounds ? inst->selectPedal (startingTail->pedal, random.nextFloat(), chosen.data(), (int) chosen.size())
+                                       : inst->select (key, velocity127, release, turn, random.nextFloat(), pedalDown ? 127 : 0,
+                                                       chosen.data(), (int) chosen.size());
         if (! release)
             turn = (std::uint8_t) (turn + 1);
         // RT_DECAY: a release sample quieter the longer its note was held.
@@ -2842,6 +2880,7 @@ namespace synth
             player->position = (double) region.offset;
             player->fade = 1.0f;
             player->fadeStep = 0.0f;
+            player->decay = 1.0f;
             auto gain = region.gain * region.velocityGain (voice.velocity);
             if (release && region.rtDecayDb > 0.0f)
                 gain *= juce::Decibels::decibelsToGain (-region.rtDecayDb * held, -120.0f);
@@ -2851,6 +2890,16 @@ namespace synth
             player->gainRight = gain * r;
             player->stream = sample.stream != nullptr && streamer != nullptr ? streamer->claim (*sample.stream) : -1;
         }
+        // The released note's ringing samples, carried on here (their streams too).
+        if (release && startingTail != nullptr)
+            for (const auto& handed : startingTail->handed[index])
+                if (handed.region != nullptr)
+                    for (auto& p : osc.players)
+                        if (p.region == nullptr)
+                        {
+                            p = handed;
+                            break;
+                        }
     }
 
     void Engine::renderSfz (Voice& voice, OscState& osc, const OscSettings& s, float semitones, float* left, float* right, int n) noexcept
@@ -2921,6 +2970,8 @@ namespace synth
                 right[i] += out[1] * player.gainRight * g;
                 if (player.fadeStep < 0.0f)
                     player.fade += player.fadeStep;
+                if (player.decay < 1.0f && (player.fade *= player.decay) < 1.0e-4f)
+                    player.fade = 0.0f;   // 80 dB down: over
                 pos += step;
             }
             player.position = pos;
@@ -2933,7 +2984,21 @@ namespace synth
     {
         for (int k = 0; k < numPendingTails; ++k)
         {
-            const auto& tail = pendingTails[(size_t) k];
+            auto& tail = pendingTails[(size_t) k];
+            if (tail.pedal >= 0)
+            {
+                // The pedal moved: every sampled oscillator whose instrument has pedal sounds.
+                for (size_t i = 0; i < settings.oscillators.size(); ++i)
+                {
+                    const auto& s = settings.oscillators[i];
+                    const auto* inst = s.on && s.wave == OscWave::sfz ? s.instrument : nullptr;
+                    tail.instruments[i] = inst != nullptr && inst->hasPedalSounds ? inst : nullptr;
+                    if (tail.instruments[i] != nullptr)
+                        tail.mask = (std::uint8_t) (tail.mask | (1u << i));
+                }
+                if (tail.mask == 0)
+                    continue;
+            }
             // A free voice of the pool, or none (release samples never take a note's place).
             Voice* voice = nullptr;
             for (auto& v : voices)

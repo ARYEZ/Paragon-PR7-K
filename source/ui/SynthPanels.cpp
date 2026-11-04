@@ -138,7 +138,13 @@ void SfzChooser::refresh()
 {
     using State = ParagonX1AudioProcessor::SfzState;
     juce::String text;
-    switch (processor.getSfzState (oscillator))
+    const auto& download = processor.getLibraryDownload();
+    if (download.isRunning() && processor.getSfzRef (oscillator).isNotEmpty() && processor.getSfzState (oscillator) == State::failed)
+        text = (download.getState() == libraries::Download::State::downloading ? "DOWNLOADING THE PIANO " : "UNPACKING THE PIANO ")
+             + juce::String (juce::roundToInt (100.0f * download.getProgress())) + "%";
+    else if (const auto* library = processor.missingLibrary (oscillator))
+        text = "GET THE PIANO (" + juce::String (library->bytes / 1000000) + " MB)...";
+    else switch (processor.getSfzState (oscillator))
     {
         case State::none:    text = "LOAD AN SFZ FILE..."; break;
         case State::loading: text = "LOADING " + processor.getSfzName (oscillator).toUpperCase() + " "
@@ -153,6 +159,19 @@ void SfzChooser::refresh()
 void SfzChooser::showMenu()
 {
     juce::PopupMenu menu;
+    const auto& download = processor.getLibraryDownload();
+    if (download.isRunning())
+    {
+        menu.addItem (4, "Cancel the download");
+        menu.addSeparator();
+    }
+    else if (const auto* library = processor.missingLibrary (oscillator))
+    {
+        menu.addItem (3, "Download the " + library->name + " (" + juce::String (library->bytes / 1000000) + " MB)");
+        if (download.getState() == libraries::Download::State::failed)
+            menu.addItem (102, "Last try: " + download.getMessage(), false, false);
+        menu.addSeparator();
+    }
     menu.addItem (1, "Load SFZ file...");
     if (const auto instrument = processor.getSfzInstrument (oscillator))
     {
@@ -186,6 +205,10 @@ void SfzChooser::showMenu()
                                 safe->processor.clearSfz (safe->oscillator);
                                 safe->refresh();
                             }
+                            else if (result == 3)
+                                safe->processor.startLibraryDownload();
+                            else if (result == 4)
+                                safe->processor.cancelLibraryDownload();
                         });
 }
 
@@ -320,6 +343,7 @@ OscillatorPanel::OscillatorPanel (ParagonX1AudioProcessor& processorToUse)
     wave.tableFor = [this] (int osc) { return processor.getWavetable (osc); };
     wave.editedFor = [this] (int osc) { return processor.getEditedTable (osc); };
     wave.sfzFor = [this] (int osc) { return processor.getSfzInstrument (osc); };
+    wave.sfzNameFor = [this] (int osc) { return processor.getSfzName (osc); };
     shapeDisplay.tableFor = wave.tableFor;
     addAndMakeVisible (wave);
     addChildComponent (voicesDisplay);

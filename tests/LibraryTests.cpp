@@ -1,0 +1,343 @@
+// GET THE PIANO (0.71.0): downloading a sample library and unpacking it, tested on archives made here (a stand-in
+// library with the Salamander's folder and file names and a sine for a piano), fetched from a file:// URL.
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+
+#include <juce_audio_formats/juce_audio_formats.h>
+
+#include "Parameters.h"
+#include "PluginProcessor.h"
+#include "SampleLibraries.h"
+#include "ui/MainView.h"
+
+using Catch::Matchers::WithinAbs;
+
+namespace
+{
+    struct TempFolder
+    {
+        TempFolder() : dir (juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                .getChildFile ("pr7k-lib-" + juce::String (juce::Random::getSystemRandom().nextInt64())))
+        {
+            dir.createDirectory();
+        }
+        ~TempFolder() { dir.deleteRecursively(); }
+        juce::File dir;
+    };
+
+    // A tar archive, written here: ustar headers (GNU long names and POSIX path records when asked).
+    struct TarWriter
+    {
+        juce::MemoryOutputStream data;
+
+        void header (const juce::String& name, juce::int64 size, char type)
+        {
+            char h[512] {};
+            const auto utf8 = name.toRawUTF8();
+            std::memcpy (h, utf8, juce::jmin<size_t> (99, std::strlen (utf8)));
+            std::snprintf (h + 100, 8, "%07o", 0644);
+            std::snprintf (h + 108, 8, "%07o", 0);
+            std::snprintf (h + 116, 8, "%07o", 0);
+            std::snprintf (h + 124, 12, "%011llo", (unsigned long long) size);
+            std::snprintf (h + 136, 12, "%011o", 0);
+            h[156] = type;
+            std::memcpy (h + 257, "ustar", 5);
+            h[263] = '0';
+            h[264] = '0';
+            std::memset (h + 148, ' ', 8);
+            unsigned sum = 0;
+            for (auto c : h)
+                sum += (std::uint8_t) c;
+            std::snprintf (h + 148, 8, "%06o", sum);
+            data.write (h, 512);
+        }
+        void pad (juce::int64 size)
+        {
+            const char zeros[512] {};
+            data.write (zeros, (size_t) ((512 - size % 512) % 512));
+        }
+        void file (const juce::String& name, const juce::MemoryBlock& content, char how = 0)
+        {
+            if (how == 'L')
+            {
+                const auto text = name + juce::String::charToString (0);
+                header ("././@LongLink", (juce::int64) text.getNumBytesAsUTF8(), 'L');
+                data.write (text.toRawUTF8(), text.getNumBytesAsUTF8());
+                pad ((juce::int64) text.getNumBytesAsUTF8());
+            }
+            else if (how == 'x')
+            {
+                const auto record = "path=" + name + "\n";
+                auto line = juce::String (record.length() + 3) + " " + record;
+                line = juce::String (line.length()) + " " + record;
+                header ("PaxHeader", line.length(), 'x');
+                data.write (line.toRawUTF8(), (size_t) line.length());
+                pad (line.length());
+            }
+            header (how != 0 ? juce::String ("short-name") : name, (juce::int64) content.getSize(), '0');
+            data.write (content.getData(), content.getSize());
+            pad ((juce::int64) content.getSize());
+        }
+        void folder (const juce::String& name) { header (name, 0, '5'); }
+
+        // Gzipped, to `file` (`cutAt` > 0: only that many bytes, a broken download).
+        void write (const juce::File& file, size_t cutAt = 0)
+        {
+            const char end[1024] {};
+            data.write (end, sizeof (end));
+            juce::MemoryOutputStream gz;
+            {
+                juce::GZIPCompressorOutputStream zip (gz, 6, juce::GZIPCompressorOutputStream::windowBitsGZIP);
+                zip.write (data.getData(), data.getDataSize());
+            }
+            file.replaceWithData (gz.getData(), cutAt > 0 ? juce::jmin (cutAt, gz.getDataSize()) : gz.getDataSize());
+        }
+    };
+
+    juce::MemoryBlock text (const juce::String& s) { return { s.toRawUTF8(), s.getNumBytesAsUTF8() }; }
+
+    // A one-second middle C, mono 16-bit WAV, as a file's bytes.
+    juce::MemoryBlock sineWav()
+    {
+        juce::MemoryBlock block;
+        {
+            auto stream = std::make_unique<juce::MemoryOutputStream> (block, false);
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::OutputStream> out (stream.release());
+            auto writer = wav.createWriterFor (out, juce::AudioFormatWriterOptions{}.withSampleRate (48000.0).withNumChannels (1).withBitsPerSample (16));
+            juce::AudioBuffer<float> buffer (1, 48000);
+            for (int i = 0; i < 48000; ++i)
+                buffer.setSample (0, i, 0.5f * (float) std::sin (juce::MathConstants<double>::twoPi * 261.6256 * i / 48000.0));
+            writer->writeFromAudioSampleBuffer (buffer, 0, 48000);
+        }
+        return block;
+    }
+
+    // The stand-in: the Salamander's folder and SFZ name, a region playing a sine for every key.
+    void writeStandIn (const juce::File& archive, size_t cutAt = 0)
+    {
+        const auto& library = libraries::salamanderGrand();
+        TarWriter tar;
+        tar.folder (library.folder + "/");
+        tar.folder (library.folder + "/samples/");
+        tar.file (library.folder + "/" + library.sfz, text ("<region> sample=samples/C4v8.wav lokey=0 hikey=127 pitch_keycenter=60\n"));
+        tar.file (library.folder + "/samples/C4v8.wav", sineWav());
+        tar.file (library.folder + "/readme.txt", text ("a stand-in"));
+        tar.write (archive, cutAt);
+    }
+}
+
+TEST_CASE ("Libraries: a .tar.gz unpacks, long names too, and nothing lands outside the folder", "[library]")
+{
+    TempFolder t;
+    TarWriter tar;
+    tar.folder ("lib/");
+    tar.file ("lib/a.txt", text ("first"));
+    tar.file ("lib/" + juce::String::repeatedString ("long", 40) + "/b.txt", text ("second"), 'L');
+    tar.file ("lib/pax/" + juce::String::repeatedString ("x", 120) + ".txt", text ("third"), 'x');
+    tar.file ("../escaped.txt", text ("never"));
+    tar.file ("/abs.txt", text ("never"));
+    const auto archive = t.dir.getChildFile ("a.tar.gz");
+    tar.write (archive);
+
+    const auto into = t.dir.getChildFile ("out");
+    juce::String error;
+    float last = 0.0f;
+    REQUIRE (libraries::extractTarGz (archive, into, [&] (float p) { last = p; }, nullptr, error));
+    CHECK (into.getChildFile ("lib/a.txt").loadFileAsString() == "first");
+    CHECK (into.getChildFile ("lib/" + juce::String::repeatedString ("long", 40) + "/b.txt").loadFileAsString() == "second");
+    CHECK (into.getChildFile ("lib/pax/" + juce::String::repeatedString ("x", 120) + ".txt").loadFileAsString() == "third");
+    CHECK (! t.dir.getChildFile ("escaped.txt").exists());
+    CHECK (! juce::File ("/abs.txt").exists());
+    CHECK_THAT (last, WithinAbs (1.0, 0.01));
+
+    // Not a tar.gz, or cut short: refused with a reason.
+    const auto junk = t.dir.getChildFile ("junk.tar.gz");
+    junk.replaceWithText ("not an archive");
+    CHECK (! libraries::extractTarGz (junk, t.dir.getChildFile ("junk"), {}, nullptr, error));
+    CHECK (error.isNotEmpty());
+}
+
+TEST_CASE ("Libraries: GET THE PIANO downloads the library and a preset waiting for it plays", "[library][plugin]")
+{
+    MainView::offerLibrary = false;
+    TempFolder t;
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.createDirectory();
+    const auto archive = t.dir.getChildFile ("server/piano.tar.gz");
+    archive.getParentDirectory().createDirectory();
+    writeStandIn (archive);
+
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets);
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    processor.prepareToPlay (48000.0, 256);
+    processor.setNonRealtime (true);
+
+    // A factory-style preset naming the library: not here yet, so it waits (silent), and says what's missing.
+    const auto& library = libraries::salamanderGrand();
+    Rig rig;
+    rig.name = "Piano Test";
+    rig.parameters[ParamIDs::osc (0, "Wave")] = (float) synth::OscWave::sfz;
+    rig.parameters[ParamIDs::osc (0, "Filter")] = 0.0f;
+    rig.sfz[0] = libraries::refFor (library);
+    RigLibrary::Entry entry;
+    entry.rig = rig;
+    processor.loadRig (entry);
+    processor.waitForSfz();
+    CHECK (! processor.isLibraryInstalled (library));
+    REQUIRE (processor.missingLibrary (0) == &library);
+
+    processor.startLibraryDownload (juce::URL (archive).toString (false));
+    REQUIRE (processor.getLibraryDownload().isRunning());
+    REQUIRE (const_cast<libraries::Download&> (processor.getLibraryDownload()).waitUntilFinished (30000));
+    INFO (processor.getLibraryDownload().getMessage());
+    REQUIRE (processor.getLibraryDownload().getState() == libraries::Download::State::done);
+    CHECK (processor.isLibraryInstalled (library));
+    CHECK (! processor.getLibrariesFolder().getChildFile (library.folder + ".tar.gz.download").exists());   // the archive deleted
+    processor.waitForSfz();   // sees it's in: loads the waiting oscillator
+    processor.waitForSfz();
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
+    CHECK (processor.missingLibrary (0) == nullptr);
+
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    midi.addEvent (juce::MidiMessage::noteOn (1, 60, 1.0f), 0);
+    auto peak = 0.0f;
+    for (int k = 0; k < 40; ++k)
+    {
+        buffer.clear();
+        processor.processBlock (buffer, midi);
+        midi.clear();
+        peak = juce::jmax (peak, buffer.getMagnitude (0, 0, 256));
+    }
+    CHECK (peak > 0.05f);
+}
+
+TEST_CASE ("Libraries: a broken download isn't unpacked and leaves nothing behind", "[library]")
+{
+    TempFolder t;
+    const auto archive = t.dir.getChildFile ("cut.tar.gz");
+    writeStandIn (archive, 4000);
+    libraries::Download download;
+    const auto into = t.dir.getChildFile ("Libraries");
+    download.start (libraries::salamanderGrand(), into, juce::URL (archive).toString (false));
+    REQUIRE (download.waitUntilFinished (30000));
+    CHECK (download.getState() == libraries::Download::State::failed);
+    CHECK (download.getMessage().isNotEmpty());
+    CHECK (! into.getChildFile (libraries::salamanderGrand().folder).exists());
+    CHECK (! into.getChildFile (libraries::salamanderGrand().folder + ".tar.gz.download").exists());
+}
+
+// The real thing (not run by default; needs the internet): downloads the Salamander Grand from freepats.zenvoid.org
+// into PARAGON_LIBRARY_DIR as the plugin would, and checks it unpacked whole.
+TEST_CASE ("Libraries: the real Salamander Grand download", "[.librarylive]")
+{
+    const juce::File into (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARY_DIR", "/tmp/pr7k-libraries"));
+    libraries::Download download;
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    download.start (libraries::salamanderGrand(), into);
+    REQUIRE (download.waitUntilFinished (1800000));
+    INFO (download.getMessage());
+    REQUIRE (download.getState() == libraries::Download::State::done);
+    const auto folder = into.getChildFile (libraries::salamanderGrand().folder);
+    const auto samples = folder.getChildFile ("samples").findChildFiles (juce::File::findFiles, false, "*.flac").size();
+    WARN ("downloaded and unpacked in " << juce::String ((juce::Time::getMillisecondCounterHiRes() - start) / 1000.0, 0) << " s, "
+          << samples << " samples");
+    CHECK (samples == 641);
+}
+
+// Clips of the piano presets (not run by default): PARAGON_LIBRARIES (a folder holding the Salamander's), PARAGON_RENDER.
+// Chords with the pedal changed each bar, then a melody over them; 70 BPM in A minor.
+#include "rigs/FactoryRigs.h"
+TEST_CASE ("Render the piano presets", "[.pianorender]")
+{
+    MainView::offerLibrary = false;
+    const juce::File source (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    const auto& library = libraries::salamanderGrand();
+    REQUIRE (source.getChildFile (library.folder).isDirectory());
+    const auto folder = juce::File (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", "/tmp/paragon-render"));
+    folder.createDirectory();
+    TempFolder presets;
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets.dir);
+    processor.getLibrariesFolder().createDirectory();
+    REQUIRE (source.getChildFile (library.folder).createSymbolicLink (processor.getLibrariesFolder().getChildFile (library.folder), true));
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+
+    struct Event { double beat; int type; int note; float velocity; };
+    std::vector<Event> events;
+    const std::vector<std::vector<int>> chords { { 45, 57, 60, 64 }, { 41, 53, 57, 60 }, { 48, 55, 60, 64 }, { 43, 55, 59, 62 } };
+    for (int bar = 0; bar < 4; ++bar)
+    {
+        events.push_back ({ bar * 4.0 + 0.05, 2, 64, 1.0f });
+        events.push_back ({ bar * 4.0 + 3.95, 2, 64, 0.0f });
+        for (size_t k = 0; k < 4; ++k)
+        {
+            events.push_back ({ bar * 4.0 + 0.02 * (double) k, 0, chords[(size_t) bar][k], k == 0 ? 0.6f : 0.5f });
+            events.push_back ({ bar * 4.0 + 3.8, 1, chords[(size_t) bar][k], 0.0f });
+        }
+    }
+    const int melody[] = { 76, 74, 72, 71, 72, 74, 76, 79, 77, 76, 74, 72, 74, 71, 69, 69 };
+    for (int k = 0; k < 16; ++k)
+    {
+        events.push_back ({ 16.0 + k, 0, melody[k], 0.45f + 0.04f * (float) (k % 4) });
+        events.push_back ({ 16.0 + k + (k % 4 == 3 ? 1.8 : 0.9), 1, melody[k], 0.0f });
+    }
+    for (int bar = 0; bar < 4; ++bar)
+    {
+        events.push_back ({ 16.0 + bar * 4.0 + 0.05, 2, 64, 1.0f });
+        events.push_back ({ 16.0 + bar * 4.0 + 3.95, 2, 64, 0.0f });
+        events.push_back ({ 16.0 + bar * 4.0, 0, chords[(size_t) bar][0], 0.5f });
+        events.push_back ({ 16.0 + bar * 4.0 + 3.8, 1, chords[(size_t) bar][0], 0.0f });
+    }
+    std::stable_sort (events.begin(), events.end(), [] (const Event& a, const Event& b) { return a.beat < b.beat; });
+
+    // PARAGON_RENDER_FORTE=1: everything as hard as it goes (the loudest a preset gets).
+    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_FORTE", {}) == "1")
+        for (auto& e : events)
+            if (e.type == 0)
+                e.velocity = 1.0f;
+    const auto only = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_ONLY", {});
+    for (const auto& rig : makeFactoryRigs())
+    {
+        if (rig.sfz.empty() || (only.isNotEmpty() && ! only.containsIgnoreCase (rig.name)))
+            continue;
+        RigLibrary::Entry entry;
+        entry.rig = rig;
+        entry.isFactory = true;
+        processor.loadRig (entry);
+        REQUIRE (processor.waitForSfz (60000));
+        processor.prepareToPlay (48000.0, 256);
+        processor.seedRandomForTest (1);
+        processor.setNonRealtime (true);
+        const auto secondsPerBeat = 60.0 / 70.0;
+        const auto total = (int) ((32.0 * secondsPerBeat + 5.0) * 48000.0);
+        juce::AudioBuffer<float> out (2, total + 256), block (2, 256);
+        size_t next = 0;
+        for (int at = 0; at < total; at += 256)
+        {
+            juce::MidiBuffer midi;
+            while (next < events.size() && (int) (events[next].beat * secondsPerBeat * 48000.0) < at + 256)
+            {
+                const auto& e = events[next++];
+                const auto offset = juce::jlimit (0, 255, (int) (e.beat * secondsPerBeat * 48000.0) - at);
+                midi.addEvent (e.type == 0 ? juce::MidiMessage::noteOn (1, e.note, e.velocity)
+                             : e.type == 1 ? juce::MidiMessage::noteOff (1, e.note)
+                                           : juce::MidiMessage::controllerEvent (1, 64, e.velocity > 0.5f ? 127 : 0), offset);
+            }
+            block.clear();
+            processor.processBlock (block, midi);
+            for (int c = 0; c < 2; ++c)
+                out.copyFrom (c, at, block, c, 0, 256);
+        }
+        out.setSize (2, total, true);
+        const auto file = folder.getChildFile (rig.getSlotName() + " " + rig.name + ".wav");
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions{}.withSampleRate (48000.0).withNumChannels (2).withBitsPerSample (24));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (out, 0, total);
+    }
+}

@@ -5,6 +5,7 @@
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
 #include "PluginProcessor.h"
+#include "SampleLibraries.h"
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Reverb.h"
@@ -28,6 +29,7 @@
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
 //   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
 //   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
+//   PARAGON_SNAPSHOT_LIBRARIES=<folder>  the sample libraries (the Salamander's folder in it) for the piano presets
 //   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
@@ -58,11 +60,20 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                 }
     }
 
+    MainView::offerLibrary = false;   // (no window asking to download the piano)
+    // PARAGON_SNAPSHOT_LIBRARIES: a folder holding the Salamander's, linked in so the piano presets play.
+    if (const juce::File libraries (env ("PARAGON_SNAPSHOT_LIBRARIES")); libraries.getChildFile (libraries::salamanderGrand().folder).isDirectory())
+    {
+        processor.getLibrariesFolder().createDirectory();
+        libraries.getChildFile (libraries::salamanderGrand().folder)
+            .createSymbolicLink (processor.getLibrariesFolder().getChildFile (libraries::salamanderGrand().folder), true);
+    }
     if (const auto name = env ("PARAGON_SNAPSHOT_PRESET"); name.isNotEmpty())
     {
         const auto* entry = processor.getRigLibrary().findFactory (name);
         REQUIRE (entry != nullptr);
         processor.loadRig (*entry);
+        processor.waitForSfz();
     }
 
     for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))

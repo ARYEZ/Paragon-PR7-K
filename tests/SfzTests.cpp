@@ -342,6 +342,63 @@ TEST_CASE ("SFZ: release samples play when the note lets go (after the pedal), q
     CHECK (releaseLevel (0.5, true) > 0.05);
 }
 
+TEST_CASE ("SFZ: AMPEG_RELEASE longer than the AMP's lets a sample ring on after its key (undamped strings)", "[sfz]")
+{
+    Folder f;
+    writeSine (f.dir.getChildFile ("ring.wav"), hzOf (60), 3.0);
+    writeSine (f.dir.getChildFile ("damped.wav"), hzOf (72), 3.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<region> sample=ring.wav key=60 ampeg_release=3\n"
+        "<region> sample=damped.wav key=72 ampeg_release=0.01\n"));
+    REQUIRE (inst != nullptr);
+    CHECK_THAT (inst->regions[0].releaseSeconds, WithinAbs (3.0, 1e-6));
+    const auto play = [&] (int key)
+    {
+        SfzPlayer p (inst.get());
+        p.settings.amp.envelope.releaseMs = 50.0f;
+        p.on (key);
+        const auto held = p.render (0.5);
+        p.off (key);
+        const auto after = p.render (0.6);
+        return std::pair { rms (held[0], 12000, 24000), rms (after[0], 21600, 26400) };   // 0.45-0.55 s after the release
+    };
+    const auto [ringHeld, ringAfter] = play (60);
+    // Falling 60 dB in 3 s: half a second on, about 10 dB down (the AMP's 50 ms release didn't cut it).
+    CHECK_THAT (db (ringAfter / ringHeld), WithinAbs (-10.0, 1.0));
+    const auto [dampedHeld, dampedAfter] = play (72);
+    CHECK (dampedHeld > 0.1);
+    CHECK (dampedAfter < 1.0e-6);   // shorter than the AMP's: the AMP ends it
+}
+
+TEST_CASE ("SFZ: the sustain pedal plays its own sounds (ON_LOCC64 / ON_HICC64), keys don't", "[sfz]")
+{
+    Folder f;
+    writeSine (f.dir.getChildFile ("note.wav"), hzOf (60), 1.0);
+    writeSine (f.dir.getChildFile ("down.wav"), 1500.0, 0.3);
+    writeSine (f.dir.getChildFile ("up.wav"), 3200.0, 0.3);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<region> sample=note.wav pitch_keycenter=60\n"
+        "<group> lokey=-1 hikey=-1 on_locc64=126 on_hicc64=127\n<region> sample=down.wav\n"
+        "<group> lokey=-1 hikey=-1 on_locc64=0 on_hicc64=1\n<region> sample=up.wav\n"));
+    REQUIRE (inst != nullptr);
+    CHECK (inst->hasPedalSounds);
+    CHECK (inst->regions.size() == 3);
+    SfzPlayer p (inst.get());
+    p.midi (juce::MidiMessage::controllerEvent (1, 64, 127));
+    const auto down = p.render (0.2);
+    CHECK (levelAt (down[0], 1500.0, 480, 4800) > 0.1);   // no note held: the pedal still sounds
+    CHECK (levelAt (down[0], 3200.0, 480, 4800) < 0.01);
+    p.midi (juce::MidiMessage::controllerEvent (1, 64, 0));
+    const auto up = p.render (0.2);
+    CHECK (levelAt (up[0], 3200.0, 480, 4800) > 0.1);
+    p.render (0.5);
+    p.on (60);
+    const auto note = p.render (0.2);
+    CHECK (levelAt (note[0], 1500.0, 480, 4800) < 0.01);   // a key plays only its note
+    CHECK (levelAt (note[0], 3200.0, 480, 4800) < 0.01);
+    CHECK (levelAt (note[0], hzOf (60), 480, 4800) > 0.1);
+}
+
 TEST_CASE ("SFZ: a long sample streams from disk and plays exactly as written; without a stream, its head and a fade", "[sfz][streaming]")
 {
     Folder f;

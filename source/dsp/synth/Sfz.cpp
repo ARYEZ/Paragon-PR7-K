@@ -182,8 +182,7 @@ namespace synth::sfz
 
         // Opcodes worth telling the user we don't play (their sound is shaped by the synth's own sections instead).
         const char* const leftOut[] = { "loop_mode", "loopmode", "fil_type", "cutoff", "ampeg_attack", "ampeg_decay",
-                                        "ampeg_sustain", "ampeg_release", "sw_last", "sw_lokey", "on_locc64",
-                                        "on_hicc64", "off_by", "group" };
+                                        "ampeg_sustain", "sw_last", "sw_lokey", "off_by", "group" };
     }
 
     int Instrument::select (int key, int velocity127, bool release, int seqCount, float chance, int pedal,
@@ -194,7 +193,7 @@ namespace synth::sfz
         {
             if (n >= capacity)
                 break;
-            if (r.release != release || ! r.plays (key, velocity127) || pedal < r.loPedal || pedal > r.hiPedal)
+            if (r.pedalTrigger || r.release != release || ! r.plays (key, velocity127) || pedal < r.loPedal || pedal > r.hiPedal)
                 continue;
             if (r.seqLength > 1 && (seqCount % r.seqLength) + 1 != r.seqPosition)
                 continue;
@@ -202,6 +201,15 @@ namespace synth::sfz
                 continue;
             out[n++] = &r;
         }
+        return n;
+    }
+
+    int Instrument::selectPedal (int pedal, float chance, const Region** out, int capacity) const noexcept
+    {
+        int n = 0;
+        for (const auto& r : regions)
+            if (n < capacity && r.pedalTrigger && pedal >= r.onLo && pedal <= r.onHi && chance >= r.loRand && chance < r.hiRand)
+                out[n++] = &r;
         return n;
     }
 
@@ -314,12 +322,36 @@ namespace synth::sfz
             r.loRand = number (op, "lorand", 0.0f);
             r.hiRand = number (op, "hirand", 1.0f);
             r.loPedal = juce::jlimit (0, 127, get (op, "locc64", "0").getIntValue());
+            r.releaseSeconds = has (op, "ampeg_release") ? juce::jmax (0.0f, number (op, "ampeg_release", 0.0f)) : -1.0f;
+            if (has (op, "on_locc64") || has (op, "on_hicc64"))
+            {
+                // The pedal's own sound: no key plays it (its LOKEY / HIKEY are usually -1).
+                r.pedalTrigger = true;
+                r.onLo = juce::jlimit (0, 127, get (op, "on_locc64", "0").getIntValue());
+                r.onHi = juce::jlimit (0, 127, get (op, "on_hicc64", "127").getIntValue());
+                r.loKey = 0;
+                r.hiKey = 127;
+                inst->hasPedalSounds = true;
+            }
+            else
+            {
+                // Triggers from other controllers aren't played.
+                auto otherController = false;
+                for (const auto& [name, value] : op)
+                    otherController = otherController || name.startsWith ("on_locc") || name.startsWith ("on_hicc");
+                if (otherController)
+                {
+                    if (leftOutSeen.insert ("on_locc").second)
+                        inst->problems.add ("not played: triggers from controllers other than the pedal");
+                    continue;
+                }
+            }
             r.hiPedal = juce::jlimit (0, 127, get (op, "hicc64", "127").getIntValue());
             if (r.loKey > r.hiKey || r.loVel > r.hiVel)
                 continue;
             inst->hasRelease = inst->hasRelease || r.release;
             inst->longestSeconds = juce::jmax (inst->longestSeconds, (double) sample.length / sample.sampleRate);
-            if (! r.release)
+            if (! r.release && ! r.pedalTrigger)
             {
                 inst->loKey = juce::jmin (inst->loKey, r.loKey);
                 inst->hiKey = juce::jmax (inst->hiKey, r.hiKey);

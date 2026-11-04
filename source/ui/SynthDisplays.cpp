@@ -342,12 +342,17 @@ void WaveDisplay::paintSfz (juce::Graphics& g, juce::Rectangle<float> area, bool
             g.fillEllipse (juce::Rectangle<float> (3.0f, 3.0f).withCentre ({ xOf (centre) + keyWidth * 0.5f, block.getCentreY() }));
         }
     }
-    g.setColour (ParagonColours::text.withAlpha (alpha));
-    g.drawText (instrument->name.toUpperCase(), area.withHeight (16.0f), juce::Justification::centredLeft, true);
+    // The count on the right, the name in what's left (cut with "..." if it's long).
+    auto top = area.withHeight (16.0f);
+    const auto count = juce::String ((int) instrument->regions.size()) + " REGIONS" + (on ? "" : "  OFF");
+    const juce::Font small (juce::FontOptions (10.5f));
     g.setColour (ParagonColours::textDim);
-    g.setFont (juce::FontOptions (10.5f));
-    g.drawText (juce::String ((int) instrument->regions.size()) + " REGIONS" + (instrument->hasRelease ? " + RELEASE" : "") + (on ? "" : "  OFF"),
-                area.withHeight (16.0f), juce::Justification::centredRight, false);
+    g.setFont (small);
+    g.drawText (count, top, juce::Justification::centredRight, false);
+    top.removeFromRight (juce::GlyphArrangement::getStringWidth (small, count) + 8.0f);
+    g.setColour (ParagonColours::text.withAlpha (alpha));
+    g.setFont (juce::FontOptions (12.0f, juce::Font::bold));
+    g.drawText ((sfzNameFor ? sfzNameFor (oscillator) : instrument->name).toUpperCase(), top, juce::Justification::centredLeft, true);
 }
 
 void WaveDisplay::paintWavetable (juce::Graphics& g, juce::Rectangle<float> area, bool on) const

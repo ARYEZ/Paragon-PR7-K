@@ -2090,6 +2090,9 @@ juce::File ParagonX1AudioProcessor::resolveSfz (const juce::String& ref) const
         return {};
     const auto folderName = named.fromFirstOccurrenceOf ("{sfz:", false, false).upToFirstOccurrenceOf ("}", false, false);
     const auto fileName = named.fromFirstOccurrenceOf ("}/", false, false);
+    // A library PR7-K downloaded (GET THE PIANO), in the presets folder.
+    if (const auto downloaded = getLibrariesFolder().getChildFile (folderName).getChildFile (fileName); downloaded.existsAsFile())
+        return downloaded;
     if (const auto xml = juce::XmlDocument::parse (sfzLibrariesFile()))
         for (const auto* element : xml->getChildIterator())
         {
@@ -2103,6 +2106,9 @@ juce::File ParagonX1AudioProcessor::resolveSfz (const juce::String& ref) const
 juce::String ParagonX1AudioProcessor::getSfzName (int osc) const
 {
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    // A library PR7-K knows by its own name (not its file's).
+    if (const auto& salamander = libraries::salamanderGrand(); sfzRefs[(size_t) osc].startsWith (libraries::refFor (salamander)))
+        return salamander.name;
     if (const auto& instrument = sfzInstruments[(size_t) osc]; instrument != nullptr && sfzStates[(size_t) osc] == SfzState::loaded)
         return instrument->name;
     const auto named = sfzRefs[(size_t) osc].upToLastOccurrenceOf ("|", false, false);
@@ -2178,8 +2184,34 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     });
 }
 
+void ParagonX1AudioProcessor::startLibraryDownload (const juce::String& url)
+{
+    libraryDownload.start (libraries::salamanderGrand(), getLibrariesFolder(), url);
+    libraryStateSeen = libraryDownload.getState();
+    rigBroadcaster.sendChangeMessage();
+}
+
+const libraries::Library* ParagonX1AudioProcessor::missingLibrary (int osc) const
+{
+    osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    if (sfzStates[(size_t) osc] != SfzState::failed)
+        return nullptr;
+    const auto& salamander = libraries::salamanderGrand();
+    return sfzRefs[(size_t) osc].startsWith (libraries::refFor (salamander)) ? &salamander : nullptr;
+}
+
 void ParagonX1AudioProcessor::installSfzLoads()
 {
+    // A library just downloaded: the oscillators that couldn't find it load it now.
+    if (const auto state = libraryDownload.getState(); state != libraryStateSeen)
+    {
+        libraryStateSeen = state;
+        if (state == libraries::Download::State::done)
+            for (int i = 0; i < ParamIDs::numOscillators; ++i)
+                if (sfzStates[(size_t) i] == SfzState::failed && sfzRefs[(size_t) i].isNotEmpty())
+                    startSfzLoad (i, sfzRefs[(size_t) i]);
+        rigBroadcaster.sendChangeMessage();
+    }
     std::vector<SfzLoaded> done;
     {
         const std::scoped_lock lock (sfzLoadedLock);

@@ -239,6 +239,31 @@ void MainView::refreshRig()
     fxPage.followSignature (rig.name + "|" + rig.file.getFullPathName());   // 0.58.0: the SIGNATURE slot shows the preset's own
     const auto& matrix = audioProcessor.getModMatrix();
     face.setMacroNames ({ matrix.macroName (0), matrix.macroName (1), matrix.macroName (2) });
+    offerMissingLibrary();
+}
+
+void MainView::offerMissingLibrary()
+{
+    const auto rig = audioProcessor.getCurrentRig();
+    const auto key = rig.name + "|" + rig.file.getFullPathName();
+    if (! offerLibrary || key == libraryOfferedFor || audioProcessor.getLibraryDownload().isRunning())
+        return;
+    const libraries::Library* missing = nullptr;
+    for (int i = 0; i < ParamIDs::numOscillators && missing == nullptr; ++i)
+        missing = audioProcessor.missingLibrary (i);
+    if (missing == nullptr)
+        return;
+    libraryOfferedFor = key;
+    juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon, "GET THE PIANO",
+        "\"" + rig.name + "\" plays the " + missing->name + ", a free sampled piano that isn't on this computer yet.\n\n"
+        "Download it now? It's about " + juce::String (missing->bytes / 1000000) + " MB (it unpacks to about 714 MB, in "
+        "PR7-K's presets folder). It only has to be downloaded once.",
+        "DOWNLOAD", "NOT NOW", this,
+        juce::ModalCallbackFunction::create ([safe = juce::Component::SafePointer<MainView> (this)] (int result)
+        {
+            if (safe != nullptr && result == 1)
+                safe->audioProcessor.startLibraryDownload();
+        }));
 }
 
 void MainView::timerCallback()

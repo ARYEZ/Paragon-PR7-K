@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
 
-project(ParagonX1 VERSION 0.70.0 LANGUAGES C CXX)
+project(ParagonX1 VERSION 0.71.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -31,6 +31,7 @@ juce_add_plugin(ParagonX1
     NEEDS_MIDI_OUTPUT        FALSE
     IS_MIDI_EFFECT           FALSE
     VST3_CATEGORIES          Instrument Synth
+    NEEDS_CURL               TRUE     # 0.71.0, GET THE PIANO: HTTPS downloads on Linux (Windows and macOS use their own)
     COPY_PLUGIN_AFTER_BUILD  FALSE)
 
 # Inter (SIL Open Font License, see resources/fonts/OFL-LICENSE.txt), built
@@ -56,6 +57,7 @@ target_sources(ParagonX1
         source/dsp/synth/Mimic.cpp
         source/dsp/synth/Sfz.cpp
         source/dsp/synth/SfzStreamer.cpp
+        source/SampleLibraries.cpp
         # PR7-E's effects, kept for the effects rack (a later stage): built and tested, not yet in the sound.
         source/dsp/dominion/Dominion.cpp
         source/dsp/effects/Compressor.cpp
@@ -161,7 +163,6 @@ target_include_directories(ParagonX1 PUBLIC source)
 target_compile_definitions(ParagonX1
     PUBLIC
         JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_USE_MP3AUDIOFORMAT=0)
 

@@ -8,6 +8,7 @@
 #include "dsp/effects/Reverb.h"
 
 #include "Parameters.h"
+#include "SampleLibraries.h"
 #include "dsp/synth/SynthSettings.h"
 #include "dsp/synth/Wavetable.h"
 
@@ -576,6 +577,129 @@ std::vector<Rig> makeFactoryRigs()
     route (sung, "macro1", ParamIDs::voiceVowel, -0.5f);
     sung.rig.modulation.macroNames[0] = "OO";
     add (sung);
+
+    // THE SALAMANDER GRAND (0.71.0): a sampled piano on the SFZ oscillator. The samples aren't in the plugin: GET THE PIANO
+    // downloads them (once) into the presets folder. Every one: oscillator 1 plays it straight (no FILTER unless said),
+    // the AMP's velocity off (the piano's 16 layers and its own velocity response do that), a second's release.
+    const auto grand = [] (Builder& b)
+    {
+        b.osc (0, "Wave", (float) synth::OscWave::sfz).osc (0, "Filter", 0.0f)
+         .set (ParamIDs::ampVel, 0.0f).ampEnvelope (0.0f, 300.0f, 1.0f, 1000.0f).set (ParamIDs::ampReleaseCurve, -1.0f)
+         .set (ParamIDs::voices, 48.0f)
+         // The LIMITER only as a ceiling: a grand's hardest chords are about 14 dB over its middle touch.
+         .set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        b.rig.sfz[0] = libraries::refFor (libraries::salamanderGrand());
+    };
+    const auto space = [&route] (Builder& b, float reverb)
+    {
+        route (b, "macro2", ParamIDs::reverbMix, reverb);
+        b.rig.modulation.macroNames[1] = "SPACE";
+    };
+    const juce::String needs = " Needs the Salamander Grand Piano (free; PR7-K offers to download it, about 742 MB, once).";
+
+    Builder concert ("Salamander Grand", 41, { "Keys", "Piano", "Sampled" },
+                     "A concert grand, sampled: a Yamaha C5 recorded at 16 strengths a minor third apart (Alexander Holm's "
+                     "Salamander Grand), with its string resonance and hammer noises as the keys let go and the pedal's own "
+                     "sound. In a small room. MACRO 1 ROOM makes the room bigger; MACRO 2 SPACE more of it." + needs);
+    grand (concert);
+    concert.set (ParamIDs::patchLevel, 2.0f).set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::room)
+           .set (ParamIDs::reverbSize, 0.35f).set (ParamIDs::reverbMix, 0.12f);
+    route (concert, "macro1", ParamIDs::reverbSize, 0.55f);
+    concert.rig.modulation.macroNames[0] = "ROOM";
+    space (concert, 0.3f);
+    add (concert);
+
+    Builder felt ("Felt Grand", 42, { "Keys", "Piano", "Sampled", "Soft" },
+                  "The grand with felt laid over the strings, close up: darker the softer it's played, the hammers and keys "
+                  "heard (PROXIMITY), a plate behind it. For quiet, intimate parts. MACRO 1 FELT darkens it further; "
+                  "MACRO 2 SPACE." + needs);
+    grand (felt);
+    felt.set (ParamIDs::patchLevel, 2.5f).osc (0, "Filter", 1.0f).filter (FilterType::lp24, 1700.0f, 0.0f, 0.0f)
+        .set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.5f)
+        .ampEnvelope (0.0f, 300.0f, 1.0f, 800.0f)
+        .set (ParamIDs::proximityOn, 1.0f).set (ParamIDs::proximityNoise, 0.35f).set (ParamIDs::proximityClose, 0.4f)
+        .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::plate)
+        .set (ParamIDs::reverbSize, 0.45f).set (ParamIDs::reverbMix, 0.18f);
+    route (felt, "macro1", ParamIDs::fltCutoff, -0.35f);
+    felt.rig.modulation.macroNames[0] = "FELT";
+    space (felt, 0.3f);
+    add (felt);
+
+    Builder pop ("Pop Grand", 43, { "Keys", "Piano", "Sampled", "Bright" },
+                 "The grand for a band: compressed so every note sits forward, a touch of tube grit for brightness, a short "
+                 "plate. MACRO 1 GRIT drives the tube harder; MACRO 2 SPACE." + needs);
+    grand (pop);
+    pop.set (ParamIDs::patchLevel, 1.0f).set (ParamIDs::compOn, 1.0f).set (ParamIDs::compThreshold, -24.0f).set (ParamIDs::compRatio, 3.5f)
+       .set (ParamIDs::compAttack, 12.0f).set (ParamIDs::compRelease, 120.0f).set (ParamIDs::compMakeUp, 6.0f)
+       .set (ParamIDs::shp (0, "On"), 1.0f).set (ParamIDs::shp (0, "Model"), 2.0f).set (ParamIDs::shp (0, "Drive"), 0.15f)
+       .set (ParamIDs::shp (0, "Mix"), 0.4f)
+       .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::plate)
+       .set (ParamIDs::reverbSize, 0.3f).set (ParamIDs::reverbMix, 0.12f);
+    route (pop, "macro1", ParamIDs::shp (0, "Drive"), 0.4f);
+    pop.rig.modulation.macroNames[0] = "GRIT";
+    space (pop, 0.3f);
+    add (pop);
+
+    Builder tapePiano ("Tape Piano", 44, { "Keys", "Piano", "Sampled", "Lo-Fi" },
+                  "The grand on an old cassette: each note a little out of tune with the next, the tape wobbling and "
+                  "warm (AFTERGLOW), the top rolled off (LO-FI's cassette, no hiss). MACRO 1 WEAR wears the tape more; "
+                  "MACRO 2 SPACE." + needs);
+    grand (tapePiano);
+    tapePiano.set (ParamIDs::patchLevel, 3.0f).set (ParamIDs::afterglowOn, 1.0f).set (ParamIDs::afterglowAge, 0.3f).set (ParamIDs::afterglowTape, 0.55f)
+        .set (ParamIDs::afterglowEnsemble, 0.15f)
+        .set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) effects::LoFi::Type::cassette)
+        .set (ParamIDs::lofiAmount, 4.0f).set (ParamIDs::lofiNoise, 0.0f).set (ParamIDs::lofiMix, 0.5f)
+        .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::room)
+        .set (ParamIDs::reverbSize, 0.4f).set (ParamIDs::reverbMix, 0.15f);
+    route (tapePiano, "macro1", ParamIDs::afterglowTape, 0.4f);
+    route (tapePiano, "macro1", ParamIDs::afterglowAge, 0.5f);
+    tapePiano.rig.modulation.macroNames[0] = "WEAR";
+    space (tapePiano, 0.3f);
+    add (tapePiano);
+
+    Builder ambient ("Ambient Piano", 45, { "Keys", "Piano", "Sampled", "Ambient" },
+                     "The grand far away in a vast hall, a haze of its last few seconds hanging under it and slowly sinking "
+                     "(BLACKHOLE). Play slowly and leave space. MACRO 1 HAZE brings the haze up; MACRO 2 SPACE." + needs);
+    grand (ambient);
+    ambient.set (ParamIDs::patchLevel, 1.5f).set (ParamIDs::blackholeOn, 1.0f).set (ParamIDs::blackholeMix, 0.3f).set (ParamIDs::blackholeHold, 0.65f)
+           .set (ParamIDs::blackholeSize, 0.6f).set (ParamIDs::blackholePull, 0.15f).set (ParamIDs::blackholeTone, 0.5f)
+           .set (ParamIDs::blackholeWidth, 0.8f)
+           .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall)
+           .set (ParamIDs::reverbSize, 0.8f).set (ParamIDs::reverbMix, 0.3f);
+    route (ambient, "macro1", ParamIDs::blackholeMix, 0.4f);
+    ambient.rig.modulation.macroNames[0] = "HAZE";
+    space (ambient, 0.25f);
+    add (ambient);
+
+    Builder layered ("Piano And Pad", 46, { "Keys", "Piano", "Sampled", "Pad", "Layer" },
+                     "The grand with a warm saw pad swelling in under every chord (its own filter opening over two seconds; the "
+                     "piano doesn't go through it). Hold chords. MACRO 1 PAD brings the pad up; MACRO 2 SPACE." + needs);
+    grand (layered);
+    layered.set (ParamIDs::patchLevel, 2.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", (float) synth::OscWave::saw).osc (1, "Volume", 0.025f)
+           .osc (1, "UniVoices", 5.0f).osc (1, "UniMix", 0.7f).osc (1, "UniDetune", 0.25f).osc (1, "UniSpread", 0.8f)
+           .filter (FilterType::lp24, 180.0f, 0.1f, 0.55f).filterEnvelope (2200.0f, 3000.0f, 0.6f, 1500.0f)
+           .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall)
+           .set (ParamIDs::reverbSize, 0.6f).set (ParamIDs::reverbMix, 0.2f);
+    route (layered, "macro1", ParamIDs::osc (1, "Volume"), 0.05f);   // (VOLUME's range is 0-2: up to 0.125, +14 dB)
+    layered.rig.modulation.macroNames[0] = "PAD";
+    space (layered, 0.3f);
+    add (layered);
+
+    Builder starlight ("Starlight Piano", 47, { "Keys", "Piano", "Sampled", "Ambient" },
+                       "The grand with its echoes climbing an octave each time, in time with the song (eighth notes, "
+                       "LIGHTTRAIL), crossing from side to side into a hall. MACRO 1 TRAIL brings the echoes up; "
+                       "MACRO 2 SPACE." + needs);
+    grand (starlight);
+    starlight.set (ParamIDs::patchLevel, 2.0f).set (ParamIDs::trailOn, 1.0f).set (ParamIDs::trailDivision, 4.0f).set (ParamIDs::trailRise, 12.0f)
+             .set (ParamIDs::trailLength, 0.45f).set (ParamIDs::trailTone, 0.55f).set (ParamIDs::trailSpread, 0.7f)
+             .set (ParamIDs::trailMix, 0.3f)
+             .set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall)
+             .set (ParamIDs::reverbSize, 0.65f).set (ParamIDs::reverbMix, 0.22f);
+    route (starlight, "macro1", ParamIDs::trailMix, 0.4f);
+    starlight.rig.modulation.macroNames[0] = "TRAIL";
+    space (starlight, 0.3f);
+    add (starlight);
 
     return rigs;
 }

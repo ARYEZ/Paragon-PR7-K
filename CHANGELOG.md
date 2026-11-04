@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.71.0
+
+**A sampled grand piano: the new SFZ oscillator, seven piano presets, and GET THE PIANO.**
+
+- **SFZ, a new oscillator WAVE.** Any oscillator can now play a multi-sampled instrument from an SFZ file (the open format many free and paid sample libraries come in). Each key plays its own recording, and it goes through the FILTER, VOICE, SHAPERs, sends, insert buses and every effect like any other wave; TRANSPOSE, FINE, the pitch wheel, glide, vibrato and the PITCH envelope move it too. Load one from the oscillator's SFZ line (or drop an .sfz file on the oscillator); the picture shows its key map. What it reads:
+  - each sample's keys and the key it was recorded at, its tuning, volume and pan;
+  - velocity layers, and how much softer notes get inside a layer;
+  - round-robins and random alternates;
+  - **release samples**, played when a key lets go (after the pedal), quieter the longer the note was held;
+  - samples that ring on after the key (a piano's undamped top strings), and the sustain pedal's own sounds;
+  - regions that play only with the pedal down or up.
+  What it leaves out (loops, the file's own filters and envelopes, key switches) is listed in the SFZ line's menu; the AMP shapes the notes instead.
+- **Streamed from disk.** Only the first quarter second of each sample is kept in memory; the rest is read from disk as it plays, so a big library loads in seconds and fits easily. Live, PR7-K never waits for the disk; a bounce always does, so it comes out whole.
+- **Presets and projects remember where the file is**, never the samples. If you move a library to another drive, load any SFZ from its new folder once and your presets find it again. One that can't be found says NOT LOADED and plays nothing.
+- **Seven piano presets, A41-A47**, on the Salamander Grand Piano (a Yamaha C5 recorded at 16 strengths, by Alexander Holm, free under CC-BY): Salamander Grand, Felt Grand, Pop Grand, Tape Piano, Ambient Piano, Piano And Pad and Starlight Piano. Each has MACRO 1 (ROOM, FELT, GRIT, WEAR, HAZE, PAD, TRAIL) and MACRO 2 SPACE. Their levels keep the piano's real dynamics: a medium touch sits a little under the synth presets, and the LIMITER stops the hardest chords at -1 dBFS.
+- **GET THE PIANO.** The piano isn't inside the plugin (it would make every download about 750 MB). The first time you load a piano preset, PR7-K offers to download it from freepats.zenvoid.org: about 742 MB, unpacked to about 714 MB in PR7-K's presets folder, once per computer. The oscillator's SFZ line shows the progress and can cancel it. ABOUT credits the library.
+- Linux builds now use libcurl for the download (Windows and macOS use their own).
+
 ## 0.70.0
 
 **Plucks: three new plucks in every expansion, 75 in all.**

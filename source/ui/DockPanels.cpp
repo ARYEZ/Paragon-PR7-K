@@ -188,7 +188,9 @@ void SettingsPage::paint (juce::Graphics& g)
              juce::String ("Paragon PR7-K v") + JucePlugin_VersionString
                  + ". The PR7 family's synthesizer, inspired by VPS Avenger (our own design and code). "
                    "Free and open source under the GNU AGPLv3.\n"
-                   "Built with JUCE (AGPLv3) and the Inter typeface (SIL OFL).");
+                   "Built with JUCE (AGPLv3) and the Inter typeface (SIL OFL). "
+                   "The piano presets play the Salamander Grand Piano by Alexander Holm (CC-BY 3.0), "
+                   "FreePats edition, downloaded from freepats.zenvoid.org.");
 }
 
 void SettingsPage::resized()

@@ -24,8 +24,9 @@
 //   - LOCC64 / HICC64: regions that play only with the sustain pedal down (or up), as some pianos' are.
 //   - ROUND-ROBINS: SEQ_LENGTH / SEQ_POSITION take turns; LORAND / HIRAND by chance.
 //   - VOLUME (dB), AMPLITUDE (%), PAN, OFFSET (samples into the file).
-// Not read: filters, envelopes (the synth's own AMP shapes the note), loops, keyswitches, controller triggers
-// (ON_LOCC / ON_HICC: a pedal's own noise; listed as left out).
+//   - AMPEG_RELEASE: only to let a sample ring on past the AMP's release (undamped strings); the AMP shapes the rest.
+//   - ON_LOCC64 / ON_HICC64: the sustain pedal's own sounds, played as it goes down or up.
+// Not read: filters, the other envelope stages, loops, keyswitches, other controllers' triggers, OFF_BY / GROUP.
 //
 // Every sample keeps its first quarter of a second in memory; the rest is streamed from disk (SfzStreamer.h).
 namespace synth::sfz
@@ -56,6 +57,10 @@ namespace synth::sfz
         int seqLength = 1, seqPosition = 1;
         float loRand = 0.0f, hiRand = 1.0f;
         int loPedal = 0, hiPedal = 127;         // LOCC64 / HICC64
+        float releaseSeconds = -1.0f;           // AMPEG_RELEASE (-1: not given): longer than the AMP's, the sample
+                                                // rings on after the key lets go (a piano's undamped top strings)
+        bool pedalTrigger = false;              // ON_LOCC64 / ON_HICC64: played when the sustain pedal moves into
+        int onLo = 0, onHi = -1;                // ...this range (the pedal's own sound), not by a key
 
         bool plays (int key, int velocity) const noexcept { return key >= loKey && key <= hiKey && velocity >= loVel && velocity <= hiVel; }
         // A note's level from its velocity (0-1) as AMP_VELTRACK says: at 100%, (velocity)^2 (SFZ's curve).
@@ -71,6 +76,7 @@ namespace synth::sfz
         juce::StringArray problems;             // files that didn't load, opcodes left out...
         bool streamed = false;                  // some sample plays past its head (needs a Streamer)
         bool hasRelease = false;                // some region is TRIGGER=RELEASE
+        bool hasPedalSounds = false;            // some region plays when the pedal moves
         double longestSeconds = 0.0;            // the longest sample (how long a note can read it)
         int loKey = 127, hiKey = 0;             // the keys it plays
 
@@ -78,6 +84,8 @@ namespace synth::sfz
         // the oscillator's turn counter for this key (round-robins), `chance` 0-1 (LORAND / HIRAND), `pedal` CC 64.
         int select (int key, int velocity127, bool release, int seqCount, float chance, int pedal,
                     const Region** out, int capacity) const noexcept;
+        // The regions the sustain pedal plays moving to `pedal` (0-127).
+        int selectPedal (int pedal, float chance, const Region** out, int capacity) const noexcept;
     };
 
     // Reads an SFZ file and every sample's head (on a background thread: a big piano takes seconds). `progress`

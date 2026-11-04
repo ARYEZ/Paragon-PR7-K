@@ -139,6 +139,7 @@ namespace synth
             float gain = 0.0f;                     // the region's level, velocity and RT_DECAY, panned
             float gainLeft = 0.0f, gainRight = 0.0f;
             float fade = 1.0f, fadeStep = 0.0f;    // a quick fade when a newer note takes its place
+            float decay = 1.0f;                    // x each sample: AMPEG_RELEASE's fall, once its key has let go
             int stream = -1;                       // the disk stream reading the rest (-1: the head only)
         };
         static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
@@ -441,8 +442,13 @@ namespace synth
             float heldSeconds = 0.0f;
             std::uint8_t mask = 0;
             std::array<const sfz::Instrument*, numOscillators> instruments {};
+            int pedal = -1;   // 0-127: the sustain pedal moved there (its own sounds), not a key let go
+            // Samples handed over from the released note: those whose AMPEG_RELEASE outlasts the AMP's (undamped strings).
+            std::array<std::array<SfzPlayer, maxSfzPlayers>, numOscillators> handed {};
         };
-        std::array<PendingTail, 32> pendingTails {};
+        // On the heap (each about 3.5 KB with its handed samples): the engine stays small enough for a thread's stack.
+        std::vector<PendingTail> pendingTails = std::vector<PendingTail> (32);
+        float ampReleaseSeconds = 0.2f;   // the AMP's release as of the last block (which samples ring on past it)
         int numPendingTails = 0;
         const PendingTail* startingTail = nullptr;   // the tail startTails is starting (startSfz reads it)
         std::array<float, controlInterval> sfzRight {};   // a sampled oscillator's right side (scratch is its left)

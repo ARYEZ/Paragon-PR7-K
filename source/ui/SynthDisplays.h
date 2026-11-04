@@ -50,6 +50,7 @@ public:
     std::function<std::shared_ptr<const synth::Wavetable> (int oscillator)> tableFor, editedFor;
     // ...and the SFZ instrument it plays (0.71.0): drawn as its key map.
     std::function<std::shared_ptr<const synth::sfz::Instrument> (int oscillator)> sfzFor;
+    std::function<juce::String (int oscillator)> sfzNameFor;
 
 private:
     std::vector<float> snapshot() const override;
