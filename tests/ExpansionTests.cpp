@@ -119,7 +119,7 @@ namespace
 
     juce::String typeOf (const Rig& rig)
     {
-        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp" })
+        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp", "Pluck" })
             if (rig.tags[0] == type)
                 return type;
         return {};
@@ -149,7 +149,7 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
     {
         const auto rigs = expansionRigs (x);
         INFO (expansions::list[(size_t) x].name);
-        REQUIRE (rigs.size() == 15);
+        REQUIRE (rigs.size() == 18);
         std::map<juce::String, int> perType;
         for (size_t i = 0; i < rigs.size(); ++i)
         {
@@ -159,13 +159,17 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
             CHECK (rigs[i].tags.contains (expansions::list[(size_t) x].name));
             ++perType[typeOf (rigs[i])];
         }
-        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps; CHROMEFURY is lead-heavy at the owner's ask: 6, 3, 3, 1, 2.
+        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps, 3 plucks (0.70.0, slots 16-18); CHROMEFURY is lead-heavy at the
+        // owner's ask: 6, 3, 3, 1, 2, 3.
         const auto leadHeavy = juce::String (expansions::list[(size_t) x].name) == "CHROMEFURY";
         CHECK (perType["Lead"] == (leadHeavy ? 6 : 3));
         CHECK (perType["Pad"] == 3);
         CHECK (perType["Bass"] == 3);
         CHECK (perType["Keys"] == (leadHeavy ? 1 : 3));
         CHECK (perType["Arp"] == (leadHeavy ? 2 : 3));
+        CHECK (perType["Pluck"] == 3);
+        for (size_t i = 15; i < rigs.size(); ++i)
+            CHECK (typeOf (rigs[i]) == "Pluck");
     }
 }
 
@@ -248,7 +252,7 @@ TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its 
                                          { return r.source == "macro3" && r.destination == ParamIDs::downpourRain && r.amount > 0.5f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left", "[rigs][expansions][sirocco]")
@@ -269,7 +273,7 @@ TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left"
                                          { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
@@ -289,7 +293,7 @@ TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its 
                                          { return r.source == "macro3" && r.destination == ParamIDs::dilationSlow && r.amount >= 0.25f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left", "[rigs][expansions][remnant]")
@@ -309,7 +313,7 @@ TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left"
                                          { return r.source == "macro3" && r.destination == ParamIDs::remnantMix && r.amount >= 0.2f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("NEGATIVE SPACE: MACRO 3 is CLOSER on every preset, nothing added at its left", "[rigs][expansions][proximity]")
@@ -332,7 +336,7 @@ TEST_CASE ("NEGATIVE SPACE: MACRO 3 is CLOSER on every preset, nothing added at 
             CHECK (routed);
         }
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("NIGHTDRIVE: MACRO 3 is HAZE on every preset, no movement at its left", "[rigs][expansions][haze]")
@@ -352,7 +356,7 @@ TEST_CASE ("NIGHTDRIVE: MACRO 3 is HAZE on every preset, no movement at its left
                                          { return r.source == "macro3" && r.destination == ParamIDs::hazeDepth && r.amount >= 0.25f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("UNSPOKEN: MACRO 3 is LEVIATHAN on every preset, no voice at its left", "[rigs][expansions][leviathan]")
@@ -372,7 +376,7 @@ TEST_CASE ("UNSPOKEN: MACRO 3 is LEVIATHAN on every preset, no voice at its left
                                          { return r.source == "macro3" && r.destination == ParamIDs::leviathanMix && r.amount >= 0.15f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its left", "[rigs][expansions][spectre]")
@@ -392,7 +396,7 @@ TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its lef
                                          { return r.source == "macro3" && r.destination == ParamIDs::spectreMix && r.amount >= 0.15f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in by the macro", "[rigs][expansions][nuclearspring]")
@@ -412,7 +416,7 @@ TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in b
                                          { return r.source == "macro3" && r.destination == ParamIDs::springMix && r.amount >= 0.3f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
@@ -496,7 +500,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
     const auto overrides = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_PARAMS", {}), ",", {});
     for (const auto& rig : makeExpansionRigs())
     {
-        if (only.isNotEmpty() && ! rig.name.containsIgnoreCase (only) && ! rig.tags.contains (only, true))   // a name, or a bank (its tag)
+        if (only == "NEW PLUCKS" && rig.number < 16)   // the plucks of 0.70.0 (slots 16-18) alone
+            continue;
+        if (only.isNotEmpty() && only != "NEW PLUCKS" && ! rig.name.containsIgnoreCase (only) && ! rig.tags.contains (only, true))   // a name, or a bank (its tag)
             continue;
         p.load (rig.name);
         // NEON RAIN at 85 BPM in A minor; HELLFORGE at 140 in D, heavier and rhythmic.
@@ -575,6 +581,38 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (type == "Pluck")
+        {
+            // Every bank's plucks (0.70.0): a riff in the bank's key, short notes with gaps (where the centrepiece is
+            // heard), accents for the velocity, four bars over a falling bass of the scale, a three-note chord, then
+            // a last note left to ring and a bar and a half of tail.
+            const int bankIndex = rig.bank - Rig::numBanks;
+            struct Key { int root; std::vector<int> scale; };
+            const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
+                                   phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 24, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 ? major : minor;
+            const auto degree = [&] (int d)
+            {
+                const auto n = (int) scale.size();
+                const auto octave = (d >= 0 ? d / n : -((-d + n - 1) / n));
+                return root + 12 * octave + scale[(size_t) (d - octave * n)];
+            };
+            const int riff[] { 0, -1, 2, 4, -1, 2, 1, 4, 7, -1, 4, 2, -1, 1, 2, -1 };      // sixteenths, -1 a rest
+            const int accent[] { 115, 0, 80, 100, 0, 75, 85, 105, 120, 0, 85, 80, 0, 75, 95, 0 };
+            const int shift[] { 0, -2, 3, 1 };                                                // each bar's step of the scale
+            for (int bar = 0; bar < 4; ++bar)
+                for (int k = 0; k < 16; ++k)
+                    if (riff[k] >= 0 && (bar < 3 || k < 12))
+                    {
+                        const auto start = bar * 4.0 + k * 0.25;
+                        chord (e, at (start), at (start + 0.2), { degree (riff[k] + shift[bar]) }, accent[k]);
+                    }
+            chord (e, at (15.0), at (15.4), { degree (shift[3]), degree (shift[3] + 2), degree (shift[3] + 4) }, 105);
+            chord (e, at (16.0), at (16.3), { degree (7) }, 110);                             // left to ring
+            length = 22.0 * beat;
         }
         else if (sling)
         {
