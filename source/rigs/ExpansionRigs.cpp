@@ -4964,7 +4964,7 @@ namespace
         auto dashboard = x.make ("Dashboard Pulse", 17, { "Pluck", "PWM", "Pulse", "Haze" },
             "Dashboard lights blinking in the rain: a pulse whose width sweeps slowly (LFO 1, a warm, moving pulse-width "
             "tone), the filter snapping shut, eighth-note echoes, a chorus. MACROS: BRIGHT, SPACE, WIDTH (a thinner "
-            "pulse). MOD WHEEL: a faster sweep.");
+            "pulse). MOD WHEEL: more resonance.");
         dashboard.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.6f)
                  .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
                  .filter (FilterType::lp24, 800.0f, 0.3f, 0.55f).set (ParamIDs::fltKey, 0.4f)
@@ -4977,7 +4977,7 @@ namespace
         pkVelocity (dashboard, 0.5f, 0.3f, 0.45f);
         route (dashboard, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (dashboard, "macro3", ParamIDs::osc (0, "Width"), -0.2f);
-        route (dashboard, "modWheel", ParamIDs::lfo (0, "Rate"), 0.3f);
+        route (dashboard, "modWheel", ParamIDs::fltRes, 0.25f);
         macros (dashboard, "BRIGHT", "SPACE", "WIDTH");
         chorus (dashboard, ParamIDs::modIds, MT::chorus, 0.5f, 0.45f, 0.45f);
         delay (dashboard, "1/8", 0.38f, 0.2f, false, 4.5f);
