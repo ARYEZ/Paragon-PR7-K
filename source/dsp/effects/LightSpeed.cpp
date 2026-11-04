@@ -5,7 +5,10 @@ namespace effects
     namespace
     {
         constexpr std::array<double, LightSpeed::streaks> streakDelayMs { 12.0, 27.0, 45.0 };
-        constexpr float whooshQ = 1.5f, whooshMakeUp = 2.0f, duckAtFull = 0.33f;
+        // The whoosh's gain per unit of the music's level (its follower, about 0.8 of its RMS): at full WHOOSH and JUMP, band-
+        // passed noise about 9 dB under the music where the band is widest (it was a fixed level at first, whatever the
+        // music: on a quiet preset turned up by LEVEL the jump came out 9 dB louder than the sound).
+        constexpr float whooshQ = 1.5f, whooshMakeUp = 1.5f, duckAtFull = 0.33f;
     }
 
     void LightSpeed::prepare (double newSampleRate, int)
@@ -113,7 +116,7 @@ namespace effects
                 a2 = g * a1;
                 a3 = g * a2;
             }
-            const auto whooshGain = whooshLevel * std::pow (jumpNow, 1.5f) * juce::jmin (1.0f, follower / 0.1f) * whooshMakeUp;
+            const auto whooshGain = whooshLevel * std::pow (jumpNow, 1.5f) * follower * whooshMakeUp;
             std::array<float, 2> whoosh {};
             for (int c = 0; c < 2; ++c)
             {

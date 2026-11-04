@@ -16,8 +16,8 @@ namespace effects
     //   later than the last (12, 27, 45 ms) and panned out to alternate sides by WIDTH; their pitch follows JUMP through
     //   a slow glide (0.25 s), so a jump spools up and falls back like engines rather than stepping. Darkened by TONE
     //   (a one-pole, 2 to 16 kHz), brighter as JUMP rises. Made from the middle (left + right) / 2.
-    // - WHOOSH: noise through a band-pass sweeping 200 Hz to 6 kHz with JUMP (each side its own noise), following the
-    //   music's level (10 ms up, 0.3 s down; silence stays silent).
+    // - WHOOSH: noise through a band-pass sweeping 200 Hz to 6 kHz with JUMP (each side its own noise), in proportion to
+    //   the music's level (10 ms up, 0.3 s down; silence stays silent; at full, about 9 dB under the music).
     // - The sound itself ducks by up to a third at full JUMP, so the jump rushes past instead of piling on top.
     // JUMP under 0.001 counts as 0; at 0, once its glides have settled, untouched bit for bit and everything emptied so
     // it wakes clean (`isResting`).

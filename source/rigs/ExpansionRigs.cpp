@@ -12553,7 +12553,7 @@ namespace
         lightspeed (fanfare, { 0.6f, 0.55f, 0.4f, 0.8f, 0.6f });
         orchestra (fanfare, { { { 0, "Brass - Notation/Trumpets Sustain (looped).sfz", 0.8f, 0.1f },
                                 { 1, "Brass - Notation/Horns Sustain.sfz", 0.6f, -0.2f } },
-                              { 0, 1, 2 }, -4.0f,
+                              { 0, 1, 2 }, 2.9f,
                               "The heroic brass of a main title on the orchestra's recordings: the trumpet section with the "
                               "horns under it, a big hall. Play it as chords too.",
                               8.0f, 300.0f, 1.0f, 450.0f, -1.0f,
@@ -12587,7 +12587,7 @@ namespace
         space (horn);
         horn.set (ParamIDs::patchLevel, -4.1f);
         lightspeed (horn, { 0.5f, 0.5f, 0.35f, 0.9f, 0.5f });
-        orchestra (horn, { { { 0, "Brass - Notation/Horn Solo Sustain (looped).sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+        orchestra (horn, { { { 0, "Brass - Notation/Horn Solo Sustain (looped).sfz", 1.0f } }, { 0, 1, 2 }, 0.4f,
                            "A lonely solo horn at sunset over a desert horizon, on the orchestra's recording: a long hall "
                            "with soft dotted echoes.",
                            40.0f, 300.0f, 1.0f, 500.0f, 0.0f,
@@ -12647,7 +12647,7 @@ namespace
         space (choir);
         choir.set (ParamIDs::patchLevel, -8.7f);
         lightspeed (choir, { 0.5f, 0.55f, 0.35f, 0.9f, 0.5f });
-        orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2 }, 0.0f,
+        orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2 }, 0.9f,
                             "A large choir in a vast hall, on the orchestra's recordings (looped, so chords hold): low chords "
                             "for the men, a cathedral.",
                             150.0f, 300.0f, 1.0f, 1200.0f, -1.0f,
@@ -12680,7 +12680,7 @@ namespace
         space (strings);
         strings.set (ParamIDs::patchLevel, -10.4f);
         lightspeed (strings, { 0.6f, 0.6f, 0.4f, 0.9f, 0.6f });
-        orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 0.8f, 0.0f, true } }, {}, -6.0f,
+        orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 0.8f, 0.0f, true } }, {}, -10.0f,
                               "Shimmering strings for the stars going by: the orchestra's whole string section, with PR7-K's "
                               "own strings underneath, quieter. The recordings aren't looped and stop after about four "
                               "seconds: the strings underneath carry long chords.",
@@ -12737,7 +12737,7 @@ namespace
         lightspeed (march, { 0.8f, 0.7f, 0.45f, 0.8f, 0.6f });
         orchestra (march, { { { 0, "Brass - Notation/Trombones Marcato (looped).sfz", 0.8f, 0.15f },
                               { 1, "Brass - Notation/Tuba Marcato (looped).sfz", 0.8f, -0.15f } },
-                            { 0, 1, 2 }, 0.0f,
+                            { 0, 1, 2 }, 3.9f,
                             "The low brass of a marching menace on the orchestra's recordings: trombones and a tuba hit "
                             "hard (marcato), a hard room. Play a low ostinato.",
                             3.0f, 300.0f, 1.0f, 220.0f, -1.0f,
@@ -12788,7 +12788,7 @@ namespace
         space (upright);
         upright.set (ParamIDs::patchLevel, -3.6f);
         lightspeed (upright, { 0.9f, 0.65f, 0.4f, 0.8f, 0.6f });
-        orchestra (upright, { { { 0, "Strings - Notation/Bass Solo Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+        orchestra (upright, { { { 0, "Strings - Notation/Bass Solo Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 8.9f,
                               "The plucked bass of a smoky spaceport dance band, on the orchestra's solo double bass, a small room.",
                               1.0f, 300.0f, 1.0f, 200.0f, -1.0f,
                               [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "ROOM"; } });
@@ -12837,7 +12837,7 @@ namespace
         space (celesta);
         celesta.set (ParamIDs::patchLevel, -6.3f);
         lightspeed (celesta, { 0.5f, 0.6f, 0.35f, 0.9f, 0.7f });
-        orchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.0f } }, { 0, 1, 2, 3 }, 0.0f,
+        orchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.0f } }, { 0, 1, 2, 3 }, 3.0f,
                               "A celesta twinkling like a field of stars, on the orchestra's recording, ringing on through "
                               "quick ping-pong sixteenths and a hall.",
                               0.0f, 300.0f, 1.0f, 900.0f, -1.0f,
@@ -12861,7 +12861,7 @@ namespace
         space (stab);
         stab.set (ParamIDs::patchLevel, -5.8f);
         lightspeed (stab, { 0.8f, 0.6f, 0.45f, 0.9f, 0.4f });
-        realPiano (stab, { 700.0f, 0.5f, 0.6f, 8.0f,
+        realPiano (stab, { 700.0f, 0.5f, 0.6f, 7.0f,
                            "A dark low piano stabbing out a warning, on the Salamander Grand: the felt closed down (harder "
                            "hits open it), a big dark hall. Play low octaves." });
         x.add (stab);
@@ -12890,7 +12890,7 @@ namespace
         space (racing);
         racing.set (ParamIDs::patchLevel, 1.2f);
         lightspeed (racing, { 0.6f, 0.6f, 0.45f, 0.9f, 0.6f });
-        orchestra (racing, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 0.9f } }, { 0, 1 }, 0.0f,
+        orchestra (racing, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 0.9f } }, { 0, 1 }, 6.4f,
                              "Strings racing through an asteroid field, on the orchestra's whole string section playing "
                              "staccato: hold a chord and ARP 1 runs it up and down over two octaves in sixteenths, a hall.",
                              1.0f, 300.0f, 1.0f, 120.0f, -1.0f,
@@ -12960,10 +12960,11 @@ namespace
         space (band);
         band.set (ParamIDs::patchLevel, -0.8f);
         lightspeed (band, { 0.6f, 0.6f, 0.4f, 0.8f, 0.6f });
-        orchestra (band, { { { 0, "Woodwinds - Notation/Clarinet Solo Staccato.sfz", 1.0f } }, { 0, 1 }, 0.0f,
-                           "The spaceport dance band's riff in seven, on the orchestra's solo clarinet: hold a chord and "
-                           "ARP 1 plays a riff on its root in eighths, seven to the bar, a small room.",
-                           1.0f, 300.0f, 1.0f, 100.0f, -1.0f,
+        orchestra (band, { { { 0, "Woodwinds - Notation/Clarinet Solo Sustain (looped).sfz", 1.0f } }, { 0, 1 }, 0.0f,
+                           "The spaceport dance band's riff in seven, on the orchestra's solo clarinet (its held notes, cut "
+                           "short by the AMP): hold a chord and ARP 1 plays a riff on its root in eighths, seven to the bar, "
+                           "a small room.",
+                           8.0f, 200.0f, 0.75f, 80.0f, -1.0f,
                            [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "ROOM"; } });
         x.add (band);
 
@@ -12985,7 +12986,7 @@ namespace
         reverb (harp, RT::hall, 0.7f, 0.25f);
         space (harp);
         lightspeed (harp, { 0.5f, 0.6f, 0.4f, 0.9f, 0.7f });
-        orchestra (harp, { { { 0, "Concert Harp.sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+        orchestra (harp, { { { 0, "Concert Harp.sfz", 1.0f } }, { 0, 1, 2 }, 1.5f,
                            "A concert harp at a royal ceremony, on the orchestra's recording, a long hall.",
                            0.0f, 300.0f, 1.0f, 1500.0f, -1.0f,
                            [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "HALL"; } });
@@ -13007,7 +13008,7 @@ namespace
         reverb (pizz, RT::hall, 0.6f, 0.2f);
         space (pizz);
         lightspeed (pizz, { 0.6f, 0.65f, 0.45f, 0.9f, 0.6f });
-        orchestra (pizz, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+        orchestra (pizz, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, -1.5f,
                            "A string section plucking hard as the battle starts, on the orchestra's whole string section "
                            "playing pizzicato, a hall.",
                            0.0f, 300.0f, 1.0f, 300.0f, -1.0f,
