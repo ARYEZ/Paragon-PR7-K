@@ -164,18 +164,33 @@ namespace
         static const std::map<juce::String, float> levels {
             { "Bike Spokes", -8.1f },
             { "Cassette Harp", -9.7f },
+            { "Chrome Pluck", -3.4f },
+            { "Code Drip", -2.6f },
+            { "Dashboard Pulse", -10.1f },
             { "Desert Oud", -7.6f },
             { "Ember Pluck", 0.7f },
+            { "Folding Guitar", -4.3f },
             { "Funhouse Mallet", -6.3f },
             { "Glass Rain Taps", -7.5f },
-            { "Heat Shimmer Pluck", -5.2f },
+            { "Glyph Ring", -1.5f },
             { "Gridline Pluck", -5.5f },
+            { "Heat Shimmer Pluck", -5.2f },
             { "Hellwire Pick", -0.3f },
             { "Laser Lattice", -2.4f },
+            { "Muted Felt", -5.2f },
+            { "Orbit Kalimba", -9.0f },
             { "Pixel Ping", -3.0f },
+            { "Prepared Strings", -1.9f },
             { "Rivet Gun", -1.4f },
+            { "Rooftop Pick", -7.2f },
             { "Sandglass Kanun", -7.3f },
+            { "Server Clicks", -2.7f },
+            { "Sinking Harp", -8.7f },
+            { "Staccato Horns", -3.4f },
+            { "Starlight Harp", -9.3f },
             { "Street Zither", -2.3f },
+            { "Tail Light Bell", -13.8f },
+            { "Ticking Pizzicato", -6.2f },
             { "Wet Neon Pluck", -9.8f },
         };
         const auto found = levels.find (name);
@@ -2999,6 +3014,80 @@ namespace
         gravity (tesseract, "FELT", "GRAVITY (the haze, plus FELT)", { 0.85f, 0.7f, 0.2f, 0.5f, 1.0f, 0.5f });
         tesseract.set (ParamIDs::patchLevel, -3.9f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (tesseract);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto starlight = x.make ("Starlight Harp", 16, { "Pluck", "Additive", "Harp", "Blackhole" },
+            "A concert harp heard from very far away: the note and four overtones as separate sines, tuned a little "
+            "stretched as a real string's are (each a few cents sharp of the last), the high ones fading first, a soft "
+            "touch of the finger, a long ring into a vast hall. MACROS: BRIGHT (stronger overtones), SPACE, GRAVITY "
+            "(the harp's tails drawn into a slow, sinking haze). MOD WHEEL: a softer touch.");
+        starlight.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Fine", 2.0f).osc (1, "PhaseRand", 0.0f)
+                 .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 19.0f).osc (2, "Fine", 6.0f).osc (2, "PhaseRand", 0.0f)
+                 .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 24.0f).osc (3, "Fine", 9.0f).osc (3, "PhaseRand", 0.0f)
+                 .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", 28.0f).osc (4, "Fine", 4.0f).osc (4, "PhaseRand", 0.0f)
+                 .ampEnvelope (2.0f, 2600.0f, 0.0f, 1400.0f).set (ParamIDs::ampVel, 0.45f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkPartial (starlight, 1, 0, 0.32f, 1.4f);
+        pkPartial (starlight, 2, 1, 0.16f, 0.8f);
+        pkPartial (starlight, 3, 2, 0.1f, 0.5f);
+        pkPartial (starlight, 4, 3, 0.06f, 0.3f);
+        pkStrike (starlight, 5, 4, 0.04f, 6.0f, 0.3f, false);
+        route (starlight, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        route (starlight, "macro1", ParamIDs::osc (2, "Volume"), 0.08f);
+        route (starlight, "modWheel", ParamIDs::osc (3, "Volume"), -0.08f);
+        route (starlight, "modWheel", ParamIDs::osc (4, "Volume"), -0.05f);
+        macros (starlight, "BRIGHT", "SPACE", "GRAVITY");
+        reverb (starlight, RT::hall, 0.9f, 0.32f, 40.0f, 4.5f);
+        space (starlight);
+        gravity (starlight, "GRAVITY (the harp's tails drawn into a slow, sinking haze)",
+                 "GRAVITY (the harp's tails drawn into a slow, sinking haze)", { 0.8f, 0.6f, 0.2f, 0.45f, 0.9f, 0.5f });
+        pkAdd (x, starlight);
+
+        auto pizz = x.make ("Ticking Pizzicato", 17, { "Pluck", "Pizzicato", "Strings", "Blackhole" },
+            "A string section plucking like a clock ticking down: violins (four players, each a hair apart) and cellos an "
+            "octave under, a finger's snap at each pluck, the body ringing for a moment and gone, harder playing brighter "
+            "and longer, a large hall. MACROS: BRIGHT, SPACE, GRAVITY (the plucks frozen into a haze between them). "
+            "MOD WHEEL: the cellos louder.");
+        pizz.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 1.0f).osc (1, "PhaseRand", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+            .filter (FilterType::lp12, 1100.0f, 0.15f, 0.45f).set (ParamIDs::fltKey, 0.5f)
+            .filterEnvelope (0.5f, 130.0f, 0.0f, 120.0f)
+            .ampEnvelope (2.0f, 430.0f, 0.0f, 200.0f);
+        pkSection (pizz, 0, 4, 0.06f, 0.0f, 5.0f, 0.0f);
+        pkSection (pizz, 1, 2, 0.05f, 0.0f, 5.0f, 0.0f);
+        pkStrike (pizz, 2, 0, 0.05f, 3.0f, 0.3f);
+        pkVelocity (pizz, 0.5f, 0.35f, 0.5f);
+        route (pizz, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pizz, "modWheel", ParamIDs::osc (1, "Volume"), 0.2f);
+        macros (pizz, "BRIGHT", "SPACE", "GRAVITY");
+        reverb (pizz, RT::hall, 0.8f, 0.3f, 30.0f, 4.5f);
+        space (pizz);
+        gravity (pizz, "GRAVITY (the plucks frozen into a haze between them)",
+                 "GRAVITY (the plucks frozen into a haze between them)", { 0.7f, 0.4f, 0.1f, 0.5f, 0.8f, 0.45f });
+        pkAdd (x, pizz);
+
+        auto kalimba = x.make ("Orbit Kalimba", 18, { "Pluck", "FM", "Kalimba", "Blackhole" },
+            "A thumb piano drifting past a window in orbit: a sine whose metal tine rings at the strike (FM from "
+            "oscillator 2 six times up, gone in a tenth of a second), a faint high overtone out of tune with the note "
+            "as a real tine's is, a slow auto-pan. MACROS: BRIGHT (more tine), SPACE, GRAVITY (a deep, sinking haze). "
+            "MOD WHEEL: a faster pan.");
+        kalimba.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+               .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.03f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 31.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 29.0f).osc (2, "Fine", 35.0f).osc (2, "PhaseRand", 0.0f)
+               .ampEnvelope (1.0f, 1700.0f, 0.0f, 900.0f).set (ParamIDs::ampVel, 0.45f);
+        pkShot (kalimba, 0, { PK { 0.0f, 1.0f, -0.7f }, PK { 0.1f, 0.0f, 0.0f } });
+        route (kalimba, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
+        route (kalimba, "velocity", ParamIDs::osc (0, "FmAmount"), 0.08f);
+        pkPartial (kalimba, 2, 1, 0.05f, 0.4f);
+        route (kalimba, "macro1", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (kalimba, "modWheel", ParamIDs::modIds.rate, 0.4f);
+        macros (kalimba, "BRIGHT", "SPACE", "GRAVITY");
+        chorus (kalimba, ParamIDs::modIds, MT::autoPan, 0.15f, 0.35f, 1.0f);
+        reverb (kalimba, RT::hall, 0.75f, 0.28f, 30.0f, 4.0f);
+        space (kalimba);
+        gravity (kalimba, "GRAVITY (a deep, sinking haze)", "GRAVITY (a deep, sinking haze)", { 0.9f, 0.7f, 0.3f, 0.4f, 0.9f, 0.45f });
+        pkAdd (x, kalimba);
     }
 
     // SIMULACRUM's centrepiece (0.63.0, the owner's ask): DILATION on every preset, MACRO 3 DILATE. Each preset gets
@@ -3426,6 +3515,67 @@ namespace
         firefight.set (ParamIDs::patchLevel, -1.8f);   // LEVEL: balanced against the others (measured, not by ear)
         dilate (firefight, "BITE (more resonance)", { 0.5f, 0.3f, true, 0.5f, 0.5f });
         x.add (firefight);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto drip = x.make ("Code Drip", 16, { "Pluck", "FFT", "Digital", "Dilation" },
+            "Falling code, one glyph at a time: a saw whose harmonics are cut off by the FFT editor's brick-wall low-pass, "
+            "opened to over two hundred harmonics at the strike and closing to six in a third of a second (a hard, "
+            "digital darkening no filter makes), harder playing opening further, a cold plate. MACROS: BRIGHT, SPACE, "
+            "DRIP (closing further).");
+        drip.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "FftLp", 6.0f).osc (0, "FftSlope", 0.3f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.15f)
+            .ampEnvelope (0.5f, 600.0f, 0.0f, 220.0f).set (ParamIDs::ampVel, 0.4f);
+        pkShot (drip, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.33f, 0.0f, 0.0f } });
+        route (drip, "env1", ParamIDs::osc (0, "FftLp"), 0.55f);
+        route (drip, "velocity", ParamIDs::osc (0, "FftLp"), 0.12f);
+        route (drip, "macro1", ParamIDs::osc (0, "FftLp"), 0.15f);
+        route (drip, "macro3", ParamIDs::osc (0, "FftLp"), -0.1f);
+        macros (drip, "BRIGHT", "SPACE", "DRIP");
+        delay (drip, "1/16", 0.3f, 0.12f, true, 4.0f);
+        reverb (drip, RT::plate, 0.5f, 0.18f);
+        space (drip);
+        dilate (drip, "DRIP (closing further)", { 0.5f, 0.4f, true, 0.6f, 0.5f });
+        pkAdd (x, drip);
+
+        auto rooftop = x.make ("Rooftop Pick", 17, { "Pluck", "String", "Guitar-like", "Dilation" },
+            "A guitar string picked on a rooftop at night: a saw and a narrow pulse, a sharp pick's click, each note "
+            "struck a hair sharp and settling, the tone darkening as it rings, a short slapback. Turn MACRO 3 and the "
+            "picking slows like tape. MACROS: BRIGHT, SPACE, TWANG (more resonance). MOD WHEEL: a harder pick.");
+        rooftop.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.3f)
+               .filter (FilterType::lp12, 1700.0f, 0.3f, 0.45f).set (ParamIDs::fltKey, 0.6f)
+               .filterEnvelope (0.5f, 260.0f, 0.1f, 220.0f)
+               .ampEnvelope (0.5f, 700.0f, 0.05f, 250.0f);
+        pkStrike (rooftop, 2, 0, 0.2f, 5.0f, 0.02f);
+        pkBend (rooftop, 0.25f, 0.05f, -0.4f);
+        pkVelocity (rooftop, 0.45f, 0.3f, 0.45f);
+        route (rooftop, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (rooftop, "modWheel", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (rooftop, "macro3", ParamIDs::fltRes, 0.2f);
+        macros (rooftop, "BRIGHT", "SPACE", "TWANG");
+        delay (rooftop, "1/16", 0.15f, 0.15f, false, 4.0f);
+        reverb (rooftop, RT::room, 0.5f, 0.15f);
+        space (rooftop);
+        dilate (rooftop, "TWANG (more resonance)", { 0.6f, 0.6f, false, 0.7f, 0.5f });
+        pkAdd (x, rooftop);
+
+        auto glyph = x.make ("Glyph Ring", 18, { "Pluck", "AM", "Metallic", "Dilation" },
+            "A green symbol ringing as it falls: a triangle ring-modulated by a sine 1.41 times its pitch (sum and "
+            "difference tones, clangy and not quite in tune), the ring fading faster than the note so each strike is "
+            "metal then glass, a short hall. MACROS: BRIGHT, SPACE, RING (more of the ring).");
+        glyph.osc (0, "Wave", triangle).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.5625f).osc (0, "AmAmount", 0.2f)
+             .ampEnvelope (0.3f, 520.0f, 0.0f, 220.0f).set (ParamIDs::ampVel, 0.45f);
+        pkShot (glyph, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.25f, 0.0f, 0.0f } });
+        route (glyph, "env1", ParamIDs::osc (0, "AmAmount"), 0.6f);
+        route (glyph, "macro1", ParamIDs::osc (0, "AmAmount"), 0.15f);
+        route (glyph, "macro3", ParamIDs::osc (0, "AmAmount"), 0.2f);
+        macros (glyph, "BRIGHT", "SPACE", "RING");
+        delay (glyph, "1/8", 0.3f, 0.12f, true, 5.0f);
+        reverb (glyph, RT::hall, 0.45f, 0.2f);
+        space (glyph);
+        dilate (glyph, "RING (more of the ring)", { 0.4f, 0.3f, true, 0.5f, 0.6f });
+        pkAdd (x, glyph);
     }
 
     // DREAMSTATE's centrepiece (0.64.0, the owner's ask): REMNANT on every preset, MACRO 3 DREAM. Each preset gets its
@@ -3797,6 +3947,71 @@ namespace
         countdown.set (ParamIDs::patchLevel, -0.8f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         dream (countdown, "TENSION (the filter opens)", { 1, 1, 0.35f, 0.35f, 0.4f, 0.6f, 0.45f });
         x.add (countdown);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto sinking = x.make ("Sinking Harp", 16, { "Pluck", "Additive", "Harp", "Remnant" },
+            "A harp in a dream that's starting to give way: the note and three overtones as separate sines, the high ones "
+            "fading first, and every note sagging a third of a semitone flat as it rings, as if the floor were tilting. "
+            "MACROS: BRIGHT, SPACE, SINK (a deeper sag).");
+        sinking.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 19.0f).osc (2, "Fine", 3.0f).osc (2, "PhaseRand", 0.0f)
+               .osc (3, "On", 1.0f).osc (3, "Wave", triangle).osc (3, "Transpose", 24.0f).osc (3, "PhaseRand", 0.0f)
+               .ampEnvelope (1.0f, 2200.0f, 0.0f, 1000.0f).set (ParamIDs::ampVel, 0.45f)
+               .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 1.0f);
+        sinking.rig.modulation.pitchEnvelope = { { PK { 0.0f, 0.5f, 0.3f }, PK { 1.8f, 0.34f, 0.0f } }, -1, -1, -1 };
+        pkPartial (sinking, 1, 0, 0.3f, 1.0f);
+        pkPartial (sinking, 2, 1, 0.14f, 0.55f);
+        pkPartial (sinking, 3, 2, 0.06f, 0.3f);
+        pkStrike (sinking, 4, 3, 0.04f, 5.0f, 0.25f, false);
+        route (sinking, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        route (sinking, "macro3", ParamIDs::pitchEnvRange, 0.1f);
+        macros (sinking, "BRIGHT", "SPACE", "SINK");
+        reverb (sinking, RT::hall, 0.8f, 0.3f, 35.0f, 4.5f);
+        space (sinking);
+        dream (sinking, "SINK (a deeper sag)", { 1, 0, 0.6f, 0.3f, 0.45f, 0.7f, 0.5f });
+        pkAdd (x, sinking);
+
+        auto horns = x.make ("Staccato Horns", 17, { "Pluck", "Brass", "Section", "Remnant" },
+            "Short, heavy brass stabs: a section of four saw players and a low saw an octave under, each note scooped up "
+            "from below as a horn speaks, the tone flaring open in fifteen milliseconds and shutting, gone in a quarter "
+            "of a second, a large room. MACROS: BRIGHT, SPACE, BRASS (more bite).");
+        horns.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+             .filter (FilterType::lp12, 600.0f, 0.15f, 0.6f).set (ParamIDs::fltKey, 0.4f)
+             .filterEnvelope (15.0f, 180.0f, 0.0f, 150.0f)
+             .ampEnvelope (6.0f, 260.0f, 0.0f, 170.0f);
+        pkSection (horns, 0, 4, 0.07f, 0.0f, 5.0f, 0.0f);
+        pkBend (horns, -0.4f, 0.05f, -0.2f);
+        pkVelocity (horns, 0.5f, 0.3f, 0.5f);
+        route (horns, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (horns, "macro3", ParamIDs::fltEnv, 0.15f);
+        macros (horns, "BRIGHT", "SPACE", "BRASS");
+        reverb (horns, RT::hall, 0.7f, 0.22f, 25.0f, 4.0f);
+        space (horns);
+        dream (horns, "BRASS (more bite)", { 1, 1, 0.5f, 0.35f, 0.4f, 0.7f, 0.45f });
+        pkAdd (x, horns);
+
+        auto foldGuitar = x.make ("Folding Guitar", 18, { "Pluck", "Guitar-like", "Nylon", "Remnant" },
+            "A nylon-string guitar plucked softly while the city folds overhead: a triangle and a quiet saw, the "
+            "fingertip's touch, each note settling into tune, the tone mellowing, a gentle chorus. MACROS: BRIGHT, "
+            "SPACE, TWANG (a brighter pick).");
+        foldGuitar.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.2f)
+               .filter (FilterType::lp12, 1800.0f, 0.15f, 0.35f).set (ParamIDs::fltKey, 0.6f)
+               .filterEnvelope (1.0f, 350.0f, 0.15f, 300.0f)
+               .ampEnvelope (1.0f, 1100.0f, 0.0f, 450.0f);
+        pkStrike (foldGuitar, 2, 0, 0.08f, 4.0f, 0.3f);
+        pkBend (foldGuitar, 0.15f, 0.05f, -0.4f);
+        pkVelocity (foldGuitar, 0.4f, 0.3f, 0.45f);
+        route (foldGuitar, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (foldGuitar, "macro3", ParamIDs::fltCutoff, 0.12f);
+        macros (foldGuitar, "BRIGHT", "SPACE", "TWANG");
+        chorus (foldGuitar, ParamIDs::modIds, MT::chorus, 0.4f, 0.3f, 0.35f);
+        reverb (foldGuitar, RT::hall, 0.6f, 0.22f);
+        space (foldGuitar);
+        dream (foldGuitar, "TWANG (a brighter pick)", { 2, 0, 0.5f, 0.35f, 0.45f, 0.7f, 0.55f });
+        pkAdd (x, foldGuitar);
     }
 
     // The soft piano (NEGATIVE SPACE): additive, unlike LAST LIGHT's FM felt piano. A real string's harmonics fade at
@@ -4235,6 +4450,60 @@ namespace
         rows.set (ParamIDs::patchLevel, 3.1f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         closer (rows, "DRIVE (pushes harder)", { 0.5f, 0.45f, 0.35f, 0.5f, 1 });
         x.add (rows);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto muted = x.make ("Muted Felt", 16, { "Pluck", "Piano", "Felt", "Proximity" },
+            "The soft felt piano with its practice felt let down between the hammers and the strings: the same "
+            "additive piano (the note on two strings, harmonics each on their own envelope, velocity as the hammer) "
+            "but muffled and short, each note a soft, dry knock. MACROS: BRIGHT, SPACE, HAMMER (a harder felt).");
+        softPiano (muted);
+        muted.filter (FilterType::lp12, 520.0f, 0.05f, 0.3f).filterEnvelope (0.0f, 220.0f, 0.1f, 180.0f)
+             .ampEnvelope (3.0f, 700.0f, 0.0f, 180.0f);
+        macros (muted, "BRIGHT", "SPACE", "HAMMER");
+        reverb (muted, RT::room, 0.4f, 0.15f);
+        space (muted);
+        closer (muted, "HAMMER (a harder felt)", { 0.55f, 0.4f, 0.4f, 0.35f, 0, 0.6f });
+        pkAdd (x, muted);
+
+        auto server = x.make ("Server Clicks", 17, { "Pluck", "Crush", "Click", "Proximity" },
+            "A rack of hard drives seeking in a cold room: a thin pulse struck an octave high for a few milliseconds, "
+            "crushed into coarse steps, gone in a tenth of a second, a dry short room. MACROS: BRIGHT, SPACE, GRIT "
+            "(coarser steps).");
+        server.osc (0, "Wave", pulse).osc (0, "Width", 0.12f).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 1.0f)
+              .osc (0, "CrushMode", 0.0f).osc (0, "Crush", 0.35f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+              .filter (FilterType::lp12, 6000.0f, 0.1f, 0.0f)
+              .ampEnvelope (1.0f, 260.0f, 0.0f, 80.0f).set (ParamIDs::ampVel, 0.4f);
+        pkBend (server, 12.0f, 0.004f, 0.0f);
+        route (server, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (server, "macro3", ParamIDs::osc (0, "Crush"), 0.2f);
+        macros (server, "BRIGHT", "SPACE", "GRIT");
+        delay (server, "1/16", 0.3f, 0.12f, true, 6.0f);
+        reverb (server, RT::room, 0.3f, 0.1f);
+        space (server);
+        closer (server, "GRIT (coarser steps)", { 0.3f, 0.5f, 0.2f, 0.7f, 1, 0.8f });
+        pkAdd (x, server);
+
+        auto prepared = x.make ("Prepared Strings", 18, { "Pluck", "AM", "Prepared", "Proximity" },
+            "A piano string with a bolt wedged against it: a saw through a felt-dark filter, ring-modulated at 2.76 "
+            "times its pitch (the bolt's clangy buzz, loudest at the strike and fading), the felt's thump. MACROS: "
+            "BRIGHT, SPACE, BOLT (more of the metal).");
+        prepared.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+                .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.683f).osc (0, "AmAmount", 0.1f)
+                .filter (FilterType::lp12, 900.0f, 0.1f, 0.4f).set (ParamIDs::fltKey, 0.6f)
+                .filterEnvelope (0.5f, 300.0f, 0.1f, 250.0f)
+                .ampEnvelope (1.0f, 1300.0f, 0.0f, 400.0f);
+        pkShot (prepared, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.4f, 0.0f, 0.0f } });
+        route (prepared, "env1", ParamIDs::osc (0, "AmAmount"), 0.45f);
+        pkStrike (prepared, 1, 1, 0.08f, 8.0f, 0.6f);
+        pkVelocity (prepared, 0.5f, 0.3f, 0.5f);
+        route (prepared, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (prepared, "macro3", ParamIDs::osc (0, "AmAmount"), 0.2f);
+        macros (prepared, "BRIGHT", "SPACE", "BOLT");
+        reverb (prepared, RT::room, 0.5f, 0.18f);
+        space (prepared);
+        closer (prepared, "BOLT (more of the metal)", { 0.5f, 0.4f, 0.35f, 0.45f, 0, 0.6f });
+        pkAdd (x, prepared);
     }
 
     // NIGHTDRIVE's centrepiece (0.66.0, the owner's ask): HAZE on every preset, MACRO 3 HAZE. Each preset gets its own
@@ -4624,6 +4893,74 @@ namespace
         heartline.set (ParamIDs::patchLevel, -3.8f);   // LEVEL: balanced against the others (measured, not by ear)
         passing (heartline, "ECHO (longer echoes)", { 1, 0.6f, 0.45f, 0.3f, 0.9f, 0.45f });
         x.add (heartline);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto chrome = x.make ("Chrome Pluck", 16, { "Pluck", "Chorder", "Octaves", "Haze" },
+            "The over-the-top synthwave pluck: a saw in three-voice unison with an octave stacked on it by the chorder, "
+            "the filter snapping shut, a deep stereo dimension chorus, dotted-eighth echoes bouncing across, a big hall. "
+            "MACROS: BRIGHT, SPACE, SNAP (a sharper snap).");
+        chrome.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.8f)
+              .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 12.0f).osc (0, "Ch1Vol", 0.5f)
+              .filter (FilterType::lp24, 950.0f, 0.3f, 0.55f).set (ParamIDs::fltKey, 0.4f)
+              .filterEnvelope (0.5f, 220.0f, 0.0f, 200.0f)
+              .ampEnvelope (0.5f, 600.0f, 0.0f, 300.0f);
+        pkVelocity (chrome, 0.5f, 0.3f, 0.45f);
+        route (chrome, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (chrome, "macro3", ParamIDs::fltEnv, 0.15f);
+        macros (chrome, "BRIGHT", "SPACE", "SNAP");
+        chorus (chrome, ParamIDs::modIds, MT::dimension, 0.4f, 0.6f, 0.6f);
+        delay (chrome, "1/8 dotted", 0.4f, 0.22f, true, 4.5f);
+        reverb (chrome, RT::hall, 0.8f, 0.3f, 30.0f, 5.0f);
+        space (chrome);
+        passing (chrome, "SNAP (a sharper snap)", { 0, 0.5f, 0.35f, 0.25f, 0.8f, 0.5f });
+        pkAdd (x, chrome);
+
+        auto dashboard = x.make ("Dashboard Pulse", 17, { "Pluck", "PWM", "Pulse", "Haze" },
+            "Dashboard lights blinking in the rain: a pulse whose width sweeps slowly (LFO 1, a warm, moving pulse-width "
+            "tone), the filter snapping shut, eighth-note echoes, a chorus. MACROS: BRIGHT, SPACE, WIDTH (a thinner "
+            "pulse). MOD WHEEL: a faster sweep.");
+        dashboard.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.6f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+                 .filter (FilterType::lp24, 800.0f, 0.3f, 0.55f).set (ParamIDs::fltKey, 0.4f)
+                 .filterEnvelope (0.5f, 250.0f, 0.0f, 220.0f)
+                 .ampEnvelope (0.5f, 650.0f, 0.0f, 300.0f)
+                 .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sine).set (ParamIDs::lfo (0, "Rate"), 0.7f)
+                 .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (dashboard, "lfo1", ParamIDs::osc (0, "Width"), 0.3f);
+        route (dashboard, "lfo1", ParamIDs::osc (1, "Width"), -0.3f);
+        pkVelocity (dashboard, 0.5f, 0.3f, 0.45f);
+        route (dashboard, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (dashboard, "macro3", ParamIDs::osc (0, "Width"), -0.2f);
+        route (dashboard, "modWheel", ParamIDs::lfo (0, "Rate"), 0.3f);
+        macros (dashboard, "BRIGHT", "SPACE", "WIDTH");
+        chorus (dashboard, ParamIDs::modIds, MT::chorus, 0.5f, 0.45f, 0.45f);
+        delay (dashboard, "1/8", 0.38f, 0.2f, false, 4.5f);
+        reverb (dashboard, RT::hall, 0.6f, 0.22f);
+        space (dashboard);
+        passing (dashboard, "WIDTH (a thinner pulse)", { 1, 0.55f, 0.4f, 0.3f, 0.8f, 0.45f });
+        pkAdd (x, dashboard);
+
+        auto bell = x.make ("Tail Light Bell", 18, { "Pluck", "FM", "Bell", "Haze" },
+            "A soft red bell glowing as cars pass: a sine struck by FM from oscillator 2 at 1.41 times its pitch (a "
+            "tubular, slightly hollow bell), the FM fading over half a second, a long ring, ping-pong echoes. MACROS: "
+            "BRIGHT, SPACE, SHINE (more FM).");
+        bell.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+            .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.06f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 6.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+            .ampEnvelope (0.5f, 1800.0f, 0.0f, 900.0f).set (ParamIDs::ampVel, 0.45f);
+        pkShot (bell, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.55f, 0.0f, 0.0f } });
+        route (bell, "env1", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (bell, "velocity", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (bell, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (bell, "macro3", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        macros (bell, "BRIGHT", "SPACE", "SHINE");
+        chorus (bell, ParamIDs::mod2Ids, MT::chorus, 0.45f, 0.4f, 0.4f);
+        delay (bell, "1/8 dotted", 0.4f, 0.22f, true, 5.0f);
+        reverb (bell, RT::hall, 0.75f, 0.28f);
+        space (bell);
+        passing (bell, "SHINE (more FM)", { 0, 0.6f, 0.45f, 0.35f, 0.8f, 0.5f });
+        pkAdd (x, bell);
     }
     // UNSPOKEN's centrepiece (0.68.0, the owner's ask): LEVIATHAN on every preset, MACRO 3 LEVIATHAN. Each preset gets
     // its own voice beneath it (how deep, how restless its vowel, how rough, how slow to answer, how big) at MIX 0, so
