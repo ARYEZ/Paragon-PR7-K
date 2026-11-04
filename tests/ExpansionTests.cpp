@@ -59,11 +59,13 @@ namespace
             // 0.72.0: PARAGON_LIBRARIES (a folder holding the Salamander's) linked in, so the presets that play the
             // sampled piano play it (without it they play their synthesized fallback).
             const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
-            if (const auto& salamander = libraries::salamanderGrand(); libraries.getChildFile (salamander.folder).isDirectory())
-            {
-                processor.getLibrariesFolder().createDirectory();
-                libraries.getChildFile (salamander.folder).createSymbolicLink (processor.getLibrariesFolder().getChildFile (salamander.folder), true);
-            }
+            // 0.73.0: every library there (the Sonatina Symphonic Orchestra too, for HYPERDRIVE).
+            for (const auto* library : libraries::all())
+                if (libraries.getChildFile (library->folder).isDirectory())
+                {
+                    processor.getLibrariesFolder().createDirectory();
+                    libraries.getChildFile (library->folder).createSymbolicLink (processor.getLibrariesFolder().getChildFile (library->folder), true);
+                }
         }
         const RigLibrary::Entry& entryNamed (const juce::String& name)
         {
@@ -429,6 +431,69 @@ TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in b
     CHECK (count == 18);
 }
 
+TEST_CASE ("HYPERDRIVE: MACRO 3 is LIGHTSPEED on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][lightspeed]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 25)   // HYPERDRIVE: the twenty-sixth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "LIGHTSPEED");
+            CHECK (version->notes.contains ("LIGHTSPEED"));
+            CHECK (version->parameters.at (ParamIDs::jumpOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::jumpAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::jumpAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 12);
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;
@@ -540,8 +605,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
         const auto melt = rig.bank == Rig::numBanks + 23;      // MELTDOWN: 66 BPM in D minor, slow, with half-step clusters
         const auto atomic = rig.bank == Rig::numBanks + 24;    // ATOMIC AGE: 116 BPM in C major, a cheerful lounge, C6 Fmaj7 Dm7 G7
+        const auto hyper = rig.bank == Rig::numBanks + 25;     // HYPERDRIVE: 104 BPM in G minor, heroic and marching
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -601,8 +667,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 24, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 25, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 ? major : minor;
             const auto degree = [&] (int d)
             {
@@ -719,6 +785,63 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     rock (0.0, 4.0);
                     rock (8.0, 12.0);
                 }
+                length = 19.0 * beat;
+            }
+        }
+        else if (hyper)
+        {
+            // Our own phrases (none from the films): a fanfare of fourths and fifths in dotted rhythms, a marching
+            // eighth-note ostinato, minor chords moving by thirds, short notes and gaps where LIGHTSPEED can be heard.
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.75, 62 }, { 0.75, 0.25, 62 }, { 1, 1, 67 }, { 2, 1.5, 74 }, { 3.5, 0.5, 72 }, { 4, 0.75, 70 },
+                        { 4.75, 0.25, 69 }, { 5, 1, 70 }, { 6, 2, 67 }, { 8, 0.75, 65 }, { 8.75, 0.25, 67 }, { 9, 1, 70 },
+                        { 10, 1, 74 }, { 11, 1, 77 }, { 12, 4, 74 } }, 105);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                chord (e, at (0), at (3.9), { 43, 55, 58, 62 }, 90);    // G minor
+                chord (e, at (4), at (7.9), { 39, 55, 58, 63 }, 90);    // E flat
+                chord (e, at (8), at (11.9), { 46, 53, 58, 62 }, 90);   // B flat
+                chord (e, at (12), at (15.6), { 38, 54, 57, 62 }, 90);  // D
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // A marching ostinato in eighths, accented on the beat, moving down by step each bar.
+                for (int bar = 0; bar < 4; ++bar)
+                {
+                    const int roots4[] { 31, 31, 27, 26 };   // G1 G1 Eb1 D1
+                    const auto r = roots4[bar] + 12;
+                    const std::vector<int> figure { r, r, r + 3, r, r + 1, r, r - 2, r };
+                    for (int k = 0; k < 8; ++k)
+                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { figure[(size_t) k] }, k % 2 == 0 ? 115 : 85);
+                }
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                const auto comp = [&] (double bar, std::initializer_list<int> notes)
+                {
+                    chord (e, at (bar), at (bar + 1.4), notes, 100);
+                    chord (e, at (bar + 1.5), at (bar + 1.9), notes, 80);
+                    chord (e, at (bar + 3.0), at (bar + 3.8), notes, 90);
+                };
+                comp (0.0, { 43, 55, 58, 62 });
+                comp (4.0, { 39, 55, 58, 63 });
+                comp (8.0, { 36, 55, 60, 63 });
+                chord (e, at (12), at (15), { 38, 54, 57, 62 }, 105);
+                length = 19.0 * beat;
+            }
+            else
+            {
+                chord (e, at (0), at (3.9), { 55, 58, 62 }, 100);
+                chord (e, at (4), at (7.9), { 55, 58, 63 }, 100);
+                chord (e, at (8), at (11.9), { 53, 58, 62 }, 100);
+                chord (e, at (12), at (15.9), { 54, 57, 62 }, 100);
                 length = 19.0 * beat;
             }
         }

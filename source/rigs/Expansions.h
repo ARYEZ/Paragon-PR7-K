@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 25> list
+    inline constexpr std::array<Expansion, 26> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -130,5 +130,11 @@ namespace expansions
           "atomic-age optimism, space-age lounge and exotica, doo-wop \"oohs\", a B-movie sci-fi singing sine, cheerful "
           "jingles and a dusty desert-western twang. Built round NUCLEARSPRING (0.69.0), a vintage spring reverb tank, "
           "and MACRO 3, SPRING. Our own sounds." },
+        { "HYPERDRIVE", "HD",
+          "Inspired by the late-'70s and early-'80s space-opera film scores: heroic brass fanfares, a lonely horn over a "
+          "desert horizon, a men's choir, shimmering strings, a marching low-brass ostinato, a smoky spaceport dance band, "
+          "harps, racing strings and beeping computers. Built round LIGHTSPEED (0.73.0) and MACRO 3, LIGHTSPEED: the jump "
+          "from rest to streaking stars. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
+          "(free), and PR7-K's own synthesized orchestra until then. Our own sounds." },
     }};
 }
