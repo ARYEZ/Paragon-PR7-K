@@ -2,6 +2,43 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.70.0
+
+**Plucks: three new plucks in every expansion, 75 in all.**
+
+Every expansion now has a sixth kind of preset, PLUCK, in slots 16-18 (NR16-NR18, HF16-HF18 and so on). Your existing presets keep their slot numbers.
+
+- **Built round each bank's centrepiece.** A pluck's short notes leave gaps, and MACRO 3's effect lives in them: the rain's drops land on NEON RAIN's plucks, SIROCCO answers SANDSEA's, LIGHTTRAIL's trails climb behind DATASTREAM's, ECHOES plays PARADOX's back in reverse, as tape or as a loop, and the spring tank clangs under ATOMIC AGE's.
+- **Built the way real plucked things sound.** Each one has its own attack (a pick, a finger, a hammer, a mallet or a breath), its brightness fades faster than its loudness as a real string's does, and harder playing is brighter.
+- **Built differently from each other.** No bank's three use the same method, and the methods are spread across all 25 banks: filter snaps, FM strikes (kalimbas, mallets, bells, a toy piano), harps made of separate overtones, plucked strings struck from noise, sync and wavetable sweeps, pitch chirps, sung syllables through the VOICE filter, one-key chords, pizzicato sections, palm mutes, ring-modulated metal, an FFT brick-wall sweep, formant and crush sweeps, a wah and drives.
+- **The 75:**
+  - **NEON RAIN:** Wet Neon Pluck, Street Zither, Glass Rain Taps.
+  - **HELLFORGE:** Rivet Gun, Hellwire Pick, Ember Pluck.
+  - **STARCOURT:** Bike Spokes, Cassette Harp, Funhouse Mallet.
+  - **SANDSEA:** Desert Oud, Sandglass Kanun, Heat Shimmer Pluck.
+  - **DATASTREAM:** Gridline Pluck, Pixel Ping, Laser Lattice.
+  - **LAST LIGHT:** Starlight Harp, Ticking Pizzicato, Orbit Kalimba.
+  - **SIMULACRUM:** Code Drip, Rooftop Pick, Glyph Ring.
+  - **DREAMSTATE:** Sinking Harp, Staccato Horns, Folding Guitar.
+  - **NEGATIVE SPACE:** Muted Felt, Server Clicks, Prepared Strings.
+  - **NIGHTDRIVE:** Chrome Pluck, Dashboard Pulse, Tail Light Bell.
+  - **UNSPOKEN:** Hummed Pluck, Shell Harp, Deep Pizzicato.
+  - **CYBERSHRINE:** Wire Shamisen, Lantern Pluck, Glass Ghost.
+  - **STOWAWAY:** Sonar Ping, Hull Pizzicato, Condensation Drip.
+  - **CHROMEFURY:** Spark Plug, Chain Snap, Exhaust Stab.
+  - **ASCENSION:** Choir Pluck, Ancient Harp, Monastery Mallet.
+  - **REFRACTION:** Prism Pluck, Fungal Kalimba, Bloom Formant.
+  - **PSI STORM:** Chant Pluck, Neon Spoke, Psychic Ping.
+  - **BLOODWAVE:** VHS Pluck, Rage Stab, Neon Ping Pong.
+  - **DUSTFALL:** Snowflake Pluck, Wasteland Pick, Hologram Pluck.
+  - **SUPERPOSITION:** Either Way, Probability Pluck, Observer Mallet.
+  - **SEVERED:** Desk Toy Piano, Corridor Pick, Cubicle Pizzicato.
+  - **SLINGBLADE:** Gilded Harp, Slingshot Wah, Iron Pick.
+  - **PARADOX:** Cave Drip, Pendulum Clock, Tape Loop Pluck.
+  - **MELTDOWN:** Dosimeter Ping, Rusted Wire, Control Room Mallet.
+  - **ATOMIC AGE:** Tank Twang, Luau Ukulele, Rocket Ping.
+- **Levels:** balanced by measurement against the banks' other presets. The most percussive (pizzicato, clicks, chord stabs) sit a few dB lower so their peaks stay safe.
+
 ## 0.69.0
 
 **NUCLEARSPRING, and a new expansion: ATOMIC AGE.**
