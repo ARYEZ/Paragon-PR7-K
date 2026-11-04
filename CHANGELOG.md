@@ -6,6 +6,8 @@ Each version's notes appear on its GitHub Release page.
 
 **A sampled grand piano: the new SFZ oscillator, seven piano presets, and GET THE PIANO.**
 
+Built for Windows and Linux; there's no macOS build from this version on.
+
 - **SFZ, a new oscillator WAVE.** Any oscillator can now play a multi-sampled instrument from an SFZ file (the open format many free and paid sample libraries come in). Each key plays its own recording, and it goes through the FILTER, VOICE, SHAPERs, sends, insert buses and every effect like any other wave; TRANSPOSE, FINE, the pitch wheel, glide, vibrato and the PITCH envelope move it too. Load one from the oscillator's SFZ line (or drop an .sfz file on the oscillator); the picture shows its key map. What it reads:
   - each sample's keys and the key it was recorded at, its tuning, volume and pan;
   - velocity layers, and how much softer notes get inside a layer;

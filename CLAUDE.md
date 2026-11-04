@@ -112,9 +112,9 @@ Each change keeps every sum and its order (only independent work overlapped, or 
 ## Releases
 
 - Bump `project(ParagonX1 VERSION x.y.z)` in CMakeLists.txt and add a matching `## x.y.z` section at the top of CHANGELOG.md, then push.
-- CI builds Windows, macOS and Linux and publishes a GitHub Release with the three zips, using that changelog section as the notes. It publishes from a push to **any** branch whose version isn't released yet.
+- CI builds Windows and Linux and publishes a GitHub Release with the two zips, using that changelog section as the notes. **No macOS build since 0.71.0** (the owner's word: no Mac, and the account's macOS runners never started). It publishes from a push to **any** branch whose version isn't released yet.
 - Run the full tests (under `ulimit -s 1024`) **after** the version bump, on exactly what will be pushed: 0.63.0's first build failed CI on the fuzz test when a run made just before the bump had passed.
-- After pushing, check the release published (all three zips) about 15 minutes later, **and that its `target_commitish` is your commit**. If the version was already taken, CI skips silently and the release you'd link is someone else's build.
+- After pushing, check the release published (both zips) about 15 minutes later, **and that its `target_commitish` is your commit**. If the version was already taken, CI skips silently and the release you'd link is someone else's build.
 - **One chat per plugin at a time.** In October 2026 two chats released PR7-G and PR7-V under the same version numbers: one chat's releases were skipped, and features (and a UI fix) went missing from the builds the owner installed. Before choosing a version, check the repo's tags *and* other branches for unreleased work; if another branch is ahead, merge it first so every release contains everything.
 - The owner installs from GitHub Releases on **Windows**.
 
