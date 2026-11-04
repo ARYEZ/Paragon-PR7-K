@@ -601,3 +601,173 @@ TEST_CASE ("SFZ in the plugin: a moved library is found by its folder's name; a 
     const auto out = playNote (*lost, 60, 0.2);
     CHECK (std::all_of (out.begin(), out.end(), [] (float v) { return v == 0.0f; }));
 }
+
+//==============================================================================
+// Clips of a real SFZ library for the owner (not run by default): PARAGON_SFZ_FILE the .sfz, PARAGON_RENDER the folder.
+// Plays it plainly (no filter, the AMP as a piano's: instant attack, sustain held, a 1 s release), the last clip through
+// the synth's FILTER and REVERB. Reports the load time, the memory the heads take, the CPU and late disk reads.
+TEST_CASE ("Render SFZ clips", "[.sfzrender]")
+{
+    const juce::File sfzFile (juce::SystemStats::getEnvironmentVariable ("PARAGON_SFZ_FILE", {}));
+    REQUIRE (sfzFile.existsAsFile());
+    const auto folder = juce::File (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", "/tmp/paragon-render"));
+    folder.createDirectory();
+    Folder presets;
+
+    auto processor = makeSfzProcessor (presets.dir);
+    const auto setParam = [&] (const juce::String& id, float value)
+    {
+        auto* p = processor->getParameters().getParameter (id);
+        REQUIRE (p != nullptr);
+        p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+    const auto loadStart = juce::Time::getMillisecondCounterHiRes();
+    processor->loadSfz (0, sfzFile);
+    REQUIRE (processor->waitForSfz (120000));
+    const auto loadSeconds = (juce::Time::getMillisecondCounterHiRes() - loadStart) / 1000.0;
+    const auto instrument = processor->getSfzInstrument (0);
+    REQUIRE (instrument != nullptr);
+    size_t headBytes = 0;
+    for (const auto& s : instrument->samples)
+        headBytes += (s->head[0].size() + s->head[1].size()) * sizeof (float);
+    WARN (instrument->name << ": " << instrument->regions.size() << " regions, " << instrument->samples.size() << " samples, loaded in "
+          << juce::String (loadSeconds, 1) << " s, heads " << juce::String ((double) headBytes / 1.0e6, 0) << " MB; "
+          << instrument->problems.joinIntoString ("; "));
+
+    setParam (ParamIDs::osc (0, "Filter"), 0.0f);
+    setParam (ParamIDs::ampVel, 0.0f);
+    setParam ("amp1Attack", 0.0f);
+    setParam ("amp1Sustain", 1.0f);
+    setParam ("amp1Release", 1000.0f);
+    setParam (ParamIDs::ampReleaseCurve, -1.0f);
+    setParam ("voices", 64.0f);
+    processor->seedRandomForTest (1);
+
+    struct Event { double beat; int type; int note; float velocity; };   // type 0 on, 1 off, 2 pedal (velocity 0 / 1)
+    const auto render = [&] (const juce::String& name, std::vector<Event> events, double bpm, double tailSeconds, bool paced)
+    {
+        std::stable_sort (events.begin(), events.end(), [] (const Event& a, const Event& b) { return a.beat < b.beat; });
+        const auto secondsPerBeat = 60.0 / bpm;
+        const auto total = (int) ((events.back().beat * secondsPerBeat + tailSeconds) * sampleRate);
+        processor->setNonRealtime (! paced);
+        const auto underrunsBefore = processor->getSfzUnderruns();
+        juce::AudioBuffer<float> out (2, total + blockSize), block (2, blockSize);
+        size_t next = 0;
+        double busy = 0.0;
+        const auto start = juce::Time::getMillisecondCounterHiRes();
+        for (int at = 0; at < total; at += blockSize)
+        {
+            juce::MidiBuffer midi;
+            while (next < events.size() && (int) (events[next].beat * secondsPerBeat * sampleRate) < at + blockSize)
+            {
+                const auto& e = events[next++];
+                const auto offset = juce::jlimit (0, blockSize - 1, (int) (e.beat * secondsPerBeat * sampleRate) - at);
+                midi.addEvent (e.type == 0 ? juce::MidiMessage::noteOn (1, e.note, e.velocity)
+                             : e.type == 1 ? juce::MidiMessage::noteOff (1, e.note)
+                                           : juce::MidiMessage::controllerEvent (1, 64, e.velocity > 0.5f ? 127 : 0), offset);
+            }
+            block.clear();
+            const auto t0 = juce::Time::getMillisecondCounterHiRes();
+            processor->processBlock (block, midi);
+            busy += juce::Time::getMillisecondCounterHiRes() - t0;
+            for (int c = 0; c < 2; ++c)
+                out.copyFrom (c, at, block, c, 0, blockSize);
+            if (paced)   // as a DAW plays live: a block every 10.7 ms
+                while (juce::Time::getMillisecondCounterHiRes() - start < 1000.0 * (at + blockSize) / sampleRate)
+                    juce::Thread::sleep (1);
+        }
+        out.setSize (2, total, true);
+        auto peak = 0.0f;
+        for (int c = 0; c < 2; ++c)
+            peak = juce::jmax (peak, out.getMagnitude (c, 0, total));
+        WARN (name << ": peak " << juce::String (juce::Decibels::gainToDecibels (peak), 1) << " dBFS, CPU "
+              << juce::String (100.0 * busy / (1000.0 * total / sampleRate), 1) << "% of a core"
+              << (paced ? ", live: " + juce::String (processor->getSfzUnderruns() - underrunsBefore) + " late samples" : juce::String()));
+        const auto file = folder.getChildFile (name + ".wav");
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions{}.withSampleRate (sampleRate).withNumChannels (2).withBitsPerSample (24));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (out, 0, total);
+    };
+    const auto note = [] (std::vector<Event>& e, double beat, int key, double length, float velocity)
+    {
+        e.push_back ({ beat, 0, key, velocity });
+        e.push_back ({ beat + length, 1, key, 0.0f });
+    };
+    const auto pedal = [] (std::vector<Event>& e, double down, double up)
+    {
+        e.push_back ({ down, 2, 64, 1.0f });
+        e.push_back ({ up, 2, 64, 0.0f });
+    };
+
+    // 1. Velocity: middle C soft to hard, then A from the bottom to the top at a medium touch.
+    {
+        std::vector<Event> e;
+        auto beat = 0.0;
+        for (const auto v : { 0.15f, 0.35f, 0.55f, 0.75f, 0.95f })
+        {
+            note (e, beat, 60, 1.6, v);
+            beat += 2.0;
+        }
+        for (int key = 21; key <= 105; key += 12)
+        {
+            note (e, beat, key, 1.6, 0.6f);
+            beat += 2.0;
+        }
+        render ("01 Salamander - soft to hard, then low to high", e, 80.0, 3.0, false);
+    }
+    // 2. Chords with the pedal, changed at each chord (Am F C G), in A minor at 70 BPM.
+    const std::vector<std::vector<int>> chords { { 45, 57, 60, 64, 69 }, { 41, 53, 57, 60, 65 }, { 48, 55, 60, 64, 67 }, { 43, 55, 59, 62, 67 } };
+    {
+        std::vector<Event> e;
+        for (int bar = 0; bar < 8; ++bar)
+        {
+            const auto& chord = chords[(size_t) bar % 4];
+            const auto at = bar * 4.0;
+            pedal (e, at + 0.1, at + 3.95);
+            for (size_t k = 0; k < chord.size(); ++k)
+                note (e, at + 0.03 * (double) k, chord[k], k == 0 ? 3.8 : 1.0, k == 0 ? 0.62f : 0.48f);
+            note (e, at + 2.0, chord[2] + 12, 1.5, 0.4f);
+        }
+        render ("02 Salamander - chords with the pedal", e, 70.0, 4.0, false);
+    }
+    // 3. A melody over a left hand, played live (paced like a DAW, the disk read as it plays: late reads are counted).
+    {
+        std::vector<Event> e;
+        const int melody[] = { 76, 74, 72, 71, 72, 74, 76, 79, 77, 76, 74, 72, 74, 71, 69, 69 };
+        const float touch[] = { 0.6f, 0.45f, 0.5f, 0.4f, 0.5f, 0.55f, 0.65f, 0.8f, 0.6f, 0.5f, 0.45f, 0.5f, 0.55f, 0.45f, 0.5f, 0.35f };
+        for (int k = 0; k < 16; ++k)
+            note (e, k * 1.0, melody[k], k % 4 == 3 ? 1.9 : 0.9, touch[k]);
+        for (int bar = 0; bar < 4; ++bar)
+        {
+            const auto& chord = chords[(size_t) bar];
+            pedal (e, bar * 4.0 + 0.05, bar * 4.0 + 3.9);
+            for (int k = 0; k < 4; ++k)
+                note (e, bar * 4.0 + k, k % 2 == 0 ? chord[0] : chord[1], 0.9, 0.42f);
+        }
+        render ("03 Salamander - melody, played live", e, 76.0, 4.0, true);
+    }
+    // 4. The same chords through the synth: a low-pass opening over each chord (the FILTER's envelope) and the REVERB.
+    {
+        setParam (ParamIDs::osc (0, "Filter"), 1.0f);
+        setParam ("flt1On", 1.0f);
+        setParam ("flt1Cutoff", 500.0f);
+        setParam ("flt1Env", 0.6f);
+        setParam ("flt1Attack", 1200.0f);
+        setParam ("flt1Decay", 2500.0f);
+        setParam ("flt1Sustain", 0.3f);
+        setParam ("reverbOn", 1.0f);
+        setParam ("reverbMix", 0.35f);
+        std::vector<Event> e;
+        for (int bar = 0; bar < 4; ++bar)
+        {
+            const auto& chord = chords[(size_t) bar];
+            pedal (e, bar * 4.0 + 0.1, bar * 4.0 + 3.95);
+            for (size_t k = 0; k < chord.size(); ++k)
+                note (e, bar * 4.0 + 0.03 * (double) k, chord[k], 3.8, 0.55f);
+        }
+        render ("04 Salamander - through the filter and reverb", e, 70.0, 5.0, false);
+    }
+}
