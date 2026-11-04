@@ -116,7 +116,7 @@ namespace libraries
             {
                 // A long name (GNU) or extended header (POSIX: "length path=...\n"): for the next entry.
                 juce::MemoryBlock data;
-                if (size > (1 << 20) || tar.readIntoMemoryBlock (data, (ssize_t) padded) != padded)
+                if (size > (1 << 20) || (juce::int64) tar.readIntoMemoryBlock (data, (juce::pointer_sized_int) padded) != padded)
                 {
                     error = "A damaged entry in " + archive.getFileName();
                     return false;
