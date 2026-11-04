@@ -1,6 +1,7 @@
 #include "FactoryRigs.h"
 #include "Expansions.h"
 #include "RigBuilder.h"
+#include "SampleLibraries.h"
 
 #include "dsp/eq/EqDesign.h"
 #include "dsp/effects/Delay.h"
@@ -13,6 +14,8 @@
 #include "dsp/effects/Reverb.h"
 #include "dsp/effects/Wah.h"
 #include "dsp/synth/Wavetable.h"
+
+#include <algorithm>
 
 // The built-in expansions (Expansions.h): themed sets of 15 presets, 3 each of leads, pads, basses, keys and arps,
 // each set in a bank of its own. Our own sounds, set up from common synth recipes for the sound the theme names,
@@ -2725,6 +2728,49 @@ namespace
         eqBand (b, 0, eq::Shape::lowShelf, 120.0f, -3.0f);
     }
 
+    // THE REAL PIANO (0.72.0, the owner's ask): an expansion's piano preset gets a second version on the Salamander
+    // Grand, played when it's installed (`Rig::sampled`); without it the preset plays exactly as it was approved.
+    // The sampled version is the preset as built (its effects, macros and MACRO 3 centrepiece), with its synthesized
+    // piano taken out: every oscillator setting and every route to an oscillator gone, oscillator 1 the Salamander
+    // through a gentle low-pass that follows the keys (so the BRIGHT, FELT and similar routes to the FILTER still
+    // work), the AMP as bank A's grand (velocity left to the piano's own 16 layers, a second's release) and the
+    // LIMITER as a ceiling. Call it last, just before `x.add`.
+    struct RealPiano
+    {
+        float cutoff = 3000.0f, keytrack = 0.5f, velocity = 0.4f;   // the FILTER: a felt's darkness, softer notes darker
+        float level = 0.0f;                                         // LEVEL (measured; +12 dB at most)
+        juce::String notes;                                         // what the sampled version says
+        float volume = 1.0f;                                        // oscillator 1's VOLUME: the rest, past LEVEL's +12
+    };
+
+    void realPiano (Builder& b, const RealPiano& p)
+    {
+        auto s = b;
+        for (auto it = s.rig.parameters.begin(); it != s.rig.parameters.end();)
+            it = it->first.startsWith ("osc") ? s.rig.parameters.erase (it) : std::next (it);
+        auto& routes = s.rig.modulation.routes;
+        routes.erase (std::remove_if (routes.begin(), routes.end(), [] (const auto& r) { return r.destination.startsWith ("osc"); }),
+                      routes.end());
+        s.osc (0, "Wave", (float) synth::OscWave::sfz).osc (0, "Volume", p.volume)
+         .filter (FilterType::lp12, p.cutoff, 0.0f, 0.0f)
+         .set (ParamIDs::fltKey, p.keytrack).set (ParamIDs::fltVel, p.velocity).set (ParamIDs::fltEnvVel, 0.0f)
+         .set (ParamIDs::ampVel, 0.0f).ampEnvelope (0.0f, 300.0f, 1.0f, 1000.0f)
+         .set (ParamIDs::ampReleaseCurve, -1.0f)
+         .set (ParamIDs::voices, 48.0f)
+         .set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f)
+         .set (ParamIDs::patchLevel, p.level);
+        if (b.rig.parameters.count (ParamIDs::osc (0, "Arp")) > 0)   // an arp preset: the piano follows its arp
+            s.osc (0, "Arp", b.rig.parameters.at (ParamIDs::osc (0, "Arp")));
+        s.rig.parameters.erase (ParamIDs::ampDecayCurve);   // (its default, as bank A's grand)
+        s.rig.sfz.clear();
+        s.rig.sfz[0] = libraries::refFor (libraries::salamanderGrand());
+        const auto& names = s.rig.modulation.macroNames;
+        s.rig.notes = p.notes + " MACROS: " + names[0] + ", " + names[1] + ", " + names[2] + "." + " The Salamander Grand Piano (free; PR7-K offers to download it once, about 742 MB). Without "
+                                "it this preset plays PR7-K's own synthesized piano.";
+        s.rig.sampled = nullptr;
+        b.rig.sampled = std::make_shared<const Rig> (s.rig);
+    }
+
     // LAST LIGHT (the owner's name): inspired by the score of a film about space, time and leaving the people you love:
     // an enormous church organ, quiet repeating piano, a ticking clock, slow swells, vast cold spaces. Sad, longing,
     // melancholy. No title, characters, places or music from the film: our own sounds.
@@ -2954,6 +3000,9 @@ namespace
         space (memory);
         gravity (memory, "FELT (less felt: a clearer strike)", "GRAVITY (the haze, plus FELT (less felt: a clearer strike))", { 0.75f, 0.4f, 0.1f, 0.55f, 0.8f, 0.45f });
         memory.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: balanced against the others (measured, not by ear)
+        realPiano (memory, { 1800.0f, 0.5f, 0.5f, 12.0f,
+            "A soft, intimate piano for quiet, sad parts: the Salamander Grand darkened as if felt lay over its "
+            "strings, brighter the harder you play, ringing on with the sustain pedal, in a small room.", 1.19f });
         x.add (memory);
 
         auto distant = x.make ("Distant Felt", 11, { "Keys", "Piano", "Felt", "Lo-Fi" },
@@ -3058,6 +3107,10 @@ namespace
         space (tesseract);
         gravity (tesseract, "FELT", "GRAVITY (the haze, plus FELT)", { 0.85f, 0.7f, 0.2f, 0.5f, 1.0f, 0.5f });
         tesseract.set (ParamIDs::patchLevel, -3.9f);   // LEVEL: balanced against the others (measured, not by ear)
+        realPiano (tesseract, { 2200.0f, 0.5f, 0.4f, 10.8f,
+            "A slow piano arpeggio folding in on itself: ARP 1 walks the chord you hold up and down two octaves in "
+            "eighths on the Salamander Grand, every note swelling back in through a reverb that plays its tail "
+            "backwards, with soft dotted echoes." });
         x.add (tesseract);
 
         // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
@@ -3874,6 +3927,9 @@ namespace
         space (echoPiano);
         echoPiano.set (ParamIDs::patchLevel, 0.0f);   // LEVEL: balanced against the others (measured, not by ear)
         dream (echoPiano, "FELT (a clearer strike)", { 2, 0, 0.55f, 0.3f, 0.45f, 0.7f, 0.55f });
+        realPiano (echoPiano, { 1500.0f, 0.5f, 0.5f, 12.0f,
+            "A sparse, sad piano with long echoes: the Salamander Grand, dark and soft, each note answered by "
+            "dotted-eighth echoes fading into a big hall. Brighter the harder you play; the sustain pedal works.", 1.58f });
         x.add (echoPiano);
 
         auto chorale = x.make ("Slowed Chorale", 11, { "Keys", "Lo-Fi", "Pitch", "Tape" },
@@ -5326,6 +5382,9 @@ namespace
         space (memory);
         memory.set (ParamIDs::patchLevel, -7.0f);   // LEVEL: balanced against the others (measured, not by ear)
         awaken (memory, "ECHO (more of the echoes)", { 0.45f, 0, 0.4f, 0.2f, 0.6f, 0.6f });
+        realPiano (memory, { 2500.0f, 0.5f, 0.4f, 10.1f,
+            "A soft piano played as a memory: the Salamander Grand, every note answered by its own reflection coming "
+            "back the wrong way round (a reverb played backwards), with soft half-note echoes trailing after." });
         x.add (memory);
 
         auto fog = x.make ("Fog Glass", 12, { "Keys", "Wavetable", "Chorder", "Glass" },
@@ -7293,6 +7352,8 @@ namespace
         reverb (lament, RT::hall, 0.85f, 0.32f, 30.0f, 4.0f);
         space (lament);
         lament.set (ParamIDs::patchLevel, -4.8f);   // LEVEL: balanced against the others (measured, not by ear)
+        realPiano (lament, { 2500.0f, 0.5f, 0.4f, 12.0f,
+            "A sad, spacious piano: the Salamander Grand, softened, far back in a hall, its echoes slow and dark.", 1.26f });
         x.add (lament);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -9285,6 +9346,9 @@ namespace
         eqBand (distantPiano, 0, eq::Shape::highCut, 3500.0f, 0.0f);
         space (distantPiano);
         distantPiano.set (ParamIDs::patchLevel, -10.7f);   // LEVEL: balanced against the others (measured, not by ear)
+        realPiano (distantPiano, { 3000.0f, 0.5f, 0.4f, 6.7f,
+            "A worn, lonely piano heard from far away: the Salamander Grand with its top taken off (as distance "
+            "does), slow echoes, a long dark hall." });
         x.add (distantPiano);
 
         auto bells = x.make ("Cold Bells", 12, { "Keys", "Additive", "Bell", "Icy" },
@@ -9698,6 +9762,8 @@ namespace
         reverb (home, RT::room, 0.5f, 0.2f, 15.0f, 4.0f);
         space (home);
         home.set (ParamIDs::patchLevel, -9.3f);   // LEVEL: balanced against the others (measured, not by ear)
+        realPiano (home, { 3000.0f, 0.5f, 0.4f, 6.3f,
+            "The warm thread of home: the Salamander Grand, softened, close and intimate, in a small warm room." });
         x.add (home);
 
         auto worlds = x.make ("Many Worlds Keys", 11, { "Keys", "Chorder", "Detuned", "Wide" },

@@ -8,6 +8,7 @@
 #include "rigs/ModMatrix.h"
 
 #include <map>
+#include <memory>
 #include <optional>
 
 // A preset ("rig" in the code, as across the PR7 family): one complete
@@ -51,6 +52,10 @@ struct Rig
     // found through the folders the user has loaded from). The samples stay on the user's computer, never in the preset.
     std::map<int, juce::String> sfz;
 
+    // 0.72.0: a factory preset's version on a downloaded library (the Salamander Grand), played instead of this one
+    // when the library is installed; this one is then its fallback, kept exactly as it was. Never saved: only factory
+    // presets have one, and a project or a user preset saves whichever version was playing.
+    std::shared_ptr<const Rig> sampled;
 
     // The MOD MATRIX's routes and the macros' names (stage 4a).
     ModMatrix modulation;

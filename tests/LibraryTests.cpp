@@ -9,6 +9,7 @@
 #include "PluginProcessor.h"
 #include "SampleLibraries.h"
 #include "ui/MainView.h"
+#include "rigs/FactoryRigs.h"
 
 using Catch::Matchers::WithinAbs;
 
@@ -212,6 +213,81 @@ TEST_CASE ("Libraries: GET THE PIANO downloads the library and a preset waiting 
         peak = juce::jmax (peak, buffer.getMagnitude (0, 0, 256));
     }
     CHECK (peak > 0.05f);
+}
+
+TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback until the piano is in", "[library][plugin]")
+{
+    // 0.72.0: seven expansion presets carry a version on the Salamander (Rig::sampled), played once it's installed.
+    MainView::offerLibrary = false;
+    const auto& library = libraries::salamanderGrand();
+    const auto wave = ParamIDs::osc (0, "Wave");
+    juce::StringArray withPiano;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.sampled == nullptr)
+            continue;
+        withPiano.add (rig.name);
+        INFO (rig.name);
+        const auto& sampled = *rig.sampled;
+        CHECK (sampled.name == rig.name);
+        CHECK (sampled.bank == rig.bank);
+        CHECK (sampled.number == rig.number);
+        CHECK (sampled.sampled == nullptr);
+        CHECK (sampled.sfz.size() == 1);
+        CHECK (sampled.sfz.at (0) == libraries::refFor (library));
+        CHECK (sampled.parameters.at (wave) == (float) synth::OscWave::sfz);
+        CHECK (sampled.notes.contains ("Salamander"));
+        for (const auto& route : sampled.modulation.routes)
+            CHECK (! route.destination.startsWith ("osc"));      // the synthesized piano's routes went with it
+        CHECK (sampled.modulation.macroNames == rig.modulation.macroNames);
+        // The fallback is the preset as approved: no sampled oscillator.
+        CHECK (rig.sfz.empty());
+        CHECK ((rig.parameters.count (wave) == 0 || rig.parameters.at (wave) != (float) synth::OscWave::sfz));
+    }
+    withPiano.sort (true);
+    CHECK (withPiano.joinIntoString (", ") == "Distant Piano, Echo Piano, Felt Memory, Home Piano, Lament Piano, Memory Loop, Tesseract");
+
+    TempFolder t;
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.createDirectory();
+    const auto archive = t.dir.getChildFile ("server/piano.tar.gz");
+    archive.getParentDirectory().createDirectory();
+    writeStandIn (archive);
+
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets);
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    processor.prepareToPlay (48000.0, 256);
+    processor.setNonRealtime (true);
+    const auto waveNow = [&] { return processor.getParameters().getParameter (wave)->convertFrom0to1 (
+                                          processor.getParameters().getParameter (wave)->getValue()); };
+
+    // Without the piano: the synthesized one, nothing missing (no offer of a sampled oscillator that can't play).
+    const auto* lament = processor.getRigLibrary().findFactory ("Lament Piano");
+    REQUIRE (lament != nullptr);
+    processor.loadRig (*lament);
+    processor.waitForSfz();
+    CHECK (waveNow() != (float) synth::OscWave::sfz);
+    CHECK (processor.missingLibrary (0) == nullptr);
+
+    // The piano arrives: the preset (not edited) becomes its sampled version, and plays it.
+    processor.startLibraryDownload (juce::URL (archive).toString (false));
+    REQUIRE (const_cast<libraries::Download&> (processor.getLibraryDownload()).waitUntilFinished (30000));
+    REQUIRE (processor.getLibraryDownload().getState() == libraries::Download::State::done);
+    processor.waitForSfz();
+    processor.waitForSfz();
+    CHECK (waveNow() == (float) synth::OscWave::sfz);
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
+    CHECK (processor.getCurrentRig().name == "Lament Piano");
+
+    // Loading another with the piano in: straight to its sampled version.
+    processor.loadRig (*processor.getRigLibrary().findFactory ("Tesseract"));
+    processor.waitForSfz();
+    CHECK (waveNow() == (float) synth::OscWave::sfz);
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
+    // A preset without one is unchanged.
+    processor.loadRig (*processor.getRigLibrary().findFactory ("Fog Glass"));
+    CHECK (waveNow() != (float) synth::OscWave::sfz);
 }
 
 TEST_CASE ("Libraries: a broken download isn't unpacked and leaves nothing behind", "[library]")

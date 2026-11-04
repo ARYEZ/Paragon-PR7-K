@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.72.0
+
+**The real piano in the expansions: seven expansion piano presets play the Salamander Grand once it's downloaded.**
+
+- **Seven expansion presets now have two versions.** Felt Memory and Tesseract (LAST LIGHT), Echo Piano (DREAMSTATE), Memory Loop (UNSPOKEN), Lament Piano (ASCENSION), Distant Piano (DUSTFALL) and Home Piano (SUPERPOSITION) play the sampled Salamander Grand when it's on your computer, with everything else about the preset kept: its echoes, reverbs and other effects, its macros, and its MACRO 3 centrepiece (GRAVITY, DREAM, LEVIATHAN and so on). Each is a little darker or brighter to suit its mood (the FILTER follows the keys, so BRIGHT and the other filter macros still work).
+- **Without the piano, nothing changes.** Until the Salamander is downloaded, these seven play PR7-K's own synthesized piano, exactly as before (checked: every one renders byte for byte as in 0.71.0). Loading one asks once whether to get the piano; once the download finishes, a preset you haven't edited switches over by itself.
+- **Levels.** The sampled versions were set by measurement to sit where the synthesized ones do (about -17 to -18.5 loudness). Where a real hammer strike would have peaked over -2 dBFS, they sit up to 1.5 dB quieter instead. The LIMITER holds a -1 dBFS ceiling.
+- A project or a saved preset keeps whichever version was playing when it was saved.
+
 ## 0.71.0
 
 **A sampled grand piano: the new SFZ oscillator, seven piano presets, and GET THE PIANO.**

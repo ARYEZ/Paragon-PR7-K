@@ -251,12 +251,22 @@ void MainView::offerMissingLibrary()
     const libraries::Library* missing = nullptr;
     for (int i = 0; i < ParamIDs::numOscillators && missing == nullptr; ++i)
         missing = audioProcessor.missingLibrary (i);
+    // 0.72.0: a preset with a sampled version, playing its synthesized fallback.
+    auto fallback = false;
+    if (missing == nullptr && ! audioProcessor.isLibraryInstalled (libraries::salamanderGrand()))
+        if (const auto* entry = audioProcessor.findCurrentRigEntry(); entry != nullptr && entry->isFactory && entry->rig.sampled != nullptr)
+        {
+            missing = &libraries::salamanderGrand();
+            fallback = true;
+        }
     if (missing == nullptr)
         return;
     libraryOfferedFor = key;
     juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon, "GET THE PIANO",
-        "\"" + rig.name + "\" plays the " + missing->name + ", a free sampled piano that isn't on this computer yet.\n\n"
-        "Download it now? It's about " + juce::String (missing->bytes / 1000000) + " MB (it unpacks to about 714 MB, in "
+        (fallback ? "\"" + rig.name + "\" can play the " + missing->name + ", a free sampled piano that isn't on this computer "
+                    "yet. Until it is, it plays PR7-K's own synthesized piano.\n\n"
+                  : "\"" + rig.name + "\" plays the " + missing->name + ", a free sampled piano that isn't on this computer yet.\n\n")
+        + "Download it now? It's about " + juce::String (missing->bytes / 1000000) + " MB (it unpacks to about 714 MB, in "
         "PR7-K's presets folder). It only has to be downloaded once.",
         "DOWNLOAD", "NOT NOW", this,
         juce::ModalCallbackFunction::create ([safe = juce::Component::SafePointer<MainView> (this)] (int result)

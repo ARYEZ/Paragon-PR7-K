@@ -8,6 +8,7 @@
 #include "ModDestinations.h"
 #include "Parameters.h"
 #include "PluginProcessor.h"
+#include "SampleLibraries.h"
 #include "rigs/Expansions.h"
 #include "rigs/FactoryRigs.h"
 #include "ui/RigBrowser.h"
@@ -55,6 +56,14 @@ namespace
             processor.prepareToPlay (rate, block);
             processor.useRigFolder (temp.folder);
             processor.setPlayHead (&song);
+            // 0.72.0: PARAGON_LIBRARIES (a folder holding the Salamander's) linked in, so the presets that play the
+            // sampled piano play it (without it they play their synthesized fallback).
+            const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+            if (const auto& salamander = libraries::salamanderGrand(); libraries.getChildFile (salamander.folder).isDirectory())
+            {
+                processor.getLibrariesFolder().createDirectory();
+                libraries.getChildFile (salamander.folder).createSymbolicLink (processor.getLibrariesFolder().getChildFile (salamander.folder), true);
+            }
         }
         const RigLibrary::Entry& entryNamed (const juce::String& name)
         {
@@ -67,6 +76,7 @@ namespace
         void load (const juce::String& name)
         {
             processor.loadRig (entryNamed (name));
+            REQUIRE (processor.waitForSfz (180000)); // (a sampled piano loads in the background: slow from a cold disk)
             processor.prepareToPlay (rate, block);   // fresh: no tails from the last one
             processor.finishTableBuilds();           // FFT-edited waves are built in the background
             processor.seedRandomForTest (1);

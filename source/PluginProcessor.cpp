@@ -2210,6 +2210,13 @@ void ParagonX1AudioProcessor::installSfzLoads()
             for (int i = 0; i < ParamIDs::numOscillators; ++i)
                 if (sfzStates[(size_t) i] == SfzState::failed && sfzRefs[(size_t) i].isNotEmpty())
                     startSfzLoad (i, sfzRefs[(size_t) i]);
+        // A factory preset with a sampled version, playing its fallback and not edited, becomes the sampled one.
+        if (state == libraries::Download::State::done && ! rigModified.load())
+            if (const auto* entry = findCurrentRigEntry(); entry != nullptr && entry->isFactory && entry->rig.sampled != nullptr)
+            {
+                const auto copy = *entry;
+                loadRig (copy);
+            }
         rigBroadcaster.sendChangeMessage();
     }
     std::vector<SfzLoaded> done;
@@ -2342,8 +2349,9 @@ void ParagonX1AudioProcessor::applyRig (const Rig& rig)
 
 void ParagonX1AudioProcessor::loadRig (const RigLibrary::Entry& entry)
 {
-    // Copy first: applying parameters can't invalidate it, but be safe.
-    const auto rig = entry.rig;
+    // Copy first: applying parameters can't invalidate it, but be safe. A factory preset with a sampled version
+    // (0.72.0) plays that when its library is installed, else itself.
+    const auto rig = entry.rig.sampled != nullptr && isLibraryInstalled (libraries::salamanderGrand()) ? *entry.rig.sampled : entry.rig;
     currentRig = { rig.name, entry.file, entry.isFactory ? rig.name : juce::String() };
     applyRig (rig);
     requestCheckpoint();
