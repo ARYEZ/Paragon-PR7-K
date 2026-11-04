@@ -253,26 +253,28 @@ void MainView::offerMissingLibrary()
         missing = audioProcessor.missingLibrary (i);
     // 0.72.0: a preset with a sampled version, playing its synthesized fallback.
     auto fallback = false;
-    if (missing == nullptr && ! audioProcessor.isLibraryInstalled (libraries::salamanderGrand()))
+    if (missing == nullptr)
         if (const auto* entry = audioProcessor.findCurrentRigEntry(); entry != nullptr && entry->isFactory && entry->rig.sampled != nullptr)
-        {
-            missing = &libraries::salamanderGrand();
-            fallback = true;
-        }
+            if (const auto* needs = ParagonX1AudioProcessor::libraryOf (*entry->rig.sampled); needs != nullptr && ! audioProcessor.isLibraryInstalled (*needs))
+            {
+                missing = needs;
+                fallback = true;
+            }
     if (missing == nullptr)
         return;
     libraryOfferedFor = key;
-    juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon, "GET THE PIANO",
-        (fallback ? "\"" + rig.name + "\" can play the " + missing->name + ", a free sampled piano that isn't on this computer "
-                    "yet. Until it is, it plays PR7-K's own synthesized piano.\n\n"
-                  : "\"" + rig.name + "\" plays the " + missing->name + ", a free sampled piano that isn't on this computer yet.\n\n")
-        + "Download it now? It's about " + juce::String (missing->bytes / 1000000) + " MB (it unpacks to about 714 MB, in "
-        "PR7-K's presets folder). It only has to be downloaded once.",
+    const auto kind = missing->what.toLowerCase();
+    juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon, "GET THE " + missing->what,
+        (fallback ? "\"" + rig.name + "\" can play the " + missing->name + ", a free sampled " + kind + " that isn't on this computer "
+                    "yet. Until it is, it plays PR7-K's own synthesized sounds.\n\n"
+                  : "\"" + rig.name + "\" plays the " + missing->name + ", a free sampled " + kind + " that isn't on this computer yet.\n\n")
+        + "Download it now? It's about " + juce::String (missing->bytes / 1000000) + " MB (it unpacks to about "
+        + juce::String (missing->unpackedMb) + " MB, in PR7-K's presets folder). It only has to be downloaded once.",
         "DOWNLOAD", "NOT NOW", this,
-        juce::ModalCallbackFunction::create ([safe = juce::Component::SafePointer<MainView> (this)] (int result)
+        juce::ModalCallbackFunction::create ([safe = juce::Component::SafePointer<MainView> (this), missing] (int result)
         {
             if (safe != nullptr && result == 1)
-                safe->audioProcessor.startLibraryDownload();
+                safe->audioProcessor.startLibraryDownload (*missing);
         }));
 }
 

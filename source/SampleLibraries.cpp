@@ -10,14 +10,52 @@ namespace libraries
             741757374,
             "SalamanderGrandPiano-SFZ+FLAC-V3+20200602",
             "SalamanderGrandPiano-V3+20200602.sfz",
-            "Salamander Grand Piano by Alexander Holm (CC-BY 3.0), FreePats edition by Roberto (freepats.zenvoid.org)"
+            "Salamander Grand Piano by Alexander Holm (CC-BY 3.0), FreePats edition by Roberto (freepats.zenvoid.org)",
+            "PIANO",
+            true,
+            714
         };
         return library;
     }
 
+    const Library& sonatinaOrchestra()
+    {
+        static const Library library {
+            "Sonatina Symphonic Orchestra",
+            "https://github.com/peastman/sso/archive/refs/tags/v4.0.tar.gz",
+            1377280000,                 // (measured from the same tag's git archive: GitHub's is about this)
+            "sso-4.0",
+            "Sonatina Symphonic Orchestra/Brass - Notation/Horns Sustain.sfz",
+            "Sonatina Symphonic Orchestra by Mattias Westlund and Peter Eastman (Creative Commons Sampling Plus 1.0), "
+            "github.com/peastman/sso",
+            "ORCHESTRA",
+            false,
+            1420
+        };
+        return library;
+    }
+
+    std::vector<const Library*> all()
+    {
+        return { &salamanderGrand(), &sonatinaOrchestra() };
+    }
+
     juce::String refFor (const Library& library)
     {
-        return "{sfz:" + library.folder + "}/" + library.sfz;
+        return refFor (library, library.sfz);
+    }
+
+    juce::String refFor (const Library& library, const juce::String& sfzPath)
+    {
+        return "{sfz:" + library.folder + "}/" + sfzPath;
+    }
+
+    const Library* libraryFor (const juce::String& ref)
+    {
+        for (const auto* library : all())
+            if (ref.startsWith ("{sfz:" + library->folder + "}/"))
+                return library;
+        return nullptr;
     }
 
     namespace
@@ -275,13 +313,14 @@ namespace libraries
                 {
                     out.reset();
                     archive.deleteFile();
-                    return fail ("Couldn't save the download (is the disk full? It needs about 1.5 GB free while it unpacks).");
+                    return fail ("Couldn't save the download (is the disk full? It needs about " + juce::String (2 * library.bytes / 1000000000.0 + 0.1, 1)
+                             + " GB free while it unpacks).");
                 }
                 got += n;
                 progress = (float) juce::jlimit (0.0, 1.0, (double) got / (double) juce::jmax<juce::int64> (1, expected));
             }
             out.reset();
-            if (library.bytes > 0 && got != library.bytes && sourceUrl == library.url)
+            if (library.exactSize && library.bytes > 0 && got != library.bytes && sourceUrl == library.url)
             {
                 archive.deleteFile();
                 return fail ("The download stopped part way (" + juce::String (got / 1000000) + " of " + juce::String (library.bytes / 1000000)

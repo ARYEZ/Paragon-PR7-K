@@ -190,7 +190,9 @@ void SettingsPage::paint (juce::Graphics& g)
                    "Free and open source under the GNU AGPLv3.\n"
                    "Built with JUCE (AGPLv3) and the Inter typeface (SIL OFL). "
                    "The piano presets play the Salamander Grand Piano by Alexander Holm (CC-BY 3.0), "
-                   "FreePats edition, downloaded from freepats.zenvoid.org.");
+                   "FreePats edition, downloaded from freepats.zenvoid.org. "
+                   "The orchestral presets play the Sonatina Symphonic Orchestra by Mattias Westlund and Peter Eastman "
+                   "(Creative Commons Sampling Plus 1.0), downloaded from github.com/peastman/sso.");
 }
 
 void SettingsPage::resized()

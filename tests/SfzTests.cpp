@@ -291,6 +291,15 @@ TEST_CASE ("SFZ: loops hold a note for as long as it's held; LOOP_SUSTAIN lets g
         const auto longRelease = sustained (*inst, 1.0, 2.0, 3000.0f);
         CHECK (rms (longRelease, at (1.6), at (1.9)) > 0.05);
     }
+    // A loop with no LOOP_START / LOOP_END runs over the whole recording, to its last frame.
+    {
+        const auto inst = make ("loop_mode=loop_continuous");
+        REQUIRE (inst->regions[0].loops());
+        CHECK (inst->regions[0].loopStart == 0);
+        CHECK (inst->regions[0].loopEnd == 24000 - 1);
+        const auto whole = sustained (*inst, 2.0, 2.2, 50.0f);
+        CHECK_THAT (levelAt (whole, 480.0, at (1.0), at (0.5)), WithinAbs (0.5, 0.005));
+    }
     // LOOP_SUSTAIN: loops while held; let go, it plays on past the loop to the recording's end (0.2 s on), then stops,
     // even under a long AMP release.
     {

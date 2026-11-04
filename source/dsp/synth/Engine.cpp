@@ -2888,7 +2888,7 @@ namespace synth
             player->decay = 1.0f;
             auto gain = region.gain * region.velocityGain (voice.velocity) * region.crossfade (velocity127);
             // A loop needs the sample whole in memory (the reader keeps a looped one so).
-            player->looping = region.loops() && region.loopEnd + 2 < (juce::int64) sample.headFrames;
+            player->looping = region.loops() && region.loopEnd < (juce::int64) sample.headFrames;   // (reads past LOOP_END wrap round)
             if (release && region.rtDecayDb > 0.0f)
                 gain *= juce::Decibels::decibelsToGain (-region.rtDecayDb * held, -120.0f);
             float l, r;

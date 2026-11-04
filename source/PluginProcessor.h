@@ -165,7 +165,16 @@ public:
     // GET THE PIANO (0.71.0): the free libraries the factory presets play, downloaded into the presets folder's
     // "Libraries" (`url` overrides the library's: tests). When it's in, oscillators waiting for it load it.
     juce::File getLibrariesFolder() const { return rigLibrary->getFolder().getChildFile ("Libraries"); }
-    void startLibraryDownload (const juce::String& url = {});
+    void startLibraryDownload (const libraries::Library& library, const juce::String& url = {});
+    void startLibraryDownload (const juce::String& url = {}) { startLibraryDownload (libraries::salamanderGrand(), url); }
+    // The library a preset's sampled version needs (0.73.0), null if none.
+    static const libraries::Library* libraryOf (const Rig& rig)
+    {
+        for (const auto& [osc, ref] : rig.sfz)
+            if (const auto* library = libraries::libraryFor (ref))
+                return library;
+        return nullptr;
+    }
     void cancelLibraryDownload() { libraryDownload.cancel(); }
     const libraries::Download& getLibraryDownload() const noexcept { return libraryDownload; }
     bool isLibraryInstalled (const libraries::Library& library) const

@@ -215,6 +215,89 @@ TEST_CASE ("Libraries: GET THE PIANO downloads the library and a preset waiting 
     CHECK (peak > 0.05f);
 }
 
+TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets' references, downloaded and played", "[library][plugin]")
+{
+    // 0.73.0: the Sonatina Symphonic Orchestra beside the piano. A stand-in with its layout: instruments in folders,
+    // samples a folder up ("../Samples/...").
+    MainView::offerLibrary = false;
+    const auto& sso = libraries::sonatinaOrchestra();
+    const auto& piano = libraries::salamanderGrand();
+    const juce::String horns = "Sonatina Symphonic Orchestra/Brass - Notation/Horns Sustain.sfz";
+    CHECK (sso.sfz == horns);
+    CHECK_FALSE (sso.exactSize);   // GitHub's own archive: its size isn't fixed
+    CHECK (libraries::libraryFor (libraries::refFor (sso, horns)) == &sso);
+    CHECK (libraries::libraryFor (libraries::refFor (piano)) == &piano);
+    CHECK (libraries::libraryFor ("{sfz:some other folder}/x.sfz") == nullptr);
+    CHECK (libraries::all().size() == 2);
+
+    TempFolder t;
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.createDirectory();
+    const auto archive = t.dir.getChildFile ("server/sso.tar.gz");
+    archive.getParentDirectory().createDirectory();
+    {
+        TarWriter tar;
+        tar.folder (sso.folder + "/");
+        tar.file (sso.folder + "/" + horns,
+                  text ("<group> loop_mode=loop_continuous\n<region> sample=../Samples/Horns/horns-sus-c4.wav lokey=0 hikey=127 pitch_keycenter=60\n"), 'L');
+        tar.file (sso.folder + "/Sonatina Symphonic Orchestra/Samples/Horns/horns-sus-c4.wav", sineWav(), 'L');
+        tar.write (archive);
+    }
+
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets);
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    processor.prepareToPlay (48000.0, 256);
+    processor.setNonRealtime (true);
+
+    Rig rig;
+    rig.name = "Orchestra Test";
+    rig.parameters[ParamIDs::osc (0, "Wave")] = (float) synth::OscWave::sfz;
+    rig.parameters[ParamIDs::osc (0, "Filter")] = 0.0f;
+    rig.sfz[0] = libraries::refFor (sso, horns);
+    RigLibrary::Entry entry;
+    entry.rig = rig;
+    processor.loadRig (entry);
+    processor.waitForSfz();
+    CHECK (processor.missingLibrary (0) == &sso);          // the orchestra, not the piano
+    CHECK (processor.getSfzName (0).contains ("Horns Sustain"));
+    CHECK (ParagonX1AudioProcessor::libraryOf (rig) == &sso);
+
+    processor.startLibraryDownload (sso, juce::URL (archive).toString (false));
+    REQUIRE (const_cast<libraries::Download&> (processor.getLibraryDownload()).waitUntilFinished (30000));
+    INFO (processor.getLibraryDownload().getMessage());
+    REQUIRE (processor.getLibraryDownload().getState() == libraries::Download::State::done);
+    CHECK (&processor.getLibraryDownload().getLibrary() != &piano);
+    CHECK (processor.isLibraryInstalled (sso));
+    CHECK_FALSE (processor.isLibraryInstalled (piano));
+    processor.waitForSfz();
+    processor.waitForSfz();
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
+    CHECK (processor.missingLibrary (0) == nullptr);
+    {
+        const auto inst = processor.getSfzInstrument (0);
+        REQUIRE (inst != nullptr);
+        REQUIRE (inst->regions.size() == 1);
+        CHECK (inst->regions[0].loops());
+        CHECK (inst->samples[0]->headFrames == inst->samples[0]->length);   // kept whole for its loop
+    }
+
+    // It plays, and its one-second sample loops: still sounding after three seconds held.
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    midi.addEvent (juce::MidiMessage::noteOn (1, 60, 1.0f), 0);
+    auto late = 0.0f;
+    for (int k = 0; k < 600; ++k)
+    {
+        buffer.clear();
+        processor.processBlock (buffer, midi);
+        midi.clear();
+        if (k > 560)
+            late = juce::jmax (late, buffer.getMagnitude (0, 0, 256));
+    }
+    CHECK (late > 0.05f);
+}
+
 TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback until the piano is in", "[library][plugin]")
 {
     // 0.72.0: seven expansion presets carry a version on the Salamander (Rig::sampled), played once it's installed.

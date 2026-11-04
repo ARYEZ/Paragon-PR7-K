@@ -139,11 +139,12 @@ void SfzChooser::refresh()
     using State = ParagonX1AudioProcessor::SfzState;
     juce::String text;
     const auto& download = processor.getLibraryDownload();
-    if (download.isRunning() && processor.getSfzRef (oscillator).isNotEmpty() && processor.getSfzState (oscillator) == State::failed)
-        text = (download.getState() == libraries::Download::State::downloading ? "DOWNLOADING THE PIANO " : "UNPACKING THE PIANO ")
+    const auto* missing = processor.missingLibrary (oscillator);
+    if (download.isRunning() && missing != nullptr && missing->folder == download.getLibrary().folder)
+        text = (download.getState() == libraries::Download::State::downloading ? "DOWNLOADING THE " : "UNPACKING THE ") + missing->what + " "
              + juce::String (juce::roundToInt (100.0f * download.getProgress())) + "%";
-    else if (const auto* library = processor.missingLibrary (oscillator))
-        text = "GET THE PIANO (" + juce::String (library->bytes / 1000000) + " MB)...";
+    else if (missing != nullptr)
+        text = "GET THE " + missing->what + " (" + juce::String (missing->bytes / 1000000) + " MB)...";
     else switch (processor.getSfzState (oscillator))
     {
         case State::none:    text = "LOAD AN SFZ FILE..."; break;
@@ -206,7 +207,10 @@ void SfzChooser::showMenu()
                                 safe->refresh();
                             }
                             else if (result == 3)
-                                safe->processor.startLibraryDownload();
+                            {
+                                if (const auto* library = safe->processor.missingLibrary (safe->oscillator))
+                                    safe->processor.startLibraryDownload (*library);
+                            }
                             else if (result == 4)
                                 safe->processor.cancelLibraryDownload();
                         });

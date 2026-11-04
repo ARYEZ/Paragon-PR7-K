@@ -2107,8 +2107,14 @@ juce::String ParagonX1AudioProcessor::getSfzName (int osc) const
 {
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
     // A library PR7-K knows by its own name (not its file's).
-    if (const auto& salamander = libraries::salamanderGrand(); sfzRefs[(size_t) osc].startsWith (libraries::refFor (salamander)))
-        return salamander.name;
+    if (const auto* library = libraries::libraryFor (sfzRefs[(size_t) osc]))
+    {
+        // The piano is one instrument; an orchestra names which of its instruments too.
+        if (sfzRefs[(size_t) osc].upToLastOccurrenceOf ("|", false, false) == libraries::refFor (*library) && library == &libraries::salamanderGrand())
+            return library->name;
+        const auto named = sfzRefs[(size_t) osc].upToLastOccurrenceOf ("|", false, false);
+        return named.fromLastOccurrenceOf ("/", false, false).upToLastOccurrenceOf (".", false, false) + " (" + library->name + ")";
+    }
     if (const auto& instrument = sfzInstruments[(size_t) osc]; instrument != nullptr && sfzStates[(size_t) osc] == SfzState::loaded)
         return instrument->name;
     const auto named = sfzRefs[(size_t) osc].upToLastOccurrenceOf ("|", false, false);
@@ -2184,9 +2190,9 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     });
 }
 
-void ParagonX1AudioProcessor::startLibraryDownload (const juce::String& url)
+void ParagonX1AudioProcessor::startLibraryDownload (const libraries::Library& library, const juce::String& url)
 {
-    libraryDownload.start (libraries::salamanderGrand(), getLibrariesFolder(), url);
+    libraryDownload.start (library, getLibrariesFolder(), url);
     libraryStateSeen = libraryDownload.getState();
     rigBroadcaster.sendChangeMessage();
 }
@@ -2196,8 +2202,7 @@ const libraries::Library* ParagonX1AudioProcessor::missingLibrary (int osc) cons
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
     if (sfzStates[(size_t) osc] != SfzState::failed)
         return nullptr;
-    const auto& salamander = libraries::salamanderGrand();
-    return sfzRefs[(size_t) osc].startsWith (libraries::refFor (salamander)) ? &salamander : nullptr;
+    return libraries::libraryFor (sfzRefs[(size_t) osc]);
 }
 
 void ParagonX1AudioProcessor::installSfzLoads()
@@ -2351,7 +2356,8 @@ void ParagonX1AudioProcessor::loadRig (const RigLibrary::Entry& entry)
 {
     // Copy first: applying parameters can't invalidate it, but be safe. A factory preset with a sampled version
     // (0.72.0) plays that when its library is installed, else itself.
-    const auto rig = entry.rig.sampled != nullptr && isLibraryInstalled (libraries::salamanderGrand()) ? *entry.rig.sampled : entry.rig;
+    const auto* needs = entry.rig.sampled != nullptr ? libraryOf (*entry.rig.sampled) : nullptr;
+    const auto rig = needs != nullptr && isLibraryInstalled (*needs) ? *entry.rig.sampled : entry.rig;
     currentRig = { rig.name, entry.file, entry.isFactory ? rig.name : juce::String() };
     applyRig (rig);
     requestCheckpoint();
