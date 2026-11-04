@@ -166,23 +166,28 @@ namespace
             { "Bike Spokes", -8.1f },
             { "Bloom Formant", -3.7f },
             { "Cassette Harp", -9.7f },
+            { "Cave Drip", -4.6f },
             { "Chain Snap", -5.4f },
-            { "Neon Ping Pong", -0.1f },
-            { "Snowflake Pluck", 0.4f },
             { "Chant Pluck", -2.8f },
             { "Choir Pluck", -6.4f },
             { "Chrome Pluck", -3.4f },
             { "Code Drip", -2.6f },
             { "Condensation Drip", -5.4f },
+            { "Control Room Mallet", -6.6f },
+            { "Corridor Pick", -2.7f },
+            { "Cubicle Pizzicato", -5.1f },
             { "Dashboard Pulse", -10.1f },
             { "Deep Pizzicato", -3.2f },
             { "Desert Oud", -7.6f },
+            { "Desk Toy Piano", -7.0f },
+            { "Dosimeter Ping", -5.8f },
             { "Either Way", -7.2f },
             { "Ember Pluck", 0.7f },
             { "Exhaust Stab", -8.1f },
             { "Folding Guitar", -4.3f },
             { "Fungal Kalimba", -9.7f },
             { "Funhouse Mallet", -6.3f },
+            { "Gilded Harp", -9.7f },
             { "Glass Ghost", -7.5f },
             { "Glass Rain Taps", -7.5f },
             { "Glyph Ring", -1.5f },
@@ -192,13 +197,17 @@ namespace
             { "Hologram Pluck", -2.8f },
             { "Hull Pizzicato", -2.3f },
             { "Hummed Pluck", -2.3f },
+            { "Iron Pick", 4.2f },
             { "Lantern Pluck", -6.9f },
             { "Laser Lattice", -2.4f },
+            { "Luau Ukulele", -2.1f },
             { "Monastery Mallet", -7.7f },
             { "Muted Felt", -5.2f },
+            { "Neon Ping Pong", -0.1f },
             { "Neon Spoke", -4.7f },
             { "Observer Mallet", -8.3f },
             { "Orbit Kalimba", -9.0f },
+            { "Pendulum Clock", -3.6f },
             { "Pixel Ping", -3.0f },
             { "Prepared Strings", -1.9f },
             { "Prism Pluck", -4.5f },
@@ -206,17 +215,23 @@ namespace
             { "Psychic Ping", -4.9f },
             { "Rage Stab", -8.1f },
             { "Rivet Gun", -1.4f },
+            { "Rocket Ping", -3.3f },
             { "Rooftop Pick", -7.2f },
+            { "Rusted Wire", 0.1f },
             { "Sandglass Kanun", -7.3f },
             { "Server Clicks", -2.7f },
             { "Shell Harp", -9.3f },
             { "Sinking Harp", -8.7f },
+            { "Slingshot Wah", -5.8f },
+            { "Snowflake Pluck", 0.4f },
             { "Sonar Ping", -6.1f },
             { "Spark Plug", -9.5f },
             { "Staccato Horns", -3.4f },
             { "Starlight Harp", -9.3f },
             { "Street Zither", -2.3f },
             { "Tail Light Bell", -13.8f },
+            { "Tank Twang", -7.2f },
+            { "Tape Loop Pluck", -5.4f },
             { "Ticking Pizzicato", -6.2f },
             { "VHS Pluck", -2.1f },
             { "Wasteland Pick", -5.1f },
@@ -10263,6 +10278,62 @@ namespace
         space (corridor);
         corridor.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (corridor);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkToy = x.make ("Desk Toy Piano", 16, { "Pluck", "FM", "Toy Piano", "Office" },
+            "A cheerful toy piano on a manager's desk: a sine struck by FM from a sine 3.9 times its pitch (the clangy, "
+            "slightly wrong overtones of a struck metal rod), bright at the strike and settling fast, a short room. "
+            "MACROS: BRIGHT, SPACE, DREAD (a tritone creeps in underneath).");
+        pkToy.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.745f).osc (0, "FmAmount", 0.06f)
+             .ampEnvelope (0.3f, 900.0f, 0.0f, 400.0f).set (ParamIDs::ampVel, 0.45f);
+        oneShot (pkToy, 0, { SP20 { 0.0f, 1.0f, -0.6f }, SP20 { 0.15f, 0.0f, 0.0f } });
+        route (pkToy, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
+        route (pkToy, "velocity", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkToy, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        clash (pkToy, 1, synth::OscWave::sine, -6.0f, 0.25f);
+        macros (pkToy, "BRIGHT", "SPACE", "DREAD");
+        reverb (pkToy, RT::room, 0.4f, 0.15f);
+        space (pkToy);
+        pkAdd (x, pkToy);
+
+        auto pkCorridor = x.make ("Corridor Pick", 17, { "Pluck", "Palm Mute", "Muted", "Office" },
+            "Footsteps in a long white corridor, as a muted string: a saw and a pulse with the string damped as soon as "
+            "it's picked (the filter shut inside a tenth of a second), a dry thud of the pick. MACROS: BRIGHT, SPACE, "
+            "DREAD (a half step above, rubbing).");
+        pkCorridor.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+                  .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f)
+                  .filter (FilterType::lp24, 450.0f, 0.2f, 0.45f).set (ParamIDs::fltKey, 0.5f)
+                  .filterEnvelope (0.3f, 80.0f, 0.0f, 80.0f)
+                  .ampEnvelope (0.5f, 240.0f, 0.0f, 100.0f);
+        pkStrike (pkCorridor, 2, 0, 0.12f, 4.0f, 0.5f);
+        pkVelocity (pkCorridor, 0.4f, 0.3f, 0.4f);
+        clash (pkCorridor, 3, synth::OscWave::saw, 1.0f, 0.18f);
+        route (pkCorridor, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkCorridor, "BRIGHT", "SPACE", "DREAD");
+        delay (pkCorridor, "1/8", 0.25f, 0.12f, false, 4.0f);
+        reverb (pkCorridor, RT::room, 0.5f, 0.15f);
+        space (pkCorridor);
+        pkAdd (x, pkCorridor);
+
+        auto pkCubicle = x.make ("Cubicle Pizzicato", 18, { "Pluck", "Pizzicato", "Strings", "Office" },
+            "Polite office pizzicato, every player smiling: a small section of three saw players plucking neatly, the "
+            "pluck's edge gone in a tenth of a second, each note panned a little differently, a bright little room. "
+            "MACROS: BRIGHT, SPACE, DREAD (a tritone below, quietly wrong).");
+        pkCubicle.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+                 .filter (FilterType::lp12, 1300.0f, 0.15f, 0.45f).set (ParamIDs::fltKey, 0.5f)
+                 .filterEnvelope (0.5f, 110.0f, 0.0f, 110.0f)
+                 .ampEnvelope (2.0f, 380.0f, 0.0f, 170.0f);
+        pkSection (pkCubicle, 0, 3, 0.06f, 0.0f, 5.0f, 0.0f);
+        pkStrike (pkCubicle, 1, 0, 0.05f, 3.0f, 0.3f);
+        route (pkCubicle, "random", ParamIDs::osc (0, "Pan"), 0.3f);
+        pkVelocity (pkCubicle, 0.5f, 0.3f, 0.5f);
+        clash (pkCubicle, 2, synth::OscWave::saw, -6.0f, 0.2f);
+        route (pkCubicle, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkCubicle, "BRIGHT", "SPACE", "DREAD");
+        reverb (pkCubicle, RT::room, 0.5f, 0.2f);
+        space (pkCubicle);
+        pkAdd (x, pkCubicle);
     }
 
     // SLINGBLADE: inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling
@@ -10725,6 +10796,65 @@ namespace
         space (fleet);
         fleet.set (ParamIDs::patchLevel, -0.5f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (fleet);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkGilded = x.make ("Gilded Harp", 16, { "Pluck", "FM", "Harp", "Court" },
+            "A golden concert harp in a mirrored ballroom: the classic FM harp (a sine with FM from a sine at its own "
+            "pitch, bright at the pluck and mellowing over half a second), harder plucks brighter, a long, lavish "
+            "hall. MACROS: BRIGHT, SPACE, RISE (an octave above shining in).");
+        pkGilded.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+                .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.06f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+                .ampEnvelope (0.5f, 1800.0f, 0.0f, 900.0f).set (ParamIDs::ampVel, 0.45f);
+        oneShot (pkGilded, 0, { SP21 { 0.0f, 1.0f, -0.5f }, SP21 { 0.5f, 0.0f, 0.0f } });
+        route (pkGilded, "env1", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (pkGilded, "velocity", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (pkGilded, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        rise (pkGilded, 2, sine, 12.0f, 0.2f);
+        macros (pkGilded, "BRIGHT", "SPACE", "RISE");
+        reverb (pkGilded, RT::hall, 0.85f, 0.3f, 35.0f, 5.0f);
+        space (pkGilded);
+        pkAdd (x, pkGilded);
+
+        auto pkSling = x.make ("Slingshot Wah", 17, { "Pluck", "Wah", "Funky", "Mines" },
+            "A rubber-band pluck snapped through the WAH in AUTO (it opens with each pick and closes as the note "
+            "dies: \"wow\"), a saw and a pulse, on insert bus A. MACROS: BRIGHT, SPACE, RISE (a fifth above joining). "
+            "MOD WHEEL: more resonance.");
+        pkSling.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "Insert", 1.0f)
+               .filter (FilterType::lp12, 3000.0f, 0.1f, 0.2f).filterEnvelope (0.5f, 200.0f, 0.1f, 200.0f)
+               .ampEnvelope (0.5f, 600.0f, 0.0f, 250.0f);
+        wah (pkSling, WM::autoWah, WR::classic, 0.3f, 0.65f);
+        pkSling.set (ParamIDs::ins (0, "WahSensitivity"), 0.7f);
+        rise (pkSling, 2, saw, 7.0f, 0.2f);
+        pkSling.osc (2, "Insert", 1.0f);
+        route (pkSling, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (pkSling, "modWheel", ParamIDs::fltRes, 0.25f);
+        macros (pkSling, "BRIGHT", "SPACE", "RISE");
+        delay (pkSling, "1/8", 0.25f, 0.12f, false, 4.0f);
+        reverb (pkSling, RT::room, 0.4f, 0.15f);
+        space (pkSling);
+        pkAdd (x, pkSling);
+
+        auto pkIron = x.make ("Iron Pick", 18, { "Pluck", "Drive", "Metal", "Mines" },
+            "A pick-axe striking iron down in the mines: a saw picked hard, a sharp click, each hit kicked sharp and "
+            "dropping, through SKYLINE's drive on insert bus A. MACROS: BRIGHT, SPACE, RISE (an octave above in the "
+            "drive).");
+        pkIron.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "Insert", 1.0f)
+              .filter (FilterType::lp24, 1400.0f, 0.25f, 0.45f).filterEnvelope (0.5f, 200.0f, 0.1f, 160.0f)
+              .ampEnvelope (0.5f, 450.0f, 0.0f, 180.0f);
+        pkStrike (pkIron, 1, 0, 0.18f, 4.0f, 0.1f);
+        pkIron.osc (1, "Insert", 1.0f);
+        pkBend (pkIron, 0.6f, 0.03f, -0.4f);
+        drive (pkIron, 0, effects::Drive::Model::skyline, 5.0f, 5.5f, -4.0f, 0.2f, 0.2f);
+        rise (pkIron, 2, saw, 12.0f, 0.2f);
+        pkIron.osc (2, "Insert", 1.0f);
+        pkVelocity (pkIron, 0.45f, 0.3f, 0.4f);
+        route (pkIron, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkIron, "BRIGHT", "SPACE", "RISE");
+        reverb (pkIron, RT::room, 0.45f, 0.15f);
+        space (pkIron);
+        pkAdd (x, pkIron);
     }
 
     // PARADOX (the owner's name): inspired by the score of a German series about four families in a small town where
@@ -11174,6 +11304,66 @@ namespace
         space (boot);
         boot.set (ParamIDs::patchLevel, 0.6f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
         x.add (boot);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkCave = x.make ("Cave Drip", 16, { "Pluck", "String", "Reverse", "Echoes" },
+            "A string plucked at the mouth of a cave, the cave answering it backwards: a saw and a pulse, a pick's "
+            "click, the tone dimming as it rings, ECHOES in REVERSE (each bar comes back played backwards, swelling into "
+            "the next). Loaded at the present. MACROS: BRIGHT, SPACE, ERA (the past to the left: worn tape, older "
+            "echoes, a wobble; the future to the right: more resonance).");
+        pkCave.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Fine", 5.0f).osc (1, "Volume", 0.3f)
+              .filter (FilterType::lp12, 1500.0f, 0.25f, 0.45f).set (ParamIDs::fltKey, 0.6f)
+              .filterEnvelope (0.5f, 300.0f, 0.1f, 250.0f)
+              .ampEnvelope (0.5f, 800.0f, 0.0f, 300.0f);
+        pkStrike (pkCave, 2, 0, 0.15f, 5.0f, 0.05f);
+        pkVelocity (pkCave, 0.45f, 0.3f, 0.45f);
+        route (pkCave, "macro1", ParamIDs::fltCutoff, 0.2f);
+        echoes (pkCave, EM::reverse, 2, 0.45f, 0.1f, 0.3f);
+        era (pkCave, 0.6f, 0.8f, 0.3f, { 0 });
+        future (pkCave, ParamIDs::fltRes, 0.3f);
+        macros (pkCave, "BRIGHT", "SPACE", "ERA");
+        reverb (pkCave, RT::hall, 0.6f, 0.2f);
+        space (pkCave);
+        pkAdd (x, pkCave);
+
+        auto pkPendulum = x.make ("Pendulum Clock", 17, { "Pluck", "Tick", "Loop", "Echoes" },
+            "An old clock's tick and chime in one: a hard tick of noise and a short sine-and-triangle tone under it, "
+            "caught by ECHOES' LOOP and repeated, so each phrase comes round again like the clock's hands. Loaded at "
+            "the present. MACROS: BRIGHT, SPACE, ERA (the past: worn tape and older loops; the future: a glassy "
+            "overtone).");
+        pkPendulum.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+                  .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.15f)
+                  .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 31.0f).osc (3, "Volume", 0.0f)
+                  .ampEnvelope (0.3f, 500.0f, 0.0f, 220.0f).set (ParamIDs::ampVel, 0.4f);
+        pkStrike (pkPendulum, 2, 0, 0.3f, 3.0f, 0.0f, false);
+        route (pkPendulum, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
+        echoes (pkPendulum, EM::loop, 2, 0.4f, 0.15f, 0.25f);
+        era (pkPendulum, 0.5f, 0.7f, 0.25f, { 0, 1 });
+        future (pkPendulum, ParamIDs::osc (3, "Volume"), 0.12f);
+        macros (pkPendulum, "BRIGHT", "SPACE", "ERA");
+        reverb (pkPendulum, RT::room, 0.5f, 0.18f);
+        space (pkPendulum);
+        pkAdd (x, pkPendulum);
+
+        auto pkTape = x.make ("Tape Loop Pluck", 18, { "Pluck", "Filter", "Tape", "Echoes" },
+            "A pluck on a tape loop that slows as it comes back: a saw and a square through a filter that snaps shut, "
+            "ECHOES in TAPE (each two beats played back half-speed, an octave down and stretched). Loaded at the "
+            "present. MACROS: BRIGHT, SPACE, ERA (the past: worn tape, older echoes, a wobble; the future: more crush).");
+        pkTape.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.35f)
+              .filter (FilterType::lp24, 950.0f, 0.3f, 0.55f).set (ParamIDs::fltKey, 0.4f)
+              .filterEnvelope (0.5f, 230.0f, 0.0f, 200.0f)
+              .ampEnvelope (0.5f, 600.0f, 0.0f, 280.0f);
+        pkVelocity (pkTape, 0.45f, 0.3f, 0.45f);
+        route (pkTape, "macro1", ParamIDs::fltCutoff, 0.2f);
+        echoes (pkTape, EM::tape, 1, 0.4f, 0.1f, 0.3f);
+        era (pkTape, 0.6f, 0.8f, 0.35f, { 0, 1 });
+        future (pkTape, ParamIDs::osc (0, "Crush"), 0.4f);
+        macros (pkTape, "BRIGHT", "SPACE", "ERA");
+        reverb (pkTape, RT::hall, 0.55f, 0.18f);
+        space (pkTape);
+        pkAdd (x, pkTape);
     }
 
     // MELTDOWN (the owner's name): inspired by the score of a 2019 series about a nuclear disaster, made almost
@@ -11638,6 +11828,66 @@ namespace
         space (alarm);
         alarm.set (ParamIDs::patchLevel, -2.0f);   // LEVEL: balanced against the others (measured, not by ear)
         x.add (alarm);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkDosimeter = x.make ("Dosimeter Ping", 16, { "Pluck", "Pitch Envelope", "Ping", "Crackle" },
+            "A meter's warning ping in an empty control hall: a sine and a soft triangle chirped three semitones down "
+            "onto the note in twenty-five milliseconds, a short ring, the counter's faint ticks under it. MACROS: BRIGHT, "
+            "SPACE, DOSE (the clicks thicken and the ping drifts sick).");
+        pkDosimeter.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+                   .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.08f)
+                   .ampEnvelope (0.3f, 700.0f, 0.0f, 350.0f).set (ParamIDs::ampVel, 0.4f);
+        pkBend (pkDosimeter, 3.0f, 0.025f, -0.3f);
+        route (pkDosimeter, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        dose (pkDosimeter, 3500.0f);
+        drift (pkDosimeter, 0, 15.0f);
+        drift (pkDosimeter, 1, 15.0f);
+        macros (pkDosimeter, "BRIGHT", "SPACE", "DOSE");
+        delay (pkDosimeter, "1/4", 0.35f, 0.15f, true, 4.0f);
+        reverb (pkDosimeter, RT::hall, 0.6f, 0.22f);
+        space (pkDosimeter);
+        pkAdd (x, pkDosimeter);
+
+        auto pkRust = x.make ("Rusted Wire", 17, { "Pluck", "AM", "Corroded", "Crackle" },
+            "A rusted wire plucked in a ruined plant: a saw ring-modulated at 2.76 times its pitch (corroded metal, "
+            "loudest at the pluck), a dull thud, the tone dying fast. MACROS: BRIGHT, SPACE, DOSE (the clicks thicken "
+            "and the sound wears like old tape).");
+        pkRust.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+              .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.683f).osc (0, "AmAmount", 0.1f)
+              .filter (FilterType::lp12, 1100.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.5f)
+              .filterEnvelope (0.5f, 250.0f, 0.05f, 200.0f)
+              .ampEnvelope (0.5f, 700.0f, 0.0f, 280.0f);
+        oneShot (pkRust, 0, { SPm { 0.0f, 1.0f, -0.5f }, SPm { 0.3f, 0.0f, 0.0f } });
+        route (pkRust, "env1", ParamIDs::osc (0, "AmAmount"), 0.45f);
+        pkStrike (pkRust, 1, 1, 0.1f, 6.0f, 0.6f);
+        pkVelocity (pkRust, 0.45f, 0.3f, 0.45f);
+        route (pkRust, "macro1", ParamIDs::fltCutoff, 0.2f);
+        dose (pkRust, 2200.0f);
+        wear (pkRust, 0.5f);
+        macros (pkRust, "BRIGHT", "SPACE", "DOSE");
+        reverb (pkRust, RT::hall, 0.5f, 0.2f);
+        space (pkRust);
+        pkAdd (x, pkRust);
+
+        auto pkControl = x.make ("Control Room Mallet", 18, { "Pluck", "FM", "Mallet", "Crackle" },
+            "A cold mallet on a steel panel: a sine with FM from oscillator 2 three times up (bright for a moment, gone "
+            "in a fifth of a second), a low hum of the panel under it, a cold hall. MACROS: BRIGHT, SPACE, DOSE (the "
+            "clicks thicken and the FM corrodes).");
+        pkControl.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+                 .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.04f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 19.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+                 .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.1f)
+                 .ampEnvelope (0.5f, 1200.0f, 0.0f, 600.0f).set (ParamIDs::ampVel, 0.45f);
+        oneShot (pkControl, 0, { SPm { 0.0f, 1.0f, -0.6f }, SPm { 0.2f, 0.0f, 0.0f } });
+        route (pkControl, "env1", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (pkControl, "velocity", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkControl, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        route (pkControl, "macro3", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        dose (pkControl, 5000.0f);
+        macros (pkControl, "BRIGHT", "SPACE", "DOSE");
+        reverb (pkControl, RT::hall, 0.7f, 0.25f);
+        space (pkControl);
+        pkAdd (x, pkControl);
     }
 
     // ATOMIC AGE (0.69.0, the owner's name): inspired by a 2024 series' retro-futurist mid-century look, played for
@@ -12026,6 +12276,64 @@ namespace
         tiki.set (ParamIDs::patchLevel, -3.8f);
         springTank (tiki, { 0.4f, 0.5f, 0.6f, 0.5f, 0.55f, 0.4f, 0.7f, 0.2f });
         x.add (tiki);
+
+        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
+        auto pkTank = x.make ("Tank Twang", 16, { "Pluck", "Guitar", "Spring", "Twang" },
+            "A surf-guitar pluck made to kick the spring tank: a thin, bright pulse and a saw's shine, a sharp pick, "
+            "each note struck sharp and pulled in, the tone snapping from bright to warm, a slapback. The tank on it is "
+            "set to BOING as hard as it goes, so every hard pick clangs the springs. MACROS: BRIGHT, SPACE, SPRING (the "
+            "tank, all drip and boing).");
+        pkTank.osc (0, "Wave", pulse).osc (0, "Width", 0.2f).osc (0, "Volume", 0.6f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.15f)
+              .filter (FilterType::lp12, 1700.0f, 0.2f, 0.5f).set (ParamIDs::fltKey, 0.5f)
+              .filterEnvelope (0.5f, 200.0f, 0.1f, 200.0f)
+              .ampEnvelope (0.5f, 900.0f, 0.0f, 300.0f);
+        pkStrike (pkTank, 2, 0, 0.2f, 5.0f, 0.02f);
+        pkBend (pkTank, 0.3f, 0.05f, -0.4f);
+        pkVelocity (pkTank, 0.45f, 0.3f, 0.5f);
+        route (pkTank, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkTank, "BRIGHT", "SPACE", "SPRING");
+        delay (pkTank, "1/16", 0.1f, 0.2f, false, 5.0f);
+        reverb (pkTank, RT::room, 0.4f, 0.12f);
+        space (pkTank);
+        springTank (pkTank, { 0.6f, 0.5f, 1.0f, 0.55f, 0.5f, 1.0f, 0.7f, 0.0f });
+        pkAdd (x, pkTank);
+
+        auto pkUke = x.make ("Luau Ukulele", 17, { "Pluck", "Nylon", "Ukulele", "Tiki" },
+            "A ukulele by the pool at a tiki party: soft nylon strings an octave up (a triangle and a thin pulse), "
+            "plucked with a fingertip, each note bright and quickly mellow, a short, warm room. MACROS: BRIGHT, SPACE, "
+            "SPRING (a drippy little tank).");
+        pkUke.osc (0, "Wave", triangle).osc (0, "Transpose", 12.0f).osc (0, "Volume", 0.6f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.15f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.18f)
+             .filter (FilterType::lp12, 2600.0f, 0.15f, 0.35f).set (ParamIDs::fltKey, 0.6f)
+             .filterEnvelope (0.5f, 180.0f, 0.1f, 160.0f)
+             .ampEnvelope (0.5f, 650.0f, 0.0f, 250.0f);
+        pkStrike (pkUke, 2, 0, 0.07f, 4.0f, 0.3f);
+        pkBend (pkUke, 0.15f, 0.04f, -0.4f);
+        pkVelocity (pkUke, 0.4f, 0.3f, 0.45f);
+        route (pkUke, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkUke, "BRIGHT", "SPACE", "SPRING");
+        reverb (pkUke, RT::room, 0.45f, 0.15f);
+        space (pkUke);
+        springTank (pkUke, { 0.45f, 0.4f, 0.7f, 0.6f, 0.35f, 0.4f, 0.7f, 0.2f });
+        pkAdd (x, pkUke);
+
+        auto pkRocket = x.make ("Rocket Ping", 18, { "Pluck", "Chirp", "Computer", "Retro" },
+            "A room-sized computer's happy chirp as a rocket clears the tower: a square chirped an octave down onto the "
+            "note in twenty-five milliseconds, a short ring, ping-pong echoes. MACROS: BRIGHT, SPACE, SPRING (a boingy "
+            "tank).");
+        pkRocket.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.45f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.3f)
+                .filter (FilterType::lp12, 4000.0f, 0.15f, 0.2f).filterEnvelope (0.3f, 200.0f, 0.2f, 150.0f)
+                .ampEnvelope (0.3f, 420.0f, 0.0f, 180.0f).set (ParamIDs::ampVel, 0.4f);
+        pkBend (pkRocket, 12.0f, 0.025f, -0.3f);
+        route (pkRocket, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (pkRocket, "BRIGHT", "SPACE", "SPRING");
+        delay (pkRocket, "1/8", 0.35f, 0.18f, true, 5.0f);
+        reverb (pkRocket, RT::room, 0.4f, 0.12f);
+        space (pkRocket);
+        springTank (pkRocket, { 0.45f, 0.35f, 0.8f, 0.7f, 0.4f, 0.8f, 0.8f, 0.15f });
+        pkAdd (x, pkRocket);
     }
 }
 
