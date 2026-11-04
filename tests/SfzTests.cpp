@@ -925,6 +925,13 @@ TEST_CASE ("Render SFZ clips", "[.sfzrender]")
         }
         render ("03 Salamander - melody, played live", e, 76.0, 4.0, true);
     }
+    // 5 (before the filter goes on). A chord held 20 s: a looped sustain holds it; one that isn't ends with its recording.
+    {
+        std::vector<Event> e;
+        for (const auto key : { 48, 55, 60, 64 })
+            note (e, 0.0, key, 23.0, 0.7f);   // 23 beats at 70 BPM: about 20 s
+        render ("05 a chord held 20 seconds", e, 70.0, 3.0, false);
+    }
     // 4. The same chords through the synth: a low-pass opening over each chord (the FILTER's envelope) and the REVERB.
     {
         setParam (ParamIDs::osc (0, "Filter"), 1.0f);
