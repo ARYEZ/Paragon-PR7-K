@@ -259,6 +259,7 @@ public:
         rack->haze.seedRandom ((std::uint32_t) seed);
         rack->spectre.seedRandom ((std::uint32_t) seed);
         rack->leviathan.seedRandom ((std::uint32_t) seed);
+        rack->lightSpeed.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -384,6 +385,8 @@ public:
     // NUCLEARSPRING (0.69.0): its settings (MIX, DRIP, BOING as the matrix moves them).
     effects::NuclearSpring::Settings getNuclearSpringSettings() const noexcept;
     const effects::NuclearSpring& getNuclearSpring() const noexcept { return rack->nuclearSpring; }
+    effects::LightSpeed::Settings getLightSpeedSettings() const noexcept;
+    const effects::LightSpeed& getLightSpeed() const noexcept { return rack->lightSpeed; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

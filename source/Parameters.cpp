@@ -564,5 +564,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addSpectreParameters (layout);    // SPECTRE (0.67.0): RackParameters.cpp
     addLeviathanParameters (layout);  // LEVIATHAN (0.68.0): RackParameters.cpp
     addNuclearSpringParameters (layout);   // NUCLEARSPRING (0.69.0): RackParameters.cpp
+    addLightSpeedParameters (layout);      // LIGHTSPEED (0.73.0): RackParameters.cpp
     return layout;
 }

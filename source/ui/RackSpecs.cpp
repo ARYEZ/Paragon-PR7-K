@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 18> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 19> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 18> specs;
+    std::array<RackUnit::Spec, 19> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1337,6 +1337,46 @@ std::array<RackUnit::Spec, 18> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (17); };
+    }
+
+    // LIGHTSPEED (0.73.0): how far into the jump in big digits (%), the streaks' pitch, the whoosh; the keys set JUMP:
+    // CRUISE (a hint of it), JUMP (half way), PLAID (all the way); the ladder the whoosh's level.
+    {
+        auto& s = specs[18];
+        s.name = "LIGHTSPEED";
+        s.kind = "THE JUMP  STREAKS  WHOOSH";
+        s.onParameterIds = { ParamIDs::jumpOn };
+        s.powerTooltip = "LIGHTSPEED on or off: the jump to lightspeed, streaks and rushing air. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float jump; const char* tip; };
+        static constexpr Stage stages[] = { { "CRUISE", 0.2f, "A hint of the jump: the streaks just starting" },
+                                            { "JUMP", 0.55f, "Half way into the jump" },
+                                            { "PLAID", 1.0f, "All the way: lightspeed" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::jumpAmount) - t.jump) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::jumpAmount, t.jump); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::jumpAmount, "JUMP" }, RackUnit::Knob { ParamIDs::jumpRise, "RISE" } };
+        s.ladderTitle = "RUSH";
+        s.ladderMarks = { -6.0f, -12.0f, -24.0f, -36.0f, -48.0f };
+        s.ladderLabels = { "-6", "-12", "-24", "-36", "-48" };
+        s.ladderReading = [&p] { return p.getLightSpeedSettings().on ? p.getLightSpeed().getWhooshDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto on = p.getLightSpeedSettings().on;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * (on ? p.getLightSpeed().getSpool() : 0.0f))), left.getTopLeft(), h);
+            line (g, "%", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "INTO THE JUMP", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "JUMP " + textOf (p, ParamIDs::jumpAmount), "RISE " + textOf (p, ParamIDs::jumpRise),
+                                  "STREAKS " + textOf (p, ParamIDs::jumpStreak), "WHOOSH " + textOf (p, ParamIDs::jumpWhoosh) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (18); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

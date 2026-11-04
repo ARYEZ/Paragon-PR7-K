@@ -24,6 +24,7 @@
 #include "dsp/effects/Spectre.h"
 #include "dsp/effects/Leviathan.h"
 #include "dsp/effects/NuclearSpring.h"
+#include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -733,4 +734,21 @@ void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLa
     layout.add (makeFloat (ParamIDs::springSize, "Nuclearspring Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
     layout.add (makeFloat (ParamIDs::springBoing, "Nuclearspring Boing", { 0.0f, 1.0f, 0.01f }, d.boing, v, asPercent));
     layout.add (makeFloat (ParamIDs::springWidth, "Nuclearspring Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LIGHTSPEED (0.73.0, our own design): off and at JUMP 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 42;
+    using L = effects::LightSpeed;
+    const L::Settings d;
+    const ToText asRise = [] (float value, int) { return "+" + juce::String (L::riseSemitones (value), 1) + " st"; };
+    const ToText asTone = [] (float value, int) { return juce::String (L::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::jumpOn, "Lightspeed On", v, false));
+    layout.add (makeFloat (ParamIDs::jumpAmount, "Lightspeed Jump", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpRise, "Lightspeed Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
+    layout.add (makeFloat (ParamIDs::jumpStreak, "Lightspeed Streaks", { 0.0f, 1.0f, 0.01f }, d.streak, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpWhoosh, "Lightspeed Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpWidth, "Lightspeed Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpTone, "Lightspeed Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
 }

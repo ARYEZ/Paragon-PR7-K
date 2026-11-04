@@ -316,6 +316,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->spectre.prepare (sampleRate, preparedBlockSize);
     rack->leviathan.prepare (sampleRate, preparedBlockSize);
     rack->nuclearSpring.prepare (sampleRate, preparedBlockSize);
+    rack->lightSpeed.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1265,6 +1266,19 @@ effects::NuclearSpring::Settings ParagonX1AudioProcessor::getNuclearSpringSettin
     return s;
 }
 
+effects::LightSpeed::Settings ParagonX1AudioProcessor::getLightSpeedSettings() const noexcept
+{
+    effects::LightSpeed::Settings s;
+    s.on = isOn (ParamIDs::jumpOn);
+    s.jump = effectParam (ModDestinations::effect ("jumpAmount"), ParamIDs::jumpAmount);
+    s.rise = effectParam (ModDestinations::effect ("jumpRise"), ParamIDs::jumpRise);
+    s.streak = param (ParamIDs::jumpStreak);
+    s.whoosh = effectParam (ModDestinations::effect ("jumpWhoosh"), ParamIDs::jumpWhoosh);
+    s.width = param (ParamIDs::jumpWidth);
+    s.tone = param (ParamIDs::jumpTone);
+    return s;
+}
+
 effects::Leviathan::Settings ParagonX1AudioProcessor::getLeviathanSettings() const noexcept
 {
     effects::Leviathan::Settings s;
@@ -1564,6 +1578,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->leviathan.process (block, deep);
         }
         rack->nuclearSpring.process (block, getNuclearSpringSettings());   // 0.69.0: the spring tank
+        rack->lightSpeed.process (block, getLightSpeedSettings());         // 0.73.0: the jump to lightspeed
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }
