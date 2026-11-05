@@ -9,6 +9,7 @@
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Reverb.h"
+#include "ui/Finish.h"
 #include "ui/ParagonLookAndFeel.h"
 #include "ui/RigBrowser.h"
 #include "dsp/synth/Mimic.h"
@@ -25,6 +26,7 @@
 //   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
 //   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
 //   PARAGON_SNAPSHOT_FILTERPAGE=n     the FILTER panel's SHP n tab (shaper n's page)
+//   PARAGON_SNAPSHOT_FINISH=white|black|neon   Pearl White, Pearl Black or Pearl White + Neon (0.74.1);
 //   PARAGON_SNAPSHOT_RACKVIEW=1      the SYNTH page with the rack shown (the OSCILLATORS and FILTER panels; 0.49.0);
 //                                    on by itself for OSC, OSCPAGE, FILTERPAGE, FFT and TRAVEL. Otherwise the front panel.
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
@@ -60,6 +62,10 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                     break;
                 }
     }
+
+    // PARAGON_SNAPSHOT_FINISH=white|black|neon: the unit's finish (0.74.1), not remembered.
+    if (const auto finish = env ("PARAGON_SNAPSHOT_FINISH"); finish.isNotEmpty())
+        Finish::set (finish == "white" ? Finish::Type::pearlWhite : finish == "neon" ? Finish::Type::pearlWhiteNeon : Finish::Type::pearlBlack, false);
 
     MainView::offerLibrary = false;   // (no window asking to download the piano)
     // PARAGON_SNAPSHOT_LIBRARIES: a folder holding the Salamander's, linked in so the piano presets play.

@@ -511,8 +511,9 @@ TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left;
             CHECK (version->notes.contains ("BLOOM"));
             CHECK (version->parameters.at (ParamIDs::bloomOn) == 1.0f);
             CHECK (version->parameters.at (ParamIDs::bloomAmount) == 0.0f);
+            // At least a third of the way (Cathedral Air's held, pedalled chord stops at 0.33: higher added up to 9 dB).
             CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
-                                { return r.source == "macro3" && r.destination == ParamIDs::bloomAmount && r.amount >= 0.5f; }));
+                                { return r.source == "macro3" && r.destination == ParamIDs::bloomAmount && r.amount >= 0.3f; }));
             // No MACRO 3 job left over from the piano helpers: it's BLOOM alone.
             CHECK (std::none_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
                                  { return r.source == "macro3" && r.destination != ParamIDs::bloomAmount; }));
