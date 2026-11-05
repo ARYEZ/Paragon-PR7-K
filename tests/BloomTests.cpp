@@ -96,39 +96,39 @@ TEST_CASE ("BLOOM: off and at AMOUNT 0 untouched; silence stays silent; back to 
 
 TEST_CASE ("BLOOM: the strings ring on at the notes sounding, not at a pitch the music doesn't share, for RING", "[bloom]")
 {
-    // A note's tone for 1 s, then nothing: what's left at its pitch afterwards with the strings in (RESONANCE 1)
-    // against without (RESONANCE 0: only the hall). SIZE short so the hall's own tail is small.
-    const auto tail = [] (double toneHz, float resonance, float ring, double from, double to)
+    // A tone for 1 s, then nothing; C4 sounding. The strings' own part is what RESONANCE 1 adds over RESONANCE 0 (all
+    // else the same, it's linear): measured at the tone's pitch after the tone has stopped. SIZE short.
+    const auto strings = [] (double toneHz, float ring, double from, double to)
     {
-        effects::Bloom fx;
-        fx.prepare (sampleRate, blockSize);
-        Settings s;
-        s.on = true;
-        s.amount = 1.0f;
-        s.resonance = resonance;
-        s.ring = ring;
-        s.size = 0.0f;
-        s.swell = 0.0f;
-        const auto out = run (fx, to + 0.1, [toneHz] (long long t)
+        std::array<std::vector<float>, 2> outs;
+        for (const auto resonance : { 0.0f, 1.0f })
         {
-            const auto v = t < (long long) sampleRate ? 0.3f * (float) std::sin (juce::MathConstants<double>::twoPi * toneHz * (double) t / sampleRate) : 0.0f;
-            return std::make_pair (v, v);
-        }, [&] (double) { return s; }, { 60.0f });
-        return bandLevel (out[0], toneHz, (size_t) (from * sampleRate), (size_t) ((to - from) * sampleRate));
+            effects::Bloom fx;
+            fx.prepare (sampleRate, blockSize);
+            Settings s;
+            s.on = true;
+            s.amount = 1.0f;
+            s.resonance = resonance;
+            s.ring = ring;
+            s.size = 0.0f;
+            s.swell = 0.0f;
+            outs[resonance > 0.0f ? 1 : 0] = run (fx, to + 0.1, [toneHz] (long long t)
+            {
+                const auto v = t < (long long) sampleRate ? 0.3f * (float) std::sin (juce::MathConstants<double>::twoPi * toneHz * (double) t / sampleRate) : 0.0f;
+                return std::make_pair (v, v);
+            }, [&] (double) { return s; }, { 60.0f })[0];
+        }
+        std::vector<float> own (outs[0].size());
+        for (size_t i = 0; i < own.size(); ++i)
+            own[i] = outs[1][i] - outs[0][i];
+        return bandLevel (own, toneHz, (size_t) (from * sampleRate), (size_t) ((to - from) * sampleRate));
     };
-    const auto c4 = hzOf (60), cSharp4 = hzOf (61), g5 = hzOf (79);
-    // On the note's own string: strong after the note stops.
-    const auto onString = tail (c4, 1.0f, 0.5f, 1.3, 2.3), hallOnly = tail (c4, 0.0f, 0.5f, 1.3, 2.3);
-    INFO ("C4 tail with strings " << onString << ", hall only " << hallOnly);
-    CHECK (onString > 4.0 * hallOnly);
-    // On the octave-and-a-fifth string (G5, tuned for C4): its own pitch rings too.
-    CHECK (tail (g5, 1.0f, 0.5f, 1.3, 2.3) > 4.0 * tail (g5, 0.0f, 0.5f, 1.3, 2.3));
-    // A half step off every string: the strings barely answer.
-    const auto offString = tail (cSharp4, 1.0f, 0.5f, 1.3, 2.3), offHall = tail (cSharp4, 0.0f, 0.5f, 1.3, 2.3);
-    INFO ("C#4 tail with strings " << offString << ", hall only " << offHall);
-    CHECK (offString < 2.0 * offHall + 1.0e-4);
-    // RING: longer at the top, shorter at the bottom (4 s after the note).
-    CHECK (tail (c4, 1.0f, 1.0f, 4.0, 5.0) > 4.0 * tail (c4, 1.0f, 0.0f, 4.0, 5.0));
+    const auto c4 = strings (hzOf (60), 0.5f, 1.3, 2.3), g5 = strings (hzOf (79), 0.5f, 1.3, 2.3), cSharp4 = strings (hzOf (61), 0.5f, 1.3, 2.3);
+    INFO ("the strings ringing after the tone: C4 " << c4 << ", G5 (the octave and a fifth's string) " << g5 << ", C#4 (no string) " << cSharp4);
+    CHECK (c4 > 10.0 * cSharp4);   // the note's own string rings
+    CHECK (g5 > 5.0 * cSharp4);    // and the octave-and-a-fifth's
+    // RING: longer at the top, shorter at the bottom (3 s after the tone).
+    CHECK (strings (hzOf (60), 1.0f, 4.0, 5.0) > 4.0 * strings (hzOf (60), 0.0f, 4.0, 5.0));
 }
 
 TEST_CASE ("BLOOM: the hall opens as a chord is held (SWELL); the added sound sits under the chord", "[bloom]")
@@ -180,4 +180,37 @@ TEST_CASE ("BLOOM: CPU", "[bloom][performance]")
     const auto seconds = std::chrono::duration<double> (std::chrono::steady_clock::now() - started).count();
     WARN ("BLOOM: " << 100.0 * seconds / 10.0 << "% of a core, 24 strings a side and the hall");
     CHECK (seconds / 10.0 < 0.1);
+}
+
+// Not run with the others: the strings' and the hall's levels apart, against a held chord (for setting their make-ups).
+TEST_CASE ("BLOOM: levels apart", "[.bloomlevels]")
+{
+    const auto chord = [] (long long t)
+    {
+        auto v = 0.0f;
+        for (const auto note : { 48, 64, 67 })
+            v += 0.15f * (float) std::sin (juce::MathConstants<double>::twoPi * hzOf (note) * (double) t / sampleRate);
+        return v;
+    };
+    for (const auto [resonance, size] : { std::pair { 1.0f, 0.5f }, std::pair { 0.0f, 0.5f }, std::pair { 0.0f, 0.0f }, std::pair { 0.0f, 1.0f } })
+    {
+        effects::Bloom fx;
+        fx.prepare (sampleRate, blockSize);
+        Settings s;
+        s.on = true;
+        s.amount = 1.0f;
+        s.resonance = resonance;
+        s.size = size;
+        s.swell = 0.0f;
+        const auto out = run (fx, 6.0, [&] (long long t) { const auto v = chord (t); return std::make_pair (v, v); },
+                              [&] (double) { return s; }, { 48.0f, 64.0f, 67.0f });
+        std::vector<float> added (out[0].size()), dry (out[0].size());
+        for (size_t i = 0; i < added.size(); ++i)
+        {
+            dry[i] = chord ((long long) i);
+            added[i] = out[0][i] - dry[i];
+        }
+        WARN ("resonance " << resonance << " size " << size << ": added "
+              << juce::Decibels::gainToDecibels (rms (added, (size_t) (5.0 * sampleRate), (size_t) (6.0 * sampleRate)) / rms (dry, (size_t) (5.0 * sampleRate), (size_t) (6.0 * sampleRate))) << " dB against the chord");
+    }
 }

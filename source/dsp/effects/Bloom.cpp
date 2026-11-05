@@ -10,7 +10,7 @@ namespace effects
         constexpr float stringGroupDelay = 0.67f;  // its delay at low frequencies, in samples (taken off the loop)
         constexpr float detuneCents = 1.5f;        // left flat, right sharp: two strings a note
         // Measured (BloomTests): the strings' and the hall's levels against a held chord's.
-        constexpr float excitation = 2.0f, resonanceMakeUp = 1.6f, hallIn = 0.35f, hallMakeUp = 0.55f;
+        constexpr float excitation = 0.16f, resonanceMakeUp = 1.6f, hallIn = 0.35f, hallMakeUp = 0.75f;
     }
 
     void Bloom::prepare (double newSampleRate, int)
