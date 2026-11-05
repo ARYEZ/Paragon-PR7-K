@@ -21,6 +21,9 @@ namespace effects
         constexpr float levelShare = 0.55f;
     }
 
+    float Legion::placeOf (int k) noexcept { return place[juce::jlimit (0, numPlayers - 1, k)]; }
+    float Legion::latenessOf (int k) noexcept { return lateness[juce::jlimit (0, numPlayers - 1, k)]; }
+
     void Legion::prepare (double newSampleRate, int)
     {
         sampleRate = newSampleRate;

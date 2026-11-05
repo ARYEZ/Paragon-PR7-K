@@ -58,8 +58,9 @@ void LegionDisplay::paint (juce::Graphics& g)
     {
         const auto w = live ? fx.getPlayerWeight (k) : 0.0f;
         playing += w;
-        const auto pan = live ? fx.getPlayerPan (k) : settings.spread * 0.0f;
-        const auto late = live && fx.getPlayerDelayMs (k) > 0.0f ? fx.getPlayerDelayMs (k) : L::looseMs (settings.loose) * 0.5f;
+        // Each in its chair as the settings place it (SPREAD across, LOOSE back), playing or not.
+        const auto pan = juce::jlimit (-1.0f, 1.0f, L::placeOf (k) * settings.spread);
+        const auto late = 2.0f + (L::looseMs (settings.loose) - 2.0f) * L::latenessOf (k);
         auto at = placeAt (pan, late);
         at.x += 6.0f * w * (live ? fx.getPlayerDrift (k) : 0.0f);   // swaying as it drifts
         if (w <= 0.01f)

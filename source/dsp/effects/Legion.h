@@ -40,6 +40,9 @@ namespace effects
         static float looseMs (float l) noexcept   { return 6.0f + 24.0f * juce::jlimit (0.0f, 1.0f, l); }
         static float detuneCents (float d) noexcept { return 14.0f * juce::jlimit (0.0f, 1.0f, d); }
         static float toneHz (float t) noexcept    { return 3000.0f * std::pow (16.0f / 3.0f, juce::jlimit (0.0f, 1.0f, t)); }
+        // Each player's own place (-1 to 1, before SPREAD) and share of LOOSE's lateness (for the page, at rest too).
+        static float placeOf (int k) noexcept;
+        static float latenessOf (int k) noexcept;
         // Players at SIZE (the sound itself counts as the first): 1 to 9.
         static float playersAt (float size) noexcept { return 1.0f + (float) numPlayers * juce::jlimit (0.0f, 1.0f, size); }
 

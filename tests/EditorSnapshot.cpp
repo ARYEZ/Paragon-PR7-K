@@ -129,6 +129,9 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                 REQUIRE (parameter != nullptr);
                 parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
             };
+            // (PARAGON_SNAPSHOT_PARAMS again: loading the preset undid them.)
+            for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))
+                set (pair.upToFirstOccurrenceOf ("=", false, false).trim(), pair.fromFirstOccurrenceOf ("=", false, false).getFloatValue());
             struct Band { eq::Shape shape; float hz, db, q, dynamic; };
             const Band bands[] = { { eq::Shape::lowCut, 40.0f, 0.0f, 0.7f, 0.0f }, { eq::Shape::bell, 280.0f, -3.0f, 1.2f, 0.0f },
                                    { eq::Shape::bell, 3200.0f, 1.5f, 1.5f, -4.0f }, { eq::Shape::highShelf, 11000.0f, 2.0f, 0.7f, 0.0f } };
