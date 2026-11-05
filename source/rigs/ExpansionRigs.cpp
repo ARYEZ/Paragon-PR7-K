@@ -14322,7 +14322,7 @@ namespace
         space (strings);
         strings.set (ParamIDs::patchLevel, -12.1f);
         overcharge (strings, { 0.5f, 0.45f, 0.7f, 0.9f });
-        orchestra (strings, { { { 4, "Strings - Performance/All Strings Sustain.sfz", 1.2f, 0.0f, true } }, {}, -7.3f,
+        orchestra (strings, { { { 4, "Strings - Performance/All Strings Sustain.sfz", 1.2f, 0.0f, true } }, {}, -10.0f,
                               "The gilded city's elegant strings: the orchestra's whole string section, with PR7-K's own "
                               "strings quieter underneath (the recordings aren't looped and fade after about five seconds: "
                               "the strings underneath carry long chords), a polished hall.",
@@ -14504,7 +14504,7 @@ namespace
         delay (piano, "1/4 dotted", 0.25f, 0.08f, false, 3.5f);
         reverb (piano, RT::hall, 0.8f, 0.25f, 20.0f, 3.5f);
         space (piano);
-        piano.set (ParamIDs::patchLevel, -6.0f);
+        piano.set (ParamIDs::patchLevel, -7.1f);
         overcharge (piano, { 0.6f, 0.45f, 0.6f, 0.7f });
         orchestra (piano, { { { 0, "Grand Piano/Grand Piano.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2, 3 }, -0.5f,
                             "Where the cities meet, a heartbroken piano on the orchestra's grand piano, its top softened a "
