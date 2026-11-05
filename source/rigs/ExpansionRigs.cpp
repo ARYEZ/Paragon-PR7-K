@@ -185,6 +185,7 @@ namespace
             { "Deep Pizzicato", -3.2f },
             { "Desert Oud", -7.6f },
             { "Desk Toy Piano", -7.0f },
+            { "Detuned Upright", 0.0f },
             { "Dosimeter Ping", -5.8f },
             { "Either Way", -7.2f },
             { "Ember Pluck", 0.7f },
@@ -207,6 +208,7 @@ namespace
             { "Laser Lattice", -2.4f },
             { "Luau Ukulele", -2.1f },
             { "Monastery Mallet", -7.7f },
+            { "Muted Grand", 0.0f },
             { "Moon Tines", -4.5f },
             { "Muted Felt", -5.2f },
             { "Neon Ping Pong", -0.1f },
@@ -215,6 +217,7 @@ namespace
             { "Orbit Kalimba", -9.0f },
             { "Pendulum Clock", -3.6f },
             { "Pixel Ping", -3.0f },
+            { "Prepared Grand", -1.0f },
             { "Prepared Strings", -1.9f },
             { "Prism Pluck", -4.5f },
             { "Probability Pluck", -6.5f },
@@ -13157,9 +13160,9 @@ namespace
         delay (lone, "1/4 dotted", 0.15f, 0.06f, false, 3.0f);
         reverb (lone, RT::room, 0.6f, 0.18f, 15.0f, 4.0f);
         space (lone);
-        lone.set (ParamIDs::patchLevel, -3.0f);
-        bloom (lone, { 0.7f, 0.6f, 0.5f, 0.4f, 0.45f, 0.8f });
-        grand (lone, { 4, 2000.0f, 0.5f, 0.5f, 8.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+        lone.set (ParamIDs::patchLevel, -2.8f);
+        bloom (lone, { 0.7f, 0.6f, 0.5f, 0.4f, 0.45f, 0.8f, 0.70f });
+        grand (lone, { 4, 2000.0f, 0.5f, 0.5f, 12.0f, 1.08f, 0.0f, 300.0f, 1.0f, 900.0f,
             "A single piano for a lonely theme, on the Salamander Grand darkened as if felt lay over its strings, soft "
             "dotted echoes far behind it, a small room." });
         x.add (lone);
@@ -13177,9 +13180,9 @@ namespace
         macros (theme, "BRIGHT", "SPACE", "BLOOM");
         reverb (theme, RT::hall, 0.8f, 0.24f, 30.0f, 5.0f);
         space (theme);
-        theme.set (ParamIDs::patchLevel, -4.0f);
-        bloom (theme, { 0.5f, 0.5f, 0.7f, 0.5f, 0.55f, 0.9f });
-        grand (theme, { 4, 5000.0f, 0.5f, 0.4f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1000.0f,
+        theme.set (ParamIDs::patchLevel, -3.3f);
+        bloom (theme, { 0.5f, 0.5f, 0.7f, 0.5f, 0.55f, 0.9f, 0.51f });
+        grand (theme, { 4, 5000.0f, 0.5f, 0.4f, 2.9f, 1.00f, 0.0f, 300.0f, 1.0f, 1000.0f,
             "The big theme in octaves: the Salamander Grand with a soft sine an octave above and a low triangle an "
             "octave below, a concert hall." });
         x.add (theme);
@@ -13200,9 +13203,9 @@ namespace
         reverb (halo, RT::plate, 0.7f, 0.22f);
         eqBand (halo, 1, eq::Shape::highCut, 9000.0f, 0.0f);
         space (halo);
-        halo.set (ParamIDs::patchLevel, -4.0f);
-        bloom (halo, { 0.45f, 0.5f, 0.6f, 0.5f, 0.5f, 0.9f });
-        grand (halo, { 4, 3500.0f, 0.5f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+        halo.set (ParamIDs::patchLevel, -1.5f);
+        bloom (halo, { 0.45f, 0.5f, 0.6f, 0.5f, 0.5f, 0.9f, 0.57f });
+        grand (halo, { 4, 3500.0f, 0.5f, 0.4f, 8.3f, 1.00f, 0.0f, 300.0f, 1.0f, 900.0f,
             "A piano melody with a halo: the Salamander Grand, and under each note a soft section of detuned saws an "
             "octave up swelling in after the strike, a plate and quarter-note echoes." });
         x.add (halo);
@@ -13226,9 +13229,9 @@ namespace
         macros (overStrings, "STRINGS", "SPACE", "BLOOM");
         reverb (overStrings, RT::hall, 0.9f, 0.3f, 30.0f, 4.0f);
         space (overStrings);
-        overStrings.set (ParamIDs::patchLevel, -4.0f);
-        bloom (overStrings, { 0.4f, 0.6f, 0.8f, 0.6f, 0.45f, 1.0f });
-        grand (overStrings, { 4, 3000.0f, 0.5f, 0.4f, 2.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1400.0f,
+        overStrings.set (ParamIDs::patchLevel, -9.4f);
+        bloom (overStrings, { 0.4f, 0.6f, 0.8f, 0.6f, 0.45f, 1.0f, 0.66f });
+        grand (overStrings, { 4, 3000.0f, 0.5f, 0.4f, -1.8f, 1.00f, 0.0f, 300.0f, 1.0f, 1400.0f,
             "The film's emotional peak: the Salamander Grand over a string section swelling in behind every chord, a big "
             "hall. The strings play through the piano's tone control, so BRIGHT and SPACE move them too." });
         x.add (overStrings);
@@ -13244,13 +13247,13 @@ namespace
         macros (reverse, "BRIGHT", "SPACE", "BLOOM");
         reverb (reverse, RT::reverse, 0.7f, 0.35f, 0.0f, 4.0f);
         space (reverse);
-        reverse.set (ParamIDs::patchLevel, -2.0f);
-        bloom (reverse, { 0.3f, 0.5f, 0.7f, 0.2f, 0.45f, 1.0f });
-        grand (reverse, { 4, 6000.0f, 0.5f, 0.3f, 6.0f, 1.0f, 1500.0f, 80.0f, 0.0f, 120.0f,
+        reverse.set (ParamIDs::patchLevel, -3.8f);
+        bloom (reverse, { 0.3f, 0.5f, 0.7f, 0.2f, 0.45f, 1.0f, 0.65f });
+        grand (reverse, { 4, 6000.0f, 0.5f, 0.3f, 12.0f, 2.00f, 1100.0f, 80.0f, 0.0f, 120.0f,
             "The trailer piano heard backwards: each note of the Salamander Grand swells up out of nothing over a second "
-            "and a half and is cut off at its loudest, a reversed reverb sucking in behind it. Play on the beat before you "
+            "and is cut off at its loudest, a reversed reverb sucking in behind it. Play on the beat before you "
             "want it to land.",
-            [] (Builder& s) { s.set (ParamIDs::ampAttackCurve, 0.7f); } });
+            [] (Builder& s) { s.set (ParamIDs::ampAttackCurve, 0.5f); } });
         x.add (reverse);
 
         auto cathedral = x.make ("Cathedral Air", 6, { "Pad", "Piano", "Drone", "Dark" },
@@ -13271,9 +13274,9 @@ namespace
         reverb (cathedral, RT::cathedral, 0.92f, 0.38f, 40.0f, 3.0f);
         eqBand (cathedral, 1, eq::Shape::lowCut, 40.0f, 0.0f);
         space (cathedral);
-        cathedral.set (ParamIDs::patchLevel, -3.0f);
-        bloom (cathedral, { 0.6f, 0.8f, 1.0f, 0.7f, 0.3f, 1.0f });
-        grand (cathedral, { 4, 1600.0f, 0.5f, 0.5f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 2200.0f,
+        cathedral.set (ParamIDs::patchLevel, -9.9f);
+        bloom (cathedral, { 0.6f, 0.8f, 1.0f, 0.7f, 0.3f, 1.0f, 0.33f });
+        grand (cathedral, { 4, 1600.0f, 0.5f, 0.5f, -0.5f, 1.00f, 0.0f, 300.0f, 1.0f, 2200.0f,
             "A piano alone in a cathedral at night: the Salamander Grand darkened, sinking into a vast space, a low sine "
             "drone an octave under it swelling in, the room's air breathing over the top." });
         x.add (cathedral);
@@ -13292,15 +13295,15 @@ namespace
             .ampEnvelope (2.0f, 4500.0f, 0.0f, 600.0f);
         pkBend (boom, 7.0f, 0.18f, -0.5f);
         pkShot (boom, 2, { PK { 0.0f, 1.0f, -0.6f }, PK { 0.15f, 0.0f, 0.0f } });
-        route (boom, "env3", ParamIDs::osc (5, "Volume"), 0.3f);
+        route (boom, "env3", ParamIDs::osc (5, "Volume"), 0.12f);
         route (boom, "macro1", ParamIDs::osc (4, "Volume"), 0.2f);
         macros (boom, "BOOM", "SPACE", "BLOOM");
         reverb (boom, RT::hall, 0.85f, 0.25f, 20.0f, 3.0f);
         compressor (boom, 2, -16.0f, 3.0f, 2.0f);
         space (boom);
-        boom.set (ParamIDs::patchLevel, -3.0f);
+        boom.set (ParamIDs::patchLevel, -2.3f);
         bloom (boom, { 0.5f, 0.6f, 0.8f, 0.3f, 0.35f, 1.0f });
-        grand (boom, { 4, 2500.0f, 0.4f, 0.4f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+        grand (boom, { 4, 2500.0f, 0.4f, 0.4f, 3.6f, 1.00f, 0.0f, 300.0f, 1.0f, 900.0f,
             "The trailer's low piano hit: the Salamander Grand's low notes with a sine an octave under them dropping a "
             "fifth into the note, a dark burst of noise for the impact, a big hall. Play low octaves on the downbeats.",
             [] (Builder& s) { s.osc (0, "PitchEnv", 0.0f); } });   // (the drop is the sub's, not the piano's)
@@ -13320,9 +13323,9 @@ namespace
         macros (drone, "DARK", "SPACE", "BLOOM");
         reverb (drone, RT::room, 0.7f, 0.18f, 10.0f, 3.0f);
         space (drone);
-        drone.set (ParamIDs::patchLevel, -2.0f);
+        drone.set (ParamIDs::patchLevel, -3.8f);
         bloom (drone, { 0.7f, 0.9f, 0.6f, 0.6f, 0.3f, 0.9f });
-        grand (drone, { 4, 900.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1500.0f,
+        grand (drone, { 4, 900.0f, 0.4f, 0.4f, 4.2f, 1.00f, 0.0f, 300.0f, 1.0f, 1500.0f,
             "Dread under a scene: the Salamander Grand's low notes darkened, a dark saw an octave down swelling in under "
             "them and holding, a cold room. Hold low notes and clusters." });
         x.add (drone);
@@ -13340,7 +13343,7 @@ namespace
         space (muted);
         muted.set (ParamIDs::patchLevel, -1.0f);
         bloom (muted, { 0.6f, 0.4f, 0.5f, 0.3f, 0.4f, 0.8f });
-        grand (muted, { 4, 1400.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 380.0f, 0.0f, 120.0f,
+        grand (muted, { 4, 1400.0f, 0.4f, 0.4f, 5.3f, 1.00f, 0.0f, 380.0f, 0.0f, 120.0f,
             "The driving left hand of an action cue: the Salamander Grand's low notes muted short, a clean sine an octave "
             "under them, for eighth-note ostinatos." });
         x.add (muted);
@@ -13357,9 +13360,9 @@ namespace
         macros (intimate, "BRIGHT", "SPACE", "BLOOM");
         reverb (intimate, RT::room, 0.5f, 0.14f, 10.0f, 4.0f);
         space (intimate);
-        intimate.set (ParamIDs::patchLevel, -3.0f);
+        intimate.set (ParamIDs::patchLevel, -11.0f);
         bloom (intimate, { 0.8f, 0.7f, 0.4f, 0.4f, 0.4f, 0.7f });
-        grand (intimate, { 8, 1500.0f, 0.5f, 0.5f, 8.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+        grand (intimate, { 8, 1500.0f, 0.5f, 0.5f, 6.0f, 1.00f, 0.0f, 300.0f, 1.0f, 900.0f,
             "The centrepiece: the Salamander Grand under a thick felt, heard from inside the lid, the hammers, keys and "
             "pedal's dampers audible, a quiet room around it." });
         x.add (intimate);
@@ -13372,9 +13375,9 @@ namespace
         macros (concert, "BRIGHT", "SPACE", "BLOOM");
         reverb (concert, RT::hall, 0.85f, 0.26f, 30.0f, 5.0f);
         space (concert);
-        concert.set (ParamIDs::patchLevel, -4.0f);
-        bloom (concert, { 0.5f, 0.6f, 0.8f, 0.5f, 0.6f, 1.0f });
-        grand (concert, { 4, 9000.0f, 0.3f, 0.3f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1000.0f,
+        concert.set (ParamIDs::patchLevel, -9.9f);
+        bloom (concert, { 0.5f, 0.6f, 0.8f, 0.5f, 0.6f, 1.0f, 0.74f });
+        grand (concert, { 4, 9000.0f, 0.3f, 0.3f, 3.0f, 1.00f, 0.0f, 300.0f, 1.0f, 1000.0f,
             "The concert grand on the stage of an empty hall: the Salamander Grand bright and full, every chord ringing "
             "out into a long, warm hall." });
         x.add (concert);
@@ -13390,9 +13393,9 @@ namespace
         compressor (epic, 2, -18.0f, 3.5f, 3.0f);
         reverb (epic, RT::hall, 0.85f, 0.24f, 25.0f, 5.0f);
         space (epic);
-        epic.set (ParamIDs::patchLevel, -4.0f);
+        epic.set (ParamIDs::patchLevel, -0.4f);
         bloom (epic, { 0.5f, 0.6f, 0.9f, 0.4f, 0.55f, 1.0f });
-        grand (epic, { 4, 8000.0f, 0.3f, 0.3f, 3.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1000.0f,
+        grand (epic, { 4, 8000.0f, 0.3f, 0.3f, 7.4f, 1.00f, 0.0f, 300.0f, 1.0f, 1000.0f,
             "The piano at the climax: the Salamander Grand hit hard and held together by a compressor, a low triangle "
             "an octave down, a big hall." });
         x.add (epic);
@@ -13414,9 +13417,9 @@ namespace
         macros (rising, "BRIGHT", "SPACE", "BLOOM");
         reverb (rising, RT::hall, 0.7f, 0.2f);
         space (rising);
-        rising.set (ParamIDs::patchLevel, -2.0f);
-        bloom (rising, { 0.6f, 0.5f, 0.7f, 0.5f, 0.5f, 0.9f });
-        grand (rising, { 4, 4000.0f, 0.5f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 600.0f,
+        rising.set (ParamIDs::patchLevel, -3.3f);
+        bloom (rising, { 0.6f, 0.5f, 0.7f, 0.5f, 0.5f, 0.9f, 0.50f });
+        grand (rising, { 4, 4000.0f, 0.5f, 0.4f, 9.3f, 1.00f, 0.0f, 300.0f, 1.0f, 600.0f,
             "The ostinato that builds a scene: hold a chord and ARP 1 climbs it over two octaves in eighths on the "
             "Salamander Grand, the first of each four accented, a hall." });
         x.add (rising);
@@ -13444,9 +13447,9 @@ namespace
         macros (tension, "BRIGHT", "SPACE", "BLOOM");
         reverb (tension, RT::room, 0.5f, 0.12f);
         space (tension);
-        tension.set (ParamIDs::patchLevel, 1.0f);
+        tension.set (ParamIDs::patchLevel, 5.5f);
         bloom (tension, { 0.7f, 0.5f, 0.5f, 0.6f, 0.35f, 0.8f });
-        grand (tension, { 4, 1600.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 0.0f, 90.0f,
+        grand (tension, { 4, 1600.0f, 0.4f, 0.4f, 12.0f, 1.22f, 0.0f, 300.0f, 0.0f, 90.0f,
             "The clock running down: hold a chord and ARP 1 hammers its root in sixteenths on the Salamander Grand, low, "
             "dark and muted short, the beat accented." });
         x.add (tension);
@@ -13464,9 +13467,9 @@ namespace
         delay (cascade, "1/8 dotted", 0.3f, 0.14f, true, 5.0f);
         reverb (cascade, RT::plate, 0.7f, 0.2f);
         space (cascade);
-        cascade.set (ParamIDs::patchLevel, -1.0f);
-        bloom (cascade, { 0.5f, 0.5f, 0.6f, 0.4f, 0.7f, 1.0f });
-        grand (cascade, { 4, 9000.0f, 0.4f, 0.3f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
+        cascade.set (ParamIDs::patchLevel, -5.4f);
+        bloom (cascade, { 0.5f, 0.5f, 0.6f, 0.4f, 0.7f, 1.0f, 0.55f });
+        grand (cascade, { 4, 9000.0f, 0.4f, 0.3f, 6.6f, 1.00f, 0.0f, 300.0f, 1.0f, 500.0f,
             "Light pouring down: hold a chord and ARP 1 runs it up and down over three octaves in sixteenths on the "
             "Salamander Grand, dotted ping-pong echoes, a plate." });
         x.add (cascade);
@@ -13485,8 +13488,8 @@ namespace
         macros (prepared, "METAL", "SPACE", "BLOOM");
         reverb (prepared, RT::room, 0.4f, 0.12f, 10.0f, 3.0f);
         space (prepared);
-        bloom (prepared, { 0.6f, 0.5f, 0.5f, 0.3f, 0.35f, 0.8f });
-        grand (prepared, { 4, 1600.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 600.0f, 0.0f, 150.0f,
+        bloom (prepared, { 0.6f, 0.5f, 0.5f, 0.3f, 0.35f, 0.8f, 0.73f });
+        grand (prepared, { 4, 1600.0f, 0.4f, 0.4f, 4.5f, 1.00f, 0.0f, 600.0f, 0.0f, 150.0f,
             "A prepared piano for a thriller: the Salamander Grand cut short and dull, a metallic ring two and "
             "three-quarter times up that doesn't belong to its pitch, a small dark room." });
         pkAdd (x, prepared);
@@ -13501,7 +13504,7 @@ namespace
         reverb (mutedKeys, RT::room, 0.4f, 0.1f);
         space (mutedKeys);
         bloom (mutedKeys, { 0.7f, 0.4f, 0.5f, 0.3f, 0.4f, 0.8f });
-        grand (mutedKeys, { 4, 2200.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 260.0f, 0.0f, 80.0f,
+        grand (mutedKeys, { 4, 2200.0f, 0.4f, 0.4f, 5.7f, 1.00f, 0.0f, 260.0f, 0.0f, 80.0f,
             "Staccato chords from a piano with a hand on the strings: the Salamander Grand stopped after a quarter of a "
             "second, dark and woody, a short room." });
         pkAdd (x, mutedKeys);
@@ -13519,8 +13522,8 @@ namespace
         macros (upright, "DETUNE", "SPACE", "BLOOM");
         reverb (upright, RT::room, 0.45f, 0.14f, 10.0f, 3.0f);
         space (upright);
-        bloom (upright, { 0.6f, 0.5f, 0.5f, 0.4f, 0.35f, 0.8f });
-        grand (upright, { 4, 2500.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 300.0f,
+        bloom (upright, { 0.6f, 0.5f, 0.5f, 0.4f, 0.35f, 0.8f, 0.72f });
+        grand (upright, { 4, 2500.0f, 0.4f, 0.4f, 4.6f, 1.00f, 0.0f, 300.0f, 1.0f, 300.0f,
             "An old upright in an empty house: the Salamander Grand with a second copy a fifth of a semitone sharp beating "
             "against it, worn by an old cassette, a dusty room.",
             [] (Builder& s)
