@@ -14244,11 +14244,11 @@ namespace
         macros (fanfare, "BRIGHT", "SPACE", "OVERCHARGE");
         reverb (fanfare, RT::hall, 0.7f, 0.2f, 25.0f);
         space (fanfare);
-        fanfare.set (ParamIDs::patchLevel, -3.5f);
+        fanfare.set (ParamIDs::patchLevel, -2.9f);
         overcharge (fanfare, { 0.6f, 0.55f, 0.7f, 0.7f });
         orchestra (fanfare, { { { 0, "Brass - Performance/Trumpets Sustain (looped).sfz", 0.8f, 0.1f },
                                 { 1, "Brass - Performance/Horns Sustain.sfz", 0.6f, -0.2f } },
-                              { 0, 1, 2 }, 0.0f,
+                              { 0, 1, 2 }, 5.5f,
                               "The gilded city's bright brass calling out from its towers, on the orchestra's trumpets with "
                               "the horns under them, a polished hall. Play it as chords too.",
                               10.0f, 300.0f, 1.0f, 450.0f, -1.0f,
@@ -14273,7 +14273,7 @@ namespace
         delay (fuse, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
         reverb (fuse, RT::plate, 0.5f, 0.18f);
         space (fuse);
-        fuse.set (ParamIDs::patchLevel, -4.0f);
+        fuse.set (ParamIDs::patchLevel, -4.9f);
         overcharge (fuse, { 0.6f, 0.7f, 0.6f, 0.7f });
         x.add (fuse);
 
@@ -14298,7 +14298,7 @@ namespace
         delay (whistle, "1/8", 0.3f, 0.15f, true, 6.0f);
         reverb (whistle, RT::hall, 0.75f, 0.22f, 20.0f);
         space (whistle);
-        whistle.set (ParamIDs::patchLevel, -3.0f);
+        whistle.set (ParamIDs::patchLevel, -8.2f);
         overcharge (whistle, { 0.7f, 0.5f, 0.75f, 0.8f });
         x.add (whistle);
 
@@ -14320,9 +14320,9 @@ namespace
         reverb (strings, RT::hall, 0.8f, 0.28f, 25.0f);
         eqBand (strings, 0, eq::Shape::lowCut, 60.0f, 0.0f);
         space (strings);
-        strings.set (ParamIDs::patchLevel, -10.0f);
+        strings.set (ParamIDs::patchLevel, -12.1f);
         overcharge (strings, { 0.5f, 0.45f, 0.7f, 0.9f });
-        orchestra (strings, { { { 4, "Strings - Performance/All Strings Sustain.sfz", 1.2f, 0.0f, true } }, {}, 0.0f,
+        orchestra (strings, { { { 4, "Strings - Performance/All Strings Sustain.sfz", 1.2f, 0.0f, true } }, {}, -7.3f,
                               "The gilded city's elegant strings: the orchestra's whole string section, with PR7-K's own "
                               "strings quieter underneath (the recordings aren't looped and fade after about five seconds: "
                               "the strings underneath carry long chords), a polished hall.",
@@ -14348,7 +14348,7 @@ namespace
         reverb (fog, RT::hall, 0.85f, 0.3f, 30.0f, 3.0f);
         eqBand (fog, 0, eq::Shape::lowCut, 50.0f, 0.0f);
         space (fog);
-        fog.set (ParamIDs::patchLevel, -9.0f);
+        fog.set (ParamIDs::patchLevel, -11.9f);
         overcharge (fog, { 0.45f, 0.6f, 0.5f, 0.9f });
         x.add (fog);
 
@@ -14372,7 +14372,7 @@ namespace
         reverb (choir, RT::cathedral, 0.85f, 0.3f, 30.0f);
         eqBand (choir, 0, eq::Shape::lowCut, 80.0f, 0.0f);
         space (choir);
-        choir.set (ParamIDs::patchLevel, -8.0f);
+        choir.set (ParamIDs::patchLevel, -5.9f);
         overcharge (choir, { 0.8f, 0.45f, 0.75f, 0.9f });
         x.add (choir);
 
@@ -14390,11 +14390,11 @@ namespace
         macros (clockwork, "BRIGHT", "SPACE", "OVERCHARGE");
         reverb (clockwork, RT::room, 0.4f, 0.1f);
         space (clockwork);
-        clockwork.set (ParamIDs::patchLevel, -3.0f);
+        clockwork.set (ParamIDs::patchLevel, -0.5f);
         overcharge (clockwork, { 0.4f, 0.55f, 0.6f, 0.6f });
         orchestra (clockwork, { { { 0, "Strings - Performance/Celli Staccato.sfz", 1.0f, -0.15f },
                                   { 2, "Strings - Performance/Basses Staccato.sfz", 0.8f, 0.15f } },
-                                { 0 }, 0.0f,
+                                { 0 }, 1.0f,
                                 "The gilded city's clockwork bass on the orchestra's celli and basses playing staccato, the "
                                 "synth's sine under them, a small bright room. Play bouncing eighths.",
                                 1.0f, 300.0f, 1.0f, 120.0f, -1.0f,
@@ -14420,7 +14420,7 @@ namespace
         macros (growl, "BRIGHT", "SPACE", "OVERCHARGE");
         reverb (growl, RT::room, 0.45f, 0.1f);
         space (growl);
-        growl.set (ParamIDs::patchLevel, -6.0f);
+        growl.set (ParamIDs::patchLevel, -3.7f);
         overcharge (growl, { 0.35f, 0.75f, 0.55f, 0.6f });
         x.add (growl);
 
@@ -14444,7 +14444,7 @@ namespace
         macros (wobble, "BRIGHT", "SPACE", "OVERCHARGE");
         reverb (wobble, RT::room, 0.4f, 0.1f);
         space (wobble);
-        wobble.set (ParamIDs::patchLevel, -4.0f);
+        wobble.set (ParamIDs::patchLevel, -10.0f);
         overcharge (wobble, { 0.4f, 0.7f, 0.6f, 0.6f });
         x.add (wobble);
 
@@ -14463,9 +14463,9 @@ namespace
         macros (harpsichord, "BRIGHT", "SPACE", "OVERCHARGE");
         reverb (harpsichord, RT::room, 0.45f, 0.15f);
         space (harpsichord);
-        harpsichord.set (ParamIDs::patchLevel, -6.0f);
+        harpsichord.set (ParamIDs::patchLevel, -4.0f);
         overcharge (harpsichord, { 0.55f, 0.6f, 0.7f, 0.7f });
-        orchestra (harpsichord, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+        orchestra (harpsichord, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 5.0f,
                                   "The gilded city's salon, on the orchestra's harpsichord (both its registers), a small "
                                   "polished room.",
                                   0.0f, 300.0f, 1.0f, 300.0f, -1.0f,
@@ -14490,7 +14490,7 @@ namespace
         macros (musicBox, "WARBLE", "SPACE", "OVERCHARGE");
         reverb (musicBox, RT::room, 0.5f, 0.2f, 10.0f, 3.5f);
         space (musicBox);
-        musicBox.set (ParamIDs::patchLevel, -5.0f);
+        musicBox.set (ParamIDs::patchLevel, -6.5f);
         overcharge (musicBox, { 0.5f, 0.8f, 0.6f, 0.7f });
         x.add (musicBox);
 
@@ -14504,9 +14504,9 @@ namespace
         delay (piano, "1/4 dotted", 0.25f, 0.08f, false, 3.5f);
         reverb (piano, RT::hall, 0.8f, 0.25f, 20.0f, 3.5f);
         space (piano);
-        piano.set (ParamIDs::patchLevel, -5.0f);
+        piano.set (ParamIDs::patchLevel, -6.0f);
         overcharge (piano, { 0.6f, 0.45f, 0.6f, 0.7f });
-        orchestra (piano, { { { 0, "Grand Piano/Grand Piano.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2, 3 }, 0.0f,
+        orchestra (piano, { { { 0, "Grand Piano/Grand Piano.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2, 3 }, -0.5f,
                             "Where the cities meet, a heartbroken piano on the orchestra's grand piano, its top softened a "
                             "little, a long soft hall and faint echoes. Play slowly.",
                             0.0f, 300.0f, 1.0f, 900.0f, -1.0f,
@@ -14537,7 +14537,7 @@ namespace
         delay (gears, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
         reverb (gears, RT::room, 0.45f, 0.12f);
         space (gears);
-        gears.set (ParamIDs::patchLevel, 0.0f);
+        gears.set (ParamIDs::patchLevel, 3.0f);
         overcharge (gears, { 0.55f, 0.6f, 0.7f, 0.7f });
         x.add (gears);
 
@@ -14570,7 +14570,7 @@ namespace
         delay (countdown, "1/16", 0.3f, 0.15f, true, 5.0f);
         reverb (countdown, RT::room, 0.4f, 0.12f);
         space (countdown);
-        countdown.set (ParamIDs::patchLevel, 2.0f);
+        countdown.set (ParamIDs::patchLevel, 7.5f);
         overcharge (countdown, { 0.45f, 0.85f, 0.6f, 0.7f });
         x.add (countdown);
 
@@ -14603,7 +14603,7 @@ namespace
         chorus (alley, ParamIDs::modIds, MT::chorus, 0.4f, 0.5f, 0.35f);
         reverb (alley, RT::plate, 0.55f, 0.18f);
         space (alley);
-        alley.set (ParamIDs::patchLevel, -6.0f);
+        alley.set (ParamIDs::patchLevel, -3.0f);
         overcharge (alley, { 0.5f, 0.6f, 0.65f, 0.8f });
         x.add (alley);
 
@@ -14623,7 +14623,7 @@ namespace
         macros (gear, "BRIGHT", "SPACE", "OVERCHARGE");
         reverb (gear, RT::room, 0.45f, 0.14f);
         space (gear);
-        gear.set (ParamIDs::patchLevel, -6.0f);
+        gear.set (ParamIDs::patchLevel, -5.0f);
         overcharge (gear, { 0.6f, 0.6f, 0.7f, 0.7f });
         x.add (gear);
 
@@ -14643,7 +14643,7 @@ namespace
         delay (spark, "1/8", 0.3f, 0.15f, true, 5.0f);
         reverb (spark, RT::room, 0.4f, 0.12f);
         space (spark);
-        spark.set (ParamIDs::patchLevel, -7.0f);
+        spark.set (ParamIDs::patchLevel, -1.5f);
         overcharge (spark, { 0.5f, 0.85f, 0.6f, 0.7f });
         x.add (spark);
 
@@ -14667,7 +14667,7 @@ namespace
         delay (shard, "1/8 dotted", 0.3f, 0.15f, true, 6.0f);
         reverb (shard, RT::hall, 0.7f, 0.22f);
         space (shard);
-        shard.set (ParamIDs::patchLevel, -5.0f);
+        shard.set (ParamIDs::patchLevel, -6.0f);
         overcharge (shard, { 0.7f, 0.55f, 0.8f, 0.8f });
         x.add (shard);
     }
