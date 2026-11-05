@@ -85,7 +85,8 @@ namespace ModDestinations
                 { "FX Leviathan", "Mix" }, { "FX Leviathan", "Growl" }, { "FX Leviathan", "Drift" },
                 { "FX Nuclearspring", "Mix" }, { "FX Nuclearspring", "Drip" }, { "FX Nuclearspring", "Boing" },
                 { "FX Lightspeed", "Jump" }, { "FX Lightspeed", "Rise" }, { "FX Lightspeed", "Whoosh" },
-                { "FX Bloom", "Amount" }, { "FX Bloom", "Resonance" }, { "FX Bloom", "Size" } };
+                { "FX Bloom", "Amount" }, { "FX Bloom", "Resonance" }, { "FX Bloom", "Size" },
+                { "FX Legion", "Size" }, { "FX Legion", "Spread" }, { "FX Legion", "Detune" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

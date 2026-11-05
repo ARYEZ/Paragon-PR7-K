@@ -25,6 +25,7 @@
 #include "dsp/effects/NuclearSpring.h"
 #include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
+#include "dsp/effects/Legion.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -112,6 +113,7 @@ struct Rack
     effects::NuclearSpring nuclearSpring;
     effects::LightSpeed lightSpeed;   // 0.73.0
     effects::Bloom bloom;             // 0.74.0
+    effects::Legion legion;           // 0.76.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

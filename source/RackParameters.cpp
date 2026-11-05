@@ -26,6 +26,7 @@
 #include "dsp/effects/NuclearSpring.h"
 #include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
+#include "dsp/effects/Legion.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -772,4 +773,22 @@ void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout& la
     layout.add (makeFloat (ParamIDs::bloomSwell, "Bloom Swell", { 0.0f, 1.0f, 0.01f }, d.swell, v, asSwell));
     layout.add (makeFloat (ParamIDs::bloomTone, "Bloom Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::bloomWidth, "Bloom Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LEGION (0.76.0, our own design): off and at SIZE 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 44;
+    using L = effects::Legion;
+    const L::Settings d;
+    const ToText asPlayers = [] (float value, int) { return juce::String (L::playersAt (value), 1) + " players"; };
+    const ToText asLoose = [] (float value, int) { return juce::String (L::looseMs (value), 0) + " ms"; };
+    const ToText asDetune = [] (float value, int) { return juce::String (L::detuneCents (value), 1) + " ct"; };
+    const ToText asTone = [] (float value, int) { return juce::String (L::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::legionOn, "Legion On", v, false));
+    layout.add (makeFloat (ParamIDs::legionSize, "Legion Size", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPlayers));
+    layout.add (makeFloat (ParamIDs::legionSpread, "Legion Spread", { 0.0f, 1.0f, 0.01f }, d.spread, v, asPercent));
+    layout.add (makeFloat (ParamIDs::legionLoose, "Legion Loose", { 0.0f, 1.0f, 0.01f }, d.loose, v, asLoose));
+    layout.add (makeFloat (ParamIDs::legionDetune, "Legion Detune", { 0.0f, 1.0f, 0.01f }, d.detune, v, asDetune));
+    layout.add (makeFloat (ParamIDs::legionTone, "Legion Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
 }

@@ -318,6 +318,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->nuclearSpring.prepare (sampleRate, preparedBlockSize);
     rack->lightSpeed.prepare (sampleRate, preparedBlockSize);
     rack->bloom.prepare (sampleRate, preparedBlockSize);
+    rack->legion.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1280,6 +1281,18 @@ effects::LightSpeed::Settings ParagonX1AudioProcessor::getLightSpeedSettings() c
     return s;
 }
 
+effects::Legion::Settings ParagonX1AudioProcessor::getLegionSettings() const noexcept
+{
+    effects::Legion::Settings s;
+    s.on = isOn (ParamIDs::legionOn);
+    s.size = effectParam (ModDestinations::effect ("legionSize"), ParamIDs::legionSize);
+    s.spread = effectParam (ModDestinations::effect ("legionSpread"), ParamIDs::legionSpread);
+    s.loose = param (ParamIDs::legionLoose);
+    s.detune = effectParam (ModDestinations::effect ("legionDetune"), ParamIDs::legionDetune);
+    s.tone = param (ParamIDs::legionTone);
+    return s;
+}
+
 effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
 {
     effects::Bloom::Settings s;
@@ -1601,6 +1614,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->bloom.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
             rack->bloom.process (block, bloom);
         }
+        rack->legion.process (block, getLegionSettings());   // 0.76.0: one player to a section
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

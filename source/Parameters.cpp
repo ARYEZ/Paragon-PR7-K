@@ -566,5 +566,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addNuclearSpringParameters (layout);   // NUCLEARSPRING (0.69.0): RackParameters.cpp
     addLightSpeedParameters (layout);      // LIGHTSPEED (0.73.0): RackParameters.cpp
     addBloomParameters (layout);           // BLOOM (0.74.0): RackParameters.cpp
+    addLegionParameters (layout);          // LEGION (0.76.0): RackParameters.cpp
     return layout;
 }

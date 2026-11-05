@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : audio (processor), insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), lightTrailPage (processor), blackHolePage (processor), dilationPage (processor), remnantPage (processor), proximityPage (processor), hazePage (processor), spectrePage (processor), leviathanPage (processor), nuclearSpringPage (processor), lightSpeedPage (processor), bloomPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), lightTrailPage (processor), blackHolePage (processor), dilationPage (processor), remnantPage (processor), proximityPage (processor), hazePage (processor), spectrePage (processor), leviathanPage (processor), nuclearSpringPage (processor), lightSpeedPage (processor), bloomPage (processor), legionPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,7 +46,7 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation, View::remnant, View::proximity, View::haze, View::spectre, View::leviathan, View::nuclearSpring, View::lightSpeed, View::bloom };
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation, View::remnant, View::proximity, View::haze, View::spectre, View::leviathan, View::nuclearSpring, View::lightSpeed, View::bloom, View::legion };
         show (views[juce::jlimit (0, 19, unit)]);
     }, [this] { chooseSignature(); });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
@@ -111,6 +111,9 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // BLOOM (0.74.0): its page.
     bloomPage.onClose = [this] { show (View::modFx); };
     addChildComponent (bloomPage);
+    // LEGION (0.76.0): its page.
+    legionPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (legionPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -197,6 +200,7 @@ void FxPage::show (View newView)
     nuclearSpringPage.setVisible (view == View::nuclearSpring);
     lightSpeedPage.setVisible (view == View::lightSpeed);
     bloomPage.setVisible (view == View::bloom);
+    legionPage.setVisible (view == View::legion);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -256,7 +260,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage, &lightTrailPage, &blackHolePage, &dilationPage, &remnantPage, &proximityPage, &hazePage, &spectrePage, &leviathanPage, &nuclearSpringPage, &lightSpeedPage, &bloomPage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage, &lightTrailPage, &blackHolePage, &dilationPage, &remnantPage, &proximityPage, &hazePage, &spectrePage, &leviathanPage, &nuclearSpringPage, &lightSpeedPage, &bloomPage, &legionPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.

@@ -69,7 +69,9 @@ namespace ModDestinations
                                                  // 0.73.0: LIGHTSPEED: how far into the jump, how high the streaks, the rushing air
                                                  "jumpAmount", "jumpRise", "jumpWhoosh",
                                                  // 0.74.0: BLOOM: how much, the strings' share, the hall's size
-                                                 "bloomAmount", "bloomResonance", "bloomSize" };
+                                                 "bloomAmount", "bloomResonance", "bloomSize",
+                                                 // 0.76.0: LEGION: how many players, how wide, how far out of tune
+                                                 "legionSize", "legionSpread", "legionDetune" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

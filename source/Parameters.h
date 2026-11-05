@@ -516,6 +516,13 @@ namespace ParamIDs
     inline constexpr auto bloomSwell     = "bloomSwell";       // 0 to 1: the hall opening, 0.15 to 4 s
     inline constexpr auto bloomTone      = "bloomTone";        // 0 to 1: 1.5 to 15 kHz
     inline constexpr auto bloomWidth     = "bloomWidth";       // 0 to 1
+    // LEGION (0.76.0, version hint 44, effects::Legion): MAESTRO's signature.
+    inline constexpr auto legionOn     = "legionOn";
+    inline constexpr auto legionSize   = "legionSize";     // 0 to 1: one player to a section of nine (the macro's)
+    inline constexpr auto legionSpread = "legionSpread";   // 0 to 1: how wide the stage
+    inline constexpr auto legionLoose  = "legionLoose";    // 0 to 1: the latest player 6 to 30 ms behind
+    inline constexpr auto legionDetune = "legionDetune";   // 0 to 1: drifting up to 0 to 14 cents
+    inline constexpr auto legionTone   = "legionTone";     // 0 to 1: the players' top, 3 to 16 kHz
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -607,4 +614,5 @@ void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.69.0)
 void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.73.0)
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
+void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.76.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)
