@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.76.0
+
+**MAESTRO, an epic trailer-orchestra expansion, built round LEGION; wavetable packs from your own computer.**
+
+- **MAESTRO** (MA01-MA18): the orchestra of a film trailer's big moments. Leads: Hero Horns, Soaring Violins, Lone Trumpet. Pads: Rising Strings (trembling tremolo), Choir of Thousands, Dark Low Strings. Basses: Brass Hits, Ostinato Cellos (a driving sixteenth-note arp), Tuba Weight. Keys: Trailer Piano, Celesta Wonder, War Drums Hit (timpani). Arps: Racing Spiccato, Pulse Brass (a galloping rhythm), Rising Tension (ticking col legno). Plucks: War Pizzicato, Harp Fall, Clock Strings. Our own sounds and phrases.
+  - **Every preset plays the orchestra library's own recordings** (the free Sonatina Symphonic Orchestra, the one HYPERDRIVE uses) once it's downloaded, and PR7-K's own synthesized orchestra until then.
+  - **The mod wheel is the dynamics on every preset.** On the recordings it fades between their soft and loud playing; on the synthesized versions it makes them brighter and a little louder.
+  - **MACRO 3 is LEGION on every preset**: from one player to a full section. MACRO 2 is SPACE as always.
+  - Levelled by measurement to sit with the other banks; full LEGION keeps the level within about 1 dB, and every preset has the LIMITER at -1 dBFS as a ceiling (a full section's stacked attacks can add up).
+  - The orchestra's section-string recordings fade after about five seconds, so Soaring Violins and Rising Strings keep PR7-K's own strings quietly underneath to hold long notes.
+- **LEGION**, a new signature effect (FX page, SIGNATURE slot): SIZE takes a sound from one player to a section of nine. Each added player plays a little late (LOOSE), drifts slowly in and out of tune (DETUNE), stands at its own place across the stage (SPREAD) and is a touch darker (TONE). The sound stays the same loudness as players join: bigger, not louder. At SIZE 0 your sound passes through untouched. Its page shows the stage from above, each player lighting up as it joins. Our own design.
+- **Wavetable packs.** A preset can now use a wavetable from a pack on your computer without carrying the file itself, for packs whose licence doesn't allow passing their files on. Put the pack's folder in the presets folder's **Libraries** folder. Without the pack, the oscillator plays one of PR7-K's own tables and its TABLE box says which file is missing; its menu names the pack and can look for it again once it's in place. Your own presets and projects still carry any table you've loaded inside them.
+- **Fixed: some SFZ libraries loaded silent.** A library that builds the names of the files it includes from its own shorthand (as the orchestra library's grand piano does for its velocity layers) loaded nothing; it now loads (358 regions for that piano).
+
 ## 0.75.0
 
 **Orchestral dynamics on the mod wheel, the libraries' own filters, and key switches.**
