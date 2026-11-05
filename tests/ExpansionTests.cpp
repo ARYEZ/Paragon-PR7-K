@@ -573,6 +573,69 @@ TEST_CASE ("MAESTRO: MACRO 3 is LEGION on every preset, resting at its left; eve
     CHECK (sampled == 18);
 }
 
+TEST_CASE ("TWIN SPIRES: MACRO 3 is OVERCHARGE on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][overcharge]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 28)   // TWIN SPIRES: the twenty-ninth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "OVERCHARGE");
+            CHECK (version->notes.contains ("OVERCHARGE"));
+            CHECK (version->parameters.at (ParamIDs::overchargeOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::overchargeCharge) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::overchargeCharge && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 5);
+}
+
 TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left; every preset has a real piano version", "[rigs][expansions][bloom]")
 {
     ParagonX1AudioProcessor processor;
@@ -737,8 +800,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto hyper = rig.bank == Rig::numBanks + 25;     // HYPERDRIVE: 104 BPM in G minor, heroic and marching
         const auto cinema = rig.bank == Rig::numBanks + 26;    // GRAND CINEMA: 72 BPM in D minor, piano with the pedal
         const auto maestro = rig.bank == Rig::numBanks + 27;   // MAESTRO: 90 BPM in D minor, the wheel riding the dynamics
+        const auto twin = rig.bank == Rig::numBanks + 28;      // TWIN SPIRES: 95 BPM in E minor, Em C G D
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -798,8 +862,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 27, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 28, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 ? major : minor;
             const auto degree = [&] (int d)
             {
@@ -971,6 +1035,61 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 chord (e, at (4), at (7.9), { 46, 58, 62, 65 }, 100);
                 chord (e, at (8), at (11.9), { 53, 57, 60, 65 }, 100);
                 chord (e, at (12), at (15.9), { 48, 55, 60, 64 }, 100);
+                length = 19.0 * beat;
+            }
+        }
+        else if (twin)
+        {
+            // Our own phrases (none from the series): E minor, the chords E minor, C, G, D; a defiant lead line with a
+            // held note at the end, short notes and gaps where OVERCHARGE's crystals and repeats can be heard.
+            const std::vector<std::vector<int>> chords { { 40, 52, 59, 64, 67 }, { 36, 52, 55, 60, 64 },
+                                                         { 43, 55, 59, 62, 67 }, { 38, 54, 57, 62, 66 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.5, 64 }, { 0.5, 0.5, 67 }, { 1, 1, 71 }, { 2, 0.5, 69 }, { 2.5, 0.5, 67 }, { 3, 1, 66 },
+                        { 4, 1.5, 64 }, { 6, 0.5, 71 }, { 6.5, 0.5, 72 }, { 7, 1, 74 }, { 8, 1, 76 }, { 9, 0.5, 74 },
+                        { 9.5, 0.5, 72 }, { 10, 1, 71 }, { 12, 4, 71 } }, 105);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), chords[(size_t) c], 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                const int roots4[] { 40, 36, 43, 38 };   // E2 C2 G2 D2: bouncing eighths, accents on the beat
+                for (int c = 0; c < 4; ++c)
+                    for (int k = 0; k < 8; ++k)
+                        if (k != 3 && k != 7)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + (rig.name == "Wobble Drop" ? 0.48 : 0.35)),
+                                   { roots4[c] - (k % 4 == 0 ? 12 : 0) }, k % 2 == 0 ? 115 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.6), notes, 95);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 2.4), std::vector<int> { notes[2] + 12 }, 80);
+                    chord (e, at (c * 4.0 + 3.0), at (c * 4.0 + 3.4), std::vector<int> { notes[1] + 12 }, 75);
+                }
+                length = 20.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { notes[0] + 12, notes[1] + 12, notes[2] + 12 }, 100);
+                }
                 length = 19.0 * beat;
             }
         }

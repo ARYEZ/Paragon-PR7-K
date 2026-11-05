@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 28> list
+    inline constexpr std::array<Expansion, 29> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -148,5 +148,12 @@ namespace expansions
           "dynamics on every preset. Built round LEGION (0.76.0) and MACRO 3, LEGION: from one player to a full section. "
           "Every preset plays the Sonatina Symphonic Orchestra once it's downloaded (free), and PR7-K's own synthesized "
           "orchestra until then. Our own sounds." },
+        { "TWIN SPIRES", "TS",
+          "Inspired by an animated series about two sister cities, a gilded one of inventors above and a grimy, chemical "
+          "one below: polished brass, strings, a harpsichord and clockwork for the city above; distorted machine basses, "
+          "punk leads, toxic haze and a broken music box for the one below; crystal tones, a heartbroken piano and neon "
+          "pulses where they meet. Built round OVERCHARGE (0.77.0) and MACRO 3, OVERCHARGE: unstable magic, charging the "
+          "sound then breaking it apart. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
+          "(free). Our own sounds." },
     }};
 }

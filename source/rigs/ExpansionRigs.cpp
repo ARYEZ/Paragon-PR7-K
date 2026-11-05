@@ -14184,6 +14184,493 @@ namespace
                                                      s.rig.modulation.macroNames[0] = "ECHO"; } });
         x.add (clock);
     }
+    // TWIN SPIRES (0.77.0, the owner's name and theme: an animated series about two sister cities, a gilded one above
+    // and a grimy one below; no titles, characters, places, terms or music from it on the plugin). Three columns in
+    // every category: the gilded city above (polished, inventive, orchestral), the city below (grimy, distorted,
+    // punk) and where they meet. Our own sounds and phrases.
+    // MACRO 3 on every preset is OVERCHARGE (the bank's own effect, 0.77.0): at its left the effect rests, untouched;
+    // its first half charges the sound with crystal tones and climbing repeats, its second overloads it in bursts.
+    struct Spark
+    {
+        float glow = 0.6f, chaos = 0.6f, tone = 0.6f, width = 0.7f;
+        float top = 1.0f;   // the macro's CHARGE at full
+    };
+
+    void overcharge (Builder& b, Spark k)
+    {
+        b.set (ParamIDs::overchargeOn, 1.0f).set (ParamIDs::overchargeCharge, 0.0f).set (ParamIDs::overchargeGlow, k.glow)
+         .set (ParamIDs::overchargeChaos, k.chaos).set (ParamIDs::overchargeTone, k.tone).set (ParamIDs::overchargeWidth, k.width);
+        route (b, "macro3", ParamIDs::overchargeCharge, k.top);
+    }
+
+    float lfoDivision (const char* name) { return (float) synth::mod::lfoDivisionNames.indexOf (name); }
+
+    void twinSpires (Expansion x)
+    {
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto hall = [] (Builder& s, const char* name = "HALL")
+        {
+            route (s, "macro1", ParamIDs::reverbSize, 0.2f);
+            s.rig.modulation.macroNames[0] = name;
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto fanfare = x.make ("Spire Fanfare", 1, { "Lead", "Brass", "Gilded", "Heroic" },
+            "The gilded city's bright brass calling out from its towers: trumpets as saws and a narrow pulse sung through "
+            "the VOICE filter on an open \"ah\", horns an octave down, each note lipped up into, the tone biting the harder "
+            "you play, a polished hall. Play it as chords too. MOD WHEEL: more vibrato. MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        fanfare.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.28f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.25f).osc (2, "Fine", 5.0f).osc (2, "Volume", 0.18f)
+               .filter (FilterType::lp24, 1600.0f, 0.1f, 0.45f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.4f)
+               .set (ParamIDs::fltEnvVel, 0.5f).filterEnvelope (15.0f, 350.0f, 0.5f, 300.0f)
+               .ampEnvelope (18.0f, 400.0f, 0.85f, 380.0f).set (ParamIDs::ampVel, 0.4f)
+               .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.6f).set (ParamIDs::voiceSize, 0.45f)
+               .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.5f);
+        pkSection (fanfare, 0, 3, 0.05f, 7.0f, 5.4f, 450.0f);
+        pkSection (fanfare, 1, 2, 0.04f, 6.0f, 5.0f, 500.0f);
+        pkBend (fanfare, -1.0f, 0.06f, -0.3f);
+        route (fanfare, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (fanfare, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        route (fanfare, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
+        macros (fanfare, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (fanfare, RT::hall, 0.7f, 0.2f, 25.0f);
+        space (fanfare);
+        fanfare.set (ParamIDs::patchLevel, -3.5f);
+        overcharge (fanfare, { 0.6f, 0.55f, 0.7f, 0.7f });
+        orchestra (fanfare, { { { 0, "Brass - Performance/Trumpets Sustain (looped).sfz", 0.8f, 0.1f },
+                                { 1, "Brass - Performance/Horns Sustain.sfz", 0.6f, -0.2f } },
+                              { 0, 1, 2 }, 0.0f,
+                              "The gilded city's bright brass calling out from its towers, on the orchestra's trumpets with "
+                              "the horns under them, a polished hall. Play it as chords too.",
+                              10.0f, 300.0f, 1.0f, 450.0f, -1.0f,
+                              [hall] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hall (s); } });
+        x.add (fanfare);
+
+        auto fuse = x.make ("Fuse Lead", 2, { "Lead", "Punk", "Grit", "Mono" },
+            "The city below's punk lead: two detuned saws and a narrow pulse over a square an octave down, a little tube "
+            "grit, a quick glide between notes, a late vibrato, dotted echoes bouncing side to side. MOD WHEEL: more grit. "
+            "MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        fuse.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.3f)
+            .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.5f).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.22f)
+            .filter (FilterType::lp24, 2600.0f, 0.2f, 0.4f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.3f)
+            .filterEnvelope (5.0f, 400.0f, 0.5f, 300.0f).ampEnvelope (5.0f, 300.0f, 0.85f, 250.0f)
+            .shaper (0, synth::ShaperModel::tube, 0.2f).mono (40.0f);
+        vibrato (fuse, 0, 12.0f, 5.5f, 400.0f);
+        vibrato (fuse, 1, 12.0f, 5.5f, 400.0f);
+        route (fuse, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (fuse, "modWheel", ParamIDs::shp (0, "Drive"), 0.4f);
+        macros (fuse, "BRIGHT", "SPACE", "OVERCHARGE");
+        delay (fuse, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
+        reverb (fuse, RT::plate, 0.5f, 0.18f);
+        space (fuse);
+        fuse.set (ParamIDs::patchLevel, -4.0f);
+        overcharge (fuse, { 0.6f, 0.7f, 0.6f, 0.7f });
+        x.add (fuse);
+
+        auto whistle = x.make ("Crystal Whistle", 3, { "Lead", "Glass", "Crystal", "Mono" },
+            "Where the cities meet, a crystal singing: a pure sine with a glassy triangle an octave up, a bell-like ring at "
+            "each note's start (a touch of FM fading), a glide, a quick shimmering vibrato, ping-pong echoes and a hall. "
+            "MOD WHEEL: a wider shimmer. MACROS: GLASS (more of the octave), SPACE, OVERCHARGE.");
+        whistle.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+               .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 2)).osc (0, "FmAmount", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.12f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 19.0f).osc (2, "PhaseRand", 0.0f)
+               .filter (FilterType::lp12, 6000.0f, 0.0f, 0.0f)
+               .ampEnvelope (20.0f, 400.0f, 0.85f, 350.0f).mono (50.0f);
+        vibrato (whistle, 0, 10.0f, 6.5f, 250.0f);
+        vibrato (whistle, 1, 10.0f, 6.5f, 250.0f);
+        pkShot (whistle, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.25f, 0.0f, 0.0f } });
+        route (whistle, "env1", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (whistle, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
+        route (whistle, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (whistle, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.25f);
+        macros (whistle, "GLASS", "SPACE", "OVERCHARGE");
+        delay (whistle, "1/8", 0.3f, 0.15f, true, 6.0f);
+        reverb (whistle, RT::hall, 0.75f, 0.22f, 20.0f);
+        space (whistle);
+        whistle.set (ParamIDs::patchLevel, -3.0f);
+        overcharge (whistle, { 0.7f, 0.5f, 0.75f, 0.8f });
+        x.add (whistle);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto strings = x.make ("Gilded Strings", 4, { "Pad", "Strings", "Gilded", "Elegant" },
+            "The gilded city's elegant strings: violins (six saw players, each with their own vibrato easing in) over violas "
+            "and cellos an octave down, the bows' rosin as a breath, each chord bowed in, the tone opening as the bow bites, "
+            "a polished hall. MOD WHEEL: opens the tone. MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        strings.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.28f)
+               .filter (FilterType::lp24, 2400.0f, 0.08f, 0.3f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.3f)
+               .filterEnvelope (300.0f, 1200.0f, 0.7f, 800.0f).ampEnvelope (350.0f, 1000.0f, 0.95f, 1000.0f);
+        pkSection (strings, 0, 6, 0.05f, 8.0f, 5.5f, 500.0f);
+        pkSection (strings, 1, 4, 0.04f, 7.0f, 5.0f, 600.0f);
+        noiseOsc (strings, 2, 0.015f, 0.1f);
+        route (strings, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (strings, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        macros (strings, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (strings, RT::hall, 0.8f, 0.28f, 25.0f);
+        eqBand (strings, 0, eq::Shape::lowCut, 60.0f, 0.0f);
+        space (strings);
+        strings.set (ParamIDs::patchLevel, -10.0f);
+        overcharge (strings, { 0.5f, 0.45f, 0.7f, 0.9f });
+        orchestra (strings, { { { 4, "Strings - Performance/All Strings Sustain.sfz", 1.2f, 0.0f, true } }, {}, 0.0f,
+                              "The gilded city's elegant strings: the orchestra's whole string section, with PR7-K's own "
+                              "strings quieter underneath (the recordings aren't looped and fade after about five seconds: "
+                              "the strings underneath carry long chords), a polished hall.",
+                              -1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                              [] (Builder& s) { s.osc (0, "Volume", 0.25f).osc (1, "Volume", 0.14f); } });
+        x.add (strings);
+
+        auto fog = x.make ("Toxic Fog", 5, { "Pad", "Smoky", "Toxic", "Dark" },
+            "The city below's chemical haze: a wide stack of detuned saws through a dark filter that drifts slowly open and "
+            "shut, a hiss of air, a slow chorus swirling it, a dark hall. Low chords sound best. MOD WHEEL: thicker fumes "
+            "(more hiss). MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        fog.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.85f)
+           .osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.8f)
+           .filter (FilterType::lp12, 850.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+           .ampEnvelope (900.0f, 1500.0f, 0.95f, 1500.0f)
+           .set (ParamIDs::lfo (0, "Rate"), 0.12f);
+        noiseOsc (fog, 1, 0.04f, 0.2f);
+        route (fog, "lfo1", ParamIDs::fltCutoff, 0.1f);
+        route (fog, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (fog, "modWheel", ParamIDs::osc (1, "Volume"), 0.08f);
+        macros (fog, "BRIGHT", "SPACE", "OVERCHARGE");
+        chorus (fog, ParamIDs::modIds, MT::chorus, 0.2f, 0.6f, 0.4f);
+        reverb (fog, RT::hall, 0.85f, 0.3f, 30.0f, 3.0f);
+        eqBand (fog, 0, eq::Shape::lowCut, 50.0f, 0.0f);
+        space (fog);
+        fog.set (ParamIDs::patchLevel, -9.0f);
+        overcharge (fog, { 0.45f, 0.6f, 0.5f, 0.9f });
+        x.add (fog);
+
+        auto choir = x.make ("Blue Glow Choir", 6, { "Pad", "Choir", "Voice", "Crystal" },
+            "Where the cities meet, a soft choir lit by crystal light: saw singers through the VOICE filter on a hummed "
+            "\"oo\" opening a little towards \"oh\", each singer with their own vibrato, a sine an octave up glinting, a "
+            "cathedral. MOD WHEEL: the glint brighter. MACROS: VOWEL, SPACE, OVERCHARGE.");
+        choir.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.06f).osc (1, "Voice", 0.0f)
+             .filter (FilterType::lp12, 4000.0f, 0.05f, 0.0f)
+             .ampEnvelope (500.0f, 900.0f, 0.95f, 1300.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.05f).set (ParamIDs::voiceSize, 0.4f)
+             .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.85f);
+        pkSection (choir, 0, 5, 0.07f, 9.0f, 5.0f, 500.0f);
+        vibrato (choir, 1, 6.0f, 5.5f, 400.0f);
+        pkShot (choir, 0, { PK { 0.0f, 0.0f, 0.3f }, PK { 0.7f, 1.0f, 0.0f } });
+        route (choir, "env1", ParamIDs::voiceVowel, 0.2f);
+        route (choir, "macro1", ParamIDs::voiceVowel, 0.3f);
+        route (choir, "modWheel", ParamIDs::osc (1, "Volume"), 0.08f);
+        macros (choir, "VOWEL", "SPACE", "OVERCHARGE");
+        reverb (choir, RT::cathedral, 0.85f, 0.3f, 30.0f);
+        eqBand (choir, 0, eq::Shape::lowCut, 80.0f, 0.0f);
+        space (choir);
+        choir.set (ParamIDs::patchLevel, -8.0f);
+        overcharge (choir, { 0.8f, 0.45f, 0.75f, 0.9f });
+        x.add (choir);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto clockwork = x.make ("Clockwork Bass", 7, { "Bass", "Staccato", "Gilded", "Tight" },
+            "The gilded city's clockwork bass: a narrow pulse and a clean sine an octave down, each note snapped short like a "
+            "gear's tooth, the filter clicking open and shut, a small bright room. Play bouncing eighths. MACROS: BRIGHT, "
+            "SPACE, OVERCHARGE.");
+        clockwork.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.5f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.45f).osc (1, "Filter", 0.0f)
+                 .filter (FilterType::lp24, 700.0f, 0.2f, 0.45f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.4f)
+                 .filterEnvelope (0.0f, 120.0f, 0.1f, 80.0f).ampEnvelope (2.0f, 260.0f, 0.2f, 90.0f);
+        pkVelocity (clockwork, 0.4f, 0.3f, 0.4f);
+        route (clockwork, "macro1", ParamIDs::fltEnv, 0.2f);
+        macros (clockwork, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (clockwork, RT::room, 0.4f, 0.1f);
+        space (clockwork);
+        clockwork.set (ParamIDs::patchLevel, -3.0f);
+        overcharge (clockwork, { 0.4f, 0.55f, 0.6f, 0.6f });
+        orchestra (clockwork, { { { 0, "Strings - Performance/Celli Staccato.sfz", 1.0f, -0.15f },
+                                  { 2, "Strings - Performance/Basses Staccato.sfz", 0.8f, 0.15f } },
+                                { 0 }, 0.0f,
+                                "The gilded city's clockwork bass on the orchestra's celli and basses playing staccato, the "
+                                "synth's sine under them, a small bright room. Play bouncing eighths.",
+                                1.0f, 300.0f, 1.0f, 120.0f, -1.0f,
+                                [] (Builder& s) { s.osc (1, "Volume", 0.25f); route (s, "macro1", ParamIDs::reverbSize, 0.2f);
+                                                  s.rig.modulation.macroNames[0] = "ROOM"; } });
+        x.add (clockwork);
+
+        auto growl = x.make ("Pipe Growl", 8, { "Bass", "Distorted", "Machine", "Heavy" },
+            "The city below's machinery: a saw and a square crushed through a diode shaper and a resonant filter that barks "
+            "open on every note, sung through the VOICE filter for a throaty growl, a clean sine sub kept off the grime. "
+            "MOD WHEEL: the growl opening (the vowel). MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        growl.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Fine", -6.0f).osc (1, "Volume", 0.35f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.4f).osc (2, "Filter", 0.0f)
+             .osc (2, "Voice", 0.0f).osc (2, "Shp1", 0.0f)
+             .filter (FilterType::lp24, 500.0f, 0.35f, 0.5f).set (ParamIDs::fltKey, 0.4f).set (ParamIDs::fltVel, 0.3f)
+             .filterEnvelope (2.0f, 300.0f, 0.3f, 200.0f).ampEnvelope (3.0f, 500.0f, 0.8f, 200.0f)
+             .shaper (0, synth::ShaperModel::diode, 0.55f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.25f).set (ParamIDs::voiceSize, 0.0f)
+             .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.5f).mono (25.0f);
+        route (growl, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (growl, "modWheel", ParamIDs::voiceVowel, 0.5f);
+        macros (growl, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (growl, RT::room, 0.45f, 0.1f);
+        space (growl);
+        growl.set (ParamIDs::patchLevel, -6.0f);
+        overcharge (growl, { 0.35f, 0.75f, 0.55f, 0.6f });
+        x.add (growl);
+
+        auto wobble = x.make ("Wobble Drop", 9, { "Bass", "Wobble", "Pulse", "Mono" },
+            "Where the cities meet, a pulsing wobble bass: stacked saws through a resonant filter that a synced LFO throws "
+            "open and shut in eighth notes, a soft shaper for weight, a clean sine sub. Hold a low note. MOD WHEEL: a "
+            "sharper, more resonant wobble. MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        wobble.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.7f)
+              .osc (0, "UniDetune", 0.07f).osc (0, "UniSpread", 0.3f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f).osc (1, "Filter", 0.0f)
+              .osc (1, "Shp1", 0.0f)
+              .filter (FilterType::lp24, 300.0f, 0.45f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+              .ampEnvelope (5.0f, 500.0f, 0.9f, 150.0f)
+              .shaper (0, synth::ShaperModel::soft, 0.35f).mono (30.0f)
+              .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight)
+              .set (ParamIDs::lfo (0, "Division"), lfoDivision ("1/8"))
+              .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::voice);
+        route (wobble, "lfo1", ParamIDs::fltCutoff, 0.3f);
+        route (wobble, "macro1", ParamIDs::fltCutoff, 0.15f);
+        route (wobble, "modWheel", ParamIDs::fltRes, 0.3f);
+        macros (wobble, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (wobble, RT::room, 0.4f, 0.1f);
+        space (wobble);
+        wobble.set (ParamIDs::patchLevel, -4.0f);
+        overcharge (wobble, { 0.4f, 0.7f, 0.6f, 0.6f });
+        x.add (wobble);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto harpsichord = x.make ("Salon Harpsichord", 10, { "Keys", "Harpsichord", "Gilded", "Baroque" },
+            "The gilded city's salon: a bright harpsichord, a narrow pulse and a saw an octave up plucked by a quill (a "
+            "click and a quick filter snap), ringing a moment then fading, a small polished room. MACROS: BRIGHT, SPACE, "
+            "OVERCHARGE.");
+        harpsichord.osc (0, "Wave", pulse).osc (0, "Width", 0.15f).osc (0, "Volume", 0.5f)
+                   .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f)
+                   .filter (FilterType::lp12, 3500.0f, 0.1f, 0.4f).set (ParamIDs::fltKey, 0.6f)
+                   .filterEnvelope (0.0f, 400.0f, 0.3f, 300.0f)
+                   .ampEnvelope (0.5f, 1600.0f, 0.0f, 250.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (harpsichord, 2, 0, 0.06f, 2.0f, 0.1f);
+        route (harpsichord, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (harpsichord, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (harpsichord, RT::room, 0.45f, 0.15f);
+        space (harpsichord);
+        harpsichord.set (ParamIDs::patchLevel, -6.0f);
+        overcharge (harpsichord, { 0.55f, 0.6f, 0.7f, 0.7f });
+        orchestra (harpsichord, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+                                  "The gilded city's salon, on the orchestra's harpsichord (both its registers), a small "
+                                  "polished room.",
+                                  0.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                                  [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "ROOM"; } });
+        x.add (harpsichord);
+
+        auto musicBox = x.make ("Broken Music Box", 11, { "Keys", "Music Box", "Eerie", "Detuned" },
+            "The city below's broken music box: a little tine (a sine with a bar's overtone fading fast), each note pulled a "
+            "little out of tune at random, a slow warble as if the spring were winding down, a dusty room. MACROS: WARBLE, "
+            "SPACE, OVERCHARGE.");
+        musicBox.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Random", -0.3f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 18.0f).osc (1, "Fine", -42.0f).osc (1, "PhaseRand", 0.0f)
+                .osc (1, "Random", -0.3f)
+                .filter (FilterType::lp12, 7000.0f, 0.0f, 0.0f)
+                .ampEnvelope (1.0f, 1400.0f, 0.0f, 500.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (musicBox, 1, 0, 0.25f, 0.3f);
+        pkStrike (musicBox, 2, 1, 0.04f, 2.0f, 0.0f);
+        vibrato (musicBox, 0, 8.0f, 1.2f, 0.0f);
+        vibrato (musicBox, 1, 8.0f, 1.2f, 0.0f);
+        route (musicBox, "macro1", ParamIDs::osc (0, "VibAmount"), 0.3f);
+        route (musicBox, "macro1", ParamIDs::osc (1, "VibAmount"), 0.3f);
+        macros (musicBox, "WARBLE", "SPACE", "OVERCHARGE");
+        reverb (musicBox, RT::room, 0.5f, 0.2f, 10.0f, 3.5f);
+        space (musicBox);
+        musicBox.set (ParamIDs::patchLevel, -5.0f);
+        overcharge (musicBox, { 0.5f, 0.8f, 0.6f, 0.7f });
+        x.add (musicBox);
+
+        auto piano = x.make ("Heartbreak Piano", 12, { "Keys", "Piano", "Sad", "Intimate" },
+            "Where the cities meet, a heartbroken piano: a soft felt piano heard close, each note struck gently and dying "
+            "away, the hammer's felt thump, a long soft hall and faint echoes. Play slowly. MOD WHEEL: more of the felt. "
+            "MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        feltPiano (piano);
+        dropMacro3 (piano);
+        macros (piano, "BRIGHT", "SPACE", "OVERCHARGE");
+        delay (piano, "1/4 dotted", 0.25f, 0.08f, false, 3.5f);
+        reverb (piano, RT::hall, 0.8f, 0.25f, 20.0f, 3.5f);
+        space (piano);
+        piano.set (ParamIDs::patchLevel, -5.0f);
+        overcharge (piano, { 0.6f, 0.45f, 0.6f, 0.7f });
+        orchestra (piano, { { { 0, "Grand Piano/Grand Piano.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2, 3 }, 0.0f,
+                            "Where the cities meet, a heartbroken piano on the orchestra's grand piano, its top softened a "
+                            "little, a long soft hall and faint echoes. Play slowly.",
+                            0.0f, 300.0f, 1.0f, 900.0f, -1.0f,
+                            [] (Builder& s) { s.filter (FilterType::lp12, 3000.0f, 0.0f, 0.0f).set (ParamIDs::fltKey, 0.5f);
+                                              route (s, "macro1", ParamIDs::fltCutoff, 0.25f);
+                                              s.rig.modulation.macroNames[0] = "BRIGHT"; } });
+        x.add (piano);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto gears = x.make ("Clockwork Gears", 13, { "Arp", "Clockwork", "Gilded", "Ticking" },
+            "The gilded city's inventions ticking over: hold a chord and ARP 1 runs it up over two octaves in sixteenths, a "
+            "bright pulse and a triangle an octave up struck short like gear teeth, accents on the beat, dotted echoes, in "
+            "time with your song. MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        gears.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f).osc (1, "Arp", 1.0f)
+             .filter (FilterType::lp12, 3000.0f, 0.15f, 0.35f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 90.0f, 0.1f, 60.0f)
+             .ampEnvelope (1.0f, 140.0f, 0.0f, 60.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.5f);
+        {
+            auto& p = gears.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.65f;
+        }
+        route (gears, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (gears, "BRIGHT", "SPACE", "OVERCHARGE");
+        delay (gears, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
+        reverb (gears, RT::room, 0.45f, 0.12f);
+        space (gears);
+        gears.set (ParamIDs::patchLevel, 0.0f);
+        overcharge (gears, { 0.55f, 0.6f, 0.7f, 0.7f });
+        x.add (gears);
+
+        auto countdown = x.make ("Fuse Countdown", 14, { "Arp", "Glitch", "Fizz", "Randomizer" },
+            "The city below's fizzing fuse: hold a chord and ARP 1's randomizer spits it out in sixteenths over three "
+            "octaves with sudden rests, a new pattern every pass, crushed saws with a fizz of noise on each, ping-pong "
+            "echoes. MOD WHEEL: crushed harder. MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        countdown.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Crush", 0.25f).osc (0, "Arp", 1.0f)
+                 .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.5f).osc (1, "NoiseColour", 0.05f)
+                 .osc (1, "NoiseWidth", 2.0f).osc (1, "Volume", 0.08f).osc (1, "Arp", 1.0f)
+                 .filter (FilterType::lp12, 3500.0f, 0.2f, 0.3f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 70.0f, 0.1f, 50.0f)
+                 .ampEnvelope (0.5f, 90.0f, 0.0f, 50.0f)
+                 .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::random)
+                 .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+                 .set (ParamIDs::arp (0, "Gate"), 0.4f);
+        {
+            auto& r = countdown.rig.modulation.arpRandomizers[0];
+            r.scale = synth::arp::scaleNames.indexOf ("Minor");
+            r.restChance = 0.3f;
+            r.lengthChances = { 1.0f, 0.1f, 0.0f, 0.0f };
+            r.velocityLow = 0.55f;
+            r.autoDice = true;
+            r.seed = 53;
+            auto& pattern = countdown.rig.modulation.arps[0].patterns[0];
+            pattern = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
+        }
+        route (countdown, "macro1", ParamIDs::fltCutoff, 0.25f);
+        route (countdown, "modWheel", ParamIDs::osc (0, "Crush"), 0.4f);
+        macros (countdown, "BRIGHT", "SPACE", "OVERCHARGE");
+        delay (countdown, "1/16", 0.3f, 0.15f, true, 5.0f);
+        reverb (countdown, RT::room, 0.4f, 0.12f);
+        space (countdown);
+        countdown.set (ParamIDs::patchLevel, 2.0f);
+        overcharge (countdown, { 0.45f, 0.85f, 0.6f, 0.7f });
+        x.add (countdown);
+
+        auto alley = x.make ("Neon Alley", 15, { "Arp", "Chords", "Gated", "Pulse" },
+            "Where the cities meet, a neon-lit alley: hold a chord and ARP 1 strikes it whole in a gated sixteenth rhythm "
+            "(long, short, short, accents off the beat), detuned saws and a pulse through a resonant filter, a chorus, a "
+            "plate. MACROS: BRIGHT, SPACE, OVERCHARGE.");
+        alley.osc (0, "Wave", saw).osc (0, "Volume", 0.4f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f)
+             .osc (0, "UniDetune", 0.08f).osc (0, "UniSpread", 0.6f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Volume", 0.2f).osc (1, "Arp", 1.0f)
+             .filter (FilterType::lp24, 1800.0f, 0.3f, 0.3f).set (ParamIDs::fltKey, 0.4f).filterEnvelope (0.0f, 150.0f, 0.3f, 100.0f)
+             .ampEnvelope (1.0f, 180.0f, 0.4f, 70.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::poly)
+             .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Length"), 8.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.55f);
+        {
+            auto& p = alley.rig.modulation.arps[0].patterns[0];
+            p = {};
+            const float velocity[8] { 1.0f, 0.0f, 0.6f, 0.85f, 0.0f, 0.6f, 0.9f, 0.65f };
+            for (int k = 0; k < 8; ++k)
+            {
+                auto& blk = p.blocks[(size_t) k];
+                blk.on = velocity[k] > 0.0f;
+                blk.velocity = juce::jmax (0.1f, velocity[k]);
+                blk.length = k == 0 ? 2 : 1;
+            }
+        }
+        route (alley, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (alley, "BRIGHT", "SPACE", "OVERCHARGE");
+        chorus (alley, ParamIDs::modIds, MT::chorus, 0.4f, 0.5f, 0.35f);
+        reverb (alley, RT::plate, 0.55f, 0.18f);
+        space (alley);
+        alley.set (ParamIDs::patchLevel, -6.0f);
+        overcharge (alley, { 0.5f, 0.6f, 0.65f, 0.8f });
+        x.add (alley);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto gear = x.make ("Gear Pluck", 16, { "Pluck", "Metal", "Gilded", "Clockwork" },
+            "The gilded city's polished gear: a pulse and a sine with a metal ring a bar's overtone up (fading fast), the "
+            "filter snapping shut, a tick of the escapement, harder playing brighter, a small room. MACROS: BRIGHT, SPACE, "
+            "OVERCHARGE.");
+        gear.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.45f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 18.0f).osc (1, "Fine", -42.0f).osc (1, "PhaseRand", 0.0f)
+            .filter (FilterType::lp12, 2200.0f, 0.15f, 0.5f).set (ParamIDs::fltKey, 0.6f).filterEnvelope (0.0f, 120.0f, 0.0f, 100.0f)
+            .ampEnvelope (0.5f, 600.0f, 0.0f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkPartial (gear, 1, 0, 0.25f, 0.2f);
+        pkStrike (gear, 2, 1, 0.05f, 1.5f, 0.1f);
+        pkVelocity (gear, 0.5f, 0.3f, 0.5f);
+        route (gear, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (gear, "BRIGHT", "SPACE", "OVERCHARGE");
+        reverb (gear, RT::room, 0.45f, 0.14f);
+        space (gear);
+        gear.set (ParamIDs::patchLevel, -6.0f);
+        overcharge (gear, { 0.6f, 0.6f, 0.7f, 0.7f });
+        x.add (gear);
+
+        auto spark = x.make ("Spark Pluck", 17, { "Pluck", "Crush", "Spark", "Chirp" },
+            "The city below's spark: a crushed saw chirping down onto each note in a few milliseconds, a crackle of noise as "
+            "it strikes, the filter snapping shut, ping-pong echoes. MOD WHEEL: crushed harder. MACROS: BRIGHT, SPACE, "
+            "OVERCHARGE.");
+        spark.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Crush", 0.35f)
+             .filter (FilterType::lp12, 2800.0f, 0.2f, 0.5f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 90.0f, 0.0f, 80.0f)
+             .ampEnvelope (0.5f, 350.0f, 0.0f, 150.0f);
+        pkStrike (spark, 1, 0, 0.1f, 4.0f, 0.0f);
+        pkBend (spark, 12.0f, 0.03f, -0.4f);
+        pkVelocity (spark, 0.5f, 0.3f, 0.5f);
+        route (spark, "macro1", ParamIDs::fltCutoff, 0.2f);
+        route (spark, "modWheel", ParamIDs::osc (0, "Crush"), 0.4f);
+        macros (spark, "BRIGHT", "SPACE", "OVERCHARGE");
+        delay (spark, "1/8", 0.3f, 0.15f, true, 5.0f);
+        reverb (spark, RT::room, 0.4f, 0.12f);
+        space (spark);
+        spark.set (ParamIDs::patchLevel, -7.0f);
+        overcharge (spark, { 0.5f, 0.85f, 0.6f, 0.7f });
+        x.add (spark);
+
+        auto shard = x.make ("Glass Shard", 18, { "Pluck", "Glass", "Crystal", "Bell" },
+            "Where the cities meet, a shard of crystal struck: a sine with three of a glass bar's overtones (2.76, 5.4 and 8.9 "
+            "times up), each fading on its own, the highest first, a tiny tap, dotted echoes and a hall. MACROS: BRIGHT "
+            "(more of the overtones), SPACE, OVERCHARGE.");
+        shard.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 18.0f).osc (1, "Fine", -42.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 29.0f).osc (2, "Fine", 20.0f).osc (2, "PhaseRand", 0.0f)
+             .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 38.0f).osc (3, "Fine", -10.0f).osc (3, "PhaseRand", 0.0f)
+             .filter (FilterType::lp12, 12000.0f, 0.0f, 0.0f)
+             .ampEnvelope (0.3f, 1500.0f, 0.0f, 600.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (shard, 1, 0, 0.25f, 0.6f);
+        pkPartial (shard, 2, 1, 0.12f, 0.3f);
+        pkPartial (shard, 3, 2, 0.06f, 0.15f);
+        pkStrike (shard, 4, 3, 0.04f, 1.5f, 0.0f);
+        route (shard, "macro1", ParamIDs::osc (2, "Volume"), 0.1f);
+        route (shard, "macro1", ParamIDs::osc (3, "Volume"), 0.06f);
+        macros (shard, "BRIGHT", "SPACE", "OVERCHARGE");
+        delay (shard, "1/8 dotted", 0.3f, 0.15f, true, 6.0f);
+        reverb (shard, RT::hall, 0.7f, 0.22f);
+        space (shard);
+        shard.set (ParamIDs::patchLevel, -5.0f);
+        overcharge (shard, { 0.7f, 0.55f, 0.8f, 0.8f });
+        x.add (shard);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -14217,5 +14704,6 @@ std::vector<Rig> makeExpansionRigs()
     hyperdrive ({ Rig::numBanks + 25, rigs });
     grandCinema ({ Rig::numBanks + 26, rigs });
     maestro ({ Rig::numBanks + 27, rigs });
+    twinSpires ({ Rig::numBanks + 28, rigs });
     return rigs;
 }
