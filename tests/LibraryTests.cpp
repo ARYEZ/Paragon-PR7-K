@@ -300,14 +300,15 @@ TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets
 
 TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback until the piano is in", "[library][plugin]")
 {
-    // 0.72.0: seven expansion presets carry a version on the Salamander (Rig::sampled), played once it's installed.
+    // 0.72.0: seven expansion presets carry a version on the Salamander (0.73.0: eight, with HYPERDRIVE's Ominous Piano) (Rig::sampled), played once it's installed.
     MainView::offerLibrary = false;
     const auto& library = libraries::salamanderGrand();
     const auto wave = ParamIDs::osc (0, "Wave");
     juce::StringArray withPiano;
     for (const auto& rig : makeExpansionRigs())
     {
-        if (rig.sampled == nullptr)
+        // (0.73.0: HYPERDRIVE's orchestral versions are on the Sonatina Symphonic Orchestra: checked in ExpansionTests.)
+        if (rig.sampled == nullptr || ParagonX1AudioProcessor::libraryOf (*rig.sampled) != &library)
             continue;
         withPiano.add (rig.name);
         INFO (rig.name);
@@ -328,7 +329,7 @@ TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback un
         CHECK ((rig.parameters.count (wave) == 0 || rig.parameters.at (wave) != (float) synth::OscWave::sfz));
     }
     withPiano.sort (true);
-    CHECK (withPiano.joinIntoString (", ") == "Distant Piano, Echo Piano, Felt Memory, Home Piano, Lament Piano, Memory Loop, Tesseract");
+    CHECK (withPiano.joinIntoString (", ") == "Distant Piano, Echo Piano, Felt Memory, Home Piano, Lament Piano, Memory Loop, Ominous Piano, Tesseract");
 
     TempFolder t;
     const auto presets = t.dir.getChildFile ("presets");
