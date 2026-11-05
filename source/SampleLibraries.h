@@ -69,6 +69,8 @@ namespace libraries
         juce::String getMessage() const;                                   // why it failed
         bool isRunning() const noexcept { const auto s = state.load(); return s == State::downloading || s == State::unpacking; }
         bool waitUntilFinished (int timeoutMs);                            // tests
+        // Snapshots: as if `library` were at `state`, `progress` of the way (nothing is fetched).
+        void showForTest (const Library& l, State s, float p) { library = l; progress = p; state = s; }
 
     private:
         void run() override;

@@ -94,6 +94,7 @@ private:
     // preset); `offerLibrary` false in tests so no window opens.
     void offerMissingLibrary();
     juce::String libraryOfferedFor;
+    bool downloadFailureSeen = false;   // 0.73.1: a failed download offers the library once more, with why
 public:
     static inline bool offerLibrary = true;
 private:

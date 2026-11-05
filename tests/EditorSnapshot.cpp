@@ -21,6 +21,7 @@
 //   PARAGON_SNAPSHOT_PAGE=presets    the preset browser (with two example user presets), or =settings
 //   PARAGON_SNAPSHOT_BANK=n          with PAGE=presets: showing bank n (5: the first expansion), its first preset loaded
 //   PARAGON_SNAPSHOT_PRESET=name     that factory preset loaded
+//   PARAGON_SNAPSHOT_DOWNLOAD=0.34   the orchestra shown downloading (1.5: unpacking, half way)
 //   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
 //   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
 //   PARAGON_SNAPSHOT_FILTERPAGE=n     the FILTER panel's SHP n tab (shaper n's page)
@@ -67,6 +68,13 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         processor.getLibrariesFolder().createDirectory();
         libraries.getChildFile (libraries::salamanderGrand().folder)
             .createSymbolicLink (processor.getLibrariesFolder().getChildFile (libraries::salamanderGrand().folder), true);
+    }
+    // PARAGON_SNAPSHOT_DOWNLOAD=0.34: the screen and header as the orchestra downloads (a fraction: downloading; 1+f: unpacking).
+    if (const auto value = env ("PARAGON_SNAPSHOT_DOWNLOAD"); value.isNotEmpty())
+    {
+        const auto f = value.getFloatValue();
+        processor.getLibraryDownloadForTest().showForTest (libraries::sonatinaOrchestra(),
+            f < 1.0f ? libraries::Download::State::downloading : libraries::Download::State::unpacking, f < 1.0f ? f : f - 1.0f);
     }
     if (const auto name = env ("PARAGON_SNAPSHOT_PRESET"); name.isNotEmpty())
     {

@@ -177,6 +177,7 @@ public:
     }
     void cancelLibraryDownload() { libraryDownload.cancel(); }
     const libraries::Download& getLibraryDownload() const noexcept { return libraryDownload; }
+    libraries::Download& getLibraryDownloadForTest() noexcept { return libraryDownload; }
     bool isLibraryInstalled (const libraries::Library& library) const
     {
         return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()

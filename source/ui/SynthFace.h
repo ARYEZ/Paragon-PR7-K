@@ -53,6 +53,10 @@ public:
         juce::String name;
         juce::String notes;
         bool modified = false;
+        // 0.73.1: a library being downloaded ("DOWNLOADING THE ORCHESTRA 34%"), shown in the notes' place with a bar
+        // (progress 0-1; below 0, no bar: a failure's message).
+        juce::String status;
+        float progress = -1.0f;
         bool operator== (const Screen&) const = default;
     };
     void setScreen (const Screen&);

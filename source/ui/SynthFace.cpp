@@ -296,8 +296,29 @@ void SynthFace::paintScreen (juce::Graphics& g) const
     g.setColour (orange);
     g.drawText (screen.name.toUpperCase(), nameArea, juce::Justification::centredLeft, false);
 
+    // 0.73.1: a download in the notes' place: what it's doing, and a bar filling as it goes.
+    if (screen.status.isNotEmpty())
+    {
+        auto band = content;
+        g.setColour (orange);
+        auto textArea = screen.progress >= 0.0f ? band.removeFromLeft (band.getWidth() * 0.62f) : band;
+        auto font = juce::FontOptions (band.getHeight() * 0.62f, juce::Font::bold);
+        const auto textWidth = (float) juce::GlyphArrangement::getStringWidthInt (font, screen.status);
+        if (textWidth > textArea.getWidth())
+            font = font.withHeight (font.getHeight() * textArea.getWidth() / textWidth);
+        g.setFont (font);
+        g.drawText (screen.status, textArea, juce::Justification::centredLeft, false);
+        if (screen.progress >= 0.0f)
+        {
+            const auto bar = band.withSizeKeepingCentre (band.getWidth(), band.getHeight() * 0.34f);
+            g.setColour (orange.withAlpha (0.2f));
+            g.fillRect (bar);
+            g.setColour (orange);
+            g.fillRect (bar.withWidth (bar.getWidth() * juce::jlimit (0.0f, 1.0f, screen.progress)));
+        }
+    }
     // The notes, scrolling right to left in a band at the bottom, round and round.
-    if (screen.notes.isNotEmpty())
+    else if (screen.notes.isNotEmpty())
     {
         const auto band = content;
         g.saveState();

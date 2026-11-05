@@ -220,7 +220,7 @@ void MainView::refreshRig()
 {
     const auto rig = audioProcessor.getCurrentRig();
     const auto headerText = rig.name + (audioProcessor.isRigModified() ? " *" : "");
-    if (rigNameButton.getButtonText() != headerText)
+    if (rigNameButton.getButtonText() != headerText && ! audioProcessor.getLibraryDownload().isRunning())
         rigNameButton.setButtonText (headerText);
 
     // The front panel's screen: the preset's slot, bank and notes (looked up in the library), and its macros' names.
@@ -235,6 +235,33 @@ void MainView::refreshRig()
             screen.notes = entry.rig.notes;
             break;
         }
+    // 0.73.1: a library downloading shows on the screen and in the header on every page (it showed only on an
+    // oscillator's SFZ line, which a preset playing its synthesized fallback doesn't even have).
+    {
+        const auto& download = audioProcessor.getLibraryDownload();
+        using DS = libraries::Download::State;
+        if (download.isRunning())
+        {
+            const auto percent = juce::String (juce::roundToInt (100.0f * download.getProgress())) + "%";
+            screen.status = (download.getState() == DS::downloading ? "DOWNLOADING THE " : "UNPACKING THE ") + download.getLibrary().what
+                          + " " + percent;
+            screen.progress = download.getProgress();
+            const auto header = download.getLibrary().what + " " + percent + "  \xc2\xb7  " + headerText;   // (first: a narrow header trims its end)
+            if (rigNameButton.getButtonText() != juce::String (juce::CharPointer_UTF8 (header.toRawUTF8())))
+                rigNameButton.setButtonText (juce::String (juce::CharPointer_UTF8 (header.toRawUTF8())));
+        }
+        else if (download.getState() == DS::failed)
+        {
+            screen.notes = "THE " + download.getLibrary().what + " DIDN'T DOWNLOAD: " + download.getMessage() + "      " + screen.notes;
+            if (! downloadFailureSeen)   // offer it again (once), saying why the last try failed
+            {
+                downloadFailureSeen = true;
+                libraryOfferedFor.clear();
+            }
+        }
+        else
+            downloadFailureSeen = false;
+    }
     face.setScreen (screen);
     fxPage.followSignature (rig.name + "|" + rig.file.getFullPathName());   // 0.58.0: the SIGNATURE slot shows the preset's own
     const auto& matrix = audioProcessor.getModMatrix();
@@ -269,7 +296,10 @@ void MainView::offerMissingLibrary()
                     "yet. Until it is, it plays PR7-K's own synthesized sounds.\n\n"
                   : "\"" + rig.name + "\" plays the " + missing->name + ", a free sampled " + kind + " that isn't on this computer yet.\n\n")
         + "Download it now? It's about " + juce::String (missing->bytes / 1000000) + " MB (it unpacks to about "
-        + juce::String (missing->unpackedMb) + " MB, in PR7-K's presets folder). It only has to be downloaded once.",
+        + juce::String (missing->unpackedMb) + " MB, in PR7-K's presets folder). It only has to be downloaded once. "
+          "The screen and the header show how far it has got."
+        + (audioProcessor.getLibraryDownload().getState() == libraries::Download::State::failed
+               ? "\n\nThe last try didn't work: " + audioProcessor.getLibraryDownload().getMessage() : juce::String()),
         "DOWNLOAD", "NOT NOW", this,
         juce::ModalCallbackFunction::create ([safe = juce::Component::SafePointer<MainView> (this), missing] (int result)
         {
