@@ -74,6 +74,8 @@ add_executable(ParagonX1Tests
     NuclearSpringPluginTests.cpp
     LightSpeedTests.cpp
     LightSpeedPluginTests.cpp
+    BloomTests.cpp
+    BloomPluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

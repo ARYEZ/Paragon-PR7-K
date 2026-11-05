@@ -317,6 +317,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->leviathan.prepare (sampleRate, preparedBlockSize);
     rack->nuclearSpring.prepare (sampleRate, preparedBlockSize);
     rack->lightSpeed.prepare (sampleRate, preparedBlockSize);
+    rack->bloom.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1279,6 +1280,20 @@ effects::LightSpeed::Settings ParagonX1AudioProcessor::getLightSpeedSettings() c
     return s;
 }
 
+effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
+{
+    effects::Bloom::Settings s;
+    s.on = isOn (ParamIDs::bloomOn);
+    s.amount = effectParam (ModDestinations::effect ("bloomAmount"), ParamIDs::bloomAmount);
+    s.resonance = effectParam (ModDestinations::effect ("bloomResonance"), ParamIDs::bloomResonance);
+    s.ring = param (ParamIDs::bloomRing);
+    s.size = effectParam (ModDestinations::effect ("bloomSize"), ParamIDs::bloomSize);
+    s.swell = param (ParamIDs::bloomSwell);
+    s.tone = param (ParamIDs::bloomTone);
+    s.width = param (ParamIDs::bloomWidth);
+    return s;
+}
+
 effects::Leviathan::Settings ParagonX1AudioProcessor::getLeviathanSettings() const noexcept
 {
     effects::Leviathan::Settings s;
@@ -1579,6 +1594,13 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         }
         rack->nuclearSpring.process (block, getNuclearSpringSettings());   // 0.69.0: the spring tank
         rack->lightSpeed.process (block, getLightSpeedSettings());         // 0.73.0: the jump to lightspeed
+        // 0.74.0: the strings ringing along and the hall opening (the notes only worked out while it's on or settling).
+        if (const auto bloom = getBloomSettings(); (bloom.on && bloom.amount >= 0.001f) || ! rack->bloom.isResting())
+        {
+            std::array<float, effects::Bloom::maxNotes> sounding {};
+            rack->bloom.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->bloom.process (block, bloom);
+        }
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

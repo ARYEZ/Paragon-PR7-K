@@ -25,6 +25,7 @@
 #include "dsp/effects/Leviathan.h"
 #include "dsp/effects/NuclearSpring.h"
 #include "dsp/effects/LightSpeed.h"
+#include "dsp/effects/Bloom.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -751,4 +752,24 @@ void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayou
     layout.add (makeFloat (ParamIDs::jumpWhoosh, "Lightspeed Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
     layout.add (makeFloat (ParamIDs::jumpWidth, "Lightspeed Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
     layout.add (makeFloat (ParamIDs::jumpTone, "Lightspeed Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+}
+
+void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // BLOOM (0.74.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 43;
+    using B = effects::Bloom;
+    const B::Settings d;
+    const ToText asRing = [] (float value, int) { return juce::String (B::ringSeconds (value), 1) + " s"; };
+    const ToText asSize = [] (float value, int) { return juce::String (B::sizeSeconds (value), 1) + " s"; };
+    const ToText asSwell = [] (float value, int) { return juce::String (B::swellSeconds (value), 2) + " s"; };
+    const ToText asTone = [] (float value, int) { return juce::String (B::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::bloomOn, "Bloom On", v, false));
+    layout.add (makeFloat (ParamIDs::bloomAmount, "Bloom Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::bloomResonance, "Bloom Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::bloomRing, "Bloom Ring", { 0.0f, 1.0f, 0.01f }, d.ring, v, asRing));
+    layout.add (makeFloat (ParamIDs::bloomSize, "Bloom Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeFloat (ParamIDs::bloomSwell, "Bloom Swell", { 0.0f, 1.0f, 0.01f }, d.swell, v, asSwell));
+    layout.add (makeFloat (ParamIDs::bloomTone, "Bloom Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::bloomWidth, "Bloom Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

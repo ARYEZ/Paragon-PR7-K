@@ -67,7 +67,9 @@ namespace ModDestinations
                                                  // 0.69.0: NUCLEARSPRING: how much tank, how drippy, how hard a hit kicks it
                                                  "springMix", "springDrip", "springBoing",
                                                  // 0.73.0: LIGHTSPEED: how far into the jump, how high the streaks, the rushing air
-                                                 "jumpAmount", "jumpRise", "jumpWhoosh" };
+                                                 "jumpAmount", "jumpRise", "jumpWhoosh",
+                                                 // 0.74.0: BLOOM: how much, the strings' share, the hall's size
+                                                 "bloomAmount", "bloomResonance", "bloomSize" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

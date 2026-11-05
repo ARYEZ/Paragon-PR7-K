@@ -19,6 +19,7 @@
 #include "ui/LeviathanPage.h"
 #include "ui/NuclearSpringPage.h"
 #include "ui/LightSpeedPage.h"
+#include "ui/BloomPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -58,7 +59,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, lightSpeed };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, lightSpeed, bloom };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -86,6 +87,7 @@ public:
     LeviathanPage& getLeviathanPage() noexcept { return leviathanPage; }
     NuclearSpringPage& getNuclearSpringPage() noexcept { return nuclearSpringPage; }
     LightSpeedPage& getLightSpeedPage() noexcept { return lightSpeedPage; }
+    BloomPage& getBloomPage() noexcept { return bloomPage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -111,7 +113,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 19> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 20> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -139,6 +141,7 @@ private:
     LeviathanPage leviathanPage;
     NuclearSpringPage nuclearSpringPage;
     LightSpeedPage lightSpeedPage;
+    BloomPage bloomPage;
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

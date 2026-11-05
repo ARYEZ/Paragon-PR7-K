@@ -507,6 +507,15 @@ namespace ParamIDs
     inline constexpr auto jumpWhoosh = "jumpWhoosh";   // 0 to 1
     inline constexpr auto jumpWidth  = "jumpWidth";    // 0 to 1
     inline constexpr auto jumpTone   = "jumpTone";     // 0 to 1: 2 to 16 kHz
+    // BLOOM (0.74.0, version hint 43, effects::Bloom): GRAND CINEMA's signature.
+    inline constexpr auto bloomOn        = "bloomOn";
+    inline constexpr auto bloomAmount    = "bloomAmount";      // 0 to 1: how much (the macro's)
+    inline constexpr auto bloomResonance = "bloomResonance";   // 0 to 1: the sympathetic strings' share
+    inline constexpr auto bloomRing      = "bloomRing";        // 0 to 1: the strings' fall, 1.5 to 12 s
+    inline constexpr auto bloomSize      = "bloomSize";        // 0 to 1: the hall's fall, 2 to 12 s
+    inline constexpr auto bloomSwell     = "bloomSwell";       // 0 to 1: the hall opening, 0.15 to 4 s
+    inline constexpr auto bloomTone      = "bloomTone";        // 0 to 1: 1.5 to 15 kHz
+    inline constexpr auto bloomWidth     = "bloomWidth";       // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -597,4 +606,5 @@ void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&)
 void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.68.0)
 void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.69.0)
 void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.73.0)
+void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

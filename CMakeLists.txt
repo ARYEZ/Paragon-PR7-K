@@ -86,6 +86,7 @@ target_sources(ParagonX1
         source/dsp/effects/Leviathan.cpp
         source/dsp/effects/NuclearSpring.cpp
         source/dsp/effects/LightSpeed.cpp
+        source/dsp/effects/Bloom.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -132,6 +133,7 @@ target_sources(ParagonX1
         source/ui/LeviathanPage.cpp
         source/ui/NuclearSpringPage.cpp
         source/ui/LightSpeedPage.cpp
+        source/ui/BloomPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
