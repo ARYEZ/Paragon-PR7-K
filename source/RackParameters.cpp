@@ -27,6 +27,7 @@
 #include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
 #include "dsp/effects/Legion.h"
+#include "dsp/effects/Overcharge.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -791,4 +792,26 @@ void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
     layout.add (makeFloat (ParamIDs::legionLoose, "Legion Loose", { 0.0f, 1.0f, 0.01f }, d.loose, v, asLoose));
     layout.add (makeFloat (ParamIDs::legionDetune, "Legion Detune", { 0.0f, 1.0f, 0.01f }, d.detune, v, asDetune));
     layout.add (makeFloat (ParamIDs::legionTone, "Legion Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+}
+
+void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // OVERCHARGE (0.77.0, our own design): off and at CHARGE 0 by default, so projects and presets from before are
+    // unchanged.
+    constexpr int v = 45;
+    using O = effects::Overcharge;
+    const O::Settings d;
+    const ToText asCharge = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("At rest")
+             : value <= 0.5f ? juce::String (juce::roundToInt (100.0f * O::chargeOf (value))) + "% charged"
+                             : juce::String (juce::roundToInt (100.0f * O::overloadOf (value))) + "% overload";
+    };
+    const ToText asTone = [] (float value, int) { return juce::String (O::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::overchargeOn, "Overcharge On", v, false));
+    layout.add (makeFloat (ParamIDs::overchargeCharge, "Overcharge Charge", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asCharge));
+    layout.add (makeFloat (ParamIDs::overchargeGlow, "Overcharge Glow", { 0.0f, 1.0f, 0.01f }, d.glow, v, asPercent));
+    layout.add (makeFloat (ParamIDs::overchargeChaos, "Overcharge Chaos", { 0.0f, 1.0f, 0.01f }, d.chaos, v, asPercent));
+    layout.add (makeFloat (ParamIDs::overchargeTone, "Overcharge Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::overchargeWidth, "Overcharge Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

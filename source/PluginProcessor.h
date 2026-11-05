@@ -276,6 +276,7 @@ public:
         rack->loFi.seedRandom (seed);
         rack->delay.seedRandom (seed);
         rack->crackle.seedRandom ((std::uint32_t) seed);
+        rack->overcharge.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
         rack->blackHole.seedRandom ((std::uint32_t) seed);
@@ -415,6 +416,8 @@ public:
     const effects::Bloom& getBloom() const noexcept { return rack->bloom; }
     effects::Legion::Settings getLegionSettings() const noexcept;                // LEGION (0.76.0)
     const effects::Legion& getLegion() const noexcept { return rack->legion; }
+    effects::Overcharge::Settings getOverchargeSettings() const noexcept;        // OVERCHARGE (0.77.0)
+    const effects::Overcharge& getOvercharge() const noexcept { return rack->overcharge; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

@@ -319,6 +319,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->lightSpeed.prepare (sampleRate, preparedBlockSize);
     rack->bloom.prepare (sampleRate, preparedBlockSize);
     rack->legion.prepare (sampleRate, preparedBlockSize);
+    rack->overcharge.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1293,6 +1294,18 @@ effects::Legion::Settings ParagonX1AudioProcessor::getLegionSettings() const noe
     return s;
 }
 
+effects::Overcharge::Settings ParagonX1AudioProcessor::getOverchargeSettings() const noexcept
+{
+    effects::Overcharge::Settings s;
+    s.on = isOn (ParamIDs::overchargeOn);
+    s.charge = effectParam (ModDestinations::effect ("overchargeCharge"), ParamIDs::overchargeCharge);
+    s.glow = effectParam (ModDestinations::effect ("overchargeGlow"), ParamIDs::overchargeGlow);
+    s.chaos = effectParam (ModDestinations::effect ("overchargeChaos"), ParamIDs::overchargeChaos);
+    s.tone = param (ParamIDs::overchargeTone);
+    s.width = param (ParamIDs::overchargeWidth);
+    return s;
+}
+
 effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
 {
     effects::Bloom::Settings s;
@@ -1615,6 +1628,13 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->bloom.process (block, bloom);
         }
         rack->legion.process (block, getLegionSettings());   // 0.76.0: one player to a section
+        // 0.77.0: unstable magic, charging then overloading (the notes only worked out while it's on or settling).
+        if (const auto charge = getOverchargeSettings(); (charge.on && charge.charge >= 0.001f) || ! rack->overcharge.isResting())
+        {
+            std::array<float, effects::Overcharge::maxNotes> sounding {};
+            rack->overcharge.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->overcharge.process (block, charge);
+        }
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

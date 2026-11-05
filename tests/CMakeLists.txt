@@ -79,6 +79,8 @@ add_executable(ParagonX1Tests
     BloomPluginTests.cpp
     LegionTests.cpp
     LegionPluginTests.cpp
+    OverchargeTests.cpp
+    OverchargePluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

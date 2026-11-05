@@ -71,7 +71,9 @@ namespace ModDestinations
                                                  // 0.74.0: BLOOM: how much, the strings' share, the hall's size
                                                  "bloomAmount", "bloomResonance", "bloomSize",
                                                  // 0.76.0: LEGION: how many players, how wide, how far out of tune
-                                                 "legionSize", "legionSpread", "legionDetune" };
+                                                 "legionSize", "legionSpread", "legionDetune",
+                                                 // 0.77.0: OVERCHARGE: how charged, the crystals' share, how wild the overload
+                                                 "overchargeCharge", "overchargeGlow", "overchargeChaos" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

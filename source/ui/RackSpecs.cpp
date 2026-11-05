@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 21> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 22> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 21> specs;
+    std::array<RackUnit::Spec, 22> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1457,6 +1457,47 @@ std::array<RackUnit::Spec, 21> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (20); };
+    }
+
+    // OVERCHARGE (0.77.0): how charged in big digits (or the overload), its settings; the keys set CHARGE: GLOW
+    // (charged, stable), SURGE (breaking up) and BREAK (all the way); the ladder the energy.
+    {
+        auto& s = specs[21];
+        s.name = "OVERCHARGE";
+        s.kind = "CHARGE  GLOW  CHAOS";
+        s.onParameterIds = { ParamIDs::overchargeOn };
+        s.powerTooltip = "OVERCHARGE on or off: unstable magic, charging then overloading. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float charge; const char* tip; };
+        static constexpr Stage stages[] = { { "GLOW", 0.45f, "Charged and still stable: the crystals ring" },
+                                            { "SURGE", 0.72f, "Breaking up: the first bursts" },
+                                            { "BREAK", 1.0f, "All the way: overloading" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::overchargeCharge) - t.charge) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::overchargeCharge, t.charge); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::overchargeCharge, "CHARGE" }, RackUnit::Knob { ParamIDs::overchargeChaos, "CHAOS" } };
+        s.ladderTitle = "ENERGY";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "MAX", "", "1/2", "", "0" };
+        s.ladderReading = [&p] { return p.getOverchargeSettings().on ? 0.5f * (p.getOvercharge().getCharge() + p.getOvercharge().getOverload()) : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto on = p.getOverchargeSettings().on;
+            const auto over = on ? p.getOvercharge().getOverload() : 0.0f;
+            const auto charge = on ? p.getOvercharge().getCharge() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * (over > 0.0f ? over : charge))), left.getTopLeft(), h);
+            line (g, over > 0.0f ? "OVERLOAD" : "CHARGED", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "CHARGE " + textOf (p, ParamIDs::overchargeCharge), "GLOW " + textOf (p, ParamIDs::overchargeGlow),
+                                  "CHAOS " + textOf (p, ParamIDs::overchargeChaos), "TONE " + textOf (p, ParamIDs::overchargeTone) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (21); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

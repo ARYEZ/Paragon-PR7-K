@@ -523,6 +523,13 @@ namespace ParamIDs
     inline constexpr auto legionLoose  = "legionLoose";    // 0 to 1: the latest player 6 to 30 ms behind
     inline constexpr auto legionDetune = "legionDetune";   // 0 to 1: drifting up to 0 to 14 cents
     inline constexpr auto legionTone   = "legionTone";     // 0 to 1: the players' top, 3 to 16 kHz
+    // OVERCHARGE (0.77.0, version hint 45, effects::Overcharge): TWIN SPIRES' signature.
+    inline constexpr auto overchargeOn     = "overchargeOn";
+    inline constexpr auto overchargeCharge = "overchargeCharge";   // 0 to 1: the first half charges, the second overloads (the macro's)
+    inline constexpr auto overchargeGlow   = "overchargeGlow";     // 0 to 1: the crystal tones' share
+    inline constexpr auto overchargeChaos  = "overchargeChaos";    // 0 to 1: how violent and how often the overload bursts
+    inline constexpr auto overchargeTone   = "overchargeTone";     // 0 to 1: the glow's top, 3 to 16 kHz
+    inline constexpr auto overchargeWidth  = "overchargeWidth";    // 0 to 1: how far the glow spreads
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -615,4 +622,5 @@ void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLa
 void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.73.0)
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
 void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.76.0)
+void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.77.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

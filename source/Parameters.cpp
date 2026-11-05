@@ -567,5 +567,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addLightSpeedParameters (layout);      // LIGHTSPEED (0.73.0): RackParameters.cpp
     addBloomParameters (layout);           // BLOOM (0.74.0): RackParameters.cpp
     addLegionParameters (layout);          // LEGION (0.76.0): RackParameters.cpp
+    addOverchargeParameters (layout);      // OVERCHARGE (0.77.0): RackParameters.cpp
     return layout;
 }
