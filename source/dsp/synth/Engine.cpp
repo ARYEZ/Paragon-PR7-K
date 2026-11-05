@@ -363,6 +363,7 @@ namespace synth
         lastPitch = -1.0f;
         modWheel = breath = expression = channelPressure = 0.0f;
         expressionHeard = false;
+        modWheelHeard = false;
         smoothedBend = 0.0f;
         seqClock = 0.0;
         travelClock.fill (0.0);
@@ -404,6 +405,7 @@ namespace synth
     {
         followMode (settings);
         ampReleaseSeconds = settings.amp.envelope.releaseMs * 0.001f;
+        sfzToWheel = settings.modulation.toModWheel;
 
         // The SHAPERs' EQ bands: the same for every note, so worked out once here.
         for (int k = 0; k < numShapers; ++k)
@@ -499,7 +501,10 @@ namespace synth
         else if (message.isPitchWheel())
             bend = juce::jlimit (-1.0f, 1.0f, (float) (message.getPitchWheelValue() - 8192) / 8192.0f);
         else if (message.isController() && message.getControllerNumber() == 1)
+        {
             modWheel = (float) message.getControllerValue() / 127.0f;
+            modWheelHeard = true;
+        }
         else if (message.isController() && message.getControllerNumber() == 2)
             breath = (float) message.getControllerValue() / 127.0f;
         else if (message.isController() && message.getControllerNumber() == 11)
@@ -545,6 +550,22 @@ namespace synth
             noteOff (note, settings);
             return;
         }
+        // KEY SWITCHES (0.75.0): a sampled instrument's switch key picks how it's played and plays nothing itself
+        // (nor do the other oscillators: it isn't a note).
+        auto switched = false;
+        for (size_t i = 0; i < settings.oscillators.size(); ++i)
+        {
+            const auto& s = settings.oscillators[i];
+            if (s.on && s.wave == OscWave::sfz && s.instrument != nullptr && s.instrument->isSwitch (note))
+            {
+                switchFor (i, s.instrument);
+                sfzSwitch[i] = note;
+                switchShown[i].store (note);
+                switched = true;
+            }
+        }
+        if (switched)
+            return;
         // LFOs set to FIRST NOTE start with a note when none is held; LAST NOTE with every note.
         const auto anyHeld = std::any_of (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing && v.held && ! v.killing; });
         for (int k = 0; k < mod::numLfos; ++k)
@@ -2855,9 +2876,10 @@ namespace synth
         auto& turn = sfzTurns[index][(size_t) key];
         std::array<const sfz::Region*, sfz::maxPlayers> chosen {};
         const auto pedalSounds = release && startingTail != nullptr && startingTail->pedal >= 0;
+        const auto switchKey = switchFor (index, inst);
         const auto count = pedalSounds ? inst->selectPedal (startingTail->pedal, random.nextFloat(), chosen.data(), (int) chosen.size())
                                        : inst->select (key, velocity127, release, turn, random.nextFloat(), pedalDown ? 127 : 0,
-                                                       chosen.data(), (int) chosen.size());
+                                                       chosen.data(), (int) chosen.size(), switchKey);
         if (! release)
             turn = (std::uint8_t) (turn + 1);
         // RT_DECAY: a release sample quieter the longer its note was held.
@@ -2886,6 +2908,9 @@ namespace synth
             player->fade = 1.0f;
             player->fadeStep = 0.0f;
             player->decay = 1.0f;
+            player->wheel = -1.0f;
+            std::fill (std::begin (player->filterA), std::end (player->filterA), 0.0f);
+            std::fill (std::begin (player->filterB), std::end (player->filterB), 0.0f);
             auto gain = region.gain * region.velocityGain (voice.velocity) * region.crossfade (velocity127);
             // A loop needs the sample whole in memory (the reader keeps a looped one so).
             player->looping = region.loops() && region.loopEnd < (juce::int64) sample.headFrames;   // (reads past LOOP_END wrap round)
@@ -2909,9 +2934,38 @@ namespace synth
                         }
     }
 
+    int Engine::switchFor (size_t index, const sfz::Instrument* inst) noexcept
+    {
+        if (inst == nullptr)
+            return -1;
+        if (sfzSwitchFor[index] != inst)
+        {
+            sfzSwitchFor[index] = inst;
+            sfzSwitch[index] = inst->switchDefault;
+            switchShown[index].store (inst->switchDefault);
+        }
+        return sfzSwitch[index];
+    }
+
+    float Engine::sfzWheel127 (const sfz::Instrument* inst) const noexcept
+    {
+        // The wheel as the matrix hears it (the controllers sent to it too)...
+        auto wheel = modWheel;
+        if (sfzToWheel[0]) wheel = juce::jmax (wheel, breath);
+        if (sfzToWheel[1]) wheel = juce::jmax (wheel, expression);
+        if (sfzToWheel[2]) wheel = juce::jmax (wheel, channelPressure);
+        if (sfzToWheel[3] && pedalDown) wheel = 1.0f;
+        // ...or, until it's touched, where the instrument says it stands (SET_CC1).
+        if (! modWheelHeard && wheel <= 0.0f && inst != nullptr && inst->setCc1 >= 0)
+            return (float) inst->setCc1;
+        return wheel * 127.0f;
+    }
+
     void Engine::renderSfz (Voice& voice, OscState& osc, const OscSettings& s, float semitones, float* left, float* right, int n) noexcept
     {
-        juce::ignoreUnused (voice, s);
+        juce::ignoreUnused (s);
+        const auto cc127 = sfzWheel127 (osc.instrument);
+        const auto nyquistish = 0.45f * (float) sampleRate;
         std::fill (left, left + n, 0.0f);
         std::fill (right, right + n, 0.0f);
         osc.heldSamples += n;
@@ -2946,6 +3000,25 @@ namespace synth
             // Heads only (no stream free): a 5 ms fade before the head runs out.
             const auto endFade = player.stream < 0 && readable < length ? 0.005 * sample.sampleRate : 0.0;
             auto pos = player.position;
+            // THE MOD WHEEL (0.75.0): its level glides across the block from where the last one left it.
+            const auto wheelTarget = region.wheelLevel (cc127);
+            if (player.wheel < 0.0f)
+                player.wheel = wheelTarget;
+            auto wheel = player.wheel;
+            const auto wheelStep = (wheelTarget - wheel) / (float) juce::jmax (1, n);
+            // THE FILTER (0.75.0): its cutoff for this note, velocity and wheel, set once a block (TPT: zero-delay feedback).
+            using F = sfz::Region::Filter;
+            const auto filter = region.filter;
+            float g = 0.0f, k = 0.0f, a1 = 0.0f, a2 = 0.0f, a3 = 0.0f;
+            if (filter != F::none)
+            {
+                const auto fc = juce::jlimit (10.0f, nyquistish, region.cutoffFor (osc.sfzKey, voice.velocity, cc127));
+                g = std::tan (juce::MathConstants<float>::pi * fc / (float) sampleRate);
+                k = 1.0f / region.filterQ;
+                a1 = 1.0f / (1.0f + g * (g + k));
+                a2 = g * a1;
+                a3 = g * a2;
+            }
             for (int i = 0; i < n; ++i)
             {
                 const auto frame = (juce::int64) pos;
@@ -2974,12 +3047,32 @@ namespace synth
                     const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
                     const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
                     out[c] = ((c3 * t + c2) * t + c1) * t + y1;
+                    if (filter == F::lowpass1 || filter == F::highpass1)
+                    {
+                        auto& z = player.filterA[c];
+                        const auto v = (out[c] - z) * g / (1.0f + g);
+                        const auto lp = v + z;
+                        z = lp + v;
+                        out[c] = filter == F::lowpass1 ? lp : out[c] - lp;
+                    }
+                    else if (filter != F::none)
+                    {
+                        auto& ic1 = player.filterA[c];
+                        auto& ic2 = player.filterB[c];
+                        const auto v3 = out[c] - ic2;
+                        const auto v1 = a1 * ic1 + a2 * v3;
+                        const auto v2 = ic2 + a2 * ic1 + a3 * v3;
+                        ic1 = 2.0f * v1 - ic1;
+                        ic2 = 2.0f * v2 - ic2;
+                        out[c] = filter == F::lowpass2 ? v2 : out[c] - k * v1 - v2;
+                    }
                 }
-                auto g = player.fade;
+                wheel += wheelStep;
+                auto gain = player.fade * wheel;
                 if (endFade > 0.0 && (double) readable - pos < endFade)
-                    g *= (float) (((double) readable - pos) / endFade);
-                left[i] += out[0] * player.gainLeft * g;
-                right[i] += out[1] * player.gainRight * g;
+                    gain *= (float) (((double) readable - pos) / endFade);
+                left[i] += out[0] * player.gainLeft * gain;
+                right[i] += out[1] * player.gainRight * gain;
                 if (player.fadeStep < 0.0f)
                     player.fade += player.fadeStep;
                 if (player.decay < 1.0f && (player.fade *= player.decay) < 1.0e-4f)
@@ -2989,6 +3082,7 @@ namespace synth
                     pos -= (double) loopLength * std::floor ((pos - (double) loopStart) / (double) loopLength);
             }
             player.position = pos;
+            player.wheel = wheelTarget;
             if (player.region != nullptr && player.stream >= 0)
                 streamer->consumed (player.stream, juce::jmax ((juce::int64) 0, (juce::int64) pos - 2));
         }

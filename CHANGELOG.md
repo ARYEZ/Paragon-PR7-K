@@ -2,6 +2,17 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.75.0
+
+**Orchestral dynamics on the mod wheel, the libraries' own filters, and key switches.**
+
+- **The mod wheel plays dynamics on sampled instruments.** The orchestra library's "Performance" patches (in its *Brass - Performance*, *Strings - Performance* and other folders) now play as their makers meant: every layer of a note starts together, and the mod wheel fades between the soft, medium and loud recordings while the note holds, and raises the level as it goes. On the violins the wheel spans about 25 dB from bottom to top. Until you first move the wheel, each patch sits where its makers set it (most at about three quarters).
+- **The libraries' own filters now play**, for every SFZ sound: softer notes and a lower wheel are darker, louder ones brighter, as each library's makers set them. A soft trumpet is mellow, a loud one bright, instead of the same recording only quieter.
+- **Key switches.** The orchestra's "KS" patches hold several playing styles in one instrument (for the horns: sustain, marcato, staccato, legato), chosen by keys below or above the playing range (C6-F6 for the horns, C0-A0 for the full strings). Pressing one switches the style and plays nothing, not even the other oscillators. The oscillator's SFZ line shows the style chosen ("Horns KS · MARCATO"), and its menu lists them all, so you can pick one with the mouse too.
+- **Levels the libraries set per group now count** (SFZ's GROUP_VOLUME, MASTER_VOLUME, GLOBAL_VOLUME, GROUP_TUNE).
+- **HYPERDRIVE's orchestra versions**, which use these libraries, are re-levelled to the loudness you approved where the libraries' own levels moved them. Played softly they're now darker, as the library intends.
+- Not played yet: the libraries' own envelopes (PR7-K's AMP shapes every note), legato transitions, and controllers other than the mod wheel and the sustain pedal.
+
 ## 0.74.1
 
 **A new look for the neon finishes, and a FINISH chooser in SETTINGS.**

@@ -9,6 +9,8 @@
 #include "VoiceFilter.h"
 #include "Sfz.h"
 
+#include <atomic>
+
 #include <array>
 #include <vector>
 
@@ -142,6 +144,8 @@ namespace synth
             float decay = 1.0f;                    // x each sample: AMPEG_RELEASE's fall, once its key has let go
             int stream = -1;                       // the disk stream reading the rest (-1: the head only)
             bool looping = false;                  // (0.73.0) going round its region's loop (loop_sustain: until released)
+            float wheel = -1.0f;                   // (0.75.0) the mod wheel's part in its level as of the last block (-1: not yet)
+            float filterA[2] {}, filterB[2] {};    // (0.75.0) its FILTER's state, each side
         };
         static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
 
@@ -367,6 +371,11 @@ namespace synth
         // counts as 0 until it comes, so the wheel isn't pushed up by a pedal that isn't there.)
         bool expressionHeard = false;
         float expressionSource() const noexcept { return expressionHeard ? expression : 1.0f; }
+        // SFZ (0.75.0): whether the mod wheel has moved since the reset (until it has, a sampled instrument's
+        // SET_CC1 stands for it), and what's sent to the wheel, as of this block.
+        bool modWheelHeard = false;
+        std::array<bool, 4> sfzToWheel {};
+        float sfzWheel127 (const sfz::Instrument* inst) const noexcept;
         std::array<mod::LfoState, mod::numLfos> globalLfos {};
         static constexpr int maxIntervals = 64;   // render() works in pieces of up to 64 intervals (1024 samples)
         std::array<std::array<float, maxIntervals>, mod::numLfos> globalLfoValues {};
@@ -457,6 +466,25 @@ namespace synth
         void startSfz (Voice&, OscState&, size_t index, const OscSettings&, bool release) noexcept;
         void renderSfz (Voice&, OscState&, const OscSettings&, float semitones, float* left, float* right, int n) noexcept;
         std::array<std::array<std::uint8_t, 128>, numOscillators> sfzTurns {};   // round-robins: each key's turn
+        // KEY SWITCHES (0.75.0): each oscillator's last switch key, and the instrument it was for (a new one starts
+        // at its SW_DEFAULT); `switchShown` for the oscillator panel.
+        std::array<int, numOscillators> sfzSwitch {};
+        std::array<const sfz::Instrument*, numOscillators> sfzSwitchFor {};
+        struct SharedInt   // an atomic the engine can still be moved with
+        {
+            std::atomic<int> value { -1 };
+            SharedInt() = default;
+            SharedInt (const SharedInt& other) noexcept : value (other.value.load()) {}
+            SharedInt& operator= (const SharedInt& other) noexcept { value.store (other.value.load()); return *this; }
+            int load() const noexcept { return value.load(); }
+            void store (int v) noexcept { value.store (v); }
+        };
+        std::array<SharedInt, numOscillators> switchShown {};
+        int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
+    public:
+        // The oscillator's key switch now (-1: none), for the panel.
+        int getSfzSwitch (int oscillator) const noexcept { return switchShown[(size_t) juce::jlimit (0, numOscillators - 1, oscillator)].load(); }
+    private:
         sfz::Streamer* streamer = nullptr;
         bool waitForDisk = false;
         std::array<bool, sfz::Streamer::maxStreams> streamsInUse {};

@@ -89,7 +89,7 @@ namespace synth::sfz
         }
 
         // The headers and their opcodes, each region with everything it inherits.
-        std::vector<Opcodes> parse (const juce::String& text, juce::String& defaultPath)
+        std::vector<Opcodes> parse (const juce::String& text, juce::String& defaultPath, Opcodes* controlOut = nullptr)
         {
             std::vector<Opcodes> regions;
             Opcodes control, global, master, group, current;
@@ -105,7 +105,8 @@ namespace synth::sfz
                     regions.push_back (std::move (r));
                 }
                 else if (header == "control")
-                    control = current;
+                    for (const auto& [k, v] : current)   // (each included file has its own: keep them all)
+                        control[k] = v;
                 else if (header == "global")
                     global = current;
                 else if (header == "master")
@@ -167,6 +168,8 @@ namespace synth::sfz
             }
             flush();
             defaultPath = control.count ("default_path") ? control["default_path"] : juce::String();
+            if (controlOut != nullptr)
+                *controlOut = control;
             return regions;
         }
 
@@ -183,8 +186,7 @@ namespace synth::sfz
         }
 
         // Opcodes worth telling the user we don't play (their sound is shaped by the synth's own sections instead).
-        const char* const leftOut[] = { "fil_type", "cutoff", "ampeg_attack", "ampeg_decay", "ampeg_sustain", "sw_last",
-                                        "sw_lokey", "off_by", "group", "xfin_locc1", "xfout_locc1", "gain_cc1" };
+        const char* const leftOut[] = { "ampeg_attack", "ampeg_decay", "ampeg_sustain", "off_by", "group", "amplfo_depth" };
 
         // A sample read whole into memory (a looped one: its loop must be there to go back to).
         void readWhole (Sample& s, juce::AudioFormatManager& formats)
@@ -207,7 +209,7 @@ namespace synth::sfz
     }
 
     int Instrument::select (int key, int velocity127, bool release, int seqCount, float chance, int pedal,
-                            const Region** out, int capacity) const noexcept
+                            const Region** out, int capacity, int switchKey) const noexcept
     {
         int n = 0;
         for (const auto& r : regions)
@@ -217,6 +219,8 @@ namespace synth::sfz
             if (r.pedalTrigger || r.release != release || ! r.plays (key, velocity127) || pedal < r.loPedal || pedal > r.hiPedal)
                 continue;
             if (r.crossfade (velocity127) <= 0.0f)   // faded out at this velocity (0.73.0)
+                continue;
+            if (r.switchKey >= 0 && r.switchKey != switchKey)   // another key switch's (0.75.0)
                 continue;
             if (r.seqLength > 1 && (seqCount % r.seqLength) + 1 != r.seqPosition)
                 continue;
@@ -245,7 +249,10 @@ namespace synth::sfz
 
         std::map<juce::String, juce::String> defines;
         juce::String defaultPath;
-        const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath);
+        Opcodes control;
+        const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath, &control);
+        if (const auto it = control.find ("set_cc1"); it != control.end())
+            inst->setCc1 = juce::jlimit (0, 127, it->second.getIntValue());
         const auto folder = sfzFile.getParentDirectory();
 
         juce::AudioFormatManager formats;
@@ -347,6 +354,47 @@ namespace synth::sfz
             r.xfoutLo = juce::jlimit (0, 127, get (op, "xfout_lovel", "127").getIntValue());
             r.xfoutHi = juce::jlimit (0, 127, get (op, "xfout_hivel", "127").getIntValue());
             r.xfPower = get (op, "xf_velcurve", "power").trim().toLowerCase() != "gain";
+            // THE MOD WHEEL (0.75.0).
+            r.ccInLo = juce::jlimit (0, 127, get (op, "xfin_locc1", "0").getIntValue());
+            r.ccInHi = juce::jlimit (0, 127, get (op, "xfin_hicc1", "0").getIntValue());
+            r.ccOutLo = juce::jlimit (0, 127, get (op, "xfout_locc1", "127").getIntValue());
+            r.ccOutHi = juce::jlimit (0, 127, get (op, "xfout_hicc1", "127").getIntValue());
+            r.ccPower = get (op, "xf_cccurve", "power").trim().toLowerCase() != "gain";
+            r.gainCcDb = number (op, "gain_cc1", 0.0f);
+            // FILTER (0.75.0): only where a CUTOFF is given (SFZ: no cutoff, no filter).
+            if (has (op, "cutoff"))
+            {
+                const auto type = get (op, "fil_type", "lpf_2p").trim().toLowerCase();
+                using F = Region::Filter;
+                r.filter = type == "lpf_1p" ? F::lowpass1 : type == "hpf_1p" ? F::highpass1
+                         : type == "hpf_2p" ? F::highpass2 : F::lowpass2;
+                if (type != "lpf_1p" && type != "lpf_2p" && type != "hpf_1p" && type != "hpf_2p" && leftOutSeen.insert ("fil_type").second)
+                    inst->problems.add ("filter type " + type + " played as lpf_2p");
+                r.cutoff = juce::jmax (1.0f, number (op, "cutoff", 20000.0f));
+                r.cutoffCcCents = number (op, "cutoff_cc1", 0.0f);
+                r.filterKeytrack = number (op, "fil_keytrack", 0.0f);
+                r.filterVeltrack = number (op, "fil_veltrack", 0.0f);
+                if (has (op, "fil_keycenter"))
+                    if (const auto centre = noteNumber (get (op, "fil_keycenter")); centre >= 0)
+                        r.filterKeyCenter = (float) centre;
+                r.filterQ = 0.70710678f * std::pow (10.0f, number (op, "resonance", 0.0f) / 20.0f);
+            }
+            // KEY SWITCHES (0.75.0).
+            if (has (op, "sw_last"))
+            {
+                r.switchKey = noteNumber (get (op, "sw_last"));
+                if (r.switchKey >= 0)
+                {
+                    const auto lo = has (op, "sw_lokey") ? noteNumber (get (op, "sw_lokey")) : r.switchKey;
+                    const auto hi = has (op, "sw_hikey") ? noteNumber (get (op, "sw_hikey")) : r.switchKey;
+                    inst->switchLo = inst->switchLo < 0 ? juce::jmax (0, lo) : juce::jmin (inst->switchLo, juce::jmax (0, lo));
+                    inst->switchHi = juce::jmax (inst->switchHi, hi);
+                    if (inst->switchDefault < 0 && has (op, "sw_default"))
+                        inst->switchDefault = noteNumber (get (op, "sw_default"));
+                    if (inst->switchLabel (r.switchKey).isEmpty())
+                        inst->switchLabels.push_back ({ r.switchKey, get (op, "sw_label", juce::MidiMessage::getMidiNoteName (r.switchKey, true, true, 4)) });
+                }
+            }
             if (const auto key = noteNumber (get (op, "key")); key >= 0)
             {
                 r.loKey = r.hiKey = key;
@@ -365,8 +413,11 @@ namespace synth::sfz
             r.loVel = juce::jlimit (0, 127, get (op, "lovel", "1").getIntValue());
             r.hiVel = juce::jlimit (0, 127, get (op, "hivel", "127").getIntValue());
             r.keytrack = number (op, "pitch_keytrack", 100.0f) / 100.0f;
-            r.tuneSemitones = number (op, "tune", 0.0f) / 100.0f + number (op, "transpose", 0.0f);
-            r.gain = juce::Decibels::decibelsToGain (number (op, "volume", 0.0f)) * number (op, "amplitude", 100.0f) / 100.0f;
+            r.tuneSemitones = (number (op, "tune", 0.0f) + number (op, "group_tune", 0.0f)) / 100.0f + number (op, "transpose", 0.0f);
+            // VOLUME, and (0.75.0) the level a <group>, <master> or <global> sets for all of its regions, which adds to it.
+            const auto volumeDb = number (op, "volume", 0.0f) + number (op, "group_volume", 0.0f) + number (op, "master_volume", 0.0f)
+                                + number (op, "global_volume", 0.0f);
+            r.gain = juce::Decibels::decibelsToGain (volumeDb) * number (op, "amplitude", 100.0f) / 100.0f;
             r.pan = juce::jlimit (-1.0f, 1.0f, number (op, "pan", 0.0f) / 100.0f);
             const auto& sample = *inst->samples[(size_t) index];
             r.offset = (int) juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, sample.length - 1),
@@ -413,8 +464,19 @@ namespace synth::sfz
                 inst->loKey = juce::jmin (inst->loKey, r.loKey);
                 inst->hiKey = juce::jmax (inst->hiKey, r.hiKey);
             }
+            inst->wheelDynamics = inst->wheelDynamics || r.fadesWithWheel() || r.cutoffCcCents != 0.0f;
             inst->regions.push_back (r);
         }
+        // KEY SWITCHES: the first one down, the default or the lowest; in key order for the menu.
+        std::sort (inst->switchLabels.begin(), inst->switchLabels.end());
+        if (inst->switchDefault < 0 && ! inst->switchLabels.empty())
+            inst->switchDefault = inst->switchLabels.front().first;
+        // Other controllers' crossfades and gains aren't played.
+        for (const auto& op : opcodes)
+            for (const auto& [name, value] : op)
+                if ((name.startsWith ("xfin_locc") || name.startsWith ("gain_cc") || name.startsWith ("cutoff_cc"))
+                    && ! name.endsWith ("cc1") && leftOutSeen.insert ("othercc").second)
+                    inst->problems.add ("not played: controllers other than the mod wheel and the pedal");
         if (progress)
             progress (1.0f);
         // (a sample first read as a head and then kept whole for a loop no longer streams)

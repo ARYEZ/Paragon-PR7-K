@@ -150,7 +150,19 @@ void SfzChooser::refresh()
         case State::none:    text = "LOAD AN SFZ FILE..."; break;
         case State::loading: text = "LOADING " + processor.getSfzName (oscillator).toUpperCase() + " "
                                     + juce::String (juce::roundToInt (100.0f * processor.getSfzProgress (oscillator))) + "%"; break;
-        case State::loaded:  text = processor.getSfzName (oscillator); break;
+        case State::loaded:
+        {
+            text = processor.getSfzName (oscillator);
+            // KEY SWITCHES (0.75.0): the playing style chosen.
+            if (const auto instrument = processor.getSfzInstrument (oscillator); instrument != nullptr && ! instrument->switchLabels.empty())
+            {
+                auto key = processor.getSfzSwitch (oscillator);
+                if (instrument->switchLabel (key).isEmpty())
+                    key = instrument->switchDefault;
+                text << juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  ")) << instrument->switchLabel (key).toUpperCase();
+            }
+            break;
+        }
         case State::failed:  text = "NOT LOADED: " + processor.getSfzName (oscillator); break;
     }
     if (button.getButtonText() != text)
@@ -183,6 +195,20 @@ void SfzChooser::showMenu()
                                + (instrument->hasRelease ? ", release samples" : ""), false, false);
         for (int k = 0; k < juce::jmin (6, instrument->problems.size()); ++k)
             menu.addItem (101 + k, instrument->problems[k], false, false);
+        // KEY SWITCHES (0.75.0): each playing style, by its key; choosing one presses it.
+        if (! instrument->switchLabels.empty())
+        {
+            menu.addSeparator();
+            menu.addSectionHeader ("PLAYING STYLE (key switches)");
+            auto current = processor.getSfzSwitch (oscillator);
+            if (instrument->switchLabel (current).isEmpty())
+                current = instrument->switchDefault;
+            for (const auto& [key, label] : instrument->switchLabels)
+                menu.addItem (1000 + key, label + "   (" + juce::MidiMessage::getMidiNoteName (key, true, true, 4) + ")", true, key == current);
+        }
+        if (instrument->wheelDynamics)
+            menu.addItem (108, "Dynamics on the mod wheel" + juce::String (instrument->setCc1 >= 0 ? " (" + juce::String (juce::roundToInt (instrument->setCc1 / 1.27f)) + "% until it's moved)" : juce::String()),
+                          false, false);
     }
     else if (processor.getSfzProblem (oscillator).isNotEmpty())
     {
@@ -213,6 +239,13 @@ void SfzChooser::showMenu()
                             }
                             else if (result == 4)
                                 safe->processor.cancelLibraryDownload();
+                            else if (result >= 1000 && result < 1128)
+                            {
+                                // A playing style: its switch key pressed and let go, as from a keyboard.
+                                safe->processor.getKeyboardState().noteOn (1, result - 1000, 1.0f);
+                                safe->processor.getKeyboardState().noteOff (1, result - 1000, 0.0f);
+                                safe->refresh();
+                            }
                         });
 }
 

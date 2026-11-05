@@ -12683,7 +12683,7 @@ namespace
         space (strings);
         strings.set (ParamIDs::patchLevel, -10.4f);
         lightspeed (strings, { 0.6f, 0.6f, 0.4f, 0.9f, 0.6f });
-        orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 0.8f, 0.0f, true } }, {}, -10.0f,
+        orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 1.42f, 0.0f, true } }, {}, -10.0f,   // 0.75.0: 1.42 (0.8 + 5 dB: the library's MASTER_VOLUME -5 now plays)
                               "Shimmering strings for the stars going by: the orchestra's whole string section, with PR7-K's "
                               "own strings underneath, quieter. The recordings aren't looped and stop after about four "
                               "seconds: the strings underneath carry long chords.",
@@ -12791,7 +12791,7 @@ namespace
         space (upright);
         upright.set (ParamIDs::patchLevel, -3.6f);
         lightspeed (upright, { 0.9f, 0.65f, 0.4f, 0.8f, 0.6f });
-        orchestra (upright, { { { 0, "Strings - Notation/Bass Solo Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 8.9f,
+        orchestra (upright, { { { 0, "Strings - Notation/Bass Solo Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 6.9f,   // 0.75.0: 6.9 (its GROUP_VOLUME +2 now plays)
                               "The plucked bass of a smoky spaceport dance band, on the orchestra's solo double bass, a small room.",
                               1.0f, 300.0f, 1.0f, 200.0f, -1.0f,
                               [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "ROOM"; } });
@@ -12840,7 +12840,7 @@ namespace
         space (celesta);
         celesta.set (ParamIDs::patchLevel, -6.3f);
         lightspeed (celesta, { 0.5f, 0.6f, 0.35f, 0.9f, 0.7f });
-        orchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.0f } }, { 0, 1, 2, 3 }, 3.0f,
+        orchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.0f } }, { 0, 1, 2, 3 }, 1.6f,   // 0.75.0: 1.6 (its GROUP_VOLUME now plays)
                               "A celesta twinkling like a field of stars, on the orchestra's recording, ringing on through "
                               "quick ping-pong sixteenths and a hall.",
                               0.0f, 300.0f, 1.0f, 900.0f, -1.0f,
@@ -12893,7 +12893,7 @@ namespace
         space (racing);
         racing.set (ParamIDs::patchLevel, 1.2f);
         lightspeed (racing, { 0.6f, 0.45f, 0.45f, 0.9f, 0.6f });
-        orchestra (racing, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 0.9f } }, { 0, 1 }, 6.4f,
+        orchestra (racing, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 0.9f } }, { 0, 1 }, 11.4f,   // 0.75.0: 11.4 (MASTER_VOLUME -5 now plays)
                              "Strings racing through an asteroid field, on the orchestra's whole string section playing "
                              "staccato: hold a chord and ARP 1 runs it up and down over two octaves in sixteenths, a hall.",
                              1.0f, 300.0f, 1.0f, 120.0f, -1.0f,
@@ -13011,7 +13011,7 @@ namespace
         reverb (pizz, RT::hall, 0.6f, 0.2f);
         space (pizz);
         lightspeed (pizz, { 0.6f, 0.65f, 0.45f, 0.9f, 0.6f });
-        orchestra (pizz, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, -1.5f,
+        orchestra (pizz, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 3.5f,   // 0.75.0: 3.5 (MASTER_VOLUME -5 now plays)
                            "A string section plucking hard as the battle starts, on the orchestra's whole string section "
                            "playing pizzicato, a hall.",
                            0.0f, 300.0f, 1.0f, 300.0f, -1.0f,

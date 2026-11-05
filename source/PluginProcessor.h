@@ -155,6 +155,8 @@ public:
     enum class SfzState { none, loading, loaded, failed };
     SfzState getSfzState (int osc) const noexcept { return sfzStates[(size_t) juce::jlimit (0, 7, osc)]; }
     std::shared_ptr<const synth::sfz::Instrument> getSfzInstrument (int osc) const { return sfzInstruments[(size_t) juce::jlimit (0, 7, osc)]; }
+    // KEY SWITCHES (0.75.0): the oscillator's playing style now (its switch key; -1: none).
+    int getSfzSwitch (int osc) const noexcept { return engine.getSfzSwitch (osc); }
     juce::String getSfzRef (int osc) const { return sfzRefs[(size_t) juce::jlimit (0, 7, osc)]; }
     juce::String getSfzName (int osc) const;     // the instrument's name, or the file's while loading
     juce::String getSfzProblem (int osc) const { return sfzProblems[(size_t) juce::jlimit (0, 7, osc)]; }

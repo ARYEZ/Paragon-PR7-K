@@ -963,3 +963,326 @@ TEST_CASE ("Render SFZ clips", "[.sfzrender]")
         render ("04 Salamander - through the filter and reverb", e, 70.0, 5.0, false);
     }
 }
+
+//==============================================================================
+// 0.75.0: THE MOD WHEEL, FILTERS and KEY SWITCHES, as orchestral libraries' "performance" patches use them.
+namespace
+{
+    juce::MidiMessage wheelAt (int value) { return juce::MidiMessage::controllerEvent (1, 1, value); }
+}
+
+TEST_CASE ("SFZ: the mod wheel crossfades layers (XFIN / XFOUT_LOCC1) live while the note holds, without a click", "[sfz]")
+{
+    // A soft layer at 480 Hz fading out from the wheel at 0 to 64, a loud one at 720 Hz fading in across the same
+    // (XF_CCCURVE=gain, as the orchestra library sets it).
+    Folder f;
+    writeSine (f.dir.getChildFile ("soft.wav"), 480.0, 2.0);
+    writeSine (f.dir.getChildFile ("loud.wav"), 720.0, 2.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<group> key=60 amp_veltrack=0 xf_cccurve=gain\n"
+        "<region> sample=soft.wav xfout_locc1=0 xfout_hicc1=64\n"
+        "<region> sample=loud.wav xfin_locc1=0 xfin_hicc1=64\n"));
+    REQUIRE (inst != nullptr);
+    CHECK (inst->wheelDynamics);
+    CHECK (! inst->problems.joinIntoString (";").contains ("xfin_locc1"));
+    const auto levels = [&] (int wheel)
+    {
+        SfzPlayer p (inst.get());
+        p.midi (wheelAt (wheel));
+        p.render (0.01);
+        p.on (60);
+        const auto out = p.render (0.3);
+        return std::make_pair (levelAt (out[0], 480.0, 960, 9600) / 0.5, levelAt (out[0], 720.0, 960, 9600) / 0.5);
+    };
+    auto [soft, loud] = levels (0);
+    CHECK_THAT (soft, WithinAbs (1.0, 0.01));
+    CHECK (loud < 0.001);
+    std::tie (soft, loud) = levels (127);
+    CHECK (soft < 0.001);
+    CHECK_THAT (loud, WithinAbs (1.0, 0.01));
+    std::tie (soft, loud) = levels (32);   // halfway through the fade: each at half (straight, XF_CCCURVE=gain)
+    CHECK_THAT (soft, WithinAbs (0.5, 0.01));
+    CHECK_THAT (loud, WithinAbs (0.5, 0.01));
+
+    // Live: the note starts soft; moving the wheel up while it holds brings the loud layer in (both were started).
+    SfzPlayer p (inst.get());
+    p.midi (wheelAt (0));
+    p.render (0.01);
+    p.on (60);
+    const auto before = p.render (0.3);
+    p.midi (wheelAt (127));
+    const auto after = p.render (0.3);
+    CHECK (levelAt (before[0], 720.0, 960, 9600) < 0.001);
+    CHECK_THAT (levelAt (after[0], 720.0, 2400, 9600) / 0.5, WithinAbs (1.0, 0.01));
+    CHECK (levelAt (after[0], 480.0, 2400, 9600) < 0.001);
+    // No step: the change glides across a block, so no sample jumps further than the two sines can move.
+    auto biggest = 0.0f;
+    for (size_t i = 1; i < 2048; ++i)
+        biggest = juce::jmax (biggest, std::abs (after[0][i] - after[0][i - 1]));
+    const auto sineStep = 0.5f * (float) (juce::MathConstants<double>::twoPi * 720.0 / sampleRate);
+    CHECK (biggest < 1.2f * sineStep);
+}
+
+TEST_CASE ("SFZ: GAIN_CC1 raises the level with the wheel; SET_CC1 stands for the wheel until it's moved", "[sfz]")
+{
+    Folder f;
+    writeSine (f.dir.getChildFile ("tone.wav"), 480.0, 1.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<control> set_cc1=127\n"
+        "<region> sample=tone.wav key=60 amp_veltrack=0 volume=-12 gain_cc1=12\n"));
+    REQUIRE (inst != nullptr);
+    CHECK (inst->setCc1 == 127);
+    const auto levelWith = [&] (int wheel)
+    {
+        SfzPlayer p (inst.get());
+        if (wheel >= 0)
+        {
+            p.midi (wheelAt (wheel));
+            p.render (0.01);
+        }
+        p.on (60);
+        const auto out = p.render (0.3);
+        return db (levelAt (out[0], 480.0, 960, 9600) / 0.5);
+    };
+    CHECK_THAT (levelWith (0), WithinAbs (-12.0, 0.05));
+    CHECK_THAT (levelWith (127), WithinAbs (0.0, 0.05));
+    CHECK_THAT (levelWith (64), WithinAbs (-12.0 + 12.0 * 64.0 / 127.0, 0.05));   // dB in proportion
+    CHECK_THAT (levelWith (-1), WithinAbs (0.0, 0.05));   // untouched: SET_CC1 (127)
+}
+
+TEST_CASE ("SFZ: FIL_TYPE low- and high-pass at CUTOFF, moved by FIL_VELTRACK, FIL_KEYTRACK and CUTOFF_CC1", "[sfz]")
+{
+    Folder f;
+    writeSine (f.dir.getChildFile ("hi.wav"), 4000.0, 1.0);
+    writeSine (f.dir.getChildFile ("lo.wav"), 250.0, 1.0);
+    const auto cut = [&] (const juce::String& sample, double hz, const juce::String& filter, float velocity = 1.0f, int wheel = 0, int key = 60)
+    {
+        const auto inst = synth::sfz::load (writeSfz (f.dir,
+            "<region> sample=" + sample + " lokey=0 hikey=127 pitch_keycenter=" + juce::String (key) + " amp_veltrack=0 " + filter + "\n",
+            "f" + juce::String (juce::Random::getSystemRandom().nextInt (1000000)) + ".sfz"));
+        REQUIRE (inst != nullptr);
+        SfzPlayer p (inst.get());
+        p.midi (wheelAt (wheel));
+        p.render (0.01);
+        p.on (key, velocity);
+        const auto out = p.render (0.4);
+        return db (levelAt (out[0], hz, 4800, 9600) / 0.5);
+    };
+    // Two octaves above a 1 kHz cutoff: a one-pole falls about 12 dB, a two-pole (Butterworth) about 24.
+    CHECK_THAT (cut ("hi.wav", 4000.0, "fil_type=lpf_1p cutoff=1000"), WithinAbs (-12.3, 0.6));
+    CHECK_THAT (cut ("hi.wav", 4000.0, "fil_type=lpf_2p cutoff=1000"), WithinAbs (-24.1, 0.6));
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=1000"), WithinAbs (-24.1, 0.6));   // lpf_2p is the default
+    // Two octaves below: the high-passes.
+    CHECK_THAT (cut ("lo.wav", 250.0, "fil_type=hpf_1p cutoff=1000"), WithinAbs (-12.3, 0.6));
+    CHECK_THAT (cut ("lo.wav", 250.0, "fil_type=hpf_2p cutoff=1000"), WithinAbs (-24.1, 0.6));
+    // At the cutoff a Butterworth two-pole is 3 dB down; RESONANCE 6 dB lifts it to +3.
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=4000"), WithinAbs (-3.0, 0.2));
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=4000 resonance=6"), WithinAbs (3.0, 0.2));
+    // FIL_VELTRACK 2400 cents (two octaves) from 1 kHz: full velocity opens it to 4 kHz (-3 dB), half to 2 kHz.
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=1000 fil_veltrack=2400"), WithinAbs (-3.0, 0.2));
+    CHECK (cut ("hi.wav", 4000.0, "cutoff=1000 fil_veltrack=2400", 0.5f) < -10.0);
+    // CUTOFF_CC1: the wheel at the top opens it two octaves; at the bottom it's as set.
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=1000 cutoff_cc1=2400", 1.0f, 127), WithinAbs (-3.0, 0.2));
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=1000 cutoff_cc1=2400", 1.0f, 0), WithinAbs (-24.1, 0.6));
+    // FIL_KEYTRACK 100: a key two octaves above FIL_KEYCENTER moves the cutoff up two octaves with it.
+    CHECK_THAT (cut ("hi.wav", 4000.0, "cutoff=1000 fil_keytrack=100 fil_keycenter=36", 1.0f, 0, 60), WithinAbs (-3.0, 0.2));
+    // No CUTOFF: no filter at all.
+    CHECK_THAT (cut ("hi.wav", 4000.0, "fil_type=lpf_2p"), WithinAbs (0.0, 0.05));
+}
+
+TEST_CASE ("SFZ: key switches (SW_LOKEY / SW_HIKEY / SW_LAST / SW_DEFAULT / SW_LABEL) pick the regions, and play nothing", "[sfz]")
+{
+    // Two playing styles of one key: SUSTAIN (480 Hz) on C1, STACCATO (720 Hz) on D1, as the orchestra's KS patches
+    // put them (a <global> per style round an #include).
+    Folder f;
+    writeSine (f.dir.getChildFile ("sus.wav"), 480.0, 1.0);
+    writeSine (f.dir.getChildFile ("stac.wav"), 720.0, 1.0);
+    f.dir.getChildFile ("sus.sfz").replaceWithText ("<control> set_cc1=96\n<group> amp_veltrack=0\n<region> sample=sus.wav lokey=50 hikey=70 pitch_keycenter=60\n");
+    f.dir.getChildFile ("stac.sfz").replaceWithText ("<group> amp_veltrack=0\n<region> sample=stac.wav lokey=50 hikey=70 pitch_keycenter=60\n");
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<global> sw_default=c1 sw_lokey=c1 sw_hikey=d1 sw_last=c1 sw_label=Sustain\n#include \"sus.sfz\"\n"
+        "<global> sw_default=c1 sw_lokey=c1 sw_hikey=d1 sw_last=d1 sw_label=Staccato\n#include \"stac.sfz\"\n", "ks.sfz"));
+    REQUIRE (inst != nullptr);
+    CHECK (inst->switchLo == 24);
+    CHECK (inst->switchHi == 26);
+    CHECK (inst->switchDefault == 24);
+    CHECK (inst->switchLabel (24) == "Sustain");
+    CHECK (inst->switchLabel (26) == "Staccato");
+    CHECK (inst->isSwitch (26));
+    CHECK (! inst->isSwitch (60));
+    CHECK (inst->setCc1 == 96);   // <control> from the included file
+
+    SfzPlayer p (inst.get());
+    // A plain saw on oscillator 2 too: a switch key must not play it either.
+    p.osc (1).on = true;
+    p.osc (1).wave = synth::OscWave::saw;
+    p.osc (1).volume = 0.0f;   // (silent here; switched on below)
+    const auto toneOf = [&] (int note)
+    {
+        p.on (note);
+        const auto out = p.render (0.3);
+        p.off (note);
+        p.render (0.3);
+        return std::make_pair (levelAt (out[0], 480.0, 960, 9600) / 0.5, levelAt (out[0], 720.0, 960, 9600) / 0.5);
+    };
+    auto [sus, stac] = toneOf (60);   // SW_DEFAULT: Sustain
+    CHECK_THAT (sus, WithinAbs (1.0, 0.02));
+    CHECK (stac < 0.001);
+    CHECK (p.engine.getSfzSwitch (0) == 24);
+    p.osc (1).volume = 1.0f;
+    p.on (26);   // D1: the switch to Staccato. Nothing sounds, the saw neither.
+    const auto pressed = p.render (0.2);
+    p.off (26);
+    p.render (0.1);
+    CHECK (rms (pressed[0], 0, pressed[0].size()) < 1.0e-6);
+    CHECK (p.engine.getSfzSwitch (0) == 26);
+    p.osc (1).volume = 0.0f;
+    std::tie (sus, stac) = toneOf (60);
+    CHECK (sus < 0.001);
+    CHECK_THAT (stac, WithinAbs (1.0, 0.02));
+}
+
+// The real orchestra (0.75.0): PARAGON_SSO=<the library's "Sonatina Symphonic Orchestra" folder>. Its performance
+// patches with the wheel low, middling and high: the level and the brightness (the share of power above 2 kHz).
+TEST_CASE ("SFZ: the orchestra's performance patches follow the wheel (report)", "[.ssocheck]")
+{
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_SSO", {}));
+    REQUIRE (folder.isDirectory());
+    for (const auto* name : { "Strings - Performance/1st Violins Sustain.sfz", "Brass - Performance/Trumpets Sustain.sfz",
+                              "Brass - Performance/Horns KS.sfz", "Woodwinds - Performance/Alto Flute Solo Sustain (looped).sfz",
+                              "Strings - Performance/All Strings KS.sfz", "Brass - Notation/Trumpets Sustain (looped).sfz",
+                              "Concert Harp.sfz" })
+    {
+        const auto inst = synth::sfz::load (folder.getChildFile (name));
+        REQUIRE (inst != nullptr);
+        juce::String line = juce::String (name) + ": " + juce::String ((int) inst->regions.size()) + " regions, problems: "
+                          + inst->problems.joinIntoString ("; ");
+        if (! inst->switchLabels.empty())
+        {
+            line << "\n   switches:";
+            for (const auto& [k, label] : inst->switchLabels)
+                line << " " << juce::MidiMessage::getMidiNoteName (k, true, true, 4) << "=" << label;
+        }
+        for (const auto wheel : { 20, 64, 127 })
+        {
+            SfzPlayer p (inst.get());
+            p.midi (wheelAt (wheel));
+            p.render (0.01);
+            p.on (inst->isSwitch (60) ? 72 : 60, 0.8f);
+            auto out = p.render (1.5);
+            const auto level = db (rms (out[0], 24000, out[0].size()));
+            // Brightness: the power left after a 2 kHz high-pass (two one-poles), against the whole.
+            double hp = 0.0, total = 0.0, z1 = 0.0, z2 = 0.0, x1 = 0.0, y1 = 0.0;
+            const auto a = std::exp (-juce::MathConstants<double>::twoPi * 2000.0 / sampleRate);
+            for (size_t i = 24000; i < out[0].size(); ++i)
+            {
+                const auto x = (double) out[0][i];
+                const auto lp1 = (1.0 - a) * x + a * z1; z1 = lp1;
+                const auto h1 = x - lp1;
+                const auto lp2 = (1.0 - a) * h1 + a * z2; z2 = lp2;
+                const auto h2 = h1 - lp2;
+                hp += h2 * h2;
+                total += x * x;
+                juce::ignoreUnused (x1, y1);
+            }
+            line << "\n   wheel " << wheel << ": " << juce::String (level, 1) << " dB, above 2 kHz " << juce::String (100.0 * hp / juce::jmax (1e-12, total), 1) << "%";
+        }
+        WARN (line);
+    }
+}
+
+// Demo clips (0.75.0): PARAGON_SSO=<the library's folder>, PARAGON_RENDER=<where to write>. Dry (no reverb), as the
+// engine plays them: the strings swelling and falling with the wheel, the horns through their key-switched styles,
+// a trumpet soft then loud.
+TEST_CASE ("SFZ: dynamics and key switch demo clips (render)", "[.dynamicsdemo]")
+{
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_SSO", {}));
+    const juce::File out (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", {}));
+    REQUIRE (folder.isDirectory());
+    out.createDirectory();
+    const auto write = [&] (const juce::String& name, const std::vector<float>& l, const std::vector<float>& r, float gain = 1.0f)
+    {
+        juce::AudioBuffer<float> buffer (2, (int) l.size());
+        buffer.copyFrom (0, 0, l.data(), (int) l.size(), gain);
+        buffer.copyFrom (1, 0, r.data(), (int) r.size(), gain);
+        const auto file = out.getChildFile (name + ".wav");
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions().withSampleRate (sampleRate).withNumChannels (2).withBitsPerSample (24));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples());
+    };
+    struct Clip { std::vector<float> l, r; void add (const std::array<std::vector<float>, 2>& a) { l.insert (l.end(), a[0].begin(), a[0].end()); r.insert (r.end(), a[1].begin(), a[1].end()); } };
+    const auto setUp = [] (SfzPlayer& p)
+    {
+        p.settings.amp.envelope.attackMs = 2.0f;
+        p.settings.amp.envelope.releaseMs = 700.0f;
+        p.settings.play.voices = 32;
+    };
+
+    {   // 1. Strings: a held chord, the wheel up over four seconds and back down.
+        const auto inst = synth::sfz::load (folder.getChildFile ("Strings - Performance/All Strings KS.sfz"));
+        REQUIRE (inst != nullptr);
+        SfzPlayer p (inst.get());
+        setUp (p);
+        Clip c;
+        p.midi (wheelAt (8));
+        c.add (p.render (0.05));
+        for (const auto n : { 50, 53, 57, 62 })
+            p.on (n, 0.8f);
+        for (int step = 0; step <= 160; ++step)   // 8 s in 50 ms steps: up to the top at 4 s, back down by 8
+        {
+            const auto t = step / 160.0;
+            p.midi (wheelAt (juce::roundToInt (8.0 + 119.0 * std::sin (juce::MathConstants<double>::pi * t))));
+            c.add (p.render (0.05));
+        }
+        for (const auto n : { 50, 53, 57, 62 })
+            p.off (n);
+        c.add (p.render (2.0));
+        write ("1 Strings - the wheel swells and falls", c.l, c.r, 0.22f);   // (four sections at the top: no limiter here)
+    }
+    {   // 2. Horns: one phrase in each playing style, chosen by its key switch.
+        const auto inst = synth::sfz::load (folder.getChildFile ("Brass - Performance/Horns KS.sfz"));
+        REQUIRE (inst != nullptr);
+        SfzPlayer p (inst.get());
+        setUp (p);
+        Clip c;
+        p.midi (wheelAt (100));
+        c.add (p.render (0.05));
+        const int phrase[] = { 50, 53, 57, 55, 53, 50 };
+        const double lengths[] = { 0.45, 0.45, 0.9, 0.45, 0.45, 1.2 };
+        for (const auto style : { 84, 86, 88 })   // C6 SUSTAIN, D6 MARCATO, E6 STACCATO
+        {
+            p.on (style, 0.8f);
+            p.off (style);
+            for (size_t k = 0; k < 6; ++k)
+            {
+                p.on (phrase[k], 0.85f);
+                c.add (p.render (lengths[k] * 0.92));
+                p.off (phrase[k]);
+                c.add (p.render (lengths[k] * 0.08));
+            }
+            c.add (p.render (0.8));
+        }
+        c.add (p.render (1.0));
+        write ("2 Horns - sustain, marcato, staccato by key switch", c.l, c.r);
+    }
+    {   // 3. Trumpets: a note soft (wheel low), then loud (wheel high): another recording, brighter, not just louder.
+        const auto inst = synth::sfz::load (folder.getChildFile ("Brass - Performance/Trumpets Sustain.sfz"));
+        REQUIRE (inst != nullptr);
+        SfzPlayer p (inst.get());
+        setUp (p);
+        Clip c;
+        for (const auto wheel : { 25, 70, 120 })
+        {
+            p.midi (wheelAt (wheel));
+            c.add (p.render (0.05));
+            p.on (62, 0.8f);
+            c.add (p.render (2.2));
+            p.off (62);
+            c.add (p.render (0.9));
+        }
+        write ("3 Trumpets - wheel low, middle, high", c.l, c.r, 1.8f);
+    }
+}
