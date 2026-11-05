@@ -39,7 +39,8 @@ private:
 // through the presets; clicking the screen opens the browser. MainView's SHOW RACK / HIDE RACK swaps it with the
 // panels.
 class SynthFace final : public juce::Component,
-                        private juce::Timer
+                        private juce::Timer,
+                        private juce::ChangeListener
 {
 public:
     explicit SynthFace (ParagonX1AudioProcessor&);
@@ -87,4 +88,5 @@ private:
     Screen screen;
     float tickerOffset = 0.0f;   // how far the notes have scrolled, in pixels
     juce::Image grain;
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;   // the finish changed (0.74.1): new grain, repaint
 };

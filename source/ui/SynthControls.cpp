@@ -1,6 +1,7 @@
 #include "SynthControls.h"
 
 #include "ui/DockPanels.h"
+#include "ui/Finish.h"
 #include "ui/ParagonLookAndFeel.h"
 
 ParamControl::ParamControl (juce::AudioProcessorValueTreeState& stateToUse, const juce::String& id, const juce::String& labelText,
@@ -240,7 +241,9 @@ void ParamControl::setPedal()
     if (slider != nullptr)
         slider->getProperties().set (ParagonLookAndFeel::pedalKnobProperty, true);
     label.setFont (juce::FontOptions (12.0f, juce::Font::bold));
-    label.setColour (juce::Label::textColourId, ParagonColours::text);
+    // Printed on the unit (0.74.1): its ink, dark on the pearl white finishes (white text vanished into them);
+    // on pearl black the light text as before. The face calls this again when the finish changes.
+    label.setColour (juce::Label::textColourId, Finish::isBlack() ? ParagonColours::text : Finish::ink());
     repaint();
 }
 

@@ -2,10 +2,12 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-// The unit's finish: the original pearl white with black keys, or pearl
-// white or pearl black with neon keys and knobs (pink to red to orange). Only the unit itself changes (its chassis, the expression
-// pedal's plate, the lettering printed on it, its keys and knobs); the
-// screens, the neon and the dark panels round it stay as they are.
+// The unit's finish: the original pearl white with chrome rings round its
+// black keys and knobs, or pearl white or pearl black with those rings in
+// neon, pink to red to orange (0.74.1, as PR7-G 0.59.0: the keys and knobs
+// stay black on every finish). Only the unit itself changes (its chassis, the
+// lettering printed on it, the rings round its keys and knobs, the wheels'
+// ribs); the screens and the dark panels round it stay as they are.
 //
 // It's a preference of the person, not part of a project or a rig: kept in a
 // small settings file in the user's application data folder, so every
@@ -21,7 +23,7 @@ namespace Finish
     // `remember` saves it to the settings file (off for tests and snapshots).
     void set (Type, bool remember = true);
     inline bool isBlack() { return get() == Type::pearlBlack; }          // the chassis colour
-    inline bool neonKeys() { return get() != Type::pearlWhite; }         // the keys, knobs and pedal grips
+    inline bool neonRings() { return get() != Type::pearlWhite; }        // the rings round keys and knobs, and the wheels' ribs
 
     // Told whenever the finish changes, to repaint.
     juce::ChangeBroadcaster& changes();
@@ -42,7 +44,7 @@ namespace Finish
     // On black the flecks show more, as they do in a real black pearl paint.
     juce::Image makeSatinGrain (int width, int height, int seed);
 
-    // The pearl black unit's keys, knobs and pedal grips: hot pink at the
+    // The neon finishes' rings and ribs: hot pink at the
     // left through red to orange at the right (the reference swatch's
     // colours, 25% darker), across `left` to `right`. Lighting is drawn over it.
     juce::ColourGradient neonGradient (float left, float right);

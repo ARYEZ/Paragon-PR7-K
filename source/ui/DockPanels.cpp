@@ -1,6 +1,7 @@
 #include "DockPanels.h"
 
 #include "Parameters.h"
+#include "ui/Finish.h"
 #include "ui/ParagonLookAndFeel.h"
 
 namespace DockStyle
@@ -57,7 +58,16 @@ SettingsPage::SettingsPage (ParagonX1AudioProcessor& p)
         processor.getRigLibrary().getFolder().startAsProcess();
     };
 
-    for (auto* component : std::initializer_list<juce::Component*> { &tune, &openFolder })
+    pearlWhite.setTooltip ("The original pearl white unit with black keys and knobs in chrome rings");
+    pearlWhiteNeon.setTooltip ("The pearl white unit with black keys and knobs in neon pink-to-orange rings");
+    pearlBlack.setTooltip ("A pearl black unit with black keys and knobs in neon pink-to-orange rings");
+    pearlWhite.onClick = [] { Finish::set (Finish::Type::pearlWhite); };
+    pearlWhiteNeon.onClick = [] { Finish::set (Finish::Type::pearlWhiteNeon); };
+    pearlBlack.onClick = [] { Finish::set (Finish::Type::pearlBlack); };
+    Finish::changes().addChangeListener (this);
+    showFinish();
+
+    for (auto* component : std::initializer_list<juce::Component*> { &tune, &openFolder, &pearlWhite, &pearlWhiteNeon, &pearlBlack })
         addAndMakeVisible (component);
     processor.rigBroadcaster.addChangeListener (this);
 
@@ -146,6 +156,16 @@ SettingsPage::~SettingsPage()
 {
     stopTimer();
     processor.rigBroadcaster.removeChangeListener (this);
+    Finish::changes().removeChangeListener (this);
+}
+
+void SettingsPage::showFinish()
+{
+    // The chosen finish is lit like the primary buttons.
+    styleButton (pearlWhite, Finish::get() == Finish::Type::pearlWhite);
+    styleButton (pearlWhiteNeon, Finish::get() == Finish::Type::pearlWhiteNeon);
+    styleButton (pearlBlack, Finish::get() == Finish::Type::pearlBlack);
+    repaint();
 }
 
 void SettingsPage::paint (juce::Graphics& g)
@@ -175,8 +195,11 @@ void SettingsPage::paint (juce::Graphics& g)
         g.drawFittedText ("On presets that don't use EXPRESSION, the EXPR wheel (or your expression pedal) is the volume: "
                           "left at the bottom, they're silent. Switch it off and there it does nothing. Presets that use "
                           "EXPRESSION (a wah, say) follow it either way. It stays as it is when you change presets.",
-                          inner.removeFromTop (54), juce::Justification::topLeft, 3, 1.0f);
+                          inner.removeFromTop (72), juce::Justification::topLeft, 4, 1.0f);
     }
+    section (finishArea, "FINISH",
+             "The unit's colour: pearl white with chrome rings, or pearl white or pearl black with neon pink-to-orange rings "
+             "round the black keys and knobs. Saved on this computer, so every PR7-K you open uses it.");
     section (rigsArea, "PRESETS", "Your presets are files in this folder, so you can back them up or share them:\n"
                                   + processor.getRigLibrary().getFolder().getFullPathName());
     section (midiArea, "MIDI LINKS", shownLinks.isEmpty()
@@ -200,8 +223,10 @@ void SettingsPage::resized()
     auto area = getLocalBounds();
     auto top = area.removeFromTop (area.getHeight() / 2 - 6);
     area.removeFromTop (12);
-    tuneArea = top.removeFromLeft (top.getWidth() / 2 - 6);
-    rigsArea = top.withTrimmedLeft (12);
+    const auto third = (top.getWidth() - 24) / 3;   // 0.74.1: TUNE, PRESETS, FINISH
+    tuneArea = top.removeFromLeft (third);
+    rigsArea = top.withTrimmedLeft (12).removeFromLeft (third);
+    finishArea = top.withTrimmedLeft (24 + third);
     aboutArea = area.removeFromLeft (area.getWidth() / 2 - 6);
     area.removeFromLeft (12);
     midiArea = area;
@@ -223,6 +248,11 @@ void SettingsPage::resized()
     tune.setBounds (tuneControls.removeFromTop (32).withWidth (juce::jmin (420, tuneControls.getWidth())));
     // 0.52.0: EXPR WHEEL, under TUNE in the same panel.
     exprArea = tuneArea.reduced (24, 18).withTrimmedTop (150);
-    exprVolume.setBounds (exprArea.withTrimmedTop (78).removeFromTop (ParamControl::knobHeight).withWidth (130));
+    exprVolume.setBounds (exprArea.withTrimmedTop (98).removeFromTop (ParamControl::knobHeight).withWidth (130));
     openFolder.setBounds (rigsArea.reduced (24, 18).withTrimmedTop (100).removeFromTop (32).withWidth (220));
+    auto finishButtons = finishArea.reduced (24, 18).withTrimmedTop (100).removeFromTop (32);
+    const auto buttonWidth = juce::jmin (150, (finishButtons.getWidth() - 24) / 3);
+    pearlWhite.setBounds (finishButtons.removeFromLeft (buttonWidth));
+    pearlWhiteNeon.setBounds (finishButtons.withTrimmedLeft (12).removeFromLeft (buttonWidth));
+    pearlBlack.setBounds (finishButtons.withTrimmedLeft (24 + buttonWidth).removeFromLeft (buttonWidth));
 }

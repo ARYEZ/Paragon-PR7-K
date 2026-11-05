@@ -179,6 +179,7 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
 
     showPage (page);   // the front panel or the rack, as last left
     audioProcessor.rigBroadcaster.addChangeListener (this);
+    Finish::changes().addChangeListener (this);   // 0.74.1: SETTINGS > FINISH repaints the whole window
     refreshRig();
     startTimerHz (5);
     setWantsKeyboardFocus (true);
@@ -187,6 +188,7 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
 MainView::~MainView()
 {
     audioProcessor.rigBroadcaster.removeChangeListener (this);
+    Finish::changes().removeChangeListener (this);
 }
 
 void MainView::showPage (Page newPage)
@@ -400,8 +402,13 @@ void MainView::linkController (int controller, const juce::String& parameterId)
     repaint();
 }
 
-void MainView::changeListenerCallback (juce::ChangeBroadcaster*)
+void MainView::changeListenerCallback (juce::ChangeBroadcaster* source)
 {
+    if (source == &Finish::changes())
+    {
+        repaint();   // every part of the window draws in the finish it reads as it paints
+        return;
+    }
     refreshRig();
 }
 

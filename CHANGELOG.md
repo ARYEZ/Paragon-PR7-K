@@ -2,6 +2,18 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.74.1
+
+**A new look for the neon finishes, and a FINISH chooser in SETTINGS.**
+
+- **Black keys and knobs in neon rings** (the same look as PR7-G 0.59.0). On Pearl Black and Pearl White + Neon, every key and knob is now black, as on Pearl White, and the pink-to-red-to-orange moves to the rings round them:
+  - the bezels round the FX page's footswitches and the surrounds of the small keys (lit along the top and darker at the front, as the chrome is);
+  - the glowing ring round each knob on the front panel (a little brighter, since it's a light);
+  - the MOD and EXPR wheels, now black rubber with the neon in their ribs.
+- **Pearl White doesn't change**, apart from the fix below (compared pixel for pixel before and after).
+- **The front panel's knob names are readable on the white finishes.** CUTOFF, RESONANCE, MACRO 1-3, ATTACK and RELEASE were printed in white, which vanished into Pearl White and Pearl White + Neon; they're now in the unit's dark ink there. Pearl Black is unchanged.
+- **SETTINGS > FINISH**: choose Pearl White, Pearl White + Neon or Pearl Black, as in PR7-G. PR7-K had the three finishes but no way to pick one (it stayed on Pearl Black). Your choice is saved on this computer, so every PR7-K you open uses it, and the window redraws as soon as you click.
+
 ## 0.74.0
 
 **GRAND CINEMA, a cinematic piano expansion, built round BLOOM.**

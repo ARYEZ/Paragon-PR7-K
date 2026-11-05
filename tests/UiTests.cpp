@@ -6,6 +6,8 @@
 #include "Parameters.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include "ui/Finish.h"
+#include "ui/ParagonLookAndFeel.h"
 
 using Catch::Matchers::WithinAbs;
 
@@ -638,4 +640,36 @@ TEST_CASE ("SETTINGS' EXPR WHEEL CONTROLS VOLUME off: the wheel at the bottom do
     REQUIRE (! entries.empty());
     w.processor.loadRig (entries.front());
     CHECK (parameter->getValue() < 0.5f);
+}
+
+TEST_CASE ("SETTINGS' FINISH: three finishes, the chosen one lit; the neon rings on pearl black and pearl white + neon only", "[ui]")
+{
+    // 0.74.1 (as PR7-G 0.59.0): the keys and knobs are black on every finish; the neon finishes put the
+    // pink-to-orange in the rings round them (and the wheels' ribs). Pearl white keeps its chrome.
+    const auto before = Finish::get();
+    Window w;
+    w.view->showPage (MainView::Page::settings);
+    auto& page = w.view->getSettingsPage();
+    const auto lit = [&] (Finish::Type type)
+    {
+        return page.getFinishButton ((int) type).findColour (juce::TextButton::textColourOffId) == ParagonColours::accent;
+    };
+    for (const auto type : { Finish::Type::pearlWhite, Finish::Type::pearlBlack, Finish::Type::pearlWhiteNeon })
+    {
+        auto& button = page.getFinishButton ((int) type);
+        CHECK (button.isVisible());
+        CHECK (! button.getBounds().isEmpty());
+        CHECK (page.getLocalBounds().contains (button.getBounds()));
+        Finish::set (type, false);   // (what the button does, but not saved: a test mustn't change the computer's setting)
+        CHECK (Finish::get() == type);
+        CHECK (Finish::neonRings() == (type != Finish::Type::pearlWhite));
+        CHECK (Finish::isBlack() == (type == Finish::Type::pearlBlack));
+        for (const auto other : { Finish::Type::pearlWhite, Finish::Type::pearlBlack, Finish::Type::pearlWhiteNeon })
+            CHECK (lit (other) == (other == type));
+    }
+    // The three buttons don't overlap.
+    CHECK (! page.getFinishButton (0).getBounds().intersects (page.getFinishButton (1).getBounds()));
+    CHECK (! page.getFinishButton (0).getBounds().intersects (page.getFinishButton (2).getBounds()));
+    CHECK (! page.getFinishButton (1).getBounds().intersects (page.getFinishButton (2).getBounds()));
+    Finish::set (before, false);
 }
