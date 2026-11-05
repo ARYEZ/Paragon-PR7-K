@@ -47,7 +47,7 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
         constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation, View::remnant, View::proximity, View::haze, View::spectre, View::leviathan, View::nuclearSpring, View::lightSpeed, View::bloom, View::legion };
-        show (views[juce::jlimit (0, 19, unit)]);
+        show (views[juce::jlimit (0, (int) std::size (views) - 1, unit)]);
     }, [this] { chooseSignature(); });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)

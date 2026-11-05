@@ -13,8 +13,11 @@ namespace effects
         constexpr float driftShare[]= { 0.70f, 1.00f, 0.85f, 0.60f, 0.95f, 0.75f, 0.90f, 0.65f };
         constexpr float place[]     = { -0.75f, 0.75f, -0.35f, 0.35f, -1.00f, 1.00f, -0.55f, 0.55f };
         constexpr int chunk = 16;            // the delays are worked out every 16 samples and glided between
-        // The players' share in the level: the whole is turned down by 1 / sqrt (1 + share x their weights squared).
-        // Measured on a saw chord and on noise (LegionTests): 0.55 keeps a full section within about 1 dB of one player.
+        // The level kept: the gain follows sqrt (power in / power out), each followed over about 0.3 s, held to
+        // -10 to +1.6 dB (a section's combing can dip a little; nothing is ever pushed far up).
+        constexpr float levelSeconds = 0.3f, gainLow = 0.5f, gainHigh = 1.6f;
+        // ...on top of an estimate that acts at once as players join: 1 / sqrt (1 + share x their weights squared)
+        // (right for a sound in the middle; the measured part trims what's left, as on wide noise).
         constexpr float levelShare = 0.55f;
     }
 
@@ -27,6 +30,7 @@ namespace effects
         line.assign ((size_t) length, 0.0f);
         mask = length - 1;
         sizeCoef = 1.0f - std::exp (-1.0f / (0.04f * (float) sampleRate));
+        levelCoef = 1.0f - std::exp (-1.0f / (levelSeconds * (float) sampleRate));
         reset();
     }
 
@@ -37,6 +41,8 @@ namespace effects
         sizeNow = 0.0f;
         wasOn = false;
         toneState = {};
+        powerIn = powerOut = 0.0f;
+        gainNow = 1.0f;
         for (int k = 0; k < numPlayers; ++k)
         {
             driftPhase[(size_t) k] = driftFrom[k];
@@ -161,16 +167,25 @@ namespace effects
                 }
                 toneState[0] += (wetL - toneState[0]) * toneCoef;
                 toneState[1] += (wetR - toneState[1]) * toneCoef;
-                const auto gain = 1.0f / std::sqrt (1.0f + levelShare * power);
-                left[at] = (inL + toneState[0]) * gain;
+                const auto estimate = 1.0f / std::sqrt (1.0f + levelShare * power);
+                const auto outL = (inL + toneState[0]) * estimate, outR = (inR + toneState[1]) * estimate;
+                powerIn += (inL * inL + inR * inR - powerIn) * levelCoef;
+                powerOut += (outL * outL + outR * outR - powerOut) * levelCoef;
+                const auto wanted = powerOut > 1.0e-12f ? juce::jlimit (gainLow, gainHigh, std::sqrt (powerIn / powerOut)) : gainNow;
+                gainNow += (wanted - gainNow) * sizeCoef;   // glided (40 ms): never a step
+                left[at] = outL * gainNow;
                 if (right != nullptr)
-                    right[at] = (inR + toneState[1]) * gain;
+                    right[at] = outR * gainNow;
             }
         }
         sizeShown.store (sizeNow);
         for (int k = 0; k < numPlayers; ++k)
             weightShown[(size_t) k].store (juce::jlimit (0.0f, 1.0f, sizeNow * (float) numPlayers - (float) k));
         if (sizeNow <= 0.0f)
+        {
             toneState = {};
+            powerIn = powerOut = 0.0f;
+            gainNow = 1.0f;
+        }
     }
 }

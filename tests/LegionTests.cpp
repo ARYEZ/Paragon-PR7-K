@@ -101,14 +101,18 @@ TEST_CASE ("LEGION: off, and on at SIZE 0, leave the sound untouched bit for bit
 TEST_CASE ("LEGION: each player is the sound a little late: an impulse comes back once per player, at its lateness", "[legion]")
 {
     // DETUNE 0 (no sway): a click in the middle of both sides, SIZE 1, LOOSE 1 (the latest 30 ms behind).
-    std::vector<float> x ((size_t) (0.2 * sampleRate), 0.0f);
-    x[100] = 1.0f;
+    // (The click comes at 0.5 s, once SIZE has settled: every player in.) Quiet noise under it keeps the level keeper steady.
+    auto x = noise (0.7, 9);
+    for (auto& v : x)
+        v *= 0.001f;
+    const auto click = (int) (0.5 * sampleRate);
+    x[(size_t) click] = 1.0f;
     const auto out = runLegion (x, x, with (1.0f, 0.0f, 1.0f, 0.0f));   // SPREAD 0: every player in the middle
     // The players' lateness: 2 ms + 28 ms x their shares (Legion.cpp's own table).
     constexpr float shares[] = { 0.20f, 0.85f, 0.45f, 0.65f, 0.30f, 1.00f, 0.55f, 0.75f };
     for (const auto share : shares)
     {
-        const auto at = 100 + (int) std::lround ((2.0 + 28.0 * share) * 0.001 * sampleRate);
+        const auto at = click + (int) std::lround ((2.0 + 28.0 * share) * 0.001 * sampleRate);
         auto peak = 0.0f;
         for (int i = at - 2; i <= at + 2; ++i)
             peak = std::max (peak, std::abs (out[0][(size_t) i]));
@@ -116,9 +120,9 @@ TEST_CASE ("LEGION: each player is the sound a little late: an impulse comes bac
         CHECK (peak > 0.1f);
     }
     // Nothing between the click and the first player, nothing after the last.
-    for (int i = 110; i < 100 + (int) (0.007 * sampleRate); ++i)
+    for (int i = click + 10; i < click + (int) (0.007 * sampleRate); ++i)
         CHECK (std::abs (out[0][(size_t) i]) < 0.02f);
-    for (auto i = (size_t) (100 + 0.032 * sampleRate); i < out[0].size(); ++i)
+    for (auto i = (size_t) (click + 0.032 * sampleRate); i < out[0].size(); ++i)
         CHECK (std::abs (out[0][i]) < 0.02f);
 }
 
@@ -190,12 +194,15 @@ TEST_CASE ("LEGION: turning SIZE up at once doesn't click; silence stays silent"
     for (size_t i = 0; i < sine.size(); ++i)
         sine[i] = 0.3f * (float) std::sin (juce::MathConstants<double>::twoPi * 220.0 * (double) i / sampleRate);
     const auto out = runLegion (sine, sine, with (0.0f), (int) (0.5 * sampleRate), with (1.0f));
-    auto biggest = 0.0f;
-    for (size_t i = 1; i < out[0].size(); ++i)
-        biggest = std::max (biggest, std::abs (out[0][i] - out[0][i - 1]));
-    const auto sineStep = 0.3f * (float) (juce::MathConstants<double>::twoPi * 220.0 / sampleRate);
-    INFO ("largest step " << biggest << " (the sine's own " << sineStep << ")");
-    CHECK (biggest < 1.5f * sineStep);
+    // While the section joins (from 0.5 s), no 10 ms stretch is more than 1.5 dB over the settled section (its last
+    // 0.2 s) or the sound before it: no swell, no click.
+    const auto settled = rms (out[0], (size_t) (0.8 * sampleRate), out[0].size());
+    const auto before = rms (out[0], (size_t) (0.3 * sampleRate), (size_t) (0.5 * sampleRate));
+    auto worst = -100.0;
+    for (auto start = (size_t) (0.5 * sampleRate); start < (size_t) (0.8 * sampleRate); start += 480)
+        worst = std::max (worst, db (rms (out[0], start, start + 480) / std::max (settled, before)));
+    INFO ("loudest 10 ms while joining: " << worst << " dB over the louder of before and settled");
+    CHECK (worst < 1.5);
 
     std::vector<float> silence ((size_t) sampleRate, 0.0f);
     const auto quiet = runLegion (silence, silence, with (1.0f));

@@ -11,12 +11,15 @@ namespace effects
     // LEGION (0.76.0, MAESTRO's signature, the owner's name and choice (an ensemble size over a growing hall); our own
     // design, nothing measured from a section or copied from a product). SIZE takes a sound from one player to a full
     // section: up to eight more "players" join one at a time, each the sound read back from a short line a little
-    // late (PLAYERS' timing: 2 ms to LOOSE's 6-30 ms, each its own share), its delay swaying slowly (0.09-0.23 Hz, each
+    // late (its timing: 2 ms to LOOSE's 6-30 ms, each its own share), its delay swaying slowly (0.09-0.23 Hz, each
     // its own) so it drifts up to DETUNE's 0-14 cents in and out of tune, as players never sit exactly together; each
     // placed at its own spot across the stage (SPREAD), darkened a little (TONE, 3-16 kHz: a section's blur). The
     // players hear the middle of the sound (left and right together) and are added round it, the sound itself kept as
-    // the leader; the whole is turned down by the players' share so a full section is bigger, not louder (measured:
-    // within about 1 dB on saws and noise). SIZE is smoothed (40 ms); under 0.001 it counts as 0, and at 0, once
+    // the leader; the whole is kept as loud as the sound going in: at once by an estimate from the players' weights
+    // (right for a centred sound), then by measurement (in and out followed over about 0.3 s, the correction held to
+    // -6 to +4 dB and glided), so a full section is bigger, not louder (the estimate alone was 4.6 dB out on wide
+    // noise, where the players hear less than either side; the measurement alone swelled 4 dB as they joined).
+    // SIZE is smoothed (40 ms); under 0.001 it counts as 0, and at 0, once
     // settled, the sound passes untouched bit for bit (`isResting`); the line keeps recording while it's on so a
     // player joining hears the present, and is cleared when it's switched on.
     class Legion
@@ -63,6 +66,7 @@ namespace effects
         std::array<double, numPlayers> driftPhase {};
         std::array<float, numPlayers> delayNow {};   // samples, as of the last chunk
         std::array<float, 2> toneState {};
+        float powerIn = 0.0f, powerOut = 0.0f, levelCoef = 0.0f, gainNow = 1.0f;   // the level kept (see Legion.cpp)
         std::array<std::atomic<float>, numPlayers> weightShown {}, panShown {}, delayShown {}, driftShown {};
         std::atomic<float> sizeShown { 0.0f };
     };
