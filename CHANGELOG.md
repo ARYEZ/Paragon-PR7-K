@@ -2,6 +2,14 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.73.1
+
+**You can now see the orchestra (or piano) downloading.**
+
+- In 0.73.0, clicking DOWNLOAD on a HYPERDRIVE preset showed nothing: the download's progress was only on an oscillator's SFZ line, which the front panel hides and which those presets don't have until the orchestra is in. The download itself ran; you just couldn't tell.
+- Now the front panel's screen shows DOWNLOADING THE ORCHESTRA with the percentage and a bar (then UNPACKING), and the header shows ORCHESTRA n% on every page.
+- If a download fails, the screen says why, and PR7-K offers it once more with the reason.
+
 ## 0.73.0
 
 **HYPERDRIVE, a new expansion with a real orchestra: GET THE ORCHESTRA, looping samples, and LIGHTSPEED.**
