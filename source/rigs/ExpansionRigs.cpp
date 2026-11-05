@@ -14465,7 +14465,7 @@ namespace
         space (harpsichord);
         harpsichord.set (ParamIDs::patchLevel, -4.0f);
         overcharge (harpsichord, { 0.55f, 0.6f, 0.7f, 0.7f });
-        orchestra (harpsichord, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 5.0f,
+        orchestra (harpsichord, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 4.0f,
                                   "The gilded city's salon, on the orchestra's harpsichord (both its registers), a small "
                                   "polished room.",
                                   0.0f, 300.0f, 1.0f, 300.0f, -1.0f,
