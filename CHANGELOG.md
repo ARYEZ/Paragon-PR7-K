@@ -2,6 +2,16 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.74.0
+
+**GRAND CINEMA, a cinematic piano expansion, built round BLOOM.**
+
+- **GRAND CINEMA (GC01-GC18)**, the modern film and trailer piano in a balanced mix of intimate, vast, epic and dark: Lone Melody, Octave Theme and Halo Lead (leads); Piano Over Strings, Reverse Swell (the piano heard backwards, swelling up and cut off) and Cathedral Air (pads); Trailer Boom, Low Drone Piano and Muted Ostinato Bass (basses); Intimate Felt (the centrepiece: a thick felt, heard from inside the lid, hammers and pedal audible), Concert Hall Grand and Epic Grand (keys); Rising Ostinato, Tension Pulse and Cascading Light (arps); Prepared Grand, Muted Grand and Detuned Upright (plucks). Our own sounds and phrases.
+- **Every preset plays the real piano** once the free Salamander Grand is downloaded (the same download as the bank A pianos), keeping its extra parts: octaves, a synth halo, strings, a drone, the boom, a detuned second string. Until then each plays PR7-K's own synthesized piano.
+- **MACRO 3 is BLOOM on every GRAND CINEMA preset**: at the left the piano as built, turning it up brings in the strings ringing along and the hall opening out.
+- **BLOOM, a new signature effect** (the SIGNATURE slot's seventeenth): a piano's undamped strings ringing in sympathy with what you play (tuned to the notes sounding, an octave below, an octave and an octave and a fifth above, ringing on after the keys let go for as long as RING says; a note a half step off sets nothing ringing), and a hall that opens out the longer you hold (SWELL). AMOUNT, STRINGS, RING, SIZE, SWELL, TONE, WIDTH; AMOUNT, STRINGS and SIZE can be moved by the mod matrix. Its page shows a piano's strings from above, the ringing ones shimmering, the hall glowing behind. At AMOUNT 0 it leaves the sound untouched. Our own design, about 1.3% of a CPU core.
+- Levels set by measurement: about -17 loudness, full BLOOM adds about 2.5 dB; the percussive presets are set by their peaks. Reverse Swell on the real piano is the quietest (a recorded note fades as the backwards swell rises).
+
 ## 0.73.1
 
 **You can now see the orchestra (or piano) downloading.**
