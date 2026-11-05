@@ -56,11 +56,15 @@ private:
     juce::AudioProcessorValueTreeState::SliderAttachment tuneAttachment;
     juce::TextButton openFolder { "OPEN PRESETS FOLDER" };
     ParamControl exprVolume;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
-    juce::Rectangle<int> tuneArea, rigsArea, aboutArea, exprArea;
+    // 0.74.1, FINISH (as PR7-G's): the unit's colour, the chosen one lit.
+    juce::TextButton pearlWhite { "PEARL WHITE" }, pearlWhiteNeon { "WHITE + NEON" }, pearlBlack { "PEARL BLACK" };
+    void showFinish();
+    juce::Rectangle<int> tuneArea, rigsArea, aboutArea, exprArea, finishArea;
 
 public:
     ParamControl& getExprVolumeSwitch() noexcept { return exprVolume; }   // for tests
+    juce::TextButton& getFinishButton (int type) noexcept { return type == 0 ? pearlWhite : type == 1 ? pearlBlack : pearlWhiteNeon; }   // by Finish::Type, for tests
 private:
 
-    void changeListenerCallback (juce::ChangeBroadcaster*) override { repaint(); }
+    void changeListenerCallback (juce::ChangeBroadcaster*) override { showFinish(); }
 };

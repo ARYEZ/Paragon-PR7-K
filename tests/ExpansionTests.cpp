@@ -8,6 +8,7 @@
 #include "ModDestinations.h"
 #include "Parameters.h"
 #include "PluginProcessor.h"
+#include "SampleLibraries.h"
 #include "rigs/Expansions.h"
 #include "rigs/FactoryRigs.h"
 #include "ui/RigBrowser.h"
@@ -55,6 +56,16 @@ namespace
             processor.prepareToPlay (rate, block);
             processor.useRigFolder (temp.folder);
             processor.setPlayHead (&song);
+            // 0.72.0: PARAGON_LIBRARIES (a folder holding the Salamander's) linked in, so the presets that play the
+            // sampled piano play it (without it they play their synthesized fallback).
+            const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+            // 0.73.0: every library there (the Sonatina Symphonic Orchestra too, for HYPERDRIVE).
+            for (const auto* library : libraries::all())
+                if (libraries.getChildFile (library->folder).isDirectory())
+                {
+                    processor.getLibrariesFolder().createDirectory();
+                    libraries.getChildFile (library->folder).createSymbolicLink (processor.getLibrariesFolder().getChildFile (library->folder), true);
+                }
         }
         const RigLibrary::Entry& entryNamed (const juce::String& name)
         {
@@ -67,6 +78,7 @@ namespace
         void load (const juce::String& name)
         {
             processor.loadRig (entryNamed (name));
+            REQUIRE (processor.waitForSfz (180000)); // (a sampled piano loads in the background: slow from a cold disk)
             processor.prepareToPlay (rate, block);   // fresh: no tails from the last one
             processor.finishTableBuilds();           // FFT-edited waves are built in the background
             processor.seedRandomForTest (1);
@@ -119,7 +131,7 @@ namespace
 
     juce::String typeOf (const Rig& rig)
     {
-        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp" })
+        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp", "Pluck" })
             if (rig.tags[0] == type)
                 return type;
         return {};
@@ -149,7 +161,7 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
     {
         const auto rigs = expansionRigs (x);
         INFO (expansions::list[(size_t) x].name);
-        REQUIRE (rigs.size() == 15);
+        REQUIRE (rigs.size() == 18);
         std::map<juce::String, int> perType;
         for (size_t i = 0; i < rigs.size(); ++i)
         {
@@ -159,13 +171,17 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
             CHECK (rigs[i].tags.contains (expansions::list[(size_t) x].name));
             ++perType[typeOf (rigs[i])];
         }
-        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps; CHROMEFURY is lead-heavy at the owner's ask: 6, 3, 3, 1, 2.
+        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps, 3 plucks (0.70.0, slots 16-18); CHROMEFURY is lead-heavy at the
+        // owner's ask: 6, 3, 3, 1, 2, 3.
         const auto leadHeavy = juce::String (expansions::list[(size_t) x].name) == "CHROMEFURY";
         CHECK (perType["Lead"] == (leadHeavy ? 6 : 3));
         CHECK (perType["Pad"] == 3);
         CHECK (perType["Bass"] == 3);
         CHECK (perType["Keys"] == (leadHeavy ? 1 : 3));
         CHECK (perType["Arp"] == (leadHeavy ? 2 : 3));
+        CHECK (perType["Pluck"] == 3);
+        for (size_t i = 15; i < rigs.size(); ++i)
+            CHECK (typeOf (rigs[i]) == "Pluck");
     }
 }
 
@@ -248,7 +264,7 @@ TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its 
                                          { return r.source == "macro3" && r.destination == ParamIDs::downpourRain && r.amount > 0.5f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left", "[rigs][expansions][sirocco]")
@@ -269,7 +285,7 @@ TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left"
                                          { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
 }
 
 TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
@@ -289,7 +305,243 @@ TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its 
                                          { return r.source == "macro3" && r.destination == ParamIDs::dilationSlow && r.amount >= 0.25f; });
         CHECK (routed);
     }
-    CHECK (count == 15);
+    CHECK (count == 18);
+}
+
+TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left", "[rigs][expansions][remnant]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 7)   // DREAMSTATE: the eighth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "DREAM");
+        CHECK (rig.notes.contains ("DREAM (layers beneath, each deeper one slower, plus "));
+        CHECK (rig.parameters.at (ParamIDs::remnantOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::remnantMix) == 0.0f);   // no layers until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::remnantMix && r.amount >= 0.2f; });
+        CHECK (routed);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("NEGATIVE SPACE: MACRO 3 is CLOSER on every preset, nothing added at its left", "[rigs][expansions][proximity]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 8)   // NEGATIVE SPACE: the ninth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "CLOSER");
+        CHECK (rig.notes.contains ("CLOSER (the sound of playing, up close, plus "));
+        CHECK (rig.parameters.at (ParamIDs::proximityOn) == 1.0f);
+        for (const auto* id : { ParamIDs::proximityNoise, ParamIDs::proximityRoom, ParamIDs::proximityClose })
+        {
+            CHECK (rig.parameters.at (id) == 0.0f);   // nothing until the macro: the sound as approved
+            const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [id] (const auto& r)
+                                             { return r.source == "macro3" && r.destination == id && r.amount >= 0.1f; });
+            CHECK (routed);
+        }
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("NIGHTDRIVE: MACRO 3 is HAZE on every preset, no movement at its left", "[rigs][expansions][haze]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 9)   // NIGHTDRIVE: the tenth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "HAZE");
+        CHECK (rig.notes.contains ("HAZE (streetlights passing, plus "));
+        CHECK (rig.parameters.at (ParamIDs::hazeOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::hazeDepth) == 0.0f);   // no movement until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::hazeDepth && r.amount >= 0.25f; });
+        CHECK (routed);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("UNSPOKEN: MACRO 3 is LEVIATHAN on every preset, no voice at its left", "[rigs][expansions][leviathan]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 10)   // UNSPOKEN: the eleventh expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "LEVIATHAN");
+        CHECK (rig.notes.contains ("LEVIATHAN (a vast voice singing beneath it, plus "));
+        CHECK (rig.parameters.at (ParamIDs::leviathanOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::leviathanMix) == 0.0f);   // no voice until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::leviathanMix && r.amount >= 0.15f; });
+        CHECK (routed);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("CYBERSHRINE: MACRO 3 is SPECTRE on every preset, no ghost at its left", "[rigs][expansions][spectre]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 11)   // CYBERSHRINE: the twelfth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "SPECTRE");
+        CHECK (rig.notes.contains ("SPECTRE (a whispered ghost following it, plus "));
+        CHECK (rig.parameters.at (ParamIDs::spectreOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::spectreMix) == 0.0f);   // no ghost until the macro: the sound as approved
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::spectreMix && r.amount >= 0.15f; });
+        CHECK (routed);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in by the macro", "[rigs][expansions][nuclearspring]")
+{
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 24)   // ATOMIC AGE: the twenty-fifth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.modulation.macroNames[2] == "SPRING");
+        CHECK (rig.notes.contains ("SPRING ("));
+        CHECK (rig.parameters.at (ParamIDs::springOn) == 1.0f);
+        CHECK (rig.parameters.at (ParamIDs::springMix) == 0.0f);
+        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                                         { return r.source == "macro3" && r.destination == ParamIDs::springMix && r.amount >= 0.3f; });
+        CHECK (routed);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("HYPERDRIVE: MACRO 3 is LIGHTSPEED on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][lightspeed]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 25)   // HYPERDRIVE: the twenty-sixth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "LIGHTSPEED");
+            CHECK (version->notes.contains ("LIGHTSPEED"));
+            CHECK (version->parameters.at (ParamIDs::jumpOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::jumpAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::jumpAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 12);
+}
+
+TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left; every preset has a real piano version", "[rigs][expansions][bloom]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 26)   // GRAND CINEMA: the twenty-seventh expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        REQUIRE (rig.sampled != nullptr);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            CHECK (version->modulation.macroNames[2] == "BLOOM");
+            CHECK (version->notes.contains ("BLOOM"));
+            CHECK (version->parameters.at (ParamIDs::bloomOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::bloomAmount) == 0.0f);
+            // At least a third of the way (Cathedral Air's held, pedalled chord stops at 0.33: higher added up to 9 dB).
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::bloomAmount && r.amount >= 0.3f; }));
+            // No MACRO 3 job left over from the piano helpers: it's BLOOM alone.
+            CHECK (std::none_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                 { return r.source == "macro3" && r.destination != ParamIDs::bloomAmount; }));
+        }
+        const auto& s = *rig.sampled;
+        CHECK (rig.sfz.empty());   // the synthesized piano: no samples
+        CHECK (ParagonX1AudioProcessor::libraryOf (s) == &libraries::salamanderGrand());
+        CHECK (s.parameters.at (ParamIDs::osc (0, "Wave")) == (float) synth::OscWave::sfz);
+        CHECK (s.notes.contains ("Salamander"));
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            CHECK (value >= parameter->getNormalisableRange().start);
+            CHECK (value <= parameter->getNormalisableRange().end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+            // Nothing routed to an oscillator that's gone.
+            if (r.destination.startsWith ("osc"))
+                CHECK (s.parameters.count (r.destination.upToFirstOccurrenceOf ("osc", true, false)
+                                           + r.destination.fromFirstOccurrenceOf ("osc", false, false).substring (0, 1) + "On") > 0);
+        }
+    }
+    CHECK (count == 18);
 }
 
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
@@ -304,7 +556,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     REQUIRE (p.processor.saveCurrentRigAs ("My Brass"));
     const auto& saved = p.entryNamed ("My Brass");
     CHECK (saved.rig.bank == 0);
-    CHECK (saved.rig.getSlotName() == "A41");
+    CHECK (saved.rig.getSlotName() == "A48");   // after bank A's factory presets (A01-A47)
 
     Rig details = saved.rig;
     details.bank = Rig::numBanks;   // asked for an expansion's bank
@@ -319,7 +571,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     CHECK (back->bank == Rig::numBanks - 1);
 
     // < > step on into the expansions after the last user bank, and round.
-    p.processor.loadRig (p.entryNamed ("Sung Vowels"));
+    p.processor.loadRig (p.entryNamed ("Starlight Piano"));
     p.processor.stepRig (1);
     CHECK (p.processor.getCurrentRig().name == "My Brass");
     p.processor.stepRig (1);
@@ -373,7 +625,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
     const auto overrides = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_PARAMS", {}), ",", {});
     for (const auto& rig : makeExpansionRigs())
     {
-        if (only.isNotEmpty() && ! rig.name.containsIgnoreCase (only) && ! rig.tags.contains (only, true))   // a name, or a bank (its tag)
+        if (only == "NEW PLUCKS" && rig.number < 16)   // the plucks of 0.70.0 (slots 16-18) alone
+            continue;
+        if (only.isNotEmpty() && only != "NEW PLUCKS" && ! rig.name.containsIgnoreCase (only) && ! rig.tags.contains (only, true))   // a name, or a bank (its tag)
             continue;
         p.load (rig.name);
         // NEON RAIN at 85 BPM in A minor; HELLFORGE at 140 in D, heavier and rhythmic.
@@ -400,8 +654,11 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
         const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
         const auto melt = rig.bank == Rig::numBanks + 23;      // MELTDOWN: 66 BPM in D minor, slow, with half-step clusters
+        const auto atomic = rig.bank == Rig::numBanks + 24;    // ATOMIC AGE: 116 BPM in C major, a cheerful lounge, C6 Fmaj7 Dm7 G7
+        const auto hyper = rig.bank == Rig::numBanks + 25;     // HYPERDRIVE: 104 BPM in G minor, heroic and marching
+        const auto cinema = rig.bank == Rig::numBanks + 26;    // GRAND CINEMA: 72 BPM in D minor, piano with the pedal
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -451,6 +708,38 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (type == "Pluck")
+        {
+            // Every bank's plucks (0.70.0): a riff in the bank's key, short notes with gaps (where the centrepiece is
+            // heard), accents for the velocity, four bars over a falling bass of the scale, a three-note chord, then
+            // a last note left to ring and a bar and a half of tail.
+            const int bankIndex = rig.bank - Rig::numBanks;
+            struct Key { int root; std::vector<int> scale; };
+            const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
+                                   phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 26, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 ? major : minor;
+            const auto degree = [&] (int d)
+            {
+                const auto n = (int) scale.size();
+                const auto octave = (d >= 0 ? d / n : -((-d + n - 1) / n));
+                return root + 12 * octave + scale[(size_t) (d - octave * n)];
+            };
+            const int riff[] { 0, -1, 2, 4, -1, 2, 1, 4, 7, -1, 4, 2, -1, 1, 2, -1 };      // sixteenths, -1 a rest
+            const int accent[] { 115, 0, 80, 100, 0, 75, 85, 105, 120, 0, 85, 80, 0, 75, 95, 0 };
+            const int shift[] { 0, -2, 3, 1 };                                                // each bar's step of the scale
+            for (int bar = 0; bar < 4; ++bar)
+                for (int k = 0; k < 16; ++k)
+                    if (riff[k] >= 0 && (bar < 3 || k < 12))
+                    {
+                        const auto start = bar * 4.0 + k * 0.25;
+                        chord (e, at (start), at (start + 0.2), { degree (riff[k] + shift[bar]) }, accent[k]);
+                    }
+            chord (e, at (15.0), at (15.4), { degree (shift[3]), degree (shift[3] + 2), degree (shift[3] + 4) }, 105);
+            chord (e, at (16.0), at (16.3), { degree (7) }, 110);                             // left to ring
+            length = 22.0 * beat;
         }
         else if (sling)
         {
@@ -547,6 +836,172 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     rock (0.0, 4.0);
                     rock (8.0, 12.0);
                 }
+                length = 19.0 * beat;
+            }
+        }
+        else if (cinema)
+        {
+            // Dm Bb F C (i VI III VII), the sustain pedal down through each chord: the film piano's progression.
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 69 }, { 1.5, 0.5, 67 }, { 2, 2, 65 }, { 4, 1, 62 }, { 5, 1, 65 }, { 6, 2, 70 },
+                        { 8, 1.5, 69 }, { 9.5, 0.5, 72 }, { 10, 2, 77 }, { 12, 4, 76 } }, 90);
+                pedal (0.0, 3.9);
+                pedal (4.0, 7.9);
+                pedal (8.0, 11.9);
+                pedal (12.0, 16.5);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                chord (e, at (0), at (3.9), { 38, 50, 57, 62, 65 }, 85);
+                chord (e, at (4), at (7.9), { 34, 46, 58, 62, 65 }, 85);
+                chord (e, at (8), at (11.9), { 41, 53, 57, 60, 65 }, 85);
+                chord (e, at (12), at (15.6), { 36, 48, 55, 60, 64 }, 85);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // Low octaves on each bar's downbeat, then eighths driving the last bar.
+                for (int bar = 0; bar < 3; ++bar)
+                {
+                    const int roots3[] { 26, 22, 29 };   // D1 Bb0 F1
+                    chord (e, at (bar * 4), at (bar * 4 + 3.5), { roots3[bar], roots3[bar] + 12 }, 115);
+                }
+                for (int k = 0; k < 8; ++k)
+                    chord (e, at (12 + k * 0.5), at (12 + k * 0.5 + 0.4), { k < 6 ? 36 : 38 }, k % 2 == 0 ? 112 : 88);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                const auto bar = [&] (double at0, std::initializer_list<int> notes, int velocity)
+                {
+                    chord (e, at (at0), at (at0 + 3.8), notes, velocity);
+                    pedal (at0, at0 + 3.9);
+                };
+                bar (0.0, { 38, 50, 57, 62, 65 }, 70);
+                bar (4.0, { 34, 46, 58, 62, 65 }, 80);
+                bar (8.0, { 41, 53, 57, 60, 65 }, 95);
+                bar (12.0, { 36, 48, 55, 60, 64, 67 }, 115);
+                length = 21.0 * beat;
+            }
+            else
+            {
+                chord (e, at (0), at (3.9), { 50, 57, 62, 65 }, 100);
+                chord (e, at (4), at (7.9), { 46, 58, 62, 65 }, 100);
+                chord (e, at (8), at (11.9), { 53, 57, 60, 65 }, 100);
+                chord (e, at (12), at (15.9), { 48, 55, 60, 64 }, 100);
+                length = 19.0 * beat;
+            }
+        }
+        else if (hyper)
+        {
+            // Our own phrases (none from the films): a fanfare of fourths and fifths in dotted rhythms, a marching
+            // eighth-note ostinato, minor chords moving by thirds, short notes and gaps where LIGHTSPEED can be heard.
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.75, 62 }, { 0.75, 0.25, 62 }, { 1, 1, 67 }, { 2, 1.5, 74 }, { 3.5, 0.5, 72 }, { 4, 0.75, 70 },
+                        { 4.75, 0.25, 69 }, { 5, 1, 70 }, { 6, 2, 67 }, { 8, 0.75, 65 }, { 8.75, 0.25, 67 }, { 9, 1, 70 },
+                        { 10, 1, 74 }, { 11, 1, 77 }, { 12, 4, 74 } }, 105);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                chord (e, at (0), at (3.9), { 43, 55, 58, 62 }, 90);    // G minor
+                chord (e, at (4), at (7.9), { 39, 55, 58, 63 }, 90);    // E flat
+                chord (e, at (8), at (11.9), { 46, 53, 58, 62 }, 90);   // B flat
+                chord (e, at (12), at (15.6), { 38, 54, 57, 62 }, 90);  // D
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // A marching ostinato in eighths, accented on the beat, moving down by step each bar.
+                for (int bar = 0; bar < 4; ++bar)
+                {
+                    const int roots4[] { 31, 31, 27, 26 };   // G1 G1 Eb1 D1
+                    const auto r = roots4[bar] + 12;
+                    const std::vector<int> figure { r, r, r + 3, r, r + 1, r, r - 2, r };
+                    for (int k = 0; k < 8; ++k)
+                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { figure[(size_t) k] }, k % 2 == 0 ? 115 : 85);
+                }
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                const auto comp = [&] (double bar, std::initializer_list<int> notes)
+                {
+                    chord (e, at (bar), at (bar + 1.4), notes, 100);
+                    chord (e, at (bar + 1.5), at (bar + 1.9), notes, 80);
+                    chord (e, at (bar + 3.0), at (bar + 3.8), notes, 90);
+                };
+                comp (0.0, { 43, 55, 58, 62 });
+                comp (4.0, { 39, 55, 58, 63 });
+                comp (8.0, { 36, 55, 60, 63 });
+                chord (e, at (12), at (15), { 38, 54, 57, 62 }, 105);
+                length = 19.0 * beat;
+            }
+            else
+            {
+                chord (e, at (0), at (3.9), { 55, 58, 62 }, 100);
+                chord (e, at (4), at (7.9), { 55, 58, 63 }, 100);
+                chord (e, at (8), at (11.9), { 53, 58, 62 }, 100);
+                chord (e, at (12), at (15.9), { 54, 57, 62 }, 100);
+                length = 19.0 * beat;
+            }
+        }
+        else if (atomic)
+        {
+            // Short notes and gaps throughout, so NUCLEARSPRING's drip and boing can be heard between them.
+            if (type == "Lead")
+            {
+                // A cheerful tune in C major, a leap up, a held note, an answer.
+                line ({ { 0, 0.5, 67 }, { 0.5, 0.5, 69 }, { 1, 1, 72 }, { 2, 0.5, 76 }, { 2.5, 0.5, 74 }, { 3, 1, 72 },
+                        { 4, 2.5, 69 }, { 8, 0.5, 65 }, { 8.5, 0.5, 67 }, { 9, 1, 69 }, { 10, 0.5, 74 }, { 10.5, 0.5, 72 },
+                        { 11, 1, 71 }, { 12, 3, 72 } }, 100);
+                wheel (12.0, 15.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                chord (e, at (0), at (3.9), { 48, 60, 64, 67, 69 }, 90);    // C6
+                chord (e, at (4), at (7.9), { 41, 57, 60, 64, 65 }, 90);    // Fmaj7
+                chord (e, at (8), at (11.9), { 38, 57, 60, 62, 65 }, 90);   // Dm7
+                chord (e, at (12), at (15.6), { 43, 59, 62, 65, 67 }, 90);  // G7
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // A walking line, a note a beat, with a stop at the end.
+                line ({ { 0, 0.9, 36 }, { 1, 0.9, 40 }, { 2, 0.9, 43 }, { 3, 0.9, 45 }, { 4, 0.9, 41 }, { 5, 0.9, 45 },
+                        { 6, 0.9, 48 }, { 7, 0.9, 47 }, { 8, 0.9, 38 }, { 9, 0.9, 41 }, { 10, 0.9, 45 }, { 11, 0.9, 42 },
+                        { 12, 0.9, 43 }, { 13, 0.9, 47 }, { 14, 0.9, 41 }, { 15, 1.5, 36 } }, 105);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // Comping: chords on the beat and the off-beat, then a held chord.
+                const auto comp = [&] (double bar, std::initializer_list<int> notes)
+                {
+                    chord (e, at (bar), at (bar + 0.8), notes, 95);
+                    chord (e, at (bar + 1.5), at (bar + 1.9), notes, 85);
+                    chord (e, at (bar + 3.0), at (bar + 3.4), notes, 85);
+                };
+                comp (0.0, { 60, 64, 67, 69 });
+                comp (4.0, { 57, 60, 64, 65 });
+                comp (8.0, { 57, 60, 62, 65 });
+                chord (e, at (12), at (15), { 59, 62, 65, 67 }, 95);
+                length = 19.0 * beat;
+            }
+            else
+            {
+                chord (e, at (0), at (3.9), { 60, 64, 67, 69 }, 100);
+                chord (e, at (4), at (7.9), { 57, 60, 64, 65 }, 100);
+                chord (e, at (8), at (11.9), { 57, 60, 62, 65 }, 100);
+                chord (e, at (12), at (15.9), { 59, 62, 65, 67 }, 100);
                 length = 19.0 * beat;
             }
         }

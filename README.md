@@ -86,11 +86,7 @@ Unzip it and copy `Paragon PR7-K.vst3` to your VST3 folder:
 | OS | VST3 folder |
 |---|---|
 | Windows | `C:\Program Files\Common Files\VST3` |
-| macOS | `~/Library/Audio/Plug-Ins/VST3` |
 | Linux | `~/.vst3` |
-
-**macOS:** the build isn't code-signed yet, so macOS will block it. After copying, run
-`xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Paragon PR7-K.vst3"` once.
 
 Then rescan plugins in your DAW: PR7-K shows up as an instrument.
 

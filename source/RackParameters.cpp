@@ -18,6 +18,14 @@
 #include "dsp/effects/LightTrail.h"
 #include "dsp/effects/BlackHole.h"
 #include "dsp/effects/Dilation.h"
+#include "dsp/effects/Remnant.h"
+#include "dsp/effects/Proximity.h"
+#include "dsp/effects/Haze.h"
+#include "dsp/effects/Spectre.h"
+#include "dsp/effects/Leviathan.h"
+#include "dsp/effects/NuclearSpring.h"
+#include "dsp/effects/LightSpeed.h"
+#include "dsp/effects/Bloom.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -613,4 +621,155 @@ void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::dilationReach, "Dilation Reach", { 0.0f, 1.0f, 0.01f }, d.reach, v, asReach));
     layout.add (makeFloat (ParamIDs::dilationTone, "Dilation Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
     layout.add (makeFloat (ParamIDs::dilationMix, "Dilation Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // REMNANT (0.64.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 36;
+    const effects::Remnant::Settings d;
+    const ToText asLength = [] (float value, int) { return juce::String (effects::Remnant::lengthSeconds (value), 2) + " s"; };
+    const ToText asTaper = [] (float value, int) { return juce::String (effects::Remnant::taperDb (value), 1) + " dB a layer"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::Remnant::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::remnantOn, "Remnant On", v, false));
+    layout.add (makeChoice (ParamIDs::remnantLayers, "Remnant Layers", v, effects::Remnant::layerNames, d.layers));
+    layout.add (makeChoice (ParamIDs::remnantStep, "Remnant Step", v, effects::Remnant::stepNames, d.step));
+    layout.add (makeFloat (ParamIDs::remnantLength, "Remnant Length", { 0.0f, 1.0f, 0.01f }, d.length, v, asLength));
+    layout.add (makeFloat (ParamIDs::remnantTaper, "Remnant Taper", { 0.0f, 1.0f, 0.01f }, d.taper, v, asTaper));
+    layout.add (makeFloat (ParamIDs::remnantTone, "Remnant Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::remnantWidth, "Remnant Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::remnantMix, "Remnant Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // PROXIMITY (0.65.0, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 37;
+    const effects::Proximity::Settings d;
+    const ToText asNoise = [] (float value, int) { return value <= 0.0f ? juce::String ("off") : juce::String (effects::Proximity::noiseDb (value), 1) + " dB"; };
+    const ToText asRoom = [] (float value, int) { return value <= 0.0f ? juce::String ("off") : juce::String (effects::Proximity::roomDb (value), 1) + " dB"; };
+    const ToText asClose = [] (float value, int) { return "+" + juce::String (effects::Proximity::closeDb (value), 1) + " dB"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::Proximity::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::proximityOn, "Proximity On", v, false));
+    layout.add (makeFloat (ParamIDs::proximityNoise, "Proximity Noise", { 0.0f, 1.0f, 0.01f }, d.noise, v, asNoise));
+    layout.add (makeFloat (ParamIDs::proximityTone, "Proximity Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::proximityRoom, "Proximity Room", { 0.0f, 1.0f, 0.01f }, d.room, v, asRoom));
+    layout.add (makeChoice (ParamIDs::proximityHum, "Proximity Hum", v, effects::Proximity::humNames, d.hum));
+    layout.add (makeFloat (ParamIDs::proximityClose, "Proximity Close", { 0.0f, 1.0f, 0.01f }, d.close, v, asClose));
+    layout.add (makeFloat (ParamIDs::proximityWidth, "Proximity Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // HAZE (0.66.0, our own design): off and at DEPTH 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 38;
+    const effects::Haze::Settings d;
+    const ToText asDoppler = [] (float value, int) { return juce::String (effects::Haze::dopplerCents (value), 0) + " cents"; };
+    const ToText asTone = [] (float value, int) { return juce::String (effects::Haze::farHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::hazeOn, "Haze On", v, false));
+    layout.add (makeChoice (ParamIDs::hazeDivision, "Haze Pass", v, effects::Haze::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::hazeDepth, "Haze Depth", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::hazeDoppler, "Haze Doppler", { 0.0f, 1.0f, 0.01f }, d.doppler, v, asDoppler));
+    layout.add (makeFloat (ParamIDs::hazeWidth, "Haze Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::hazeTone, "Haze Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::hazeWhoosh, "Haze Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
+}
+
+void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SPECTRE (0.67.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 39;
+    using S = effects::Spectre;
+    const S::Settings d;
+    const ToText asTrail = [] (float value, int) { return juce::String (juce::roundToInt (S::trailMs (value))) + " ms"; };
+    const ToText asLinger = [] (float value, int) { return juce::String (S::lingerSeconds (value), 2) + " s"; };
+    const ToText asShift = [] (float value, int)
+    {
+        const auto st = S::shiftSemitones (value);
+        return (st > 0.05f ? "+" : "") + juce::String (st, 1) + " st";
+    };
+    const ToText asAir = [] (float value, int) { return value < 0.34f ? juce::String ("HOLLOW ") + juce::String (juce::roundToInt (100.0f * value)) + "%"
+                                                       : value > 0.66f ? juce::String ("BREATHY ") + juce::String (juce::roundToInt (100.0f * value)) + "%"
+                                                                       : juce::String (juce::roundToInt (100.0f * value)) + "%"; };
+    layout.add (makeSwitch (ParamIDs::spectreOn, "Spectre On", v, false));
+    layout.add (makeFloat (ParamIDs::spectreMix, "Spectre Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::spectreTrail, "Spectre Trail", { 0.0f, 1.0f, 0.01f }, d.trail, v, asTrail));
+    layout.add (makeFloat (ParamIDs::spectreLinger, "Spectre Linger", { 0.0f, 1.0f, 0.01f }, d.linger, v, asLinger));
+    layout.add (makeFloat (ParamIDs::spectreAir, "Spectre Air", { 0.0f, 1.0f, 0.01f }, d.air, v, asAir));
+    layout.add (makeFloat (ParamIDs::spectreDrift, "Spectre Drift", { 0.0f, 1.0f, 0.01f }, d.drift, v, asPercent));
+    layout.add (makeFloat (ParamIDs::spectreShift, "Spectre Shift", { -1.0f, 1.0f, 0.01f }, d.shift, v, asShift));
+}
+
+void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LEVIATHAN (0.68.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 40;
+    using L = effects::Leviathan;
+    const L::Settings d;
+    const ToText asDelay = [] (float value, int) { return juce::String (L::delaySeconds (value), 2) + " s"; };
+    const ToText asDrift = [] (float value, int) { return "every " + juce::String (L::driftSeconds (value), 1) + " s"; };
+    const ToText asSize = [] (float value, int) { return "x" + juce::String (1.0f / L::sizeScale (value), 2); };
+    layout.add (makeSwitch (ParamIDs::leviathanOn, "Leviathan On", v, false));
+    layout.add (makeFloat (ParamIDs::leviathanMix, "Leviathan Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::leviathanDepth, "Leviathan Depth", v, L::depthNames, d.depth));
+    layout.add (makeFloat (ParamIDs::leviathanDrift, "Leviathan Drift", { 0.0f, 1.0f, 0.01f }, d.drift, v, asDrift));
+    layout.add (makeFloat (ParamIDs::leviathanGrowl, "Leviathan Growl", { 0.0f, 1.0f, 0.01f }, d.growl, v, asPercent));
+    layout.add (makeFloat (ParamIDs::leviathanDelay, "Leviathan Delay", { 0.0f, 1.0f, 0.01f }, d.delay, v, asDelay));
+    layout.add (makeFloat (ParamIDs::leviathanSize, "Leviathan Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+}
+
+void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // NUCLEARSPRING (0.69.0, our own design): off and at MIX 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 41;
+    using N = effects::NuclearSpring;
+    const N::Settings d;
+    const ToText asDecay = [] (float value, int) { return juce::String (N::decaySeconds (value), 1) + " s"; };
+    const ToText asTone = [] (float value, int) { return juce::String (N::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    const ToText asSize = [] (float value, int) { return "x" + juce::String (N::sizeScale (value), 2); };
+    layout.add (makeSwitch (ParamIDs::springOn, "Nuclearspring On", v, false));
+    layout.add (makeFloat (ParamIDs::springMix, "Nuclearspring Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::springDecay, "Nuclearspring Decay", { 0.0f, 1.0f, 0.01f }, d.decay, v, asDecay));
+    layout.add (makeFloat (ParamIDs::springDrip, "Nuclearspring Drip", { 0.0f, 1.0f, 0.01f }, d.drip, v, asPercent));
+    layout.add (makeFloat (ParamIDs::springTone, "Nuclearspring Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::springSize, "Nuclearspring Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeFloat (ParamIDs::springBoing, "Nuclearspring Boing", { 0.0f, 1.0f, 0.01f }, d.boing, v, asPercent));
+    layout.add (makeFloat (ParamIDs::springWidth, "Nuclearspring Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LIGHTSPEED (0.73.0, our own design): off and at JUMP 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 42;
+    using L = effects::LightSpeed;
+    const L::Settings d;
+    const ToText asRise = [] (float value, int) { return "+" + juce::String (L::riseSemitones (value), 1) + " st"; };
+    const ToText asTone = [] (float value, int) { return juce::String (L::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::jumpOn, "Lightspeed On", v, false));
+    layout.add (makeFloat (ParamIDs::jumpAmount, "Lightspeed Jump", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpRise, "Lightspeed Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
+    layout.add (makeFloat (ParamIDs::jumpStreak, "Lightspeed Streaks", { 0.0f, 1.0f, 0.01f }, d.streak, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpWhoosh, "Lightspeed Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpWidth, "Lightspeed Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jumpTone, "Lightspeed Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+}
+
+void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // BLOOM (0.74.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 43;
+    using B = effects::Bloom;
+    const B::Settings d;
+    const ToText asRing = [] (float value, int) { return juce::String (B::ringSeconds (value), 1) + " s"; };
+    const ToText asSize = [] (float value, int) { return juce::String (B::sizeSeconds (value), 1) + " s"; };
+    const ToText asSwell = [] (float value, int) { return juce::String (B::swellSeconds (value), 2) + " s"; };
+    const ToText asTone = [] (float value, int) { return juce::String (B::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::bloomOn, "Bloom On", v, false));
+    layout.add (makeFloat (ParamIDs::bloomAmount, "Bloom Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeFloat (ParamIDs::bloomResonance, "Bloom Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::bloomRing, "Bloom Ring", { 0.0f, 1.0f, 0.01f }, d.ring, v, asRing));
+    layout.add (makeFloat (ParamIDs::bloomSize, "Bloom Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeFloat (ParamIDs::bloomSwell, "Bloom Swell", { 0.0f, 1.0f, 0.01f }, d.swell, v, asSwell));
+    layout.add (makeFloat (ParamIDs::bloomTone, "Bloom Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::bloomWidth, "Bloom Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

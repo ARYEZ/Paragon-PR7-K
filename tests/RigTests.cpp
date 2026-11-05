@@ -5,6 +5,7 @@
 // library, loading and saving, and the factory presets.
 #include "Parameters.h"
 #include "PluginProcessor.h"
+#include "SampleLibraries.h"
 #include "rigs/FactoryRigs.h"
 
 using Catch::Matchers::WithinAbs;
@@ -133,10 +134,42 @@ TEST_CASE ("PR7-K's factory presets: Init at A01, then starting points that say 
 TEST_CASE ("Every factory preset plays: a note sounds, stays clean, and fades away after it's let go", "[rigs]")
 {
     RigRig r;
+    // 0.71.0: the piano presets play a sample library PR7-K downloads (not in the repository). With one at
+    // PARAGON_LIBRARIES (a folder holding the Salamander's), it's linked into the presets folder and they're checked
+    // as any preset; without, they must wait for it in silence and offer to fetch it.
+    const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    const auto& salamander = libraries::salamanderGrand();
+    const auto haveLibrary = libraries.getChildFile (salamander.folder).isDirectory();
+    if (haveLibrary)
+    {
+        r.processor.getLibrariesFolder().createDirectory();
+        REQUIRE (libraries.getChildFile (salamander.folder)
+                     .createSymbolicLink (r.processor.getLibrariesFolder().getChildFile (salamander.folder), true));
+    }
     for (const auto& rig : makeFactoryRigs())
     {
         INFO (rig.name);
         r.processor.loadRig (r.entryNamed (rig.name));
+        r.processor.waitForSfz (60000);
+        if (! rig.sfz.empty() && ! haveLibrary)
+        {
+            CHECK (r.processor.missingLibrary (0) == &salamander);
+            r.processor.prepareToPlay (48000.0, 256);
+            juce::AudioBuffer<float> buffer (2, 256);
+            juce::MidiBuffer midi;
+            midi.addEvent (juce::MidiMessage::noteOn (1, 48, (juce::uint8) 100), 0);
+            auto loudest = 0.0f;
+            for (int block = 0; block < 100; ++block)
+            {
+                r.processor.processBlock (buffer, midi);
+                midi.clear();
+                loudest = juce::jmax (loudest, buffer.getMagnitude (0, 0, 256));
+            }
+            if (rig.parameters.count (ParamIDs::osc (1, "On")) == 0)
+                CHECK (loudest < 0.02f);   // no piano (a played note peaks near -10 dBFS); effects' own noises may sound
+                                           // (Felt Grand's PROXIMITY hammers); a layered pad still sounds
+            continue;
+        }
         r.processor.prepareToPlay (48000.0, 256);   // fresh
         r.processor.seedRandomForTest (1);           // the same unison phases, humanising... on every run and computer
 
@@ -275,7 +308,7 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
     CHECK (library.step (&entries.front(), -1) == &entries.back());
     CHECK (library.step (nullptr, 1) == &entries.front());
 
-    CHECK (library.nextFreeNumber (0) == 41);   // the factory presets fill A01 to A40
+    CHECK (library.nextFreeNumber (0) == 48);   // the factory presets fill A01 to A47 (the pianos A41-A47 since 0.71.0)
 }
 
 TEST_CASE ("Saving and loading a preset restores the sound but not the global settings", "[rigs]")
@@ -368,10 +401,10 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
 {
     RigRig r;
     r.processor.loadRig (r.entryNamed ("Init"));
-    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A41
-    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A42
-    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A41");
-    r.processor.loadRig (r.entryNamed ("Sung Vowels"));   // A40
+    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A48
+    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A49
+    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A48");
+    r.processor.loadRig (r.entryNamed ("Starlight Piano"));   // A47, the last factory preset in bank A
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Second");
     r.processor.stepRig (1);

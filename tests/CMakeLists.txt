@@ -15,6 +15,8 @@ add_executable(ParagonX1Tests
     ShaperTests.cpp
     VoiceFilterTests.cpp
     MimicTests.cpp
+    SfzTests.cpp
+    LibraryTests.cpp
     MatrixTests.cpp
     EnvelopeModTests.cpp
     PitchModuleTests.cpp
@@ -58,6 +60,23 @@ add_executable(ParagonX1Tests
     BlackHolePluginTests.cpp
     DilationTests.cpp
     DilationPluginTests.cpp
+    RemnantTests.cpp
+    RemnantPluginTests.cpp
+    ProximityTests.cpp
+    ProximityPluginTests.cpp
+    HazeTests.cpp
+    HazePluginTests.cpp
+    SpectreTests.cpp
+    SpectrePluginTests.cpp
+    LeviathanTests.cpp
+    LeviathanPluginTests.cpp
+    NuclearSpringTests.cpp
+    NuclearSpringPluginTests.cpp
+    LightSpeedTests.cpp
+    LightSpeedPluginTests.cpp
+    BloomTests.cpp
+    BloomPluginTests.cpp
+    SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
     InsertTests.cpp

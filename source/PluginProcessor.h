@@ -13,6 +13,8 @@
 #include "dsp/synth/Freeform.h"
 #include "dsp/synth/Spectrum.h"
 #include "dsp/synth/Wavetable.h"
+#include "dsp/synth/Sfz.h"
+#include "SampleLibraries.h"
 #include "rigs/RigLibrary.h"
 #include "rigs/UndoHistory.h"
 #include "rigs/MidiLinks.h"
@@ -144,6 +146,49 @@ public:
     void chooseFactoryWavetable (int osc, int index);
 
     //==========================================================================
+    // SFZ INSTRUMENTS (0.71.0, message thread)
+
+    // Loads an SFZ file into oscillator `osc` in the background and switches its WAVE to SFZ (one undo step). Its
+    // folder is remembered ("SFZ Libraries.xml" in the presets folder), so presets naming it find it again.
+    void loadSfz (int osc, const juce::File&);
+    void clearSfz (int osc);
+    enum class SfzState { none, loading, loaded, failed };
+    SfzState getSfzState (int osc) const noexcept { return sfzStates[(size_t) juce::jlimit (0, 7, osc)]; }
+    std::shared_ptr<const synth::sfz::Instrument> getSfzInstrument (int osc) const { return sfzInstruments[(size_t) juce::jlimit (0, 7, osc)]; }
+    juce::String getSfzRef (int osc) const { return sfzRefs[(size_t) juce::jlimit (0, 7, osc)]; }
+    juce::String getSfzName (int osc) const;     // the instrument's name, or the file's while loading
+    juce::String getSfzProblem (int osc) const { return sfzProblems[(size_t) juce::jlimit (0, 7, osc)]; }
+    float getSfzProgress (int osc) const noexcept { return sfzProgress[(size_t) juce::jlimit (0, 7, osc)]->load(); }
+    juce::File resolveSfz (const juce::String& ref) const;   // the file a reference names (missing: a nonexistent File)
+    juce::String sfzRefFor (const juce::File&) const;         // how a file is named in presets
+    bool waitForSfz (int timeoutMs = 20000);                  // tests: until every load has been installed
+    // GET THE PIANO (0.71.0): the free libraries the factory presets play, downloaded into the presets folder's
+    // "Libraries" (`url` overrides the library's: tests). When it's in, oscillators waiting for it load it.
+    juce::File getLibrariesFolder() const { return rigLibrary->getFolder().getChildFile ("Libraries"); }
+    void startLibraryDownload (const libraries::Library& library, const juce::String& url = {});
+    void startLibraryDownload (const juce::String& url = {}) { startLibraryDownload (libraries::salamanderGrand(), url); }
+    // The library a preset's sampled version needs (0.73.0), null if none.
+    static const libraries::Library* libraryOf (const Rig& rig)
+    {
+        for (const auto& [osc, ref] : rig.sfz)
+            if (const auto* library = libraries::libraryFor (ref))
+                return library;
+        return nullptr;
+    }
+    void cancelLibraryDownload() { libraryDownload.cancel(); }
+    const libraries::Download& getLibraryDownload() const noexcept { return libraryDownload; }
+    libraries::Download& getLibraryDownloadForTest() noexcept { return libraryDownload; }
+    bool isLibraryInstalled (const libraries::Library& library) const
+    {
+        return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()
+            || resolveSfz (libraries::refFor (library)).existsAsFile();
+    }
+    // The library an oscillator's SFZ couldn't be found for, if it's one PR7-K can download (else null).
+    const libraries::Library* missingLibrary (int osc) const;
+    int getSfzUnderruns() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getUnderruns() : 0; }
+    int getSfzStreams() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getActiveStreams() : 0; }
+
+    //==========================================================================
     // The FFT editor (message thread)
 
     const synth::SpectrumEdit& getSpectrum (int osc) const { return spectra[(size_t) juce::jlimit (0, ParamIDs::numOscillators - 1, osc)]; }
@@ -211,6 +256,11 @@ public:
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
         rack->blackHole.seedRandom ((std::uint32_t) seed);
+        rack->proximity.seedRandom ((std::uint32_t) seed);
+        rack->haze.seedRandom ((std::uint32_t) seed);
+        rack->spectre.seedRandom ((std::uint32_t) seed);
+        rack->leviathan.seedRandom ((std::uint32_t) seed);
+        rack->lightSpeed.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -318,6 +368,28 @@ public:
     // DILATION (0.63.0): its settings (SLOW, TONE, MIX as the matrix moves them).
     effects::Dilation::Settings getDilationSettings() const noexcept;
     const effects::Dilation& getDilation() const noexcept { return rack->dilation; }
+    // REMNANT (0.64.0): its settings (MIX, TONE, TAPER as the matrix moves them).
+    effects::Remnant::Settings getRemnantSettings() const noexcept;
+    const effects::Remnant& getRemnant() const noexcept { return rack->remnant; }
+    // PROXIMITY (0.65.0): its settings (NOISE, ROOM, CLOSE as the matrix moves them).
+    effects::Proximity::Settings getProximitySettings() const noexcept;
+    const effects::Proximity& getProximity() const noexcept { return rack->proximity; }
+    // HAZE (0.66.0): its settings (DEPTH, DOPPLER, WHOOSH as the matrix moves them).
+    effects::Haze::Settings getHazeSettings() const noexcept;
+    const effects::Haze& getHaze() const noexcept { return rack->haze; }
+    // SPECTRE (0.67.0): its settings (MIX, LINGER, SHIFT as the matrix moves them).
+    effects::Spectre::Settings getSpectreSettings() const noexcept;
+    const effects::Spectre& getSpectre() const noexcept { return rack->spectre; }
+    // LEVIATHAN (0.68.0): its settings (MIX, GROWL, DRIFT as the matrix moves them).
+    effects::Leviathan::Settings getLeviathanSettings() const noexcept;
+    const effects::Leviathan& getLeviathan() const noexcept { return rack->leviathan; }
+    // NUCLEARSPRING (0.69.0): its settings (MIX, DRIP, BOING as the matrix moves them).
+    effects::NuclearSpring::Settings getNuclearSpringSettings() const noexcept;
+    const effects::NuclearSpring& getNuclearSpring() const noexcept { return rack->nuclearSpring; }
+    effects::LightSpeed::Settings getLightSpeedSettings() const noexcept;
+    const effects::LightSpeed& getLightSpeed() const noexcept { return rack->lightSpeed; }
+    effects::Bloom::Settings getBloomSettings() const noexcept;
+    const effects::Bloom& getBloom() const noexcept { return rack->bloom; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {
@@ -363,6 +435,19 @@ private:
     effects::LoFi::Settings loFiSettingsFor (int bus) const noexcept;   // -1: the whole sound's
     float param (const char* id) const;
     bool isOn (const char* id) const { return param (id) > 0.5f; }
+    // (0.68.0, for speed) Every parameter's value and its range, found by ID through a hash table made once when
+    // the plugin starts and never changed after (so the audio thread and the screen can both read it): the same
+    // values the parameter tree gives, without its sorted-map search (a dozen string compares) each time.
+    struct ParamSlot
+    {
+        const char* id = nullptr;
+        std::atomic<float>* value = nullptr;
+        juce::RangedAudioParameter* parameter = nullptr;
+    };
+    const ParamSlot* findParam (const char* id) const noexcept;
+    std::vector<juce::String> paramIds;
+    std::vector<ParamSlot> paramTable;
+    std::uint32_t paramMask = 0;
 
     void timerCallback() override;
     void parameterChanged (const juce::String& parameterId, float newValue) override;
@@ -386,6 +471,7 @@ private:
         bool operator== (const Snapshot& other) const
         {
             return rig.parameters == other.rig.parameters && rig.wavetables == other.rig.wavetables && rig.spectra == other.rig.spectra
+                && rig.sfz == other.rig.sfz
                 && rig.drawings == other.rig.drawings && rig.modulation == other.rig.modulation && current == other.current;
         }
     };
@@ -429,6 +515,31 @@ private:
     std::array<std::atomic<const synth::Wavetable*>, ParamIDs::numOscillators> tablesForAudio {};
     std::array<int, ParamIDs::numOscillators> playingFactoryTable {};   // which factory table each plays (-1: none, or a loaded one)
     std::vector<std::pair<std::shared_ptr<const synth::Wavetable>, double>> retiredTables;
+
+    // SFZ (0.71.0): each oscillator's instrument (its reference, what's loaded, handed to the audio thread as a plain
+    // pointer); replaced ones kept until no note can still be reading them (their longest sample + 2 s).
+    std::array<juce::String, ParamIDs::numOscillators> sfzRefs;
+    std::array<std::shared_ptr<const synth::sfz::Instrument>, ParamIDs::numOscillators> sfzInstruments;
+    std::array<std::atomic<const synth::sfz::Instrument*>, ParamIDs::numOscillators> sfzForAudio {};
+    std::array<SfzState, ParamIDs::numOscillators> sfzStates {};
+    std::array<juce::String, ParamIDs::numOscillators> sfzProblems;
+    std::array<std::shared_ptr<std::atomic<float>>, ParamIDs::numOscillators> sfzProgress;
+    std::array<int, ParamIDs::numOscillators> sfzGeneration {};
+    std::vector<std::pair<std::shared_ptr<const synth::sfz::Instrument>, double>> retiredSfz;   // (until when, ms)
+    std::unique_ptr<synth::sfz::Streamer> sfzStreamer;           // made with the first streamed instrument, kept
+    std::atomic<synth::sfz::Streamer*> sfzStreamerForAudio { nullptr };
+    struct SfzLoaded { int osc = 0; int generation = 0; std::shared_ptr<const synth::sfz::Instrument> instrument; juce::String problem; };
+    std::mutex sfzLoadedLock;
+    std::vector<SfzLoaded> sfzLoaded;
+    std::atomic<int> sfzLoadsRunning { 0 };
+    std::shared_ptr<std::atomic<bool>> sfzCancel = std::make_shared<std::atomic<bool>> (false);
+    void startSfzLoad (int osc, const juce::String& ref);
+    libraries::Download libraryDownload;
+    libraries::Download::State libraryStateSeen = libraries::Download::State::idle;
+    void installSfzLoads();
+    void setSfzInstrument (int osc, std::shared_ptr<const synth::sfz::Instrument>);
+    juce::File sfzLibrariesFile() const;
+    std::unique_ptr<juce::ThreadPool> sfzPool = std::make_unique<juce::ThreadPool> (juce::ThreadPoolOptions{}.withNumberOfThreads (1).withThreadName ("PR7-K SFZ loading"));
 
     // FFT: each oscillator's curve, and the edited copies of its wave built
     // from it (in the background; then handed to the audio thread as the

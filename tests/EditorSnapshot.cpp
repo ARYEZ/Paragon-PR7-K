@@ -5,9 +5,11 @@
 #include "dsp/effects/Wah.h"
 #include "dsp/effects/Echoes.h"
 #include "PluginProcessor.h"
+#include "SampleLibraries.h"
 #include "dsp/effects/Drive.h"
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Reverb.h"
+#include "ui/Finish.h"
 #include "ui/ParagonLookAndFeel.h"
 #include "ui/RigBrowser.h"
 #include "dsp/synth/Mimic.h"
@@ -20,14 +22,18 @@
 //   PARAGON_SNAPSHOT_PAGE=presets    the preset browser (with two example user presets), or =settings
 //   PARAGON_SNAPSHOT_BANK=n          with PAGE=presets: showing bank n (5: the first expansion), its first preset loaded
 //   PARAGON_SNAPSHOT_PRESET=name     that factory preset loaded
+//   PARAGON_SNAPSHOT_DOWNLOAD=0.34   the orchestra shown downloading (1.5: unpacking, half way)
 //   PARAGON_SNAPSHOT_OSC=n           oscillator tab n (1 to 8) selected
 //   PARAGON_SNAPSHOT_OSCPAGE=voices  the oscillator's VOICES page (unison, vibrato, chorder); =shape its SHAPE page; =fm its FM page; =fft its FFT page; =draw its DRAW page; =travel its TRAVEL page (PARAGON_SNAPSHOT_TRAVEL=1: oscillator 1 with a demo envelope and pattern)
 //   PARAGON_SNAPSHOT_FILTERPAGE=n     the FILTER panel's SHP n tab (shaper n's page)
+//   PARAGON_SNAPSHOT_FINISH=white|black|neon   Pearl White, Pearl Black or Pearl White + Neon (0.74.1);
 //   PARAGON_SNAPSHOT_RACKVIEW=1      the SYNTH page with the rack shown (the OSCILLATORS and FILTER panels; 0.49.0);
 //                                    on by itself for OSC, OSCPAGE, FILTERPAGE, FFT and TRAVEL. Otherwise the front panel.
 //   PARAGON_SNAPSHOT_FFT=band:dB,...  a curve drawn for oscillator 1; PARAGON_SNAPSHOT_FFT_VIEW=harmonic|bins
 //   PARAGON_SNAPSHOT_PARAMS=id=value,...   parameters set (real units)
 //   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
+//   PARAGON_SNAPSHOT_LIBRARIES=<folder>  the sample libraries (the Salamander's folder in it) for the piano presets
+//   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
@@ -57,11 +63,31 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                 }
     }
 
+    // PARAGON_SNAPSHOT_FINISH=white|black|neon: the unit's finish (0.74.1), not remembered.
+    if (const auto finish = env ("PARAGON_SNAPSHOT_FINISH"); finish.isNotEmpty())
+        Finish::set (finish == "white" ? Finish::Type::pearlWhite : finish == "neon" ? Finish::Type::pearlWhiteNeon : Finish::Type::pearlBlack, false);
+
+    MainView::offerLibrary = false;   // (no window asking to download the piano)
+    // PARAGON_SNAPSHOT_LIBRARIES: a folder holding the Salamander's, linked in so the piano presets play.
+    if (const juce::File libraries (env ("PARAGON_SNAPSHOT_LIBRARIES")); libraries.getChildFile (libraries::salamanderGrand().folder).isDirectory())
+    {
+        processor.getLibrariesFolder().createDirectory();
+        libraries.getChildFile (libraries::salamanderGrand().folder)
+            .createSymbolicLink (processor.getLibrariesFolder().getChildFile (libraries::salamanderGrand().folder), true);
+    }
+    // PARAGON_SNAPSHOT_DOWNLOAD=0.34: the screen and header as the orchestra downloads (a fraction: downloading; 1+f: unpacking).
+    if (const auto value = env ("PARAGON_SNAPSHOT_DOWNLOAD"); value.isNotEmpty())
+    {
+        const auto f = value.getFloatValue();
+        processor.getLibraryDownloadForTest().showForTest (libraries::sonatinaOrchestra(),
+            f < 1.0f ? libraries::Download::State::downloading : libraries::Download::State::unpacking, f < 1.0f ? f : f - 1.0f);
+    }
     if (const auto name = env ("PARAGON_SNAPSHOT_PRESET"); name.isNotEmpty())
     {
         const auto* entry = processor.getRigLibrary().findFactory (name);
         REQUIRE (entry != nullptr);
         processor.loadRig (*entry);
+        processor.waitForSfz();
     }
 
     for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))
@@ -198,6 +224,25 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::dilationOn, 1.0f);
             set (ParamIDs::dilationSlow, 0.5f);
             set (ParamIDs::dilationRamp, 0.3f);
+            // 0.64.0: REMNANT, three layers beneath.
+            set (ParamIDs::remnantOn, 1.0f);
+            set (ParamIDs::remnantLayers, 2.0f);
+            set (ParamIDs::remnantMix, 0.6f);
+            // 0.65.0: PROXIMITY, close up.
+            set (ParamIDs::proximityOn, 1.0f);
+            set (ParamIDs::proximityNoise, 0.6f);
+            // 0.66.0: HAZE, lights passing.
+            set (ParamIDs::hazeOn, 1.0f);
+            set (ParamIDs::hazeDepth, 0.6f);
+            // 0.67.0: SPECTRE, its ghost.
+            set (ParamIDs::spectreOn, 1.0f);
+            set (ParamIDs::spectreMix, 0.6f);
+            // 0.68.0: LEVIATHAN, its voice.
+            set (ParamIDs::leviathanOn, 1.0f);
+            set (ParamIDs::leviathanMix, 0.6f);
+            // 0.69.0: NUCLEARSPRING, its tank.
+            set (ParamIDs::springOn, 1.0f);
+            set (ParamIDs::springMix, 0.6f);
                         // 0.51.0: its WAH in AUTO, opened by the chord.
             set (ParamIDs::ins (0, "WahOn"), 1.0f);
             set (ParamIDs::ins (0, "WahMode"), (float) (int) effects::Wah::Mode::autoWah);
@@ -228,8 +273,8 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : FxPage::View::rack);
-        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW, 6 LIGHTTRAIL, 7 BLACKHOLE, 8 DILATION).
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : fx == "proximity" ? FxPage::View::proximity : fx == "haze" ? FxPage::View::haze : fx == "spectre" ? FxPage::View::spectre : fx == "leviathan" ? FxPage::View::leviathan : fx == "nuclearspring" ? FxPage::View::nuclearSpring : fx == "lightspeed" ? FxPage::View::lightSpeed : fx == "bloom" ? FxPage::View::bloom : FxPage::View::rack);
+        // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW, 6 LIGHTTRAIL, 7 BLACKHOLE, 8 DILATION, 9 REMNANT, 10 PROXIMITY, 11 HAZE, 12 SPECTRE, 13 LEVIATHAN, 14 NUCLEARSPRING).
         if (const auto signature = env ("PARAGON_SNAPSHOT_SIGNATURE"); signature.isNotEmpty())
             fxPage.showSignature (signature.getIntValue());
         // A display reads its bands and analyser on its own timer, but only while it's on screen, which a snapshot
@@ -254,7 +299,15 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     }
     view->setRackShownForTest (env ("PARAGON_SNAPSHOT_RACKVIEW") == "1" || env ("PARAGON_SNAPSHOT_OSC").isNotEmpty()
                                || env ("PARAGON_SNAPSHOT_OSCPAGE").isNotEmpty() || env ("PARAGON_SNAPSHOT_FILTERPAGE").isNotEmpty()
-                               || env ("PARAGON_SNAPSHOT_FFT").isNotEmpty() || env ("PARAGON_SNAPSHOT_TRAVEL").isNotEmpty());
+                               || env ("PARAGON_SNAPSHOT_FFT").isNotEmpty() || env ("PARAGON_SNAPSHOT_TRAVEL").isNotEmpty()
+                               || env ("PARAGON_SNAPSHOT_SFZ").isNotEmpty());
+    if (const auto sfz = env ("PARAGON_SNAPSHOT_SFZ"); sfz.isNotEmpty())
+    {
+        processor.loadSfz (0, juce::File (sfz));
+        processor.waitForSfz();
+        view->getOscillatorPanel().selectOscillator (0);
+        view->getOscillatorPanel().getSfzChooser().refresh();
+    }
     if (const auto osc = env ("PARAGON_SNAPSHOT_OSC").getIntValue(); osc > 0)
         view->getOscillatorPanel().selectOscillator (osc - 1);
     if (env ("PARAGON_SNAPSHOT_TRAVEL") == "1")

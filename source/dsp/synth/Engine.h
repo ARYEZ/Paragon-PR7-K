@@ -7,6 +7,7 @@
 #include "OscModulation.h"
 #include "WaveBend.h"
 #include "VoiceFilter.h"
+#include "Sfz.h"
 
 #include <array>
 #include <vector>
@@ -44,6 +45,10 @@ namespace synth
         void seedRandom (juce::int64 seed) noexcept { random.setSeed (seed); glowRandom = (std::uint32_t) seed * 2654435761u + 12345u; }
         void reset() noexcept;   // silence at once, every note gone
 
+        // SFZ (0.71.0): the disk streamer for samples longer than their heads (the processor's; null: heads only),
+        // and whether to wait for the disk (bouncing) rather than play silence if it's late.
+        void setStreamer (sfz::Streamer* s, bool wait) noexcept { streamer = s; waitForDisk = wait; }
+
         // Writes `numSamples` of sound into `left` and `right`, playing the MIDI
         // in `midi` whose positions fall in [midiStart, midiStart + numSamples),
         // each at its own sample.
@@ -78,6 +83,20 @@ namespace synth
         // up to `capacity`; how many.
         int getSoundingNotes (float* pitches, int capacity, bool* isAnswer = nullptr) const noexcept;   // 0.58.0: and which are SIROCCO's answers
 
+        // 0.64.0, for PROXIMITY: the touches of playing, on the sample they happened (`clock`, on the samples rendered
+        // since the start: compare with getSampleClock()): a note starting (keys and arps; SIROCCO's answers aren't
+        // touched by anyone), a note let go, the sustain pedal down or up. Kept until taken, at most maxTouches.
+        struct Touch
+        {
+            enum class Kind : std::uint8_t { press, release, pedalDown, pedalUp };
+            std::int64_t clock = 0;
+            float note = 60.0f, velocity = 1.0f;
+            Kind kind = Kind::press;
+        };
+        static constexpr int maxTouches = 32;
+        int takeTouches (Touch* out, int capacity) noexcept;
+        std::int64_t getSampleClock() const noexcept { return sampleClock; }
+
         // Oscillators running now, every unison and chord copy counted (as Avenger's
         // info screen counts them): what the CPU is spent on.
         int getNumActiveOscillators (const Settings&) const noexcept;
@@ -111,6 +130,21 @@ namespace synth
         // itself, 1 to 4 the chord notes; unison copy 0 is the note's own pitch.
         static constexpr int maxCopies = (1 + numChordVoices) * maxUnison;
 
+        // SFZ (0.71.0): one region of a sampled instrument playing in a note.
+        struct SfzPlayer
+        {
+            const sfz::Region* region = nullptr;   // null: free
+            const sfz::Sample* sample = nullptr;
+            double position = 0.0;                 // frames into the file
+            float gain = 0.0f;                     // the region's level, velocity and RT_DECAY, panned
+            float gainLeft = 0.0f, gainRight = 0.0f;
+            float fade = 1.0f, fadeStep = 0.0f;    // a quick fade when a newer note takes its place
+            float decay = 1.0f;                    // x each sample: AMPEG_RELEASE's fall, once its key has let go
+            int stream = -1;                       // the disk stream reading the rest (-1: the head only)
+            bool looping = false;                  // (0.73.0) going round its region's loop (loop_sustain: until released)
+        };
+        static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
+
         struct OscState
         {
             bool active = false;        // sounding in this voice (an oscillator can be taken by a newer note)
@@ -130,6 +164,11 @@ namespace synth
             float travelIndex = -1.0f, travelGain = 1.0f;    // ...where SMOOTH has it (-1: not yet), and SILENCE's fade
             WarpTable warp;                                  // SKEW / PINCH moved by the matrix: this note's own curve (stage 4f)
             std::array<Copy, maxCopies> copies;
+            // SFZ (0.71.0): the samples this note plays, and the instrument they come from.
+            std::array<SfzPlayer, maxSfzPlayers> players {};
+            const sfz::Instrument* instrument = nullptr;
+            int sfzKey = 60;                                 // the key the regions were chosen for
+            double heldSamples = 0.0;                        // since the note started (RT_DECAY)
         };
 
         // A route through the note: the FILTER (or not) and which SHAPERs, with their state.
@@ -395,6 +434,32 @@ namespace synth
 
         // SIROCCO (0.58.0): answers waiting for their DELAY, by their note's age.
         static constexpr int answerSource = arp::numArps + 1;   // an answer's voice source (keys 0, arps 1-8)
+        // SFZ (0.71.0): a released note's release samples play in a voice of their own, past the note's AMP.
+        static constexpr int tailSource = answerSource + 1;
+        struct PendingTail
+        {
+            int note = 60;
+            float velocity = 1.0f;
+            float heldSeconds = 0.0f;
+            std::uint8_t mask = 0;
+            std::array<const sfz::Instrument*, numOscillators> instruments {};
+            int pedal = -1;   // 0-127: the sustain pedal moved there (its own sounds), not a key let go
+            // Samples handed over from the released note: those whose AMPEG_RELEASE outlasts the AMP's (undamped strings).
+            std::array<std::array<SfzPlayer, maxSfzPlayers>, numOscillators> handed {};
+        };
+        // On the heap (each about 3.5 KB with its handed samples): the engine stays small enough for a thread's stack.
+        std::vector<PendingTail> pendingTails = std::vector<PendingTail> (32);
+        float ampReleaseSeconds = 0.2f;   // the AMP's release as of the last block (which samples ring on past it)
+        int numPendingTails = 0;
+        const PendingTail* startingTail = nullptr;   // the tail startTails is starting (startSfz reads it)
+        std::array<float, controlInterval> sfzRight {};   // a sampled oscillator's right side (scratch is its left)
+        void startTails (const Settings&) noexcept;
+        void startSfz (Voice&, OscState&, size_t index, const OscSettings&, bool release) noexcept;
+        void renderSfz (Voice&, OscState&, const OscSettings&, float semitones, float* left, float* right, int n) noexcept;
+        std::array<std::array<std::uint8_t, 128>, numOscillators> sfzTurns {};   // round-robins: each key's turn
+        sfz::Streamer* streamer = nullptr;
+        bool waitForDisk = false;
+        std::array<bool, sfz::Streamer::maxStreams> streamsInUse {};
         struct PendingAnswer { std::uint64_t parent = 0; int layer = 0; std::int64_t time = 0; };
         std::array<PendingAnswer, 96> pendingAnswers {};
         int numPendingAnswers = 0;
@@ -406,6 +471,13 @@ namespace synth
         void runAnswers (const Settings&) noexcept;                             // starts the answers due now
         std::vector<std::uint64_t> pairAges = std::vector<std::uint64_t> (maxArpEvents);   // the voice each pair started (by its age)
         std::int64_t sampleClock = 0, blockStartClock = 0;
+        std::array<Touch, maxTouches> touches {};   // 0.64.0, PROXIMITY's
+        int numTouches = 0;
+        void touch (Touch::Kind kind, float note, float velocity) noexcept
+        {
+            if (numTouches < maxTouches)
+                touches[(size_t) numTouches++] = { sampleClock, note, velocity, kind };
+        }
         std::uint8_t keyMask = 0xff;                            // the oscillators the keys play themselves
         // AUTODICE (0.16.0): each arp's pattern rolled for this cycle (on the heap), and which cycle.
         std::vector<arp::Pattern> livePatterns = std::vector<arp::Pattern> (arp::numArps);

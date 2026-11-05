@@ -90,6 +90,14 @@ private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void timerCallback() override;
     void refreshRig();
+    // GET THE PIANO (0.71.0): a preset whose sample library isn't on this computer offers to download it (once a
+    // preset); `offerLibrary` false in tests so no window opens.
+    void offerMissingLibrary();
+    juce::String libraryOfferedFor;
+    bool downloadFailureSeen = false;   // 0.73.1: a failed download offers the library once more, with why
+public:
+    static inline bool offerLibrary = true;
+private:
     void saveRig();
 
     ParagonX1AudioProcessor& audioProcessor;

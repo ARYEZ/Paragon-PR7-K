@@ -85,6 +85,9 @@ namespace effects
 
         private:
             std::array<float, 128> history {};
+            // (0.68.0, for speed) The same samples written twice, 128 apart, so the 64 taps are always one unbroken
+            // run (no wrapping): the in-between points read from here.
+            alignas (32) std::array<float, 256> mirrored {};
             int position = 0;
             float previousBetween = 0.0f;
         };

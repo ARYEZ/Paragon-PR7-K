@@ -2,6 +2,233 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.74.1
+
+**A new look for the neon finishes, and a FINISH chooser in SETTINGS.**
+
+- **Black keys and knobs in neon rings** (the same look as PR7-G 0.59.0). On Pearl Black and Pearl White + Neon, every key and knob is now black, as on Pearl White, and the pink-to-red-to-orange moves to the rings round them:
+  - the bezels round the FX page's footswitches and the surrounds of the small keys (lit along the top and darker at the front, as the chrome is);
+  - the glowing ring round each knob on the front panel (a little brighter, since it's a light);
+  - the MOD and EXPR wheels, now black rubber with the neon in their ribs.
+- **Pearl White doesn't change**, apart from the fix below (compared pixel for pixel before and after).
+- **The front panel's knob names are readable on the white finishes.** CUTOFF, RESONANCE, MACRO 1-3, ATTACK and RELEASE were printed in white, which vanished into Pearl White and Pearl White + Neon; they're now in the unit's dark ink there. Pearl Black is unchanged.
+- **SETTINGS > FINISH**: choose Pearl White, Pearl White + Neon or Pearl Black, as in PR7-G. PR7-K had the three finishes but no way to pick one (it stayed on Pearl Black). Your choice is saved on this computer, so every PR7-K you open uses it, and the window redraws as soon as you click.
+
+## 0.74.0
+
+**GRAND CINEMA, a cinematic piano expansion, built round BLOOM.**
+
+- **GRAND CINEMA (GC01-GC18)**, the modern film and trailer piano in a balanced mix of intimate, vast, epic and dark: Lone Melody, Octave Theme and Halo Lead (leads); Piano Over Strings, Reverse Swell (the piano heard backwards, swelling up and cut off) and Cathedral Air (pads); Trailer Boom, Low Drone Piano and Muted Ostinato Bass (basses); Intimate Felt (the centrepiece: a thick felt, heard from inside the lid, hammers and pedal audible), Concert Hall Grand and Epic Grand (keys); Rising Ostinato, Tension Pulse and Cascading Light (arps); Prepared Grand, Muted Grand and Detuned Upright (plucks). Our own sounds and phrases.
+- **Every preset plays the real piano** once the free Salamander Grand is downloaded (the same download as the bank A pianos), keeping its extra parts: octaves, a synth halo, strings, a drone, the boom, a detuned second string. Until then each plays PR7-K's own synthesized piano.
+- **MACRO 3 is BLOOM on every GRAND CINEMA preset**: at the left the piano as built, turning it up brings in the strings ringing along and the hall opening out.
+- **BLOOM, a new signature effect** (the SIGNATURE slot's seventeenth): a piano's undamped strings ringing in sympathy with what you play (tuned to the notes sounding, an octave below, an octave and an octave and a fifth above, ringing on after the keys let go for as long as RING says; a note a half step off sets nothing ringing), and a hall that opens out the longer you hold (SWELL). AMOUNT, STRINGS, RING, SIZE, SWELL, TONE, WIDTH; AMOUNT, STRINGS and SIZE can be moved by the mod matrix. Its page shows a piano's strings from above, the ringing ones shimmering, the hall glowing behind. At AMOUNT 0 it leaves the sound untouched. Our own design, about 1.3% of a CPU core.
+- Levels set by measurement: about -17 loudness, full BLOOM adds about 2.5 dB; the percussive presets are set by their peaks. Reverse Swell on the real piano is the quietest (a recorded note fades as the backwards swell rises).
+
+## 0.73.1
+
+**You can now see the orchestra (or piano) downloading.**
+
+- In 0.73.0, clicking DOWNLOAD on a HYPERDRIVE preset showed nothing: the download's progress was only on an oscillator's SFZ line, which the front panel hides and which those presets don't have until the orchestra is in. The download itself ran; you just couldn't tell.
+- Now the front panel's screen shows DOWNLOADING THE ORCHESTRA with the percentage and a bar (then UNPACKING), and the header shows ORCHESTRA n% on every page.
+- If a download fails, the screen says why, and PR7-K offers it once more with the reason.
+
+## 0.73.0
+
+**HYPERDRIVE, a new expansion with a real orchestra: GET THE ORCHESTRA, looping samples, and LIGHTSPEED.**
+
+- **HYPERDRIVE (HD01-HD18)**, inspired by the late-'70s and early-'80s space-opera film scores: heroic brass fanfares (Hero's Fanfare), a lonely horn at sunset (Desert Horizon), a robot's chirping whistle (Cockpit Chirp), a men's choir (Starbound Choir), shimmering strings (Galaxy Strings), an old mystical hum (Elder Hum), a marching low-brass ostinato (Iron March), a starfighter's idling engines (Sublight Drone), a spaceport dance band's plucked bass, combo organ and riff in seven (Dive Bar Bass, Spaceport Organ, Seven Step Band), a twinkling celesta (Starfield Celesta), a dark low piano (Ominous Piano), racing strings (Racing Strings), a navigation computer (Navigation Beeps), and three plucks (Royal Harp, Battle Pizzicato, Moon Tines). Our own sounds and phrases; nothing from the films is named.
+- **MACRO 3 is LIGHTSPEED on every HYPERDRIVE preset**: at the left the sound as built, turning it up makes the jump to lightspeed and back.
+- **LIGHTSPEED, a new signature effect** (the SIGNATURE slot's sixteenth): JUMP sends streaks of the sound up in pitch (up to two octaves, spooling up like engines and falling back), out to the sides, with a whoosh sweeping up behind them that follows how loud you play, while the sound itself rushes past. RISE, STREAKS, WHOOSH, WIDTH and TONE shape it; JUMP, RISE and WHOOSH can be moved by the mod matrix. Its page draws a starfield stretching into streaks. At JUMP 0 it leaves the sound untouched.
+- **GET THE ORCHESTRA.** Twelve HYPERDRIVE presets play real recordings once the free Sonatina Symphonic Orchestra (about 1.4 GB, by Mattias Westlund and Paul Eastman, CC Sampling Plus 1.0) is downloaded, the same way the piano presets use the Salamander: trumpets and horns, a solo horn, a large choir, the string section, trombones and tuba, a solo double bass, celesta, staccato strings, clarinet, harp and pizzicato (Ominous Piano uses the Salamander). Until then they play PR7-K's own synthesized orchestra. Loading one asks once whether to get it; once it's in, a preset you haven't edited switches over by itself. Galaxy Strings keeps its synth strings underneath, quieter: the library's section strings stop after about four seconds, so the synth layer carries long chords.
+- **SFZ: looped samples and velocity crossfades.** Samples with loop points (in the SFZ file or the WAV itself) now hold for as long as you hold the key, and loop-sustain ones stop looping when you let go. Instruments that blend velocity layers into each other (xfin/xfout) blend smoothly. Still not played: the files' own filters and envelopes (soft notes are quieter, not darker) and mod-wheel crossfades.
+- Every level was set by measurement (about -17 loudness, peaks under -3 dBFS at rest and under -2 at full LIGHTSPEED).
+
+## 0.72.0
+
+**The real piano in the expansions: seven expansion piano presets play the Salamander Grand once it's downloaded.**
+
+- **Seven expansion presets now have two versions.** Felt Memory and Tesseract (LAST LIGHT), Echo Piano (DREAMSTATE), Memory Loop (UNSPOKEN), Lament Piano (ASCENSION), Distant Piano (DUSTFALL) and Home Piano (SUPERPOSITION) play the sampled Salamander Grand when it's on your computer, with everything else about the preset kept: its echoes, reverbs and other effects, its macros, and its MACRO 3 centrepiece (GRAVITY, DREAM, LEVIATHAN and so on). Each is a little darker or brighter to suit its mood (the FILTER follows the keys, so BRIGHT and the other filter macros still work).
+- **Without the piano, nothing changes.** Until the Salamander is downloaded, these seven play PR7-K's own synthesized piano, exactly as before (checked: every one renders byte for byte as in 0.71.0). Loading one asks once whether to get the piano; once the download finishes, a preset you haven't edited switches over by itself.
+- **Levels.** The sampled versions were set by measurement to sit where the synthesized ones do (about -17 to -18.5 loudness). Where a real hammer strike would have peaked over -2 dBFS, they sit up to 1.5 dB quieter instead. The LIMITER holds a -1 dBFS ceiling.
+- A project or a saved preset keeps whichever version was playing when it was saved.
+
+## 0.71.0
+
+**A sampled grand piano: the new SFZ oscillator, seven piano presets, and GET THE PIANO.**
+
+Built for Windows and Linux; there's no macOS build from this version on.
+
+- **SFZ, a new oscillator WAVE.** Any oscillator can now play a multi-sampled instrument from an SFZ file (the open format many free and paid sample libraries come in). Each key plays its own recording, and it goes through the FILTER, VOICE, SHAPERs, sends, insert buses and every effect like any other wave; TRANSPOSE, FINE, the pitch wheel, glide, vibrato and the PITCH envelope move it too. Load one from the oscillator's SFZ line (or drop an .sfz file on the oscillator); the picture shows its key map. What it reads:
+  - each sample's keys and the key it was recorded at, its tuning, volume and pan;
+  - velocity layers, and how much softer notes get inside a layer;
+  - round-robins and random alternates;
+  - **release samples**, played when a key lets go (after the pedal), quieter the longer the note was held;
+  - samples that ring on after the key (a piano's undamped top strings), and the sustain pedal's own sounds;
+  - regions that play only with the pedal down or up.
+  What it leaves out (loops, the file's own filters and envelopes, key switches) is listed in the SFZ line's menu; the AMP shapes the notes instead.
+- **Streamed from disk.** Only the first quarter second of each sample is kept in memory; the rest is read from disk as it plays, so a big library loads in seconds and fits easily. Live, PR7-K never waits for the disk; a bounce always does, so it comes out whole.
+- **Presets and projects remember where the file is**, never the samples. If you move a library to another drive, load any SFZ from its new folder once and your presets find it again. One that can't be found says NOT LOADED and plays nothing.
+- **Seven piano presets, A41-A47**, on the Salamander Grand Piano (a Yamaha C5 recorded at 16 strengths, by Alexander Holm, free under CC-BY): Salamander Grand, Felt Grand, Pop Grand, Tape Piano, Ambient Piano, Piano And Pad and Starlight Piano. Each has MACRO 1 (ROOM, FELT, GRIT, WEAR, HAZE, PAD, TRAIL) and MACRO 2 SPACE. Their levels keep the piano's real dynamics: a medium touch sits a little under the synth presets, and the LIMITER stops the hardest chords at -1 dBFS.
+- **GET THE PIANO.** The piano isn't inside the plugin (it would make every download about 750 MB). The first time you load a piano preset, PR7-K offers to download it from freepats.zenvoid.org: about 742 MB, unpacked to about 714 MB in PR7-K's presets folder, once per computer. The oscillator's SFZ line shows the progress and can cancel it. ABOUT credits the library.
+- Linux builds now use libcurl for the download (Windows and macOS use their own).
+
+## 0.70.0
+
+**Plucks: three new plucks in every expansion, 75 in all.**
+
+Every expansion now has a sixth kind of preset, PLUCK, in slots 16-18 (NR16-NR18, HF16-HF18 and so on). Your existing presets keep their slot numbers.
+
+- **Built round each bank's centrepiece.** A pluck's short notes leave gaps, and MACRO 3's effect lives in them: the rain's drops land on NEON RAIN's plucks, SIROCCO answers SANDSEA's, LIGHTTRAIL's trails climb behind DATASTREAM's, ECHOES plays PARADOX's back in reverse, as tape or as a loop, and the spring tank clangs under ATOMIC AGE's.
+- **Built the way real plucked things sound.** Each one has its own attack (a pick, a finger, a hammer, a mallet or a breath), its brightness fades faster than its loudness as a real string's does, and harder playing is brighter.
+- **Built differently from each other.** No bank's three use the same method, and the methods are spread across all 25 banks: filter snaps, FM strikes (kalimbas, mallets, bells, a toy piano), harps made of separate overtones, plucked strings struck from noise, sync and wavetable sweeps, pitch chirps, sung syllables through the VOICE filter, one-key chords, pizzicato sections, palm mutes, ring-modulated metal, an FFT brick-wall sweep, formant and crush sweeps, a wah and drives.
+- **The 75:**
+  - **NEON RAIN:** Wet Neon Pluck, Street Zither, Glass Rain Taps.
+  - **HELLFORGE:** Rivet Gun, Hellwire Pick, Ember Pluck.
+  - **STARCOURT:** Bike Spokes, Cassette Harp, Funhouse Mallet.
+  - **SANDSEA:** Desert Oud, Sandglass Kanun, Heat Shimmer Pluck.
+  - **DATASTREAM:** Gridline Pluck, Pixel Ping, Laser Lattice.
+  - **LAST LIGHT:** Starlight Harp, Ticking Pizzicato, Orbit Kalimba.
+  - **SIMULACRUM:** Code Drip, Rooftop Pick, Glyph Ring.
+  - **DREAMSTATE:** Sinking Harp, Staccato Horns, Folding Guitar.
+  - **NEGATIVE SPACE:** Muted Felt, Server Clicks, Prepared Strings.
+  - **NIGHTDRIVE:** Chrome Pluck, Dashboard Pulse, Tail Light Bell.
+  - **UNSPOKEN:** Hummed Pluck, Shell Harp, Deep Pizzicato.
+  - **CYBERSHRINE:** Wire Shamisen, Lantern Pluck, Glass Ghost.
+  - **STOWAWAY:** Sonar Ping, Hull Pizzicato, Condensation Drip.
+  - **CHROMEFURY:** Spark Plug, Chain Snap, Exhaust Stab.
+  - **ASCENSION:** Choir Pluck, Ancient Harp, Monastery Mallet.
+  - **REFRACTION:** Prism Pluck, Fungal Kalimba, Bloom Formant.
+  - **PSI STORM:** Chant Pluck, Neon Spoke, Psychic Ping.
+  - **BLOODWAVE:** VHS Pluck, Rage Stab, Neon Ping Pong.
+  - **DUSTFALL:** Snowflake Pluck, Wasteland Pick, Hologram Pluck.
+  - **SUPERPOSITION:** Either Way, Probability Pluck, Observer Mallet.
+  - **SEVERED:** Desk Toy Piano, Corridor Pick, Cubicle Pizzicato.
+  - **SLINGBLADE:** Gilded Harp, Slingshot Wah, Iron Pick.
+  - **PARADOX:** Cave Drip, Pendulum Clock, Tape Loop Pluck.
+  - **MELTDOWN:** Dosimeter Ping, Rusted Wire, Control Room Mallet.
+  - **ATOMIC AGE:** Tank Twang, Luau Ukulele, Rocket Ping.
+- **Levels:** balanced by measurement against the banks' other presets. The most percussive (pizzicato, clicks, chord stabs) sit a few dB lower so their peaks stay safe.
+
+## 0.69.0
+
+**NUCLEARSPRING, and a new expansion: ATOMIC AGE.**
+
+**NUCLEARSPRING** (a new signature effect, our own design, in the SIGNATURE slot): a vintage spring reverb tank, the drippy, twangy reverb of 1950s and 60s guitar amps and home organs.
+- **DRIP:** how wet and chirpy the springs sound: from a plain echo to the "boing-drip" of surf guitar. A real spring sends the high notes through faster than the low ones; this copies that.
+- **BOING:** how hard a sudden hit kicks the tank, like knocking an amp with a spring reverb in it.
+- **DECAY** (0.8 to 5 seconds), **TONE** (springs are dark), **SIZE** (a small amp's short tank to a long organ tank), **WIDTH**.
+- **MIX:** how much of the tank under your sound. At 0 your sound passes untouched.
+- Springs don't like bass, so the lows are cut going in, as on the real thing: on a bass sound you mostly hear the tank's upper twang.
+- AMP, ORGAN and SURF on its unit set the tank's size, decay and drip together. Its page shows the tank opened up, the six springs shaking as your sound runs through them, the frame flashing on a hard hit.
+- MIX, DRIP and BOING can be moved by the mod matrix (FX Nuclearspring). About 3% of a core.
+
+**ATOMIC AGE** (AA01-AA15, a new expansion): bright, cheerful 1950s atomic-age optimism, the retro-futurist, mid-century-modern side of a post-nuclear world (our own sounds; nothing from any show or game is named).
+- **Leads:** Saucer Song (a B-movie sci-fi singing sine, wide and wobbly), Surf Baritone (a twangy guitar: a pick click, each note starting a hair sharp like a struck string, a little tube amp; the mod wheel is a whammy bar), Harmon Horn (a muted jazz trumpet; the mod wheel is the hand over the mute, for the wah-wah).
+- **Pads:** Doo-Wop Oohs (a vocal group on "ooh", each singer with their own vibrato, sliding up into each chord), Sunday Strings (violins and cellos, each player with their own vibrato, the bow biting in), Atomic Dawn (a gleaming sunrise shimmer).
+- **Basses:** Walking Upright, Pedal Organ, Tube Swing.
+- **Keys:** Spinning Vibes (a vibraphone with its motor on), Cocktail Organ, Jukebox Celesta.
+- **Arps:** Jingle Sparkle (an advertising-jingle glockenspiel), Punch Card Brain (a retro computer thinking out loud, a new pattern every pass), Tiki Marimba.
+- **MACRO 3 is SPRING on every preset:** NUCLEARSPRING brought in, each preset with its own tank. At 0 there's no tank; at full it sits under the sound like a real amp's reverb, adding less than 1 dB.
+
+**Also:** long effect names on the rack units (NUCLEARSPRING) now fit their title and the small screen under EDIT, instead of running into the lights or being cut off.
+
+## 0.68.0
+
+**LEVIATHAN, UNSPOKEN gets its centrepiece, and PR7-K runs lighter with the sound unchanged.**
+
+**LEVIATHAN** (a new signature effect, our own design, in the SIGNATURE slot): a vast, slow, wordless voice singing far beneath what you play, like something answering from the fog. It's a new voice, not a copy of your sound.
+- **Its note:** the lowest note the synth is playing, one or two octaves down (DEPTH), sliding slowly to each new note. It takes the note from the synth itself, so a chord gets one deep voice under its lowest note and nothing can fool it.
+- **Its throat:** a soft buzz shaped into vowels that wander on their own between OO and EE (DRIFT). SIZE makes the throat bigger.
+- **GROWL:** rougher, creaking, with clicks in its throat. **DELAY:** it answers up to 1.5 s behind you.
+- **MIX:** how loud it is. Its level follows yours, so it breathes with your playing, and silence stays silent. At 0 your sound passes untouched.
+- DISTANT, CALLING and RISING on its unit set how near it comes. Its page shows the voice as a vast shape in the dark, the note it's singing and its vowel.
+- MIX, GROWL and DRIFT can be moved by the mod matrix (FX Leviathan). About 0.8% of a core.
+
+**UNSPOKEN: MACRO 3 is now LEVIATHAN on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings in each preset's voice beneath it, some one octave down, some two, each with its own vowel, roughness and delay.
+- At full it adds about 0.5 to 1.5 dB. Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+**Lighter on your computer, the sound unchanged.** Five parts now do the same work with less waiting. Recordings of each, made before and after, are identical sample for sample. Measured on a held chord (share of one processor core, including the synth):
+- **DOMINION:** 12.2% down to 6.5% (in Hard mode with Mid/Side, 15.7% to 11.1%).
+- **LIMITER with true peak:** 7.2% to 5.6%.
+- **Everything, always:** settings are now found through a quick index instead of a search, 1.28% to 0.96% for a plain chord. This also removes a rare cause of glitches when the mod matrix moved an effect knob.
+- **INFERNAL:** about 15-20% lighter. **SPECTRE** at DRIFT 0 a little lighter.
+- Your own computer's numbers will differ, but the proportions should hold.
+
+## 0.67.0
+
+**SPECTRE, and CYBERSHRINE gets its centrepiece.**
+
+**SPECTRE** (a new signature effect, our own design, in the SIGNATURE slot): a whispered ghost following your sound. Each note leaves a shadow of itself made of breath: the shape of its tone (its vowel, its brightness) without its pitch.
+- **MIX:** how loud the ghost is, under your sound (which passes unchanged).
+- **TRAIL:** how far behind it follows, up to 800 ms. **LINGER:** how long it stays after the sound has gone, 0.1 to 4 seconds.
+- **AIR:** hollow and whistling, or wide and breathy. **DRIFT:** how far the ghost wanders between the sides.
+- **SHIFT:** the ghost's outline moved up or down to an octave: a smaller ghost or a larger one.
+- At 0 your sound passes untouched, and silence stays silent. WHISPER, SHADOW and WRAITH on its unit set how strongly it haunts. Its page shows your sound's outline with its ghost as a pale veil around it.
+- MIX, LINGER and SHIFT can be moved by the mod matrix (FX Spectre).
+- About 3% of a core: more than most signature effects (it reads and rebuilds the sound in 24 bands on each side).
+
+**CYBERSHRINE: MACRO 3 is now SPECTRE on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings in each preset's ghost: the choirs a larger, lower shadow choir, the pads long drifting ghosts, the basses' ghosts lifted above them so the whisper can be heard.
+- At full it adds about 0.5 to 1.5 dB: a whisper under the sound, not a second sound.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+## 0.66.0
+
+**HAZE, and NIGHTDRIVE gets its centrepiece.**
+
+**HAZE** (a new signature effect, our own design, in the SIGNATURE slot): streetlights passing a car at night. In time with the song, your sound sweeps past you, left to right, then back right to left on the next pass.
+- **DEPTH:** how much it moves. As it passes it's nearer, brighter and louder; out at the edges it's further, darker and quieter. It slows as it turns at each edge, so nothing jumps. A whole pass stays as loud as your sound.
+- **PASS:** half a bar, 1 bar, 2 bars or 4 bars a pass, following the song (its own count while stopped).
+- **DOPPLER:** the pitch bends a little up as it comes and down as it goes (up to 40 cents), from its distance changing, as in the air.
+- **WIDTH:** how far it leans to each side. **TONE:** how dark it gets far off.
+- **WHOOSH:** a breath of wind as it goes by, only while you play, so silence stays silent.
+- At 0 your sound passes untouched. CRUISE, PASSING and RUSH on its unit set how much. Its page shows a night road with streetlights and the headlights where your sound is.
+- DEPTH, DOPPLER and WHOOSH can be moved by the mod matrix (FX Haze).
+
+**NIGHTDRIVE: MACRO 3 is now HAZE on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up sends the sound past you: leads and keys a pass a bar, pads every two bars, arps and Retro Stab every half bar, the basses moving less so the low end stays centred.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+## 0.65.0
+
+**PROXIMITY, and NEGATIVE SPACE gets its centrepiece.**
+
+**PROXIMITY** (a new signature effect, our own design, in the SIGNATURE slot): the sound of playing, heard up close. Every noise is made by the synth itself (no recordings), on the exact moment of each note, the arpeggiator's included.
+- **NOISE:** the touches of playing. A felt hammer's thump as each note starts (lower and longer on low notes, louder the harder you play), a key's click and the damper settling as you let go, the sustain pedal's thud going down and the dampers' hush coming back up.
+- **TONE:** the felt and clicks soft or crisp. **WIDTH:** each note's noises placed where it is on the keyboard, low notes left, high notes right.
+- **ROOM:** the room's air and a mains **HUM** (off, 50 or 60 Hz), rising with the music and stopping a moment after it, so silence stays silent.
+- **CLOSE:** the extra bass a microphone picks up close to an instrument (up to +6 dB).
+- At 0 your sound passes untouched. DISTANT, NEAR and INSIDE on its unit set how close. Its page shows a keyboard from above, each touch lighting its key, with a microphone that lowers as CLOSE rises.
+- NOISE, ROOM and CLOSE can be moved by the mod matrix (FX Proximity).
+
+**NEGATIVE SPACE: MACRO 3 is now CLOSER on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings you up close: the pianos' soft felt and room, the electronics' clicks and hum, a little of the close-up low end on the basses.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+## 0.64.0
+
+**REMNANT, and DREAMSTATE gets its centrepiece.**
+
+**REMNANT** (a new signature effect, our own design, in the SIGNATURE slot): dreams within dreams. Your sound plays exactly as you play it; beneath it, up to three layers of what you just played, each a level deeper: slower and lower than the one above, all running at once.
+- Each layer is a dream of the one above it: the second hears the first, not you, so each deeper one is slower and more smeared again.
+- **LAYERS:** one to three. **STEP:** how much slower and lower each layer is than the one above: an octave (half speed), a fifth or a fourth.
+- **LENGTH:** how long a stretch of the past each layer replays (0.4 to 4 seconds) before renewing itself, smoothly, from the present. Nothing slides or jumps: unlike DILATION, your sound is never slowed or held back.
+- **TAPER:** each deeper layer quieter. **TONE:** each deeper layer darker. **WIDTH:** the layers leaning to alternate sides. **MIX:** how loud the layers are; at 0 nothing at all is added.
+- SHALLOW, DEEPER and DEEPEST on its unit set how many layers. Its page shows nested rings: your sound outside, each layer further in, turning slower.
+- MIX, TONE and TAPER can be moved by the mod matrix (FX Remnant).
+
+**DREAMSTATE: MACRO 3 is now DREAM on all 15 presets.**
+- At 0 every preset sounds exactly as before.
+- Turning it up brings the layers in beneath: deep stacks on the pads, keys and arps, a single layer a fourth or fifth down on the basses so the low end stays clean.
+- Each preset's old MACRO 3 job still comes with it, and the preset notes say so.
+
+**Also:** a test that throws random settings at the synth now allows extreme but stable loudness (it failed 0.63.0's first build without anything being wrong); no sound changed.
+
 ## 0.63.0
 
 **DILATION, and SIMULACRUM gets its centrepiece.**

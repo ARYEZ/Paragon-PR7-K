@@ -6,7 +6,7 @@
 
 FxPage::FxPage (ParagonX1AudioProcessor& processor)
     : audio (processor), insertStrip (processor), matrix (processor), delayPage (processor, SendPage::Kind::delay), reverbPage (processor, SendPage::Kind::reverb),
-      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), lightTrailPage (processor), blackHolePage (processor), dilationPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
+      echoesPage (processor), cracklePage (processor), downpourPage (processor), siroccoPage (processor), infernalPage (processor), afterglowPage (processor), lightTrailPage (processor), blackHolePage (processor), dilationPage (processor), remnantPage (processor), proximityPage (processor), hazePage (processor), spectrePage (processor), leviathanPage (processor), nuclearSpringPage (processor), lightSpeedPage (processor), bloomPage (processor), eqPage (processor), dominionPage (processor), compPage (processor), limiterPage (processor)
 {
     RackActions actions;
     actions.openPage = [this] (int unit)
@@ -46,8 +46,8 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // MOD, MOD 2 and LO-FI (stage 7c).
     auto modFxSpecs = makeModFxSpecs (processor, [this] (int unit)
     {
-        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation };
-        show (views[juce::jlimit (0, 11, unit)]);
+        constexpr View views[] = { View::mod, View::mod2, View::loFi, View::echoes, View::crackle, View::downpour, View::sirocco, View::infernal, View::afterglow, View::lightTrail, View::blackHole, View::dilation, View::remnant, View::proximity, View::haze, View::spectre, View::leviathan, View::nuclearSpring, View::lightSpeed, View::bloom };
+        show (views[juce::jlimit (0, 19, unit)]);
     }, [this] { chooseSignature(); });
     constexpr ModFxPage::Kind kinds[] = { ModFxPage::Kind::mod, ModFxPage::Kind::mod2, ModFxPage::Kind::loFi };
     for (size_t i = 0; i < modFxUnits.size(); ++i)
@@ -88,6 +88,29 @@ FxPage::FxPage (ParagonX1AudioProcessor& processor)
     // DILATION (0.63.0): its page.
     dilationPage.onClose = [this] { show (View::modFx); };
     addChildComponent (dilationPage);
+    // REMNANT (0.64.0): its page.
+    remnantPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (remnantPage);
+    // PROXIMITY (0.65.0): its page.
+    proximityPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (proximityPage);
+    // HAZE (0.66.0): its page.
+    hazePage.onClose = [this] { show (View::modFx); };
+    addChildComponent (hazePage);
+    // SPECTRE (0.67.0): its page.
+    spectrePage.onClose = [this] { show (View::modFx); };
+    addChildComponent (spectrePage);
+    // LEVIATHAN (0.68.0): its page.
+    leviathanPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (leviathanPage);
+    // NUCLEARSPRING (0.69.0): its page.
+    nuclearSpringPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (nuclearSpringPage);
+    lightSpeedPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (lightSpeedPage);
+    // BLOOM (0.74.0): its page.
+    bloomPage.onClose = [this] { show (View::modFx); };
+    addChildComponent (bloomPage);
     // THE INSERT BUSES (stage 7d): every bus's units and pages made now, the strip's bus shown.
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
     {
@@ -166,6 +189,14 @@ void FxPage::show (View newView)
     lightTrailPage.setVisible (view == View::lightTrail);
     blackHolePage.setVisible (view == View::blackHole);
     dilationPage.setVisible (view == View::dilation);
+    remnantPage.setVisible (view == View::remnant);
+    proximityPage.setVisible (view == View::proximity);
+    hazePage.setVisible (view == View::haze);
+    spectrePage.setVisible (view == View::spectre);
+    leviathanPage.setVisible (view == View::leviathan);
+    nuclearSpringPage.setVisible (view == View::nuclearSpring);
+    lightSpeedPage.setVisible (view == View::lightSpeed);
+    bloomPage.setVisible (view == View::bloom);
     const auto bus = insertStrip.getBus();
     insertStrip.setVisible (view == View::inserts);
     for (int b = 0; b < ParamIDs::numInsertBuses; ++b)
@@ -225,7 +256,7 @@ void FxPage::resized()
     for (size_t i = 0; i < units.size(); ++i)
         units[i]->setBounds (juce::Rectangle<float> ((float) area.getCentreX() - width * 0.5f, top + (float) i * (height + gap), width, height).toNearestInt());
     for (auto* page : std::initializer_list<juce::Component*> { &eqPage, &dominionPage, &compPage, &limiterPage, &delayPage, &reverbPage,
-                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage, &lightTrailPage, &blackHolePage, &dilationPage })
+                                                                modFxPages[0].get(), modFxPages[1].get(), modFxPages[2].get(), &echoesPage, &cracklePage, &downpourPage, &siroccoPage, &infernalPage, &afterglowPage, &lightTrailPage, &blackHolePage, &dilationPage, &remnantPage, &proximityPage, &hazePage, &spectrePage, &leviathanPage, &nuclearSpringPage, &lightSpeedPage, &bloomPage })
         page->setBounds (getLocalBounds());
     // INSERTS: the strip, then the bus's five units in the order they play (the WAH, last in the list, first), sized
     // to fit what's left.

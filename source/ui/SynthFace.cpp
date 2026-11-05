@@ -61,18 +61,15 @@ void FaceWheel::paint (juce::Graphics& g)
     g.setColour (juce::Colour (0xff050405));
     g.fillRoundedRectangle (well, 5.0f);
 
-    // The wheel (0.50.0, the owner's ask): the tread of PR7-G's expression pedal wrapped round a wheel. Its rubber
-    // is the unit's neon, pink to red to orange across (black rubber on the pearl white unit), ribbed across like
-    // the pedal's pads, each rib a lit top edge over a shadow. Seen side on, so the ribs bunch up and darken
+    // The wheel (0.50.0, the owner's ask): the tread of PR7-G's expression pedal wrapped round a wheel. Black
+    // rubber, ribbed across like the pedal's pads, each rib a lit top edge over a shadow; on the neon finishes
+    // (0.74.1, as PR7-G 0.59.0) each rib's top is the neon, pink to red to orange across. Seen side on, so the ribs bunch up and darken
     // towards the top and bottom where the wheel curves away, and they roll as it's turned.
     const auto wheel = well.reduced (4.0f, 6.0f);
     juce::Path tread;
     tread.addRoundedRectangle (wheel, 4.0f);
-    const auto neon = Finish::neonKeys();
-    if (neon)
-        g.setGradientFill (Finish::neonGradient (wheel.getX(), wheel.getRight()));
-    else
-        g.setColour (juce::Colour (0xff1a1618));
+    const auto neonRibs = Finish::neonRings();
+    g.setColour (juce::Colour (0xff1a1618));
     g.fillPath (tread);
     {
         juce::Graphics::ScopedSaveState clip (g);
@@ -84,9 +81,17 @@ void FaceWheel::paint (juce::Graphics& g)
             const auto t = juce::jlimit (-1.0f, 1.0f, (y - wheel.getCentreY()) / (wheel.getHeight() * 0.5f));
             const auto curved = wheel.getCentreY() + wheel.getHeight() * 0.5f * std::sin (t * 1.2f) / std::sin (1.2f);
             const auto pitch = spacing * std::cos (t * 1.2f);   // narrower where the curve turns away
-            g.setColour (juce::Colours::white.withAlpha (neon ? 0.07f : 0.08f));
+            if (neonRibs)
+            {
+                g.setGradientFill (Finish::neonGradient (wheel.getX(), wheel.getRight()));
+                g.fillRect (wheel.getX(), curved, wheel.getWidth(), pitch * 0.3f);
+                g.setColour (juce::Colours::black.withAlpha (0.5f));
+                g.fillRect (wheel.getX(), curved + pitch * 0.3f, wheel.getWidth(), pitch * 0.2f);
+                continue;
+            }
+            g.setColour (juce::Colours::white.withAlpha (0.08f));
             g.fillRect (wheel.getX(), curved, wheel.getWidth(), pitch * 0.18f);
-            g.setColour (juce::Colours::black.withAlpha (neon ? 0.35f : 0.45f));
+            g.setColour (juce::Colours::black.withAlpha (0.45f));
             g.fillRect (wheel.getX(), curved + pitch * 0.18f, wheel.getWidth(), pitch * 0.3f);
         }
 
@@ -155,9 +160,24 @@ SynthFace::SynthFace (ParagonX1AudioProcessor& processorToUse)
     next.onClick = [this] { if (onNext) onNext(); };
 
     startTimerHz (30);
+    Finish::changes().addChangeListener (this);
 }
 
-SynthFace::~SynthFace() = default;
+SynthFace::~SynthFace()
+{
+    Finish::changes().removeChangeListener (this);
+}
+
+void SynthFace::changeListenerCallback (juce::ChangeBroadcaster*)
+{
+    for (auto& macro : macros)
+        macro->setPedal();   // the knobs' names in the new finish's ink
+    for (auto* knob : { &cutoff, &resonance, &attack, &release })
+        knob->setPedal();
+    if (getWidth() > 0 && getHeight() > 0)
+        grain = Finish::makeSatinGrain (getWidth() * 2, getHeight() * 2, 49);
+    repaint();
+}
 
 void SynthFace::setScreen (const Screen& newScreen)
 {
@@ -296,8 +316,29 @@ void SynthFace::paintScreen (juce::Graphics& g) const
     g.setColour (orange);
     g.drawText (screen.name.toUpperCase(), nameArea, juce::Justification::centredLeft, false);
 
+    // 0.73.1: a download in the notes' place: what it's doing, and a bar filling as it goes.
+    if (screen.status.isNotEmpty())
+    {
+        auto band = content;
+        g.setColour (orange);
+        auto textArea = screen.progress >= 0.0f ? band.removeFromLeft (band.getWidth() * 0.62f) : band;
+        auto font = juce::FontOptions (band.getHeight() * 0.62f, juce::Font::bold);
+        const auto textWidth = (float) juce::GlyphArrangement::getStringWidthInt (font, screen.status);
+        if (textWidth > textArea.getWidth())
+            font = font.withHeight (font.getHeight() * textArea.getWidth() / textWidth);
+        g.setFont (font);
+        g.drawText (screen.status, textArea, juce::Justification::centredLeft, false);
+        if (screen.progress >= 0.0f)
+        {
+            const auto bar = band.withSizeKeepingCentre (band.getWidth(), band.getHeight() * 0.34f);
+            g.setColour (orange.withAlpha (0.2f));
+            g.fillRect (bar);
+            g.setColour (orange);
+            g.fillRect (bar.withWidth (bar.getWidth() * juce::jlimit (0.0f, 1.0f, screen.progress)));
+        }
+    }
     // The notes, scrolling right to left in a band at the bottom, round and round.
-    if (screen.notes.isNotEmpty())
+    else if (screen.notes.isNotEmpty())
     {
         const auto band = content;
         g.saveState();

@@ -122,7 +122,7 @@ void Footswitch::paint (juce::Graphics& g)
         g.fillRoundedRectangle (lens.reduced (2.0f).withHeight (lens.getHeight() * 0.3f), 1.5f);
     }
 
-    // The pad: a big piano key (black, or neon on the pearl black unit) standing in a raised chrome bezel, the
+    // The pad: a big black piano key standing in a raised bezel (chrome, or the neon on the neon finishes), the
     // way a real floor unit's footswitch is mounted. The bezel casts a
     // shadow on the panel, is lit along its top and darker at the front,
     // and holds the key in a dark well.
@@ -130,7 +130,7 @@ void Footswitch::paint (juce::Graphics& g)
     const auto hover = isMouseOver() && switchArea.contains (getMouseXYRelative());
     const auto bezel = switchArea.toFloat();
     ParagonLookAndFeel::drawChromeBezel (g, bezel, 11.0f);
-    ParagonLookAndFeel::drawPianoKey (g, bezel.reduced (7.0f, 6.5f).withTrimmedBottom (1.0f), 6.0f, 6.0f, pressed, hover, Finish::neonKeys());
+    ParagonLookAndFeel::drawPianoKey (g, bezel.reduced (7.0f, 6.5f).withTrimmedBottom (1.0f), 6.0f, 6.0f, pressed, hover);
 
     // Number and name stamped into the metal: ink, with a fine light edge
     // underneath where the stamped letters' lower walls catch the light.

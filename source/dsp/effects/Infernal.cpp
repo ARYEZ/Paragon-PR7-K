@@ -163,20 +163,30 @@ namespace effects
             const auto heard = follower < 1.0e-4f ? 0.0f : juce::jmin (1.0f, follower / 0.15f);
 
             // The notes: their pulse (for the noise, once a cycle) and the bloom's sine (an octave up).
+            // (0.68.0, for speed, the same sound bit for bit: a phase is wrapped by taking 1 off while it's 1 or
+            // more, the same as taking off its floor (a library call on some compilers) for a phase under 2; and
+            // the bloom's sine isn't worked out while the bloom is held at exactly 0, where it's multiplied by 0.
+            // Its phase still moves, so it's where it would have been when the bloom wakes.)
+            const auto bloomTarget = feedbackAmount * heard;
+            const auto bloomSilent = bloom == 0.0f && bloomTarget == 0.0f;
             float pulse = 0.0f, bloomWave = 0.0f;
             for (int k = 0; k < numNotes; ++k)
             {
-                notePhase[(size_t) k] += rate[(size_t) k];
-                notePhase[(size_t) k] -= std::floor (notePhase[(size_t) k]);
-                bloomPhase[(size_t) k] += 2.0 * rate[(size_t) k];
-                bloomPhase[(size_t) k] -= std::floor (bloomPhase[(size_t) k]);
-                const auto c = 0.5f + 0.5f * (float) std::sin (twoPi * notePhase[(size_t) k]);
+                auto& phase = notePhase[(size_t) k];
+                phase += rate[(size_t) k];
+                while (phase >= 1.0)
+                    phase -= 1.0;
+                auto& bloomAt = bloomPhase[(size_t) k];
+                bloomAt += 2.0 * rate[(size_t) k];
+                while (bloomAt >= 1.0)
+                    bloomAt -= 1.0;
+                const auto c = 0.5f + 0.5f * (float) std::sin (twoPi * phase);
                 pulse += c * c;
-                bloomWave += (float) std::sin (twoPi * bloomPhase[(size_t) k]);
+                if (! bloomSilent)
+                    bloomWave += (float) std::sin (twoPi * bloomAt);
             }
             pulse *= noteScale;
             bloomWave *= noteScale;
-            const auto bloomTarget = feedbackAmount * heard;
             bloom += (bloomTarget - bloom) * (bloomTarget > bloom ? bloomUp : bloomDown);
 
             float wet[2] {};

@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 12> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 20> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 12> specs;
+    std::array<RackUnit::Spec, 20> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1064,6 +1064,359 @@ std::array<RackUnit::Spec, 12> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (11); };
+    }
+
+    // REMNANT (0.64.0): how many layers in big digits, how far down each and how long; the keys set how many:
+    // SHALLOW (1), DEEPER (2), DEEPEST (3).
+    {
+        auto& s = specs[12];
+        s.name = "REMNANT";
+        s.kind = "DREAM LAYERS  MIX  LENGTH";
+        s.onParameterIds = { ParamIDs::remnantOn };
+        s.powerTooltip = "REMNANT on or off: layers of what you play beneath it, each deeper one slower and lower. Click POWER (the word) or EDIT for its page";
+        struct Depth { const char* name; int layers; const char* tip; };
+        static constexpr Depth depths[] = { { "SHALLOW", 0, "One layer beneath your sound" },
+                                            { "DEEPER", 1, "Two layers, the second a dream of the first" },
+                                            { "DEEPEST", 2, "Three layers, each a dream of the one above" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& d = depths[k];
+            s.keys[(size_t) k] = RackUnit::Key { d.name, d.tip,
+                                                 [&p, d] { return juce::roundToInt (valueOf (p, ParamIDs::remnantLayers)) == d.layers; },
+                                                 [&p, d] { setValue (p, ParamIDs::remnantLayers, (float) d.layers); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::remnantMix, "MIX" }, RackUnit::Knob { ParamIDs::remnantLength, "LENGTH" } };
+        s.ladderTitle = "DEPTH";
+        s.ladderMarks = { 0.0f, -6.0f, -12.0f, -24.0f, -48.0f };
+        s.ladderLabels = { "0", "-6", "-12", "-24", "-48" };
+        s.ladderReading = [&p] { return p.getRemnant().getTotalDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getRemnantSettings();
+            const auto end = drawNumber (g, juce::String (juce::jlimit (1, 3, settings.layers + 1)), left.getTopLeft(), h);
+            line (g, settings.layers == 0 ? "LAYER" : "LAYERS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "BENEATH YOUR SOUND", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "STEP " + textOf (p, ParamIDs::remnantStep), "LENGTH " + textOf (p, ParamIDs::remnantLength),
+                                  "TAPER " + juce::String (effects::Remnant::taperDb (settings.taper), 1) + " DB", "MIX " + textOf (p, ParamIDs::remnantMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (12); };
+    }
+
+    // PROXIMITY (0.65.0): CLOSE's boost in big digits, the touches and the room; the keys set how close the
+    // microphone is: DISTANT, NEAR, INSIDE (NOISE, ROOM and CLOSE together).
+    {
+        auto& s = specs[13];
+        s.name = "PROXIMITY";
+        s.kind = "PLAYING UP CLOSE  NOISE  CLOSE";
+        s.onParameterIds = { ParamIDs::proximityOn };
+        s.powerTooltip = "PROXIMITY on or off: the sound of playing, heard up close. Click POWER (the word) or EDIT for its page";
+        struct Place { const char* name; float noise, room, close; const char* tip; };
+        static constexpr Place places[] = { { "DISTANT", 0.25f, 0.2f, 0.1f, "A step back: the touches faint, a little room" },
+                                            { "NEAR", 0.5f, 0.35f, 0.4f, "Close: every touch heard, the room around it" },
+                                            { "INSIDE", 0.8f, 0.5f, 0.8f, "Inside the instrument: the mechanism loud, the low end close" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& pl = places[k];
+            s.keys[(size_t) k] = RackUnit::Key { pl.name, pl.tip,
+                                                 [&p, pl] { return std::abs (valueOf (p, ParamIDs::proximityNoise) - pl.noise) < 0.01f
+                                                                   && std::abs (valueOf (p, ParamIDs::proximityClose) - pl.close) < 0.01f; },
+                                                 [&p, pl]
+                                                 {
+                                                     setValue (p, ParamIDs::proximityNoise, pl.noise);
+                                                     setValue (p, ParamIDs::proximityRoom, pl.room);
+                                                     setValue (p, ParamIDs::proximityClose, pl.close);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::proximityNoise, "NOISE" }, RackUnit::Knob { ParamIDs::proximityClose, "CLOSE" } };
+        s.ladderTitle = "TOUCH";
+        s.ladderMarks = { -12.0f, -24.0f, -36.0f, -48.0f, -60.0f };
+        s.ladderLabels = { "-12", "-24", "-36", "-48", "-60" };
+        s.ladderReading = [&p] { return p.getProximity().getNoiseDb(); };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getProximitySettings();
+            const auto end = drawNumber (g, "+" + juce::String (effects::Proximity::closeDb (settings.close), 1), left.getTopLeft(), h);
+            line (g, "DB", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "UP CLOSE", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "NOISE " + textOf (p, ParamIDs::proximityNoise), "ROOM " + textOf (p, ParamIDs::proximityRoom),
+                                  "HUM " + textOf (p, ParamIDs::proximityHum), "TONE " + textOf (p, ParamIDs::proximityTone) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (13); };
+    }
+
+    // HAZE (0.66.0): the pass in big digits, how far it bends and how often; the keys set how hard it passes:
+    // CRUISE, PASSING, RUSH (DEPTH and DOPPLER together).
+    {
+        auto& s = specs[14];
+        s.name = "HAZE";
+        s.kind = "PASSING LIGHTS  DEPTH  DOPPLER";
+        s.onParameterIds = { ParamIDs::hazeOn };
+        s.powerTooltip = "HAZE on or off: your sound sweeping past like streetlights, in time with your song. Click POWER (the word) or EDIT for its page";
+        struct Pace { const char* name; float depth, doppler; const char* tip; };
+        static constexpr Pace paces[] = { { "CRUISE", 0.3f, 0.2f, "A gentle drift past, barely bending" },
+                                          { "PASSING", 0.55f, 0.45f, "Lights sweeping by, the pitch leaning as they pass" },
+                                          { "RUSH", 0.85f, 0.8f, "Rushing past, close and fast" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& pc = paces[k];
+            s.keys[(size_t) k] = RackUnit::Key { pc.name, pc.tip,
+                                                 [&p, pc] { return std::abs (valueOf (p, ParamIDs::hazeDepth) - pc.depth) < 0.01f
+                                                                   && std::abs (valueOf (p, ParamIDs::hazeDoppler) - pc.doppler) < 0.01f; },
+                                                 [&p, pc]
+                                                 {
+                                                     setValue (p, ParamIDs::hazeDepth, pc.depth);
+                                                     setValue (p, ParamIDs::hazeDoppler, pc.doppler);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::hazeDepth, "DEPTH" }, RackUnit::Knob { ParamIDs::hazeDoppler, "DOPPLER" } };
+        s.ladderTitle = "PASS";
+        s.ladderMarks = { 12.0f, 9.0f, 6.0f, 3.0f, 1.0f };
+        s.ladderLabels = { "-12", "-9", "-6", "-3", "-1" };
+        s.ladderReading = [&p] { return -p.getHaze().getLevelDb(); };   // how far it has fallen: further away, more lit
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getHazeSettings();
+            const auto shift = settings.on ? p.getHaze().getShiftCents() : 0.0f;
+            const auto end = drawNumber (g, (shift >= 0.0f ? "+" : "") + juce::String (juce::roundToInt (shift)), left.getTopLeft(), h);
+            line (g, "CENTS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "PASSING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "EVERY " + textOf (p, ParamIDs::hazeDivision), "DEPTH " + textOf (p, ParamIDs::hazeDepth),
+                                  "DOPPLER " + textOf (p, ParamIDs::hazeDoppler), "WHOOSH " + textOf (p, ParamIDs::hazeWhoosh) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (14); };
+    }
+
+    // SPECTRE (0.67.0): the ghost's level in big digits, how far behind and how long it stays; the keys set how
+    // strongly it haunts: WHISPER, SHADOW, WRAITH (MIX and AIR together, WRAITH hollow and lingering).
+    {
+        auto& s = specs[15];
+        s.name = "SPECTRE";
+        s.kind = "GHOST ON BREATH  MIX  LINGER";
+        s.onParameterIds = { ParamIDs::spectreOn };
+        s.powerTooltip = "SPECTRE on or off: a whispered ghost of your sound following it. Click POWER (the word) or EDIT for its page";
+        struct Haunt { const char* name; float mix, air, linger; const char* tip; };
+        static constexpr Haunt haunts[] = { { "WHISPER", 0.3f, 0.85f, 0.3f, "A faint breath behind each note" },
+                                            { "SHADOW", 0.55f, 0.55f, 0.45f, "A clear ghost, close behind" },
+                                            { "WRAITH", 0.85f, 0.2f, 0.7f, "Hollow and lingering, haunting every phrase" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& h = haunts[k];
+            s.keys[(size_t) k] = RackUnit::Key { h.name, h.tip,
+                                                 [&p, h] { return std::abs (valueOf (p, ParamIDs::spectreMix) - h.mix) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::spectreAir) - h.air) < 0.01f; },
+                                                 [&p, h]
+                                                 {
+                                                     setValue (p, ParamIDs::spectreMix, h.mix);
+                                                     setValue (p, ParamIDs::spectreAir, h.air);
+                                                     setValue (p, ParamIDs::spectreLinger, h.linger);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::spectreMix, "MIX" }, RackUnit::Knob { ParamIDs::spectreLinger, "LINGER" } };
+        s.ladderTitle = "GHOST";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getSpectreSettings().on ? p.getSpectre().getGhostDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            using Sp = effects::Spectre;
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getSpectreSettings();
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (Sp::trailMs (settings.trail))), left.getTopLeft(), h);
+            line (g, "MS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "BEHIND", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "MIX " + textOf (p, ParamIDs::spectreMix), "LINGER " + textOf (p, ParamIDs::spectreLinger),
+                                  "AIR " + textOf (p, ParamIDs::spectreAir), "SHIFT " + textOf (p, ParamIDs::spectreShift) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (15); };
+    }
+
+    // LEVIATHAN (0.68.0): the note it sings in big letters, how deep and how rough; the keys set how near it comes:
+    // DISTANT, CALLING, RISING (MIX and GROWL together).
+    {
+        auto& s = specs[16];
+        s.name = "LEVIATHAN";
+        s.kind = "VOICE BENEATH  MIX  GROWL";
+        s.onParameterIds = { ParamIDs::leviathanOn };
+        s.powerTooltip = "LEVIATHAN on or off: a vast voice singing far beneath what you play. Click POWER (the word) or EDIT for its page";
+        struct Call { const char* name; float mix, growl; const char* tip; };
+        static constexpr Call calls[] = { { "DISTANT", 0.3f, 0.15f, "A low hum from far off, under the fog" },
+                                          { "CALLING", 0.55f, 0.35f, "A clear, slow voice answering beneath you" },
+                                          { "RISING", 0.85f, 0.65f, "Huge and near, groaning and creaking" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& c = calls[k];
+            s.keys[(size_t) k] = RackUnit::Key { c.name, c.tip,
+                                                 [&p, c] { return std::abs (valueOf (p, ParamIDs::leviathanMix) - c.mix) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::leviathanGrowl) - c.growl) < 0.01f; },
+                                                 [&p, c]
+                                                 {
+                                                     setValue (p, ParamIDs::leviathanMix, c.mix);
+                                                     setValue (p, ParamIDs::leviathanGrowl, c.growl);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::leviathanMix, "MIX" }, RackUnit::Knob { ParamIDs::leviathanGrowl, "GROWL" } };
+        s.ladderTitle = "VOICE";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getLeviathanSettings().on ? p.getLeviathan().getLevelDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto sung = p.getLeviathanSettings().on ? p.getLeviathan().getSungNote() : -1.0f;
+            const auto hz = sung < 0.0f ? 0.0 : 440.0 * std::pow (2.0, (sung - 69.0) / 12.0);
+            const auto end = drawNumber (g, juce::String (hz, 1), left.getTopLeft(), h);
+            line (g, "HZ", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, sung < 0.0f ? juce::String ("SILENT") : "SINGING " + juce::MidiMessage::getMidiNoteName (juce::roundToInt (sung), true, true, 4),
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "DEPTH " + textOf (p, ParamIDs::leviathanDepth), "MIX " + textOf (p, ParamIDs::leviathanMix),
+                                  "GROWL " + textOf (p, ParamIDs::leviathanGrowl), "DELAY " + textOf (p, ParamIDs::leviathanDelay) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (16); };
+    }
+
+    // NUCLEARSPRING (0.69.0): the tank's decay in big digits, its drip and size; the keys pick a tank: AMP (a small
+    // amp's short, quick one), ORGAN (a long, lush organ tank), SURF (all drip).
+    {
+        auto& s = specs[17];
+        s.name = "NUCLEARSPRING";
+        s.kind = "SPRING TANK  MIX  DRIP";
+        s.onParameterIds = { ParamIDs::springOn };
+        s.powerTooltip = "NUCLEARSPRING on or off: a vintage spring reverb tank, drippy and twangy. Click POWER (the word) or EDIT for its page";
+        struct Tank { const char* name; float size, decay, drip; const char* tip; };
+        static constexpr Tank tanks[] = { { "AMP", 0.2f, 0.25f, 0.45f, "A small amp's short, quick tank" },
+                                          { "ORGAN", 0.85f, 0.65f, 0.55f, "A long, lush organ tank" },
+                                          { "SURF", 0.5f, 0.5f, 1.0f, "All drip: the wet, twangy splash" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = tanks[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::springSize) - t.size) < 0.01f
+                                                                  && std::abs (valueOf (p, ParamIDs::springDrip) - t.drip) < 0.01f; },
+                                                 [&p, t]
+                                                 {
+                                                     setValue (p, ParamIDs::springSize, t.size);
+                                                     setValue (p, ParamIDs::springDecay, t.decay);
+                                                     setValue (p, ParamIDs::springDrip, t.drip);
+                                                 } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::springMix, "MIX" }, RackUnit::Knob { ParamIDs::springDrip, "DRIP" } };
+        s.ladderTitle = "TANK";
+        s.ladderMarks = { -3.0f, -9.0f, -18.0f, -30.0f, -48.0f };
+        s.ladderLabels = { "-3", "-9", "-18", "-30", "-48" };
+        s.ladderReading = [&p] { return p.getNuclearSpringSettings().on ? p.getNuclearSpring().getLevelDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            using N = effects::NuclearSpring;
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getNuclearSpringSettings();
+            const auto end = drawNumber (g, juce::String (N::decaySeconds (settings.decay), 1), left.getTopLeft(), h);
+            line (g, "S", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "DECAY", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "MIX " + textOf (p, ParamIDs::springMix), "DRIP " + textOf (p, ParamIDs::springDrip),
+                                  "SIZE " + textOf (p, ParamIDs::springSize), "BOING " + textOf (p, ParamIDs::springBoing) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (17); };
+    }
+
+    // LIGHTSPEED (0.73.0): how far into the jump in big digits (%), the streaks' pitch, the whoosh; the keys set JUMP:
+    // CRUISE (a hint of it), JUMP (half way), PLAID (all the way); the ladder the whoosh's level.
+    {
+        auto& s = specs[18];
+        s.name = "LIGHTSPEED";
+        s.kind = "THE JUMP  STREAKS  WHOOSH";
+        s.onParameterIds = { ParamIDs::jumpOn };
+        s.powerTooltip = "LIGHTSPEED on or off: the jump to lightspeed, streaks and rushing air. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float jump; const char* tip; };
+        static constexpr Stage stages[] = { { "CRUISE", 0.2f, "A hint of the jump: the streaks just starting" },
+                                            { "JUMP", 0.55f, "Half way into the jump" },
+                                            { "PLAID", 1.0f, "All the way: lightspeed" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::jumpAmount) - t.jump) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::jumpAmount, t.jump); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::jumpAmount, "JUMP" }, RackUnit::Knob { ParamIDs::jumpRise, "RISE" } };
+        s.ladderTitle = "RUSH";
+        s.ladderMarks = { -6.0f, -12.0f, -24.0f, -36.0f, -48.0f };
+        s.ladderLabels = { "-6", "-12", "-24", "-36", "-48" };
+        s.ladderReading = [&p] { return p.getLightSpeedSettings().on ? p.getLightSpeed().getWhooshDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto on = p.getLightSpeedSettings().on;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * (on ? p.getLightSpeed().getSpool() : 0.0f))), left.getTopLeft(), h);
+            line (g, "%", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "INTO THE JUMP", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "JUMP " + textOf (p, ParamIDs::jumpAmount), "RISE " + textOf (p, ParamIDs::jumpRise),
+                                  "STREAKS " + textOf (p, ParamIDs::jumpStreak), "WHOOSH " + textOf (p, ParamIDs::jumpWhoosh) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (18); };
+    }
+
+    // BLOOM (0.74.0): how open the bloom is in big digits (%), its settings; the keys set AMOUNT: CLOSE (a touch of
+    // the strings and room), HALL (half way), CATHEDRAL (all the way); the ladder the hall's level.
+    {
+        auto& s = specs[19];
+        s.name = "BLOOM";
+        s.kind = "STRINGS  HALL  SWELL";
+        s.onParameterIds = { ParamIDs::bloomOn };
+        s.powerTooltip = "BLOOM on or off: the piano's strings ringing along and a hall opening out. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "CLOSE", 0.2f, "A touch of the strings and the room: still close" },
+                                            { "HALL", 0.55f, "Half way: the strings ringing, the hall opening" },
+                                            { "CATHEDRAL", 1.0f, "All the way: vast" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::bloomAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::bloomAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::bloomAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::bloomSize, "SIZE" } };
+        s.ladderTitle = "HALL";
+        s.ladderMarks = { -6.0f, -12.0f, -24.0f, -36.0f, -48.0f };
+        s.ladderLabels = { "-6", "-12", "-24", "-36", "-48" };
+        s.ladderReading = [&p] { return p.getBloomSettings().on ? p.getBloom().getHallDb() : -100.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto on = p.getBloomSettings().on;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * (on ? p.getBloom().getAmount() : 0.0f))), left.getTopLeft(), h);
+            line (g, "%", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "IN BLOOM", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::bloomAmount), "STRINGS " + textOf (p, ParamIDs::bloomResonance),
+                                  "SIZE " + textOf (p, ParamIDs::bloomSize), "SWELL " + textOf (p, ParamIDs::bloomSwell) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (19); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

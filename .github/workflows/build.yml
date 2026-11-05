@@ -20,10 +20,6 @@ jobs:
             os: ubuntu-24.04
             pluginval_zip: pluginval_Linux.zip
             pluginval_bin: ./pluginval
-          - name: macOS
-            os: macos-15
-            pluginval_zip: pluginval_macOS.zip
-            pluginval_bin: ./pluginval.app/Contents/MacOS/pluginval
           - name: Windows
             os: windows-2022
             pluginval_zip: pluginval_Windows.zip
@@ -38,7 +34,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build xvfb \
             libasound2-dev libjack-jackd2-dev ladspa-sdk \
-            libfreetype-dev libfontconfig1-dev \
+            libfreetype-dev libfontconfig1-dev libcurl4-openssl-dev \
             libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
             libxrandr-dev libxrender-dev libxi-dev \
             libegl-dev libglu1-mesa-dev mesa-common-dev
@@ -108,7 +104,7 @@ jobs:
   # Publishes a GitHub Release whenever a push carries a version number
   # (in CMakeLists.txt) that hasn't been released yet: bump the version and
   # add a CHANGELOG.md section, push, and the release appears. Pushing a
-  # matching vX.Y.Z tag works too. The release holds the three builds
+  # matching vX.Y.Z tag works too. The release holds the builds
   # above, zipped, with notes from CHANGELOG.md.
   release:
     name: Release
@@ -152,10 +148,10 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           mkdir release
           # Artifact storage drops file permissions; put the executable flag
-          # back on the macOS and Linux binaries so every host will load them.
-          chmod -R a+x "artifacts/ParagonX1-VST3-macOS/Paragon PR7-K.vst3/Contents/MacOS" \
-                       "artifacts/ParagonX1-VST3-Linux/Paragon PR7-K.vst3/Contents/x86_64-linux"
-          for os in Windows macOS Linux; do
+          # back on the Linux binary so hosts will load it. (No macOS build since
+          # 0.71.0: the owner has no Mac, and the account's macOS runners never came.)
+          chmod -R a+x "artifacts/ParagonX1-VST3-Linux/Paragon PR7-K.vst3/Contents/x86_64-linux"
+          for os in Windows Linux; do
             (cd "artifacts/ParagonX1-VST3-${os}" && zip -qr "../../release/ParagonPR7-K-${TAG}-${os}-VST3.zip" "Paragon PR7-K.vst3")
           done
           ls -l release

@@ -22,10 +22,12 @@ namespace synth
     inline constexpr int maxVoices = 64;       // notes at once
 
     class Wavetable;
+    namespace sfz { struct Instrument; }
 
     // Saved by index (osc*Wave): only ever append. WAVETABLE came in stage 3 (0.3.0), FREEFORM in 0.7.0.
-    enum class OscWave { saw, pulse, triangle, sine, wavetable, freeform };
-    inline const juce::StringArray oscWaveNames { "Saw", "Pulse", "Triangle", "Sine", "Wavetable", "Freeform" };
+    // SFZ came in 0.71.0 (a sampled instrument: Sfz.h).
+    enum class OscWave { saw, pulse, triangle, sine, wavetable, freeform, sfz };
+    inline const juce::StringArray oscWaveNames { "Saw", "Pulse", "Triangle", "Sine", "Wavetable", "Freeform", "SFZ" };
 
     // Saved by index (osc*WtMode): only ever append. How INDEX moves between
     // frames: SMOOTH blends the two nearest, STEPPY jumps from one to the next.
@@ -156,6 +158,8 @@ namespace synth
         // where in it (INDEX, 0 to 1), how it moves, and how many of its frames
         // INDEX steps through (FRAMES, 2 to 256, spread evenly).
         const Wavetable* table = nullptr;
+        // SFZ (0.71.0): the sampled instrument it plays (owned by the processor, as the tables are).
+        const sfz::Instrument* instrument = nullptr;
         float tableIndex = 0.0f;
         bool tableSteppy = false;
         int tableFrames = maxWavetableFrames;

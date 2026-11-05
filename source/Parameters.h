@@ -449,6 +449,73 @@ namespace ParamIDs
     inline constexpr auto dilationReach  = "dilationReach";    // 0 to 1: 1 s to 8 s behind at most
     inline constexpr auto dilationTone   = "dilationTone";     // 0 to 1
     inline constexpr auto dilationMix    = "dilationMix";      // 0 to 1
+    // REMNANT (0.64.0, version hint 36, effects::Remnant): DREAMSTATE's signature.
+    inline constexpr auto remnantOn     = "remnantOn";
+    inline constexpr auto remnantLayers = "remnantLayers";   // Remnant::layerNames: 1 to 3
+    inline constexpr auto remnantStep   = "remnantStep";     // Remnant::stepNames
+    inline constexpr auto remnantLength = "remnantLength";   // 0 to 1: 0.4 s to 4 s
+    inline constexpr auto remnantTaper  = "remnantTaper";    // 0 to 1: each deeper layer 0 to 12 dB quieter
+    inline constexpr auto remnantTone   = "remnantTone";     // 0 to 1
+    inline constexpr auto remnantWidth  = "remnantWidth";    // 0 to 1
+    inline constexpr auto remnantMix    = "remnantMix";      // 0 to 1
+    // PROXIMITY (0.65.0, version hint 37, effects::Proximity): NEGATIVE SPACE's signature.
+    inline constexpr auto proximityOn    = "proximityOn";
+    inline constexpr auto proximityNoise = "proximityNoise";   // 0 to 1: the touches, -48 to -6 dB (0 none)
+    inline constexpr auto proximityTone  = "proximityTone";    // 0 to 1: 800 Hz to 6.4 kHz
+    inline constexpr auto proximityRoom  = "proximityRoom";    // 0 to 1: -72 to -30 dB (0 none)
+    inline constexpr auto proximityHum   = "proximityHum";     // Proximity::humNames
+    inline constexpr auto proximityClose = "proximityClose";   // 0 to 1: 0 to +6 dB at 180 Hz
+    inline constexpr auto proximityWidth = "proximityWidth";   // 0 to 1
+    // HAZE (0.66.0, version hint 38, effects::Haze): NIGHTDRIVE's signature.
+    inline constexpr auto hazeOn       = "hazeOn";
+    inline constexpr auto hazeDivision = "hazeDivision";   // Haze::divisionNames: a pass every half bar to 4 bars
+    inline constexpr auto hazeDepth    = "hazeDepth";      // 0 to 1
+    inline constexpr auto hazeDoppler  = "hazeDoppler";    // 0 to 1: 0 to 40 cents at the steepest
+    inline constexpr auto hazeWidth    = "hazeWidth";      // 0 to 1
+    inline constexpr auto hazeTone     = "hazeTone";       // 0 to 1: far cutoff 1.5 to 12 kHz
+    inline constexpr auto hazeWhoosh   = "hazeWhoosh";     // 0 to 1
+    // SPECTRE (0.67.0, version hint 39, effects::Spectre): CYBERSHRINE's signature.
+    inline constexpr auto spectreOn     = "spectreOn";
+    inline constexpr auto spectreMix    = "spectreMix";      // 0 to 1
+    inline constexpr auto spectreTrail  = "spectreTrail";    // 0 to 1: 0 to 800 ms behind
+    inline constexpr auto spectreLinger = "spectreLinger";   // 0 to 1: 0.1 to 4 s to fall 60 dB
+    inline constexpr auto spectreAir    = "spectreAir";      // 0 hollow to 1 breathy
+    inline constexpr auto spectreDrift  = "spectreDrift";    // 0 to 1
+    inline constexpr auto spectreShift  = "spectreShift";    // -1 to 1: an octave down to an octave up
+    // LEVIATHAN (0.68.0, version hint 40, effects::Leviathan): UNSPOKEN's signature.
+    inline constexpr auto leviathanOn    = "leviathanOn";
+    inline constexpr auto leviathanMix   = "leviathanMix";     // 0 to 1
+    inline constexpr auto leviathanDepth = "leviathanDepth";   // Leviathan::depthNames: 1 or 2 octaves below
+    inline constexpr auto leviathanDrift = "leviathanDrift";   // 0 to 1: the vowel moves every 6 s down to 0.8 s
+    inline constexpr auto leviathanGrowl = "leviathanGrowl";   // 0 to 1
+    inline constexpr auto leviathanDelay = "leviathanDelay";   // 0 to 1: 0 to 1.5 s behind
+    inline constexpr auto leviathanSize  = "leviathanSize";    // 0 to 1: formants x 1 down to x 0.55
+    // NUCLEARSPRING (0.69.0, version hint 41, effects::NuclearSpring): ATOMIC AGE's signature.
+    inline constexpr auto springOn    = "springOn";
+    inline constexpr auto springMix   = "springMix";     // 0 to 1
+    inline constexpr auto springDecay = "springDecay";   // 0 to 1: 0.8 to 5 s
+    inline constexpr auto springDrip  = "springDrip";    // 0 to 1
+    inline constexpr auto springTone  = "springTone";    // 0 to 1: 2 to 8 kHz
+    inline constexpr auto springSize  = "springSize";    // 0 to 1: the springs x 0.7 to x 1.4
+    inline constexpr auto springBoing = "springBoing";   // 0 to 1
+    inline constexpr auto springWidth = "springWidth";   // 0 to 1
+    // LIGHTSPEED (0.73.0, version hint 42, effects::LightSpeed): HYPERDRIVE's signature.
+    inline constexpr auto jumpOn     = "jumpOn";
+    inline constexpr auto jumpAmount = "jumpAmount";   // 0 to 1: JUMP
+    inline constexpr auto jumpRise   = "jumpRise";     // 0 to 1: the top streak 0 to +24 semitones at full JUMP
+    inline constexpr auto jumpStreak = "jumpStreak";   // 0 to 1
+    inline constexpr auto jumpWhoosh = "jumpWhoosh";   // 0 to 1
+    inline constexpr auto jumpWidth  = "jumpWidth";    // 0 to 1
+    inline constexpr auto jumpTone   = "jumpTone";     // 0 to 1: 2 to 16 kHz
+    // BLOOM (0.74.0, version hint 43, effects::Bloom): GRAND CINEMA's signature.
+    inline constexpr auto bloomOn        = "bloomOn";
+    inline constexpr auto bloomAmount    = "bloomAmount";      // 0 to 1: how much (the macro's)
+    inline constexpr auto bloomResonance = "bloomResonance";   // 0 to 1: the sympathetic strings' share
+    inline constexpr auto bloomRing      = "bloomRing";        // 0 to 1: the strings' fall, 1.5 to 12 s
+    inline constexpr auto bloomSize      = "bloomSize";        // 0 to 1: the hall's fall, 2 to 12 s
+    inline constexpr auto bloomSwell     = "bloomSwell";       // 0 to 1: the hall opening, 0.15 to 4 s
+    inline constexpr auto bloomTone      = "bloomTone";        // 0 to 1: 1.5 to 15 kHz
+    inline constexpr auto bloomWidth     = "bloomWidth";       // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -532,4 +599,12 @@ void addAfterglowParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addLightTrailParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); // RackParameters.cpp (0.61.0)
 void addBlackHoleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.62.0)
 void addDilationParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.63.0)
+void addRemnantParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.64.0)
+void addProximityParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.65.0)
+void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.66.0)
+void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.67.0)
+void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.68.0)
+void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.69.0)
+void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.73.0)
+void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

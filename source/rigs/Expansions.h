@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 24> list
+    inline constexpr std::array<Expansion, 27> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -50,23 +50,27 @@ namespace expansions
         { "DREAMSTATE", "DR",
           "Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a "
           "crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy "
-          "reverb-soaked guitar, sparse piano and ticking clocks. Our own sounds." },
+          "reverb-soaked guitar, sparse piano and ticking clocks. Built round REMNANT (0.64.0), layers of your sound "
+          "beneath it, each deeper one slower, and MACRO 3, DREAM. Our own sounds." },
         { "NEGATIVE SPACE", "NS",
           "Inspired by the modern dark-ambient film and TV scores of the 2010s: a fragile, intimate felt piano close up "
-          "over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Our own "
-          "sounds." },
+          "over cold, rumbling electronics, hypnotic analog pulses, glitchy broken textures and buzzing grit. Built round "
+          "PROXIMITY (0.65.0), the sound of playing heard up close, and MACRO 3, CLOSER. Our own sounds." },
         { "NIGHTDRIVE", "ND",
           "Inspired by the score and soundtrack of a 2011 neo-noir film about a getaway driver: late-night retro "
           "synthwave, all the way up: lush chorused polysynths, glassy '80s keys, pulsing octave basses, "
-          "dreamy romantic leads, big reverbs and echoes. Our own sounds." },
+          "dreamy romantic leads, big reverbs and echoes. Built round HAZE (0.66.0), your sound sweeping past like "
+          "streetlights, and MACRO 3, HAZE. Our own sounds." },
         { "UNSPOKEN", "UN",
           "Inspired by the score of a 2016 film about first contact and a language that changes how you see time: "
           "human voices breathing, murmuring and stuttering in eerie layers, vast swelling drones, circular phrases "
-          "that run forwards and back, cold fog, quiet awe and grief. Our own sounds." },
+          "that run forwards and back, cold fog, quiet awe and grief. Built round LEVIATHAN (0.68.0), a vast voice "
+          "singing beneath what you play, and MACRO 3, LEVIATHAN. Our own sounds." },
         { "CYBERSHRINE", "CS",
           "Inspired by the score of a 1995 animated cyberpunk film about a mind that may be a ghost in a machine: an "
           "ancient chorus of women's voices in close, clashing harmony, a huge, slow temple drum played as a bass, deep temple bells, and "
-          "a cold, rainy, reverberant machine world. Our own sounds." },
+          "a cold, rainy, reverberant machine world. Built round SPECTRE (0.67.0), a whispered ghost following your "
+          "sound, and MACRO 3, SPECTRE. Our own sounds." },
         { "STOWAWAY", "SW",
           "Inspired by the score and sound of a 1979 science-fiction horror film about something hiding aboard a ship "
           "in deep space: echoing woodwinds, primitive horns, trembling string harmonics, low brass clusters, the "
@@ -121,5 +125,22 @@ namespace expansions
           "power plant: pressure drones, groaning and ringing metal, pumps breathing, a counter's crackle, a lone voice "
           "rising out of the noise. Invisible danger, dread and grief. Built round CRACKLE, a counter's random clicks, "
           "and MACRO 3, DOSE: turn it up and the clicks thicken into a roar as the sound corrodes. Our own sounds." },
+        { "ATOMIC AGE", "AA",
+          "Inspired by the retro-futurist mid-century look of a 2024 series, played for its bright side: 1950s "
+          "atomic-age optimism, space-age lounge and exotica, doo-wop \"oohs\", a B-movie sci-fi singing sine, cheerful "
+          "jingles and a dusty desert-western twang. Built round NUCLEARSPRING (0.69.0), a vintage spring reverb tank, "
+          "and MACRO 3, SPRING. Our own sounds." },
+        { "HYPERDRIVE", "HD",
+          "Inspired by the late-'70s and early-'80s space-opera film scores: heroic brass fanfares, a lonely horn over a "
+          "desert horizon, a men's choir, shimmering strings, a marching low-brass ostinato, a smoky spaceport dance band, "
+          "harps, racing strings and beeping computers. Built round LIGHTSPEED (0.73.0) and MACRO 3, LIGHTSPEED: the jump "
+          "from rest to streaking stars. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
+          "(free), and PR7-K's own synthesized orchestra until then. Our own sounds." },
+        { "GRAND CINEMA", "GC",
+          "The modern film and trailer piano: intimate felt pianos heard up close, vast halls where the notes bloom into "
+          "each other, epic low octave hits and driving ostinatos, dark clusters and detuned, prepared pianos, a reversed "
+          "swell. Built round BLOOM (0.74.0), the strings ringing along and a hall opening out, and MACRO 3, BLOOM. Every "
+          "preset plays the Salamander Grand once it's downloaded (free), and PR7-K's own synthesized piano until then. "
+          "Our own sounds." },
     }};
 }

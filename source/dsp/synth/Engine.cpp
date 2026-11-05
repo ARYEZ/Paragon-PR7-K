@@ -269,6 +269,9 @@ namespace synth
                     }
                     break;
                 }
+                case OscWave::sfz:        // (played by renderSfz, never here)
+                    std::fill (out, out + n, 0.0f);
+                    break;
                 case OscWave::wavetable:
                 case OscWave::freeform:   // (played as a one-frame wavetable: source.wave is wavetable by now)
                 {
@@ -367,6 +370,7 @@ namespace synth
         numArpEvents = 0;
         numPendingAnswers = 0;
         sampleClock = blockStartClock = 0;
+        numTouches = 0;
         liveCycles.fill (-1);
         keysDown.fill (false);
         numKeysDown = 0;
@@ -399,6 +403,7 @@ namespace synth
                           const juce::MidiBuffer& midi, int midiStart, const Settings& settings) noexcept
     {
         followMode (settings);
+        ampReleaseSeconds = settings.amp.envelope.releaseMs * 0.001f;
 
         // The SHAPERs' EQ bands: the same for every note, so worked out once here.
         for (int k = 0; k < numShapers; ++k)
@@ -465,6 +470,24 @@ namespace synth
             handle (metadata.getMessage(), settings);
         }
         advance (numSamples);
+
+        // SFZ: the disk streams no note reads any more are freed.
+        if (streamer != nullptr)
+        {
+            streamsInUse.fill (false);
+            for (const auto& voice : voices)
+                if (voice.playing)
+                    for (const auto& osc : voice.oscillators)
+                        for (const auto& player : osc.players)
+                            if (player.region != nullptr && player.stream >= 0)
+                                streamsInUse[(size_t) player.stream] = true;
+            for (int k = 0; k < numPendingTails; ++k)   // (samples handed to a tail not yet started)
+                for (const auto& osc : pendingTails[(size_t) k].handed)
+                    for (const auto& player : osc)
+                        if (player.region != nullptr && player.stream >= 0)
+                            streamsInUse[(size_t) player.stream] = true;
+            streamer->release (streamsInUse);
+        }
     }
 
     void Engine::handle (const juce::MidiMessage& message, const Settings& settings) noexcept
@@ -625,7 +648,7 @@ namespace synth
     {
         // Over VOICES: the quietest releasing note goes, or else the oldest. SIROCCO's answers (0.58.0) don't count:
         // they go with their note.
-        const auto counts = [this] (const Voice& v) { return v.playing && ! v.killing && v.source != answerSource; };
+        const auto counts = [this] (const Voice& v) { return v.playing && ! v.killing && v.source != answerSource && v.source != tailSource; };
         auto sounding = (int) std::count_if (voices.begin(), voices.end(), counts);
         while (sounding >= juce::jlimit (1, maxVoices, settings.play.voices))
         {
@@ -753,8 +776,27 @@ namespace synth
         numKeysDown = 0;
     }
 
+    int Engine::takeTouches (Touch* out, int capacity) noexcept
+    {
+        const auto n = juce::jmin (capacity, numTouches);
+        std::copy (touches.begin(), touches.begin() + n, out);
+        numTouches = 0;
+        return n;
+    }
+
     void Engine::sustainPedal (bool down) noexcept
     {
+        if (down != pedalDown)
+        {
+            touch (down ? Touch::Kind::pedalDown : Touch::Kind::pedalUp, 0.0f, 1.0f);
+            // SFZ: the pedal's own sounds (startTails finds the oscillators whose instrument has them).
+            if (numPendingTails < (int) pendingTails.size())
+            {
+                auto& tail = pendingTails[(size_t) numPendingTails++];
+                tail = {};
+                tail.pedal = down ? 127 : 0;
+            }
+        }
         pedalDown = down;
         if (down)
             return;
@@ -798,6 +840,8 @@ namespace synth
 
     void Engine::startVoice (Voice& voice, int note, float velocity, float fromPitch, const Settings& settings, int source, std::uint8_t mask) noexcept
     {
+        if (source != answerSource && source != tailSource)
+            touch (Touch::Kind::press, (float) note, velocity);
         free (voice);
         voice.source = source;
         voice.oscMask = mask;
@@ -847,7 +891,8 @@ namespace synth
             const auto& s = settings.oscillators[i];
             auto& osc = voice.oscillators[i];
             const auto wasActive = osc.active && ! osc.fadingOut;
-            const auto plays = s.on && ((voice.oscMask >> i) & 1u) != 0;   // (an arp's note: only its oscillators)
+            const auto plays = s.on && ((voice.oscMask >> i) & 1u) != 0   // (an arp's note: only its oscillators)
+                            && (voice.source != tailSource || s.wave == OscWave::sfz);
             osc.active = plays;
             osc.fadingOut = false;
             if (! plays)
@@ -911,6 +956,15 @@ namespace synth
                 osc.vibratoAge = 0;   // the vibrato fades in again with each new note
                 osc.syncAge = 0;      // ...and SYNC's envelope starts again
             }
+            // SFZ: the regions for this note (a tail voice: the release samples).
+            if (s.wave == OscWave::sfz)
+            {
+                startSfz (voice, osc, i, s, voice.source == tailSource);
+                if (std::none_of (osc.players.begin(), osc.players.end(), [] (const SfzPlayer& p) { return p.region != nullptr; }))
+                    osc.active = false;   // no region for this key and velocity: silent, and costs nothing
+            }
+            else
+                osc.instrument = nullptr;
         }
     }
 
@@ -974,6 +1028,54 @@ namespace synth
 
     void Engine::releaseVoice (Voice& voice) noexcept
     {
+        if (voice.source == tailSource)
+            return;
+        // LOOP_SUSTAIN (0.73.0): those samples stop going round and play on past their loop.
+        for (auto& osc : voice.oscillators)
+            for (auto& player : osc.players)
+                if (player.region != nullptr && player.region->loop == sfz::Region::Loop::sustain)
+                    player.looping = false;
+        // SFZ: the release samples of its sampled oscillators, played in a voice of their own (startTails).
+        // Samples whose AMPEG_RELEASE outlasts the AMP's (a piano's undamped top strings) go with them, falling over
+        // their own release (60 dB in that time) from the level the AMP had reached.
+        if (numPendingTails < (int) pendingTails.size())
+        {
+            auto& tail = pendingTails[(size_t) numPendingTails];
+            tail = {};
+            for (size_t i = 0; i < voice.oscillators.size(); ++i)
+            {
+                auto& osc = voice.oscillators[i];
+                if (! osc.active || osc.fadingOut || osc.instrument == nullptr)
+                    continue;
+                auto handedAny = false;
+                for (auto& player : osc.players)
+                    if (player.region != nullptr && player.fadeStep >= 0.0f && ! player.region->release
+                        && player.region->releaseSeconds > ampReleaseSeconds)
+                    {
+                        auto& to = tail.handed[i][(size_t) (&player - osc.players.data())];
+                        to = player;
+                        to.gainLeft *= voice.amp.getLevel();
+                        to.gainRight *= voice.amp.getLevel();
+                        to.decay = (float) std::pow (10.0, -3.0 / (juce::jmax (0.01, (double) player.region->releaseSeconds) * sampleRate));
+                        player.region = nullptr;   // (its stream goes with it)
+                        handedAny = true;
+                    }
+                if (osc.instrument->hasRelease || handedAny)
+                {
+                    tail.mask = (std::uint8_t) (tail.mask | (1u << i));
+                    tail.instruments[i] = osc.instrument;
+                    tail.heldSeconds = (float) (osc.heldSamples / sampleRate);
+                    tail.note = osc.sfzKey;
+                }
+            }
+            if (tail.mask != 0)
+            {
+                tail.velocity = voice.velocity;
+                ++numPendingTails;
+            }
+        }
+        if (voice.source != answerSource)
+            touch (Touch::Kind::release, (float) voice.note, voice.velocity);
         voice.amp.release();
         voice.filter.release();
         for (auto& envelope : voice.envelopes)
@@ -1017,6 +1119,9 @@ namespace synth
             osc.active = osc.fadingOut = false;
             osc.fade = 1.0f;
             osc.fadeStep = 0.0f;
+            for (auto& player : osc.players)
+                player.region = nullptr;   // (its stream is freed at the block's end)
+            osc.instrument = nullptr;
         }
         if (&voice == monoVoice)
             monoVoice = nullptr;
@@ -1025,6 +1130,8 @@ namespace synth
     //==========================================================================
     void Engine::render (float* left, float* right, int numSamples, const Settings& settings) noexcept
     {
+        if (numPendingTails > 0)
+            startTails (settings);
         // In pieces of up to maxIntervals intervals, so the global LFOs' values for each fit.
         constexpr int piece = maxIntervals * controlInterval;
         for (int start = 0; start < numSamples; start += piece)
@@ -1465,10 +1572,11 @@ namespace synth
         const auto volume = ampSettings.volume * velocityGain * answerGain;
         const auto spike = ampSettings.spike * spikeMaxGain * (1.0f - ampSettings.spikeVelocity * velocityDown);
         const auto spikeStep = 1.0f / juce::jmax (1.0f, spikeMs * 0.001f * (float) sampleRate);
+        const auto tail = voice.source == tailSource;   // SFZ release samples: past the AMP's envelope, to their end
         for (int i = 0; i < n; ++i)
         {
-            auto gain = voice.amp.next() * volume;
-            if (voice.spikePosition < 1.0f)
+            auto gain = tail ? volume : voice.amp.next() * volume;
+            if (voice.spikePosition < 1.0f && ! tail)
             {
                 gain *= 1.0f + spike * (1.0f - synth::bend (voice.spikePosition, ampSettings.spikeCurve));
                 voice.spikePosition += spikeStep;
@@ -1506,7 +1614,12 @@ namespace synth
 
         // Over once it can't be heard.
         const auto& amp = voice.amp;
-        if (! amp.isActive()
+        if (tail)
+        {
+            if (voice.killing && voice.killGain <= 0.0f)
+                free (voice);
+        }
+        else if (! amp.isActive()
             || (voice.killing && voice.killGain <= 0.0f)
             || (amp.isReleasing() && amp.getLevel() < silence)
             || amp.isSilentSustain())
@@ -2576,8 +2689,17 @@ namespace synth
             const auto modLevel = tables::levelFor (hz * mod.ratio * 2.0f, sampleRate);
 
             auto* mono = scratch.data();
+            // SFZ: the samples, in stereo (into scratch and sfzRight); nothing of the wave's own shaping.
+            const auto sampled = s.wave == OscWave::sfz;
+            if (sampled)
+            {
+                audible = false;
+                renderSfz (voice, osc, s, basePitch + ownVibrato, mono, sfzRight.data(), n);
+            }
             const auto general = bending.active || mod.active || source.needsGeneralPath();
-            if (audible && general)
+            if (sampled)
+                ;
+            else if (audible && general)
                 renderBent (source, bending.forIncrement (increment), mod, tables::levelFor (hz * bending.speed * mod.speed, sampleRate), modLevel,
                             n, osc.phase, increment, osc.crushPrevious, osc.modPhase, osc.lastX,
                             [mono, gain = s.gain] (int i, float v) { mono[i] = v * gain; });
@@ -2589,7 +2711,7 @@ namespace synth
                 osc.phase = wrap (osc.phase + increment * (float) n);   // keeps running, silent
             }
 
-            if (s.sub > 0.0f)
+            if (s.sub > 0.0f && ! sampled)
             {
                 const auto octaves = (float) (s.subOctave - 2);   // -2, -1 or 0 octaves
                 const auto subHz = hz * std::exp2 (octaves);
@@ -2599,7 +2721,10 @@ namespace synth
             const auto sign = s.invert ? -1.0f : 1.0f;
             if (s.invert)
                 for (int i = 0; i < n; ++i)
+                {
                     mono[i] = -mono[i];
+                    sfzRight[(size_t) i] = -sfzRight[(size_t) i];
+                }
 
             // FADE IN (or fading out after a newer note took this oscillator) and
             // VOLUME, once for every copy.
@@ -2622,7 +2747,7 @@ namespace synth
             {
                 // FM's modulator for another oscillator (with its VOLUME and FADE IN): kept for it, not heard.
                 for (int i = 0; i < n; ++i)
-                    fmSignals[index][(size_t) i] = mono[i] * gains[(size_t) i];
+                    fmSignals[index][(size_t) i] = (sampled ? 0.5f * (mono[i] + sfzRight[(size_t) i]) : mono[i]) * gains[(size_t) i];
             }
             else
             {
@@ -2636,7 +2761,7 @@ namespace synth
                 const auto colour = s.noiseColour;
                 for (int i = 0; i < n; ++i)
                 {
-                    auto l = mono[i], r = mono[i];
+                    auto l = mono[i], r = sampled ? sfzRight[(size_t) i] : mono[i];
                     if (noise > 0.0f)
                     {
                         const auto noiseLeft = osc.noiseLeft.next (colour);
@@ -2702,6 +2827,211 @@ namespace synth
 
             if (osc.fadingOut && osc.fade <= 0.0f)
                 osc.active = false;
+            // SFZ: over when every sample it played has ended.
+            if (sampled && std::none_of (osc.players.begin(), osc.players.end(), [] (const SfzPlayer& p) { return p.region != nullptr; }))
+                osc.active = false;
         }
+    }
+
+    //==========================================================================
+    // SFZ (0.71.0)
+    void Engine::startSfz (Voice& voice, OscState& osc, size_t index, const OscSettings& s, bool release) noexcept
+    {
+        // A tail voice: the release samples of the instrument its note played (startTails).
+        const auto* inst = release ? (startingTail != nullptr ? startingTail->instruments[index] : nullptr) : s.instrument;
+        // The last note's samples (a mono retrigger, a new instrument) fade out over 5 ms.
+        const auto fadeStep = -1.0f / juce::jmax (1.0f, 0.005f * (float) sampleRate);
+        for (auto& player : osc.players)
+            if (player.region != nullptr && player.fadeStep >= 0.0f)
+                player.fadeStep = fadeStep;
+        osc.instrument = inst;
+        osc.heldSamples = 0.0;
+        if (inst == nullptr)
+            return;
+
+        const auto key = juce::jlimit (0, 127, voice.note);
+        osc.sfzKey = key;
+        const auto velocity127 = juce::jlimit (1, 127, juce::roundToInt (voice.velocity * 127.0f));
+        auto& turn = sfzTurns[index][(size_t) key];
+        std::array<const sfz::Region*, sfz::maxPlayers> chosen {};
+        const auto pedalSounds = release && startingTail != nullptr && startingTail->pedal >= 0;
+        const auto count = pedalSounds ? inst->selectPedal (startingTail->pedal, random.nextFloat(), chosen.data(), (int) chosen.size())
+                                       : inst->select (key, velocity127, release, turn, random.nextFloat(), pedalDown ? 127 : 0,
+                                                       chosen.data(), (int) chosen.size());
+        if (! release)
+            turn = (std::uint8_t) (turn + 1);
+        // RT_DECAY: a release sample quieter the longer its note was held.
+        const auto held = release && startingTail != nullptr ? startingTail->heldSeconds : 0.0f;
+        for (int k = 0; k < count; ++k)
+        {
+            const auto& region = *chosen[(size_t) k];
+            // A free player, else the quietest fading one.
+            SfzPlayer* player = nullptr;
+            for (auto& p : osc.players)
+                if (p.region == nullptr)
+                {
+                    player = &p;
+                    break;
+                }
+            if (player == nullptr)
+                for (auto& p : osc.players)
+                    if (p.fadeStep < 0.0f && (player == nullptr || p.fade < player->fade))
+                        player = &p;
+            if (player == nullptr)
+                break;
+            const auto& sample = *inst->samples[(size_t) region.sample];
+            player->region = &region;
+            player->sample = &sample;
+            player->position = (double) region.offset;
+            player->fade = 1.0f;
+            player->fadeStep = 0.0f;
+            player->decay = 1.0f;
+            auto gain = region.gain * region.velocityGain (voice.velocity) * region.crossfade (velocity127);
+            // A loop needs the sample whole in memory (the reader keeps a looped one so).
+            player->looping = region.loops() && region.loopEnd < (juce::int64) sample.headFrames;   // (reads past LOOP_END wrap round)
+            if (release && region.rtDecayDb > 0.0f)
+                gain *= juce::Decibels::decibelsToGain (-region.rtDecayDb * held, -120.0f);
+            float l, r;
+            balance (region.pan, l, r);
+            player->gainLeft = gain * l;
+            player->gainRight = gain * r;
+            player->stream = sample.stream != nullptr && streamer != nullptr ? streamer->claim (*sample.stream) : -1;
+        }
+        // The released note's ringing samples, carried on here (their streams too).
+        if (release && startingTail != nullptr)
+            for (const auto& handed : startingTail->handed[index])
+                if (handed.region != nullptr)
+                    for (auto& p : osc.players)
+                        if (p.region == nullptr)
+                        {
+                            p = handed;
+                            break;
+                        }
+    }
+
+    void Engine::renderSfz (Voice& voice, OscState& osc, const OscSettings& s, float semitones, float* left, float* right, int n) noexcept
+    {
+        juce::ignoreUnused (voice, s);
+        std::fill (left, left + n, 0.0f);
+        std::fill (right, right + n, 0.0f);
+        osc.heldSamples += n;
+        for (auto& player : osc.players)
+        {
+            if (player.region == nullptr)
+                continue;
+            const auto& region = *player.region;
+            const auto& sample = *player.sample;
+            // Its speed: the key played against the region's PITCH_KEYCENTER (PITCH_KEYTRACK cents a key), its TUNE,
+            // and the oscillator's pitch against the key (TRANSPOSE, FINE, bend, glide, vibrato...).
+            const auto offset = (semitones - (float) osc.sfzKey) + ((float) osc.sfzKey - region.keyCenter) * region.keytrack + region.tuneSemitones;
+            const auto step = sample.sampleRate / sampleRate * std::exp2 ((double) offset / 12.0);
+            const auto length = sample.length;
+            const auto readable = player.stream >= 0 ? length : (juce::int64) sample.headFrames;
+            const auto* headL = sample.head[0].data();
+            const auto* headR = sample.head[1].data();
+            const auto heads = (juce::int64) sample.headFrames;
+            // LOOPS (0.73.0): past LOOP_END a read goes round to LOOP_START (the sample is whole in memory).
+            const auto looping = player.looping;
+            const auto loopStart = region.loopStart, loopEnd = region.loopEnd, loopLength = loopEnd - loopStart + 1;
+            const auto frameAt = [&] (int channel, juce::int64 frame) -> float
+            {
+                if (looping && frame > loopEnd)
+                    frame = loopStart + (frame - loopStart) % loopLength;
+                if (frame < 0 || frame >= readable)
+                    return 0.0f;
+                if (frame < heads)
+                    return (channel == 0 ? headL : headR)[frame];
+                return streamer->sample (player.stream, channel, frame, waitForDisk);
+            };
+            // Heads only (no stream free): a 5 ms fade before the head runs out.
+            const auto endFade = player.stream < 0 && readable < length ? 0.005 * sample.sampleRate : 0.0;
+            auto pos = player.position;
+            for (int i = 0; i < n; ++i)
+            {
+                const auto frame = (juce::int64) pos;
+                if (frame >= readable || player.fade <= 0.0f)
+                {
+                    player.region = nullptr;
+                    break;
+                }
+                const auto t = (float) (pos - (double) frame);
+                float out[2];
+                for (int c = 0; c < 2; ++c)
+                {
+                    float y0, y1, y2, y3;
+                    if (frame >= 1 && frame + 2 < heads && (! looping || frame + 2 <= loopEnd))
+                    {
+                        const auto* h = (c == 0 ? headL : headR) + frame;
+                        y0 = h[-1]; y1 = h[0]; y2 = h[1]; y3 = h[2];
+                    }
+                    else
+                    {
+                        y0 = frameAt (c, frame - 1); y1 = frameAt (c, frame);
+                        y2 = frameAt (c, frame + 1); y3 = frameAt (c, frame + 2);
+                    }
+                    // Four-point Hermite between y1 and y2.
+                    const auto c1 = 0.5f * (y2 - y0);
+                    const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
+                    const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
+                    out[c] = ((c3 * t + c2) * t + c1) * t + y1;
+                }
+                auto g = player.fade;
+                if (endFade > 0.0 && (double) readable - pos < endFade)
+                    g *= (float) (((double) readable - pos) / endFade);
+                left[i] += out[0] * player.gainLeft * g;
+                right[i] += out[1] * player.gainRight * g;
+                if (player.fadeStep < 0.0f)
+                    player.fade += player.fadeStep;
+                if (player.decay < 1.0f && (player.fade *= player.decay) < 1.0e-4f)
+                    player.fade = 0.0f;   // 80 dB down: over
+                pos += step;
+                if (looping && pos >= (double) (loopEnd + 1))
+                    pos -= (double) loopLength * std::floor ((pos - (double) loopStart) / (double) loopLength);
+            }
+            player.position = pos;
+            if (player.region != nullptr && player.stream >= 0)
+                streamer->consumed (player.stream, juce::jmax ((juce::int64) 0, (juce::int64) pos - 2));
+        }
+    }
+
+    void Engine::startTails (const Settings& settings) noexcept
+    {
+        for (int k = 0; k < numPendingTails; ++k)
+        {
+            auto& tail = pendingTails[(size_t) k];
+            if (tail.pedal >= 0)
+            {
+                // The pedal moved: every sampled oscillator whose instrument has pedal sounds.
+                for (size_t i = 0; i < settings.oscillators.size(); ++i)
+                {
+                    const auto& s = settings.oscillators[i];
+                    const auto* inst = s.on && s.wave == OscWave::sfz ? s.instrument : nullptr;
+                    tail.instruments[i] = inst != nullptr && inst->hasPedalSounds ? inst : nullptr;
+                    if (tail.instruments[i] != nullptr)
+                        tail.mask = (std::uint8_t) (tail.mask | (1u << i));
+                }
+                if (tail.mask == 0)
+                    continue;
+            }
+            // A free voice of the pool, or none (release samples never take a note's place).
+            Voice* voice = nullptr;
+            for (auto& v : voices)
+                if (! v.playing)
+                {
+                    voice = &v;
+                    break;
+                }
+            if (voice == nullptr)
+                break;
+            const auto keysLastPitch = lastPitch;   // a tail doesn't move the keys' glide
+            startingTail = &tail;
+            startVoice (*voice, tail.note, tail.velocity, (float) tail.note, settings, tailSource, tail.mask);
+            startingTail = nullptr;
+            lastPitch = keysLastPitch;
+            voice->held = false;               // nothing lets it go: it ends with its samples
+            if (std::none_of (voice->oscillators.begin(), voice->oscillators.end(), [] (const OscState& o) { return o.active; }))
+                free (*voice);
+        }
+        numPendingTails = 0;
     }
 }
