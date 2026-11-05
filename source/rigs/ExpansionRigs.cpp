@@ -13037,6 +13037,500 @@ namespace
         lightspeed (tines, { 0.6f, 0.6f, 0.4f, 0.9f, 0.7f });
         pkAdd (x, tines);
     }
+
+    // GRAND CINEMA (0.74.0, the owner's name): the modern film and trailer piano, a balanced mix of intimate (soft,
+    // close, felted), vast (long tails, notes blooming into each other), epic (low octave hits, driving ostinatos, big
+    // chords) and dark (low clusters, detuned and prepared pianos). Our own sounds. Every preset is a piano first:
+    // PR7-K's synthesized felt or soft piano, and a second version on the Salamander Grand (`grand`, below), played
+    // once it's downloaded.
+    // MACRO 3 on every preset is BLOOM (the bank's own effect, 0.74.0): at its left the effect rests, untouched; turning
+    // it up brings in the strings ringing along and the hall opening out.
+    struct Blossom
+    {
+        float resonance = 0.5f, ring = 0.5f, size = 0.5f, swell = 0.5f, tone = 0.5f, width = 0.8f;
+        float top = 1.0f;   // the macro's AMOUNT at full
+    };
+
+    void bloom (Builder& b, Blossom f)
+    {
+        b.set (ParamIDs::bloomOn, 1.0f).set (ParamIDs::bloomAmount, 0.0f).set (ParamIDs::bloomResonance, f.resonance)
+         .set (ParamIDs::bloomRing, f.ring).set (ParamIDs::bloomSize, f.size).set (ParamIDs::bloomSwell, f.swell)
+         .set (ParamIDs::bloomTone, f.tone).set (ParamIDs::bloomWidth, f.width);
+        route (b, "macro3", ParamIDs::bloomAmount, f.top);
+    }
+
+    // The piano helpers' own MACRO 3 jobs go (MACRO 3 is BLOOM here).
+    void dropMacro3 (Builder& b)
+    {
+        auto& routes = b.rig.modulation.routes;
+        routes.erase (std::remove_if (routes.begin(), routes.end(), [] (const ModRouteData& r) { return r.source == "macro3"; }), routes.end());
+    }
+
+    // GRAND CINEMA's real piano: as `realPiano`, but only the synthesized piano's oscillators (0 to pianoOscs - 1) go,
+    // so a preset's layers above them (a sub, a halo, strings, air) stay; the Salamander on oscillator 1 through the
+    // FILTER as set here; the AMP as given (velocity left to the piano's own layers); an arp preset's routing kept.
+    struct Grand
+    {
+        int pianoOscs = 4;
+        float cutoff = 4000.0f, keytrack = 0.5f, velocity = 0.4f, level = 0.0f, volume = 1.0f;
+        float attack = 0.0f, decay = 300.0f, sustain = 1.0f, release = 1000.0f;
+        juce::String notes;
+        std::function<void (Builder&)> tweak;
+    };
+
+    void grand (Builder& b, const Grand& g)
+    {
+        auto s = b;
+        const auto ofPiano = [&g] (const juce::String& id)
+        {
+            for (int n = 0; n < g.pianoOscs; ++n)
+            {
+                const auto prefix = "osc" + juce::String (n + 1);
+                if (id.startsWith (prefix) && id.length() > prefix.length() && ! juce::CharacterFunctions::isDigit (id[prefix.length()]))
+                    return true;
+            }
+            return false;
+        };
+        auto arp = -1.0f;
+        if (const auto found = b.rig.parameters.find (ParamIDs::osc (0, "Arp")); found != b.rig.parameters.end())
+            arp = found->second;
+        for (auto it = s.rig.parameters.begin(); it != s.rig.parameters.end();)
+            it = ofPiano (it->first) ? s.rig.parameters.erase (it) : std::next (it);
+        auto& routes = s.rig.modulation.routes;
+        routes.erase (std::remove_if (routes.begin(), routes.end(), [&] (const auto& r) { return ofPiano (r.destination); }), routes.end());
+        for (int n = 1; n < g.pianoOscs; ++n)
+            s.osc (n, "On", 0.0f);
+        s.osc (0, "Wave", (float) synth::OscWave::sfz).osc (0, "Volume", g.volume)
+         .osc (0, "Shp1", 0.0f).osc (0, "Shp2", 0.0f).osc (0, "Shp3", 0.0f).osc (0, "Shp4", 0.0f)
+         .filter (FilterType::lp12, g.cutoff, 0.0f, 0.0f)
+         .set (ParamIDs::fltKey, g.keytrack).set (ParamIDs::fltVel, g.velocity).set (ParamIDs::fltEnvVel, 0.0f)
+         .set (ParamIDs::ampVel, 0.0f).ampEnvelope (g.attack, g.decay, g.sustain, g.release)
+         .set (ParamIDs::ampReleaseCurve, -1.0f)
+         .set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f)
+         .set (ParamIDs::patchLevel, g.level);
+        s.rig.parameters.erase (ParamIDs::ampDecayCurve);
+        const auto mode = s.rig.parameters.find (ParamIDs::playMode);
+        if (mode == s.rig.parameters.end() || mode->second < 0.5f)
+            s.set (ParamIDs::voices, 48.0f);
+        if (arp >= 0.0f)
+            s.osc (0, "Arp", arp);
+        s.rig.sfz.clear();
+        s.rig.sfz[0] = libraries::refFor (libraries::salamanderGrand());
+        if (g.tweak)
+            g.tweak (s);
+        const auto& names = s.rig.modulation.macroNames;
+        s.rig.notes = g.notes + " MACROS: " + names[0] + ", " + names[1] + ", " + names[2] + "."
+                    + " The Salamander Grand Piano (free; PR7-K offers to download it once, about 742 MB). Without it this "
+                      "preset plays PR7-K's own synthesized piano.";
+        s.rig.sampled = nullptr;
+        b.rig.sampled = std::make_shared<const Rig> (s.rig);
+    }
+
+    void grandCinema (Expansion x)
+    {
+        using SPG = synth::mod::ShapePoint;
+        // A one-shot envelope rising from nothing to full over `seconds` and staying: a layer swelling in behind the strike.
+        const auto swellIn = [] (Builder& b, int env, float seconds)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { { SPG { 0.0f, 0.0f, 0.4f }, SPG { seconds, 1.0f, 0.0f } }, -1, -1, -1 };
+        };
+        // The felt piano's four oscillators routed to an arp (the FM source too: it plays only with its carrier).
+        const auto pianoOnArp = [] (Builder& b)
+        {
+            for (int o = 0; o < 4; ++o)
+                b.osc (o, "Arp", 1.0f);
+        };
+        const auto felt = [] (Builder& b)
+        {
+            feltPiano (b);
+            dropMacro3 (b);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto lone = x.make ("Lone Melody", 1, { "Lead", "Piano", "Felt", "Intimate" },
+            "A single felt piano for a lonely theme, close enough to hear the felt: a dark, rounded tone, the hammer's "
+            "brightness gone at once, brighter the harder you play, soft dotted echoes far behind it, a small room. "
+            "MACROS: BRIGHT, SPACE, BLOOM (the strings ringing along, the room opening out). MOD WHEEL: the keys' noise.");
+        felt (lone);
+        macros (lone, "BRIGHT", "SPACE", "BLOOM");
+        delay (lone, "1/4 dotted", 0.15f, 0.06f, false, 3.0f);
+        reverb (lone, RT::room, 0.6f, 0.18f, 15.0f, 4.0f);
+        space (lone);
+        lone.set (ParamIDs::patchLevel, -3.0f);
+        bloom (lone, { 0.7f, 0.6f, 0.5f, 0.4f, 0.45f, 0.8f });
+        grand (lone, { 4, 2000.0f, 0.5f, 0.5f, 8.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+            "A single piano for a lonely theme, on the Salamander Grand darkened as if felt lay over its strings, soft "
+            "dotted echoes far behind it, a small room." });
+        x.add (lone);
+
+        auto theme = x.make ("Octave Theme", 2, { "Lead", "Piano", "Octaves", "Epic" },
+            "The big theme in octaves: the felt piano with a soft sine an octave above (the right hand's top note) and a "
+            "low triangle an octave below (the left hand doubling it), bright enough to carry over an orchestra, a "
+            "concert hall. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (theme);
+        theme.osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", 12.0f).osc (4, "Volume", 0.14f).osc (4, "Filter", 0.0f)
+             .osc (4, "PhaseRand", 0.0f).osc (4, "Pan", -0.15f)
+             .osc (5, "On", 1.0f).osc (5, "Wave", triangle).osc (5, "Transpose", -12.0f).osc (5, "Volume", 0.18f).osc (5, "Filter", 0.0f)
+             .osc (5, "PhaseRand", 0.0f).osc (5, "Pan", 0.15f)
+             .set (ParamIDs::fltCutoff, 1300.0f);
+        macros (theme, "BRIGHT", "SPACE", "BLOOM");
+        reverb (theme, RT::hall, 0.8f, 0.24f, 30.0f, 5.0f);
+        space (theme);
+        theme.set (ParamIDs::patchLevel, -4.0f);
+        bloom (theme, { 0.5f, 0.5f, 0.7f, 0.5f, 0.55f, 0.9f });
+        grand (theme, { 4, 5000.0f, 0.5f, 0.4f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1000.0f,
+            "The big theme in octaves: the Salamander Grand with a soft sine an octave above and a low triangle an "
+            "octave below, a concert hall." });
+        x.add (theme);
+
+        auto halo = x.make ("Halo Lead", 3, { "Lead", "Piano", "Synth", "Swell" },
+            "A piano melody with a halo: under each note a soft section of detuned saws an octave up swells in over "
+            "most of a second (after the strike, never on it) and fades with the note, a plate and quarter-note echoes. "
+            "MACROS: HALO (more of it), SPACE, BLOOM.");
+        felt (halo);
+        halo.osc (4, "On", 1.0f).osc (4, "Wave", saw).osc (4, "Transpose", 12.0f).osc (4, "Volume", 0.0f).osc (4, "Filter", 0.0f)
+            .osc (4, "Shp1", 0.0f);
+        pkSection (halo, 4, 5, 0.08f, 6.0f, 5.0f, 300.0f);
+        swellIn (halo, 2, 0.8f);
+        route (halo, "env3", ParamIDs::osc (4, "Volume"), 0.035f);
+        route (halo, "macro1", ParamIDs::osc (4, "Volume"), 0.04f);
+        macros (halo, "HALO", "SPACE", "BLOOM");
+        delay (halo, "1/4", 0.2f, 0.1f, true, 4.0f);
+        reverb (halo, RT::plate, 0.7f, 0.22f);
+        eqBand (halo, 1, eq::Shape::highCut, 9000.0f, 0.0f);
+        space (halo);
+        halo.set (ParamIDs::patchLevel, -4.0f);
+        bloom (halo, { 0.45f, 0.5f, 0.6f, 0.5f, 0.5f, 0.9f });
+        grand (halo, { 4, 3500.0f, 0.5f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+            "A piano melody with a halo: the Salamander Grand, and under each note a soft section of detuned saws an "
+            "octave up swelling in after the strike, a plate and quarter-note echoes." });
+        x.add (halo);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto overStrings = x.make ("Piano Over Strings", 4, { "Pad", "Piano", "Strings", "Vast" },
+            "The film's emotional peak: the felt piano over a string section (six saw players an octave up and cellos at "
+            "the note, each with their own vibrato) that swells in behind every chord over a second and a half and holds "
+            "while the piano rings on, a big hall. MACROS: STRINGS (more of them), SPACE, BLOOM.");
+        felt (overStrings);
+        overStrings.ampEnvelope (2.0f, 6000.0f, 0.25f, 1400.0f)
+                   .osc (4, "On", 1.0f).osc (4, "Wave", saw).osc (4, "Transpose", 12.0f).osc (4, "Volume", 0.0f)
+                   .osc (5, "On", 1.0f).osc (5, "Wave", saw).osc (5, "Volume", 0.0f);
+        pkSection (overStrings, 4, 6, 0.05f, 8.0f, 5.5f, 500.0f);
+        pkSection (overStrings, 5, 4, 0.04f, 7.0f, 5.0f, 600.0f);
+        swellIn (overStrings, 2, 1.5f);
+        route (overStrings, "env3", ParamIDs::osc (4, "Volume"), 0.06f);
+        route (overStrings, "env3", ParamIDs::osc (5, "Volume"), 0.05f);
+        route (overStrings, "macro1", ParamIDs::osc (4, "Volume"), 0.05f);
+        route (overStrings, "macro1", ParamIDs::osc (5, "Volume"), 0.04f);
+        macros (overStrings, "STRINGS", "SPACE", "BLOOM");
+        reverb (overStrings, RT::hall, 0.9f, 0.3f, 30.0f, 4.0f);
+        space (overStrings);
+        overStrings.set (ParamIDs::patchLevel, -4.0f);
+        bloom (overStrings, { 0.4f, 0.6f, 0.8f, 0.6f, 0.45f, 1.0f });
+        grand (overStrings, { 4, 3000.0f, 0.5f, 0.4f, 2.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1400.0f,
+            "The film's emotional peak: the Salamander Grand over a string section swelling in behind every chord, a big "
+            "hall. The strings play through the piano's tone control, so BRIGHT and SPACE move them too." });
+        x.add (overStrings);
+
+        auto reverse = x.make ("Reverse Swell", 5, { "Pad", "Piano", "Reverse", "Swell" },
+            "The trailer piano heard backwards: each note swells up out of nothing over a second and a half, opening "
+            "brighter as it comes, and is cut off at its loudest, where a forward note would start, with a reversed "
+            "reverb sucking in behind it. Play on the beat before you want it to land. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (reverse);
+        reverse.ampEnvelope (1500.0f, 80.0f, 0.0f, 120.0f).set (ParamIDs::ampAttackCurve, 0.7f)
+               .filterEnvelope (1500.0f, 200.0f, 0.2f, 150.0f).set (ParamIDs::fltEnv, 0.55f)
+               .set (ParamIDs::ampVel, 0.4f);
+        macros (reverse, "BRIGHT", "SPACE", "BLOOM");
+        reverb (reverse, RT::reverse, 0.7f, 0.35f, 0.0f, 4.0f);
+        space (reverse);
+        reverse.set (ParamIDs::patchLevel, -2.0f);
+        bloom (reverse, { 0.3f, 0.5f, 0.7f, 0.2f, 0.45f, 1.0f });
+        grand (reverse, { 4, 6000.0f, 0.5f, 0.3f, 6.0f, 1.0f, 1500.0f, 80.0f, 0.0f, 120.0f,
+            "The trailer piano heard backwards: each note of the Salamander Grand swells up out of nothing over a second "
+            "and a half and is cut off at its loudest, a reversed reverb sucking in behind it. Play on the beat before you "
+            "want it to land.",
+            [] (Builder& s) { s.set (ParamIDs::ampAttackCurve, 0.7f); } });
+        x.add (reverse);
+
+        auto cathedral = x.make ("Cathedral Air", 6, { "Pad", "Piano", "Drone", "Dark" },
+            "A piano alone in a cathedral at night: soft felt chords sinking into a vast, dark space, a low sine drone an "
+            "octave under them swelling in over two seconds, the air of the room breathing over the top. MACROS: AIR "
+            "(more of the room's air), SPACE, BLOOM.");
+        felt (cathedral);
+        cathedral.ampEnvelope (2.0f, 7000.0f, 0.3f, 2200.0f)
+                 .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", -12.0f).osc (4, "Volume", 0.0f).osc (4, "Filter", 0.0f)
+                 .osc (4, "PhaseRand", 0.0f)
+                 .osc (5, "On", 1.0f).osc (5, "Gain", 0.0f).osc (5, "Noise", 0.5f).osc (5, "NoiseColour", 0.08f).osc (5, "NoiseWidth", 2.0f)
+                 .osc (5, "Volume", 0.012f).osc (5, "Filter", 0.0f)
+                 .set (ParamIDs::fltCutoff, 700.0f);
+        swellIn (cathedral, 2, 2.0f);
+        route (cathedral, "env3", ParamIDs::osc (4, "Volume"), 0.12f);
+        route (cathedral, "macro1", ParamIDs::osc (5, "Volume"), 0.03f);
+        macros (cathedral, "AIR", "SPACE", "BLOOM");
+        reverb (cathedral, RT::cathedral, 0.92f, 0.38f, 40.0f, 3.0f);
+        eqBand (cathedral, 1, eq::Shape::lowCut, 40.0f, 0.0f);
+        space (cathedral);
+        cathedral.set (ParamIDs::patchLevel, -3.0f);
+        bloom (cathedral, { 0.6f, 0.8f, 1.0f, 0.7f, 0.3f, 1.0f });
+        grand (cathedral, { 4, 1600.0f, 0.5f, 0.5f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 2200.0f,
+            "A piano alone in a cathedral at night: the Salamander Grand darkened, sinking into a vast space, a low sine "
+            "drone an octave under it swelling in, the room's air breathing over the top." });
+        x.add (cathedral);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto boom = x.make ("Trailer Boom", 7, { "Bass", "Piano", "Impact", "Epic" },
+            "The trailer's low piano hit: a low felt piano note with a sine an octave under it dropping a fifth into the "
+            "note as it lands (the boom), a dark burst of noise for the impact, ringing on into a big hall. Play low "
+            "octaves on the downbeats. MACROS: BOOM (more of the drop), SPACE, BLOOM.");
+        felt (boom);
+        boom.osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", -12.0f).osc (4, "Volume", 0.35f).osc (4, "Filter", 0.0f)
+            .osc (4, "PhaseRand", 0.0f)
+            .osc (0, "PitchEnv", 0.0f).osc (1, "PitchEnv", 0.0f).osc (2, "PitchEnv", 0.0f).osc (3, "PitchEnv", 0.0f).osc (5, "PitchEnv", 0.0f)
+            .osc (5, "On", 1.0f).osc (5, "Gain", 0.0f).osc (5, "Noise", 0.5f).osc (5, "NoiseColour", 0.75f).osc (5, "NoiseWidth", 2.0f)
+            .osc (5, "Volume", 0.0f).osc (5, "Filter", 0.0f)
+            .ampEnvelope (2.0f, 4500.0f, 0.0f, 600.0f);
+        pkBend (boom, 7.0f, 0.18f, -0.5f);
+        pkShot (boom, 2, { PK { 0.0f, 1.0f, -0.6f }, PK { 0.15f, 0.0f, 0.0f } });
+        route (boom, "env3", ParamIDs::osc (5, "Volume"), 0.3f);
+        route (boom, "macro1", ParamIDs::osc (4, "Volume"), 0.2f);
+        macros (boom, "BOOM", "SPACE", "BLOOM");
+        reverb (boom, RT::hall, 0.85f, 0.25f, 20.0f, 3.0f);
+        compressor (boom, 2, -16.0f, 3.0f, 2.0f);
+        space (boom);
+        boom.set (ParamIDs::patchLevel, -3.0f);
+        bloom (boom, { 0.5f, 0.6f, 0.8f, 0.3f, 0.35f, 1.0f });
+        grand (boom, { 4, 2500.0f, 0.4f, 0.4f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+            "The trailer's low piano hit: the Salamander Grand's low notes with a sine an octave under them dropping a "
+            "fifth into the note, a dark burst of noise for the impact, a big hall. Play low octaves on the downbeats.",
+            [] (Builder& s) { s.osc (0, "PitchEnv", 0.0f); } });   // (the drop is the sub's, not the piano's)
+        x.add (boom);
+
+        auto drone = x.make ("Low Drone Piano", 8, { "Bass", "Piano", "Drone", "Dark" },
+            "Dread under a scene: a low felt piano that doesn't quite die away, a dark saw an octave down swelling in "
+            "under it over a second and holding while the key does, a cold room. Hold low notes and clusters. MACROS: "
+            "DARK (more of the saw), SPACE, BLOOM.");
+        felt (drone);
+        drone.ampEnvelope (2.0f, 5000.0f, 0.4f, 1500.0f)
+             .osc (4, "On", 1.0f).osc (4, "Wave", saw).osc (4, "Transpose", -12.0f).osc (4, "Volume", 0.0f)
+             .set (ParamIDs::fltCutoff, 500.0f);
+        swellIn (drone, 2, 1.0f);
+        route (drone, "env3", ParamIDs::osc (4, "Volume"), 0.1f);
+        route (drone, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        macros (drone, "DARK", "SPACE", "BLOOM");
+        reverb (drone, RT::room, 0.7f, 0.18f, 10.0f, 3.0f);
+        space (drone);
+        drone.set (ParamIDs::patchLevel, -2.0f);
+        bloom (drone, { 0.7f, 0.9f, 0.6f, 0.6f, 0.3f, 0.9f });
+        grand (drone, { 4, 900.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1500.0f,
+            "Dread under a scene: the Salamander Grand's low notes darkened, a dark saw an octave down swelling in under "
+            "them and holding, a cold room. Hold low notes and clusters." });
+        x.add (drone);
+
+        auto muted = x.make ("Muted Ostinato Bass", 9, { "Bass", "Piano", "Muted", "Ostinato" },
+            "The driving left hand of an action cue: a low felt piano muted short (a hand on the strings), each note a "
+            "dark thud with a clean sine an octave under it, for eighth-note ostinatos. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (muted);
+        muted.ampEnvelope (1.0f, 380.0f, 0.0f, 120.0f)
+             .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", -12.0f).osc (4, "Volume", 0.3f).osc (4, "Filter", 0.0f)
+             .osc (4, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltCutoff, 550.0f);
+        macros (muted, "BRIGHT", "SPACE", "BLOOM");
+        reverb (muted, RT::room, 0.4f, 0.1f);
+        space (muted);
+        muted.set (ParamIDs::patchLevel, -1.0f);
+        bloom (muted, { 0.6f, 0.4f, 0.5f, 0.3f, 0.4f, 0.8f });
+        grand (muted, { 4, 1400.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 380.0f, 0.0f, 120.0f,
+            "The driving left hand of an action cue: the Salamander Grand's low notes muted short, a clean sine an octave "
+            "under them, for eighth-note ostinatos." });
+        x.add (muted);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto intimate = x.make ("Intimate Felt", 10, { "Keys", "Piano", "Felt", "Close" },
+            "The centrepiece: the soft piano with a thick felt, heard from inside the lid, the hammers thumping, the "
+            "keys and the pedal's dampers audible, a quiet room around it. For the quietest, saddest moments. MACROS: "
+            "BRIGHT, SPACE, BLOOM. MOD WHEEL: more of the keys' noise.");
+        softPiano (intimate);
+        dropMacro3 (intimate);
+        intimate.set (ParamIDs::proximityOn, 1.0f).set (ParamIDs::proximityNoise, 0.45f).set (ParamIDs::proximityTone, 0.25f)
+                .set (ParamIDs::proximityRoom, 0.35f).set (ParamIDs::proximityClose, 0.35f);
+        macros (intimate, "BRIGHT", "SPACE", "BLOOM");
+        reverb (intimate, RT::room, 0.5f, 0.14f, 10.0f, 4.0f);
+        space (intimate);
+        intimate.set (ParamIDs::patchLevel, -3.0f);
+        bloom (intimate, { 0.8f, 0.7f, 0.4f, 0.4f, 0.4f, 0.7f });
+        grand (intimate, { 8, 1500.0f, 0.5f, 0.5f, 8.0f, 1.0f, 0.0f, 300.0f, 1.0f, 900.0f,
+            "The centrepiece: the Salamander Grand under a thick felt, heard from inside the lid, the hammers, keys and "
+            "pedal's dampers audible, a quiet room around it." });
+        x.add (intimate);
+
+        auto concert = x.make ("Concert Hall Grand", 11, { "Keys", "Piano", "Grand", "Vast" },
+            "The concert grand on the stage of an empty hall: brighter and fuller than the felt, the hammers clear, "
+            "every chord ringing out into a long, warm hall. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (concert);
+        concert.set (ParamIDs::fltCutoff, 1800.0f).set (ParamIDs::fltEnv, 0.45f);
+        macros (concert, "BRIGHT", "SPACE", "BLOOM");
+        reverb (concert, RT::hall, 0.85f, 0.26f, 30.0f, 5.0f);
+        space (concert);
+        concert.set (ParamIDs::patchLevel, -4.0f);
+        bloom (concert, { 0.5f, 0.6f, 0.8f, 0.5f, 0.6f, 1.0f });
+        grand (concert, { 4, 9000.0f, 0.3f, 0.3f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1000.0f,
+            "The concert grand on the stage of an empty hall: the Salamander Grand bright and full, every chord ringing "
+            "out into a long, warm hall." });
+        x.add (concert);
+
+        auto epic = x.make ("Epic Grand", 12, { "Keys", "Piano", "Grand", "Epic" },
+            "The piano at the climax: hit hard and held together by a compressor, a low triangle reinforcing each note "
+            "an octave down, a big hall; for chords that land like an orchestra. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (epic);
+        epic.set (ParamIDs::fltCutoff, 1500.0f).set (ParamIDs::fltEnv, 0.5f)
+            .osc (4, "On", 1.0f).osc (4, "Wave", triangle).osc (4, "Transpose", -12.0f).osc (4, "Volume", 0.14f).osc (4, "Filter", 0.0f)
+            .osc (4, "PhaseRand", 0.0f);
+        macros (epic, "BRIGHT", "SPACE", "BLOOM");
+        compressor (epic, 2, -18.0f, 3.5f, 3.0f);
+        reverb (epic, RT::hall, 0.85f, 0.24f, 25.0f, 5.0f);
+        space (epic);
+        epic.set (ParamIDs::patchLevel, -4.0f);
+        bloom (epic, { 0.5f, 0.6f, 0.9f, 0.4f, 0.55f, 1.0f });
+        grand (epic, { 4, 8000.0f, 0.3f, 0.3f, 3.0f, 1.0f, 0.0f, 300.0f, 1.0f, 1000.0f,
+            "The piano at the climax: the Salamander Grand hit hard and held together by a compressor, a low triangle "
+            "an octave down, a big hall." });
+        x.add (epic);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto rising = x.make ("Rising Ostinato", 13, { "Arp", "Piano", "Ostinato", "Building" },
+            "The ostinato that builds a scene: hold a chord and ARP 1 climbs it over two octaves in eighths on the felt "
+            "piano, the first of each four accented, in time with your song, a hall around it. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (rising);
+        pianoOnArp (rising);
+        rising.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+              .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.9f);
+        {
+            auto& p = rising.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.72f;
+        }
+        macros (rising, "BRIGHT", "SPACE", "BLOOM");
+        reverb (rising, RT::hall, 0.7f, 0.2f);
+        space (rising);
+        rising.set (ParamIDs::patchLevel, -2.0f);
+        bloom (rising, { 0.6f, 0.5f, 0.7f, 0.5f, 0.5f, 0.9f });
+        grand (rising, { 4, 4000.0f, 0.5f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 600.0f,
+            "The ostinato that builds a scene: hold a chord and ARP 1 climbs it over two octaves in eighths on the "
+            "Salamander Grand, the first of each four accented, a hall." });
+        x.add (rising);
+
+        auto tension = x.make ("Tension Pulse", 14, { "Arp", "Piano", "Pulse", "Dark" },
+            "The clock running down: hold a chord and ARP 1 hammers its root in sixteenths, low and dark, the beat "
+            "accented, the felt piano muted short, in time with your song. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (tension);
+        pianoOnArp (tension);
+        tension.ampEnvelope (1.0f, 300.0f, 0.0f, 90.0f).set (ParamIDs::fltCutoff, 600.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+               .set (ParamIDs::arp (0, "NoteSource"), (float) synth::arp::NoteSource::fixedNote)
+               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Gate"), 0.6f);
+        {
+            auto& p = tension.rig.modulation.arps[0].patterns[0];
+            p = {};
+            for (int k = 0; k < 16; ++k)
+            {
+                auto& blk = p.blocks[(size_t) k];
+                blk.on = true;
+                blk.transpose = k == 14 ? 1 : 0;   // a half step up just before the bar comes round: the tension
+                blk.velocity = k % 4 == 0 ? 1.0f : 0.6f;
+            }
+        }
+        macros (tension, "BRIGHT", "SPACE", "BLOOM");
+        reverb (tension, RT::room, 0.5f, 0.12f);
+        space (tension);
+        tension.set (ParamIDs::patchLevel, 1.0f);
+        bloom (tension, { 0.7f, 0.5f, 0.5f, 0.6f, 0.35f, 0.8f });
+        grand (tension, { 4, 1600.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 0.0f, 90.0f,
+            "The clock running down: hold a chord and ARP 1 hammers its root in sixteenths on the Salamander Grand, low, "
+            "dark and muted short, the beat accented." });
+        x.add (tension);
+
+        auto cascade = x.make ("Cascading Light", 15, { "Arp", "Piano", "Cascade", "Bright" },
+            "Light pouring down: hold a chord and ARP 1 runs it up and down over three octaves in sixteenths on a "
+            "brighter felt piano, dotted ping-pong echoes catching every note, a plate. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (cascade);
+        pianoOnArp (cascade);
+        cascade.set (ParamIDs::fltCutoff, 1600.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.8f);
+        macros (cascade, "BRIGHT", "SPACE", "BLOOM");
+        delay (cascade, "1/8 dotted", 0.3f, 0.14f, true, 5.0f);
+        reverb (cascade, RT::plate, 0.7f, 0.2f);
+        space (cascade);
+        cascade.set (ParamIDs::patchLevel, -1.0f);
+        bloom (cascade, { 0.5f, 0.5f, 0.6f, 0.4f, 0.7f, 1.0f });
+        grand (cascade, { 4, 9000.0f, 0.4f, 0.3f, 4.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
+            "Light pouring down: hold a chord and ARP 1 runs it up and down over three octaves in sixteenths on the "
+            "Salamander Grand, dotted ping-pong echoes, a plate." });
+        x.add (cascade);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto prepared = x.make ("Prepared Grand", 16, { "Pluck", "Piano", "Prepared", "Dark" },
+            "A prepared piano for a thriller: bolts and felt between the strings, so each note is a short, dull thud "
+            "with a metallic ring that doesn't belong to its pitch (a sine two and three-quarter times up, fading "
+            "fast), a small dark room. MACROS: METAL (more of the ring), SPACE, BLOOM.");
+        felt (prepared);
+        prepared.ampEnvelope (0.5f, 600.0f, 0.0f, 150.0f).set (ParamIDs::fltCutoff, 700.0f)
+                .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", 17.0f).osc (4, "Fine", 56.0f).osc (4, "Filter", 0.0f)
+                .osc (4, "PhaseRand", 0.0f);
+        pkPartial (prepared, 4, 2, 0.12f, 0.35f);
+        route (prepared, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        macros (prepared, "METAL", "SPACE", "BLOOM");
+        reverb (prepared, RT::room, 0.4f, 0.12f, 10.0f, 3.0f);
+        space (prepared);
+        bloom (prepared, { 0.6f, 0.5f, 0.5f, 0.3f, 0.35f, 0.8f });
+        grand (prepared, { 4, 1600.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 600.0f, 0.0f, 150.0f,
+            "A prepared piano for a thriller: the Salamander Grand cut short and dull, a metallic ring two and "
+            "three-quarter times up that doesn't belong to its pitch, a small dark room." });
+        pkAdd (x, prepared);
+
+        auto mutedKeys = x.make ("Muted Grand", 17, { "Pluck", "Piano", "Muted", "Staccato" },
+            "Staccato chords from a piano with a hand on the strings: every note stopped after a quarter of a second, "
+            "dark and woody, the felt's thump at the front, a short room. MACROS: BRIGHT, SPACE, BLOOM.");
+        felt (mutedKeys);
+        mutedKeys.ampEnvelope (0.5f, 260.0f, 0.0f, 80.0f).set (ParamIDs::fltCutoff, 800.0f);
+        pkVelocity (mutedKeys, 0.8f, 0.6f, 0.7f);
+        macros (mutedKeys, "BRIGHT", "SPACE", "BLOOM");
+        reverb (mutedKeys, RT::room, 0.4f, 0.1f);
+        space (mutedKeys);
+        bloom (mutedKeys, { 0.7f, 0.4f, 0.5f, 0.3f, 0.4f, 0.8f });
+        grand (mutedKeys, { 4, 2200.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 260.0f, 0.0f, 80.0f,
+            "Staccato chords from a piano with a hand on the strings: the Salamander Grand stopped after a quarter of a "
+            "second, dark and woody, a short room." });
+        pkAdd (x, mutedKeys);
+
+        auto upright = x.make ("Detuned Upright", 18, { "Pluck", "Piano", "Upright", "Haunted" },
+            "An old upright in an empty house: the felt piano with a second string a fifth of a semitone sharp (the "
+            "out-of-tune beating of a neglected piano), worn by an old cassette, a dusty room. MACROS: DETUNE (further "
+            "out of tune), SPACE, BLOOM.");
+        felt (upright);
+        upright.ampEnvelope (1.0f, 2500.0f, 0.0f, 300.0f)
+               .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Fine", 18.0f).osc (4, "Volume", 0.35f).osc (4, "PhaseRand", 0.0f)
+               .set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) effects::LoFi::Type::cassette)
+               .set (ParamIDs::lofiAmount, 2.5f).set (ParamIDs::lofiMix, 0.35f).set (ParamIDs::lofiNoise, 0.0f);
+        route (upright, "macro1", ParamIDs::osc (4, "Fine"), 0.15f);
+        macros (upright, "DETUNE", "SPACE", "BLOOM");
+        reverb (upright, RT::room, 0.45f, 0.14f, 10.0f, 3.0f);
+        space (upright);
+        bloom (upright, { 0.6f, 0.5f, 0.5f, 0.4f, 0.35f, 0.8f });
+        grand (upright, { 4, 2500.0f, 0.4f, 0.4f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 300.0f,
+            "An old upright in an empty house: the Salamander Grand with a second copy a fifth of a semitone sharp beating "
+            "against it, worn by an old cassette, a dusty room.",
+            [] (Builder& s)
+            {
+                s.osc (4, "Wave", (float) synth::OscWave::sfz).osc (4, "Fine", 18.0f).osc (4, "Volume", 0.7f)
+                 .osc (4, "Shp1", 0.0f).osc (4, "Shp2", 0.0f).osc (4, "Shp3", 0.0f).osc (4, "Shp4", 0.0f);
+                s.rig.sfz[4] = libraries::refFor (libraries::salamanderGrand());
+            } });
+        pkAdd (x, upright);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -13068,5 +13562,6 @@ std::vector<Rig> makeExpansionRigs()
     meltdown ({ Rig::numBanks + 23, rigs });
     atomicAge ({ Rig::numBanks + 24, rigs });
     hyperdrive ({ Rig::numBanks + 25, rigs });
+    grandCinema ({ Rig::numBanks + 26, rigs });
     return rigs;
 }

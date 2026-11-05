@@ -308,7 +308,8 @@ TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback un
     for (const auto& rig : makeExpansionRigs())
     {
         // (0.73.0: HYPERDRIVE's orchestral versions are on the Sonatina Symphonic Orchestra: checked in ExpansionTests.)
-        if (rig.sampled == nullptr || ParagonX1AudioProcessor::libraryOf (*rig.sampled) != &library)
+        if (rig.sampled == nullptr || ParagonX1AudioProcessor::libraryOf (*rig.sampled) != &library
+            || rig.bank == Rig::numBanks + 26)   // (0.74.0: GRAND CINEMA's, layered, are checked in ExpansionTests)
             continue;
         withPiano.add (rig.name);
         INFO (rig.name);

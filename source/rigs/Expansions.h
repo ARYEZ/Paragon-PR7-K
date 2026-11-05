@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 26> list
+    inline constexpr std::array<Expansion, 27> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -136,5 +136,11 @@ namespace expansions
           "harps, racing strings and beeping computers. Built round LIGHTSPEED (0.73.0) and MACRO 3, LIGHTSPEED: the jump "
           "from rest to streaking stars. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
           "(free), and PR7-K's own synthesized orchestra until then. Our own sounds." },
+        { "GRAND CINEMA", "GC",
+          "The modern film and trailer piano: intimate felt pianos heard up close, vast halls where the notes bloom into "
+          "each other, epic low octave hits and driving ostinatos, dark clusters and detuned, prepared pianos, a reversed "
+          "swell. Built round BLOOM (0.74.0), the strings ringing along and a hall opening out, and MACRO 3, BLOOM. Every "
+          "preset plays the Salamander Grand once it's downloaded (free), and PR7-K's own synthesized piano until then. "
+          "Our own sounds." },
     }};
 }
