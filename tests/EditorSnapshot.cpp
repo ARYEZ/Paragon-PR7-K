@@ -34,6 +34,7 @@
 //   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
 //   PARAGON_SNAPSHOT_LIBRARIES=<folder>  the sample libraries (the Salamander's folder in it) for the piano presets
 //   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
+//   PARAGON_SNAPSHOT_WTREF=<ref>     a preset whose oscillator 1 names that pack table ("{wt:<pack>}/<file>"; 0.76.0)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
@@ -88,6 +89,15 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         REQUIRE (entry != nullptr);
         processor.loadRig (*entry);
         processor.waitForSfz();
+    }
+
+    if (const auto ref = env ("PARAGON_SNAPSHOT_WTREF"); ref.isNotEmpty())
+    {
+        RigLibrary::Entry entry;
+        entry.rig.name = "Pack Table";
+        entry.rig.parameters[ParamIDs::osc (0, "Wave")] = (float) synth::OscWave::wavetable;
+        entry.rig.wavetableRefs[0] = ref;
+        processor.loadRig (entry);
     }
 
     for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))

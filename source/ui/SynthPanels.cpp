@@ -68,7 +68,9 @@ WavetableChooser::WavetableChooser (ParagonX1AudioProcessor& processorToUse) : p
     box.setColour (juce::ComboBox::textColourId, ParagonColours::accent);
     box.setColour (juce::ComboBox::arrowColourId, ParagonColours::textDim);
     box.setTooltip ("The wavetable: a row of waves that INDEX moves through. Our own factory tables, or load your own "
-                    "WAV file (or drop one on the oscillator). A loaded table is saved inside the preset and the project.");
+                    "WAV file (or drop one on the oscillator). A loaded table is saved inside the preset and the project. "
+                    "A preset made on a wavetable pack reads it from the presets folder's Libraries; without the pack it "
+                    "plays one of ours and says NEEDS, with the pack's name.");
     box.onChange = [this]
     {
         const auto id = box.getSelectedId();
@@ -77,6 +79,13 @@ WavetableChooser::WavetableChooser (ParagonX1AudioProcessor& processorToUse) : p
             refresh();   // back to what plays, until a file is chosen
             browse();
         }
+        else if (id == retryId)
+        {
+            processor.retryWavetableRef (oscillator);
+            refresh();
+        }
+        else if (id == missingId)
+            refresh();
         else if (id >= 1 && id <= synth::factoryTables::names.size())
         {
             processor.chooseFactoryWavetable (oscillator, id - 1);
@@ -101,10 +110,21 @@ void WavetableChooser::refresh()
     box.addSeparator();
     if (processor.hasLoadedWavetable (oscillator))
         box.addItem (processor.getWavetable (oscillator)->getName(), loadedId);
+    // A pack's table that isn't on this computer (0.76.0): say which, and offer to look again once it's in place.
+    const auto missing = processor.isWavetableMissing (oscillator);
+    if (missing)
+    {
+        const auto ref = processor.getWavetableRef (oscillator);
+        box.addSectionHeading ("Needs " + ParagonX1AudioProcessor::wavetablePackOf (ref) + " (in Libraries)");
+        box.addItem ("MISSING: " + ref.fromLastOccurrenceOf ("/", false, false).upToLastOccurrenceOf (".", false, false), missingId);
+        box.addItem ("Look for the pack again", retryId);
+    }
     box.addItem ("Load WAV file...", loadFileId);
 
     if (processor.hasLoadedWavetable (oscillator))
         box.setSelectedId (loadedId, juce::dontSendNotification);
+    else if (missing)
+        box.setSelectedId (missingId, juce::dontSendNotification);
     else if (const auto* table = processor.getParameters().getRawParameterValue (ParamIDs::osc (oscillator, "Table")))
         box.setSelectedId (juce::roundToInt (table->load()) + 1, juce::dontSendNotification);
 }

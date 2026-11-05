@@ -32,7 +32,7 @@ private:
     juce::Label label;
     juce::ComboBox box;
     std::unique_ptr<juce::FileChooser> chooser;
-    static constexpr int loadedId = 1000, loadFileId = 1001;
+    static constexpr int loadedId = 1000, loadFileId = 1001, missingId = 1002, retryId = 1003;
 };
 
 // SFZ (0.71.0): the sampled instrument an oscillator plays when its WAVE is SFZ: its name (or LOADING / NOT FOUND),

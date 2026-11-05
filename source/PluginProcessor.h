@@ -145,6 +145,27 @@ public:
     // Chooses a factory table instead (forgetting a loaded one), and WAVETABLE.
     void chooseFactoryWavetable (int osc, int index);
 
+    // WAVETABLE PACKS (0.76.0): a preset can name a table in a pack on this computer ("{wt:<pack folder>}/<file>",
+    // `Rig::wavetableRefs`) instead of carrying it, for packs whose licence forbids passing the files on. The pack's
+    // folder goes in the presets folder's "Libraries". Found: it plays (and a project or user preset saved from it
+    // carries it, as any loaded table); missing: the oscillator plays the factory table its TABLE names, and this
+    // says what's missing.
+    juce::String getWavetableRef (int osc) const { return wavetableRefs[(size_t) juce::jlimit (0, 7, osc)]; }
+    bool isWavetableMissing (int osc) const { return wavetableMissing[(size_t) juce::jlimit (0, 7, osc)]; }
+    static juce::String wavetableRefFor (const juce::String& packFolder, const juce::String& fileInPack)
+    {
+        return "{wt:" + packFolder + "}/" + fileInPack;
+    }
+    // Where a reference's file is (it may not exist): the pack folder under Libraries, or a plain path.
+    juce::File resolveWavetableRef (const juce::String& ref) const;
+    static juce::String wavetablePackOf (const juce::String& ref)
+    {
+        return ref.startsWith ("{wt:") ? ref.fromFirstOccurrenceOf ("{wt:", false, false).upToFirstOccurrenceOf ("}", false, false)
+                                       : juce::String ("a wavetable file");
+    }
+    // Reads a missing pack table again (once the pack has been put in place). True if it's found now.
+    bool retryWavetableRef (int osc);
+
     //==========================================================================
     // SFZ INSTRUMENTS (0.71.0, message thread)
 
@@ -475,7 +496,7 @@ private:
         bool operator== (const Snapshot& other) const
         {
             return rig.parameters == other.rig.parameters && rig.wavetables == other.rig.wavetables && rig.spectra == other.rig.spectra
-                && rig.sfz == other.rig.sfz
+                && rig.sfz == other.rig.sfz && rig.wavetableRefs == other.rig.wavetableRefs
                 && rig.drawings == other.rig.drawings && rig.modulation == other.rig.modulation && current == other.current;
         }
     };
@@ -519,6 +540,13 @@ private:
     std::array<std::atomic<const synth::Wavetable*>, ParamIDs::numOscillators> tablesForAudio {};
     std::array<int, ParamIDs::numOscillators> playingFactoryTable {};   // which factory table each plays (-1: none, or a loaded one)
     std::vector<std::pair<std::shared_ptr<const synth::Wavetable>, double>> retiredTables;
+    // Wavetable packs (0.76.0): each oscillator's reference, whether it's missing, and the table last read for it
+    // (kept so undo, the same preset again or a project don't read the file again).
+    std::array<juce::String, ParamIDs::numOscillators> wavetableRefs;
+    std::array<bool, ParamIDs::numOscillators> wavetableMissing {};
+    std::array<std::pair<juce::String, std::shared_ptr<const synth::Wavetable>>, ParamIDs::numOscillators> packTables;
+    // Sets oscillator `osc` from a reference: its table if the pack has it (loadedTables), else none (the fallback).
+    void applyWavetableRef (int osc, const juce::String& ref);
 
     // SFZ (0.71.0): each oscillator's instrument (its reference, what's loaded, handed to the audio thread as a plain
     // pointer); replaced ones kept until no note can still be reading them (their longest sample + 2 s).

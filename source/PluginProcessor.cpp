@@ -1965,6 +1965,8 @@ bool ParagonX1AudioProcessor::loadWavetableFile (int osc, const juce::File& file
         return false;
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
     loadedTables[(size_t) osc] = std::move (table);
+    wavetableRefs[(size_t) osc] = {};   // a file of the user's own choosing: carried in the preset
+    wavetableMissing[(size_t) osc] = false;
     if (auto* wave = parameters.getParameter (ParamIDs::osc (osc, "Wave")))
         wave->setValueNotifyingHost (wave->convertTo0to1 ((float) synth::OscWave::wavetable));
     markModified();
@@ -1973,10 +1975,62 @@ bool ParagonX1AudioProcessor::loadWavetableFile (int osc, const juce::File& file
     return true;
 }
 
+juce::File ParagonX1AudioProcessor::resolveWavetableRef (const juce::String& ref) const
+{
+    if (ref.startsWith ("{wt:"))
+    {
+        const auto folder = ref.fromFirstOccurrenceOf ("{wt:", false, false).upToFirstOccurrenceOf ("}", false, false);
+        const auto inside = ref.fromFirstOccurrenceOf ("}", false, false).trimCharactersAtStart ("/\\");
+        if (folder.isEmpty() || inside.isEmpty() || inside.contains ("..") || folder.contains ("..") || folder.containsAnyOf ("/\\"))
+            return {};
+        return getLibrariesFolder().getChildFile (folder).getChildFile (inside);
+    }
+    return juce::File::isAbsolutePath (ref) ? juce::File (ref) : juce::File();
+}
+
+void ParagonX1AudioProcessor::applyWavetableRef (int osc, const juce::String& ref)
+{
+    const auto o = (size_t) osc;
+    wavetableRefs[o] = ref;
+    wavetableMissing[o] = false;
+    if (ref.isEmpty())
+        return;
+    if (packTables[o].first == ref && packTables[o].second != nullptr)
+    {
+        loadedTables[o] = packTables[o].second;
+        return;
+    }
+    const auto file = resolveWavetableRef (ref);
+    auto table = file.existsAsFile() ? synth::Wavetable::build (synth::wavetableFiles::load (file, {})) : nullptr;
+    if (table == nullptr)
+    {
+        wavetableMissing[o] = true;   // the TABLE parameter's factory table plays instead
+        loadedTables[o] = nullptr;
+        return;
+    }
+    packTables[o] = { ref, table };
+    loadedTables[o] = std::move (table);
+}
+
+bool ParagonX1AudioProcessor::retryWavetableRef (int osc)
+{
+    osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    if (! wavetableMissing[(size_t) osc])
+        return loadedTables[(size_t) osc] != nullptr;
+    applyWavetableRef (osc, wavetableRefs[(size_t) osc]);
+    updateWavetables();
+    if (wavetableMissing[(size_t) osc])
+        return false;
+    requestCheckpoint();
+    return true;
+}
+
 void ParagonX1AudioProcessor::chooseFactoryWavetable (int osc, int index)
 {
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
     loadedTables[(size_t) osc] = nullptr;
+    wavetableRefs[(size_t) osc] = {};
+    wavetableMissing[(size_t) osc] = false;
     for (const auto& [what, value] : { std::pair { "Table", (float) index }, std::pair { "Wave", (float) synth::OscWave::wavetable } })
         if (auto* parameter = parameters.getParameter (ParamIDs::osc (osc, what)))
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
@@ -2341,6 +2395,8 @@ Rig ParagonX1AudioProcessor::captureRig() const
     {
         if (const auto& table = loadedTables[(size_t) i])
             rig.wavetables[i] = table->getSource();
+        if (wavetableRefs[(size_t) i].isNotEmpty())
+            rig.wavetableRefs[i] = wavetableRefs[(size_t) i];   // still asks for the pack where it's missing
         if (sfzRefs[(size_t) i].isNotEmpty())
             rig.sfz[i] = sfzRefs[(size_t) i];
         if (! spectra[(size_t) i].isFlat())
@@ -2377,6 +2433,16 @@ void ParagonX1AudioProcessor::applyRig (const Rig& rig)
     {
         const auto found = rig.wavetables.find (i);
         loadedTables[(size_t) i] = found != rig.wavetables.end() ? tableFor (found->second) : nullptr;
+        // A pack's table (0.76.0): read from the pack unless the preset carries it (a user preset saved from it).
+        const auto packRef = rig.wavetableRefs.find (i);
+        const auto tableRef = packRef != rig.wavetableRefs.end() ? packRef->second : juce::String();
+        if (found == rig.wavetables.end())
+            applyWavetableRef (i, tableRef);
+        else
+        {
+            wavetableRefs[(size_t) i] = tableRef;
+            wavetableMissing[(size_t) i] = false;
+        }
         // SFZ: loaded again only when the preset names another file (undo and the same preset keep what's loaded).
         const auto sfz = rig.sfz.find (i);
         const auto ref = sfz != rig.sfz.end() ? sfz->second : juce::String();
@@ -2550,6 +2616,9 @@ void ParagonX1AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
             tables.appendChild (juce::ValueTree (wavetableKey, { { "osc", i + 1 }, { "name", source.name }, { "frameSize", source.frameSize },
                                                                  { "data", synth::wavetableFiles::encode (source) } }), nullptr);
         }
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+        if (wavetableRefs[(size_t) i].isNotEmpty())
+            tables.appendChild (juce::ValueTree ("WavetableRef", { { "osc", i + 1 }, { "file", wavetableRefs[(size_t) i] } }), nullptr);
     state.appendChild (tables, nullptr);
 
     juce::ValueTree instruments (sfzKey);
@@ -2588,11 +2657,18 @@ void ParagonX1AudioProcessor::setStateInformation (const void* data, int sizeInB
 
     // The wavetables loaded from files come out first: they aren't parameters.
     std::array<std::shared_ptr<const synth::Wavetable>, ParamIDs::numOscillators> tables {};
+    std::array<juce::String, ParamIDs::numOscillators> tableRefs {};
     if (auto saved = state.getChildWithName (wavetablesKey); saved.isValid())
     {
         for (const auto& table : saved)
         {
             const auto osc = (int) table["osc"] - 1;
+            if (table.hasType ("WavetableRef"))
+            {
+                if (osc >= 0 && osc < ParamIDs::numOscillators)
+                    tableRefs[(size_t) osc] = table["file"].toString();
+                continue;
+            }
             if (osc >= 0 && osc < ParamIDs::numOscillators)
                 tables[(size_t) osc] = tableFor (synth::wavetableFiles::decode (table["name"].toString(), table["frameSize"], table["data"].toString()));
         }
@@ -2656,6 +2732,16 @@ void ParagonX1AudioProcessor::setStateInformation (const void* data, int sizeInB
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         buildFreeform (i);
     loadedTables = tables;
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+    {
+        if (tables[(size_t) i] == nullptr)
+            applyWavetableRef (i, tableRefs[(size_t) i]);
+        else
+        {
+            wavetableRefs[(size_t) i] = tableRefs[(size_t) i];
+            wavetableMissing[(size_t) i] = false;
+        }
+    }
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         if (instrumentRefs[(size_t) i] != sfzRefs[(size_t) i] || sfzStates[(size_t) i] == SfzState::failed)
             startSfzLoad (i, instrumentRefs[(size_t) i]);
