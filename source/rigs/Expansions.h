@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 27> list
+    inline constexpr std::array<Expansion, 28> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -142,5 +142,11 @@ namespace expansions
           "swell. Built round BLOOM (0.74.0), the strings ringing along and a hall opening out, and MACRO 3, BLOOM. Every "
           "preset plays the Salamander Grand once it's downloaded (free), and PR7-K's own synthesized piano until then. "
           "Our own sounds." },
+        { "MAESTRO", "MA",
+          "The epic film-trailer orchestra: heroic horns, soaring violins, a lone trumpet, trembling strings, a vast "
+          "choir, brass hits, driving cello ostinatos, timpani, celesta, harps and ticking strings. The mod wheel is the "
+          "dynamics on every preset. Built round LEGION (0.76.0) and MACRO 3, LEGION: from one player to a full section. "
+          "Every preset plays the Sonatina Symphonic Orchestra once it's downloaded (free), and PR7-K's own synthesized "
+          "orchestra until then. Our own sounds." },
     }};
 }

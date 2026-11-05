@@ -148,6 +148,37 @@ TEST_CASE ("SFZ: the reader takes headers, inheritance, #define, #include and no
     CHECK (! inst->streamed);   // 0.1 s: all of it in the head
 }
 
+TEST_CASE ("SFZ: #include names take the #defines, redefined between them (0.76.0)", "[sfz]")
+{
+    // As SSO's grand piano: "#define $DYN PP" then "#include "$DIR/$DYN.txt"", again for each layer. Before 0.76.0 the
+    // include's name kept "$DIR/$DYN.txt" and nothing was read.
+    Folder f;
+    writeSine (f.dir.getChildFile ("samples/soft.wav"), hzOf (60), 0.1);
+    writeSine (f.dir.getChildFile ("samples/loud.wav"), hzOf (60), 0.1);
+    f.dir.getChildFile ("Data/PP.txt").create();
+    f.dir.getChildFile ("Data/PP.txt").replaceWithText ("<region> sample=soft.$EXT key=60\n");
+    f.dir.getChildFile ("Data/FF.txt").replaceWithText ("<region> sample=loud.$EXT key=60\n");
+    const auto file = writeSfz (f.dir, R"(
+        #define $DIR Data
+        #define $EXT wav
+        <control> default_path=samples/
+        <group> lovel=1 hivel=64
+        #define $DYN PP
+        #include "$DIR/$DYN.txt"
+        <group> lovel=65 hivel=127
+        #define $DYN FF
+        #include "$DIR/$DYN.txt"
+    )");
+    const auto inst = synth::sfz::load (file);
+    REQUIRE (inst != nullptr);
+    REQUIRE (inst->regions.size() == 2);
+    CHECK (inst->samples.size() == 2);
+    CHECK (inst->regions[0].hiVel == 64);
+    CHECK (inst->regions[1].loVel == 65);
+    CHECK (inst->samples[(size_t) inst->regions[0].sample]->file.getFileName() == "soft.wav");
+    CHECK (inst->samples[(size_t) inst->regions[1].sample]->file.getFileName() == "loud.wav");
+}
+
 TEST_CASE ("SFZ: each key plays its region at the right pitch, with TUNE, PITCH_KEYTRACK and the oscillator's own pitch", "[sfz]")
 {
     Folder f;
@@ -811,6 +842,7 @@ TEST_CASE ("Render SFZ clips", "[.sfzrender]")
     REQUIRE (processor->waitForSfz (120000));
     const auto loadSeconds = (juce::Time::getMillisecondCounterHiRes() - loadStart) / 1000.0;
     const auto instrument = processor->getSfzInstrument (0);
+    INFO (processor->getSfzProblem (0));
     REQUIRE (instrument != nullptr);
     size_t headBytes = 0;
     for (const auto& s : instrument->samples)

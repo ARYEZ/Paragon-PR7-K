@@ -57,6 +57,17 @@ namespace synth::sfz
                 else
                     out << text[i++];
             }
+            // The defines put into a line: longest names first, so $KIT2 isn't read as $KIT then 2.
+            const auto expand = [&defines] (juce::String line)
+            {
+                if (defines.empty() || ! line.containsChar ('$'))
+                    return line;
+                std::vector<std::pair<juce::String, juce::String>> sorted (defines.begin(), defines.end());
+                std::sort (sorted.begin(), sorted.end(), [] (const auto& a, const auto& b) { return a.first.length() > b.first.length(); });
+                for (const auto& [k, v] : sorted)
+                    line = line.replace (k, v);
+                return line;
+            };
             juce::String result;
             for (auto line : juce::StringArray::fromLines (out))
             {
@@ -70,19 +81,14 @@ namespace synth::sfz
                 }
                 if (trimmed.startsWith ("#include"))
                 {
-                    const auto name = trimmed.fromFirstOccurrenceOf ("\"", false, false).upToLastOccurrenceOf ("\"", false, false);
+                    // 0.76.0: the name's defines put in too ("$DIR/$DYN.txt": SSO's grand piano includes its velocity
+                    // layers so, and loaded nothing before).
+                    const auto name = expand (trimmed.fromFirstOccurrenceOf ("\"", false, false).upToLastOccurrenceOf ("\"", false, false));
                     result << preprocess (file.getParentDirectory().getChildFile (name.replaceCharacter ('\\', '/')),
                                           defines, depth + 1, problems) << "\n";
                     continue;
                 }
-                if (! defines.empty() && line.containsChar ('$'))
-                {
-                    // Longest names first, so $KIT2 isn't read as $KIT then 2.
-                    std::vector<std::pair<juce::String, juce::String>> sorted (defines.begin(), defines.end());
-                    std::sort (sorted.begin(), sorted.end(), [] (const auto& a, const auto& b) { return a.first.length() > b.first.length(); });
-                    for (const auto& [k, v] : sorted)
-                        line = line.replace (k, v);
-                }
+                line = expand (line);
                 result << line << "\n";
             }
             return result;

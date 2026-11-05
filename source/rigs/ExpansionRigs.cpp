@@ -13534,6 +13534,656 @@ namespace
             } });
         pkAdd (x, upright);
     }
+
+    // MAESTRO (0.76.0, the owner's name and theme: the epic film-trailer orchestra). Our own sounds and phrases, no
+    // trailer, film, composer or library names on the plugin. Every preset is an orchestral part first: PR7-K's own
+    // synthesized section, and a version on the Sonatina Symphonic Orchestra's "Performance" patches (`maestroOrchestra`,
+    // HYPERDRIVE's `orchestra` with the mod wheel left to the recordings), played once the library is downloaded.
+    // The MOD WHEEL is the dynamics on every preset: on the recordings it crossfades and opens their own playing (soft
+    // to loud, as 0.75.0 reads them; until the wheel is first moved they sit at the library's mezzo-forte); on the
+    // synthesized versions it brightens and lifts them (the wheel's rest there is their normal level).
+    // MACRO 3 on every preset is LEGION (the bank's own effect, 0.76.0): at its left the effect rests, untouched;
+    // turning it up takes the part from one player (or one section) to a full stage of them.
+    struct Ensemble
+    {
+        float spread = 0.8f, loose = 0.4f, detune = 0.4f, tone = 0.6f;
+        float top = 1.0f;   // the macro's SIZE at full
+    };
+
+    void legion (Builder& b, Ensemble e)
+    {
+        b.set (ParamIDs::legionOn, 1.0f).set (ParamIDs::legionSize, 0.0f).set (ParamIDs::legionSpread, e.spread)
+         .set (ParamIDs::legionLoose, e.loose).set (ParamIDs::legionDetune, e.detune).set (ParamIDs::legionTone, e.tone);
+        route (b, "macro3", ParamIDs::legionSize, e.top);
+        // A ceiling for a full section's stacked attacks (the synthesized Trailer Piano's low strikes reached +1.5 dBFS at
+        // full LEGION); at the macro's left every preset peaks under -1.9 dBFS, so it never acts there.
+        b.set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+    }
+
+    // The synthesized versions' dynamics on the mod wheel: brighter and a little louder (as an orchestra plays forte).
+    void wheelDynamics (Builder& b, float brighter, float louder = 0.12f)
+    {
+        if (brighter != 0.0f)
+            route (b, "modWheel", ParamIDs::fltCutoff, brighter);
+        route (b, "modWheel", ParamIDs::ampVolume, louder);
+    }
+
+    // The version on the orchestra's Performance patches: HYPERDRIVE's `orchestra`, the synthesized versions' wheel
+    // routes taken out (the recordings play their own dynamics on it), MACRO 1 given its sampled job by `tweak`.
+    void maestroOrchestra (Builder& b, Orchestra o)
+    {
+        auto tweak = o.tweak;
+        o.tweak = [tweak] (Builder& s)
+        {
+            auto& routes = s.rig.modulation.routes;
+            routes.erase (std::remove_if (routes.begin(), routes.end(), [] (const auto& r) { return r.source == "modWheel"; }),
+                          routes.end());
+            if (tweak)
+                tweak (s);
+        };
+        orchestra (b, o);
+        // Say what the wheel does on the recordings, not on the synthesized version.
+        auto sampled = *b.rig.sampled;
+        sampled.notes = sampled.notes.replace (" MACROS:", " MOD WHEEL: dynamics, soft to loud (the recordings' own). MACROS:");
+        b.rig.sampled = std::make_shared<const Rig> (sampled);
+    }
+
+    // A sampled version's MACRO 1: the hall's size.
+    void hallMacro (Builder& s, const char* name = "HALL")
+    {
+        route (s, "macro1", ParamIDs::reverbSize, 0.2f);
+        s.rig.modulation.macroNames[0] = name;
+    }
+
+    void maestro (Expansion x)
+    {
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto sso = [] (const char* folder, const char* file) { return juce::String (folder) + "/" + file; };
+        juce::ignoreUnused (sso);
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto horns = x.make ("Hero Horns", 1, { "Lead", "Horns", "Section", "Epic" },
+            "The heroic horn call of a trailer's big moment: a section of horns (three saw players through the VOICE "
+            "filter on a round \"oh\", each with their own slow vibrato) and trombones an octave down for the weight, every "
+            "note lipped into from below, the tone opening as you push, a big hall. Play it in octaves or fifths. MOD "
+            "WHEEL: dynamics (brighter and louder). MACROS: BRIGHT, SPACE, LEGION.");
+        horns.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.32f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Volume", 0.2f)
+             .filter (FilterType::lp24, 950.0f, 0.08f, 0.35f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.35f)
+             .filterEnvelope (60.0f, 500.0f, 0.6f, 400.0f)
+             .ampEnvelope (45.0f, 500.0f, 0.9f, 500.0f).set (ParamIDs::ampVel, 0.3f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.3f).set (ParamIDs::voiceSize, 0.3f)
+             .set (ParamIDs::voiceSharp, 0.45f).set (ParamIDs::voiceMix, 0.6f);
+        pkSection (horns, 0, 3, 0.04f, 6.0f, 4.8f, 600.0f);
+        pkSection (horns, 1, 2, 0.04f, 5.0f, 4.5f, 600.0f);
+        pkBend (horns, -0.7f, 0.09f, -0.3f);
+        route (horns, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (horns, 0.2f);
+        macros (horns, "BRIGHT", "SPACE", "LEGION");
+        reverb (horns, RT::hall, 0.8f, 0.25f, 25.0f);
+        space (horns);
+        horns.set (ParamIDs::patchLevel, -5.2f);
+        legion (horns, { 0.7f, 0.45f, 0.35f, 0.55f });
+        maestroOrchestra (horns, { { { 0, "Brass - Performance/Horns Sustain.sfz", 1.0f, -0.15f },
+                                     { 1, "Brass - Performance/Trombones Sustain (looped).sfz", 0.5f, 0.2f } },
+                                   { 0, 1, 2 }, 0.7f,
+                                   "The heroic horn call of a trailer's big moment on the orchestra's recordings: the horn "
+                                   "section with the trombones under it, a big hall. Play it in octaves or fifths.",
+                                   25.0f, 300.0f, 1.0f, 600.0f, -1.0f,
+                                   [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hallMacro (s); } });
+        x.add (horns);
+
+        auto violins = x.make ("Soaring Violins", 2, { "Lead", "Strings", "Violins", "Epic" },
+            "The violins soaring over the climax: a section of six saw players high up, each with their own vibrato easing "
+            "in, the second violins an octave down, the bows' rosin as a breath of noise, every note bowed in with the "
+            "tone opening as the bow bites, a big hall. Play a line high, with long notes. MOD WHEEL: dynamics (the bow "
+            "digging in). MACROS: BRIGHT, SPACE, LEGION.");
+        violins.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.22f)
+               .filter (FilterType::lp24, 2600.0f, 0.08f, 0.25f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.3f)
+               .filterEnvelope (180.0f, 900.0f, 0.75f, 600.0f)
+               .ampEnvelope (140.0f, 800.0f, 0.95f, 700.0f);
+        pkSection (violins, 0, 6, 0.05f, 9.0f, 5.6f, 400.0f);
+        pkSection (violins, 1, 4, 0.04f, 7.0f, 5.2f, 450.0f);
+        noiseOsc (violins, 2, 0.015f, 0.08f);
+        route (violins, "macro1", ParamIDs::fltCutoff, 0.2f);
+        wheelDynamics (violins, 0.2f);
+        macros (violins, "BRIGHT", "SPACE", "LEGION");
+        reverb (violins, RT::hall, 0.8f, 0.28f, 25.0f);
+        eqBand (violins, 0, eq::Shape::lowCut, 120.0f, 0.0f);
+        space (violins);
+        violins.set (ParamIDs::patchLevel, -7.0f);
+        legion (violins, { 0.85f, 0.35f, 0.4f, 0.6f });
+        maestroOrchestra (violins, { { { 3, "Strings - Performance/1st Violins Sustain.sfz", 1.0f, -0.2f },
+                                       { 4, "Strings - Performance/2nd Violins Sustain.sfz", 0.6f, 0.2f } },
+                                     {}, 0.0f,
+                                     "The violins soaring over the climax, on the orchestra's first and second violins, "
+                                     "PR7-K's own strings quieter underneath (the recordings aren't looped and fade after "
+                                     "about five seconds: the strings underneath carry the longest notes), a big hall.",
+                                     -1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                                     [] (Builder& s) { s.osc (0, "Volume", 0.18f).osc (1, "Volume", 0.08f); hallMacro (s); } });
+        x.add (violins);
+
+        auto trumpet = x.make ("Lone Trumpet", 3, { "Lead", "Trumpet", "Solo", "Mono" },
+            "A single trumpet calling out over the ruins: a bright pulse and a saw sung through the VOICE filter on an open "
+            "\"ah\", a breath of air, each note tongued in from just below, a vibrato arriving late, a glide between "
+            "notes, a long hall with soft echoes. MOD WHEEL: dynamics (a brassier, louder tone). MACROS: BRIGHT, SPACE, "
+            "LEGION (from one trumpet to a whole section).");
+        trumpet.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.4f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 3.0f).osc (1, "Volume", 0.35f)
+               .filter (FilterType::lp12, 1500.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.6f).set (ParamIDs::fltVel, 0.4f)
+               .filterEnvelope (15.0f, 300.0f, 0.55f, 300.0f)
+               .ampEnvelope (20.0f, 400.0f, 0.9f, 350.0f)
+               .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.55f).set (ParamIDs::voiceSize, 0.55f)
+               .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 0.5f)
+               .mono (60.0f);
+        vibrato (trumpet, 0, 10.0f, 5.4f, 500.0f);
+        vibrato (trumpet, 1, 10.0f, 5.4f, 500.0f);
+        noiseOsc (trumpet, 2, 0.02f, 0.05f);
+        pkBend (trumpet, -0.6f, 0.05f, -0.3f);
+        route (trumpet, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (trumpet, 0.25f);
+        macros (trumpet, "BRIGHT", "SPACE", "LEGION");
+        delay (trumpet, "1/4 dotted", 0.25f, 0.1f, false, 4.0f);
+        reverb (trumpet, RT::hall, 0.85f, 0.3f, 30.0f);
+        space (trumpet);
+        trumpet.set (ParamIDs::patchLevel, -2.7f);
+        legion (trumpet, { 0.6f, 0.4f, 0.3f, 0.6f });
+        maestroOrchestra (trumpet, { { { 0, "Brass - Performance/Trumpet Solo Sustain (looped).sfz", 1.0f } },
+                                     { 0, 1, 2 }, 3.3f,
+                                     "A single trumpet calling out over the ruins, on the orchestra's solo trumpet, a long "
+                                     "hall with soft echoes.",
+                                     15.0f, 300.0f, 1.0f, 450.0f, 0.0f,
+                                     [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hallMacro (s); } });
+        x.add (trumpet);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto tremolo = x.make ("Rising Strings", 4, { "Pad", "Strings", "Tremolo", "Tension" },
+            "The strings trembling as the tension rises: the whole section bowing tremolo (saw players, their level "
+            "shaken thirteen times a second, each its own way), the celli and basses an octave down, the tone climbing as "
+            "you hold a chord, a big hall. Ride the wheel up for the build. MOD WHEEL: dynamics. MACROS: BRIGHT, SPACE, "
+            "LEGION.");
+        tremolo.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+               .filter (FilterType::lp24, 1400.0f, 0.1f, 0.4f).set (ParamIDs::fltKey, 0.5f)
+               .filterEnvelope (2500.0f, 3000.0f, 1.0f, 800.0f)
+               .ampEnvelope (300.0f, 1000.0f, 0.95f, 900.0f)
+               .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sine).set (ParamIDs::lfo (0, "Rate"), 13.0f)
+               .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::voice);
+        pkSection (tremolo, 0, 5, 0.05f, 7.0f, 5.3f, 300.0f);
+        pkSection (tremolo, 1, 3, 0.04f, 6.0f, 5.0f, 300.0f);
+        noiseOsc (tremolo, 2, 0.02f, 0.1f);
+        route (tremolo, "lfo1", ParamIDs::ampVolume, 0.12f);
+        route (tremolo, "macro1", ParamIDs::fltCutoff, 0.2f);
+        wheelDynamics (tremolo, 0.2f);
+        macros (tremolo, "BRIGHT", "SPACE", "LEGION");
+        reverb (tremolo, RT::hall, 0.85f, 0.3f, 25.0f);
+        eqBand (tremolo, 0, eq::Shape::lowCut, 60.0f, 0.0f);
+        space (tremolo);
+        tremolo.set (ParamIDs::patchLevel, -11.2f);
+        legion (tremolo, { 0.9f, 0.3f, 0.35f, 0.55f });
+        maestroOrchestra (tremolo, { { { 3, "Strings - Performance/All Strings Tremolo.sfz", 1.0f, 0.0f } },
+                                     {}, -4.9f,
+                                     "The strings trembling as the tension rises, on the orchestra's whole string section "
+                                     "bowing tremolo, PR7-K's own strings quieter underneath to hold long chords, a big hall. "
+                                     "Ride the wheel up for the build.",
+                                     -1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                                     [] (Builder& s) { s.osc (0, "Volume", 0.15f).osc (1, "Volume", 0.1f); hallMacro (s); } });
+        x.add (tremolo);
+
+        auto choir = x.make ("Choir of Thousands", 5, { "Pad", "Choir", "Voice", "Epic" },
+            "A vast choir singing over the battlefield: two sections (saws for the men, narrow pulses for the women) through "
+            "the VOICE filter, each singer with their own vibrato, the size following the keys (bass low, soprano high), "
+            "every chord opening from \"oo\" into \"ah\", a breath through it, a cathedral. MOD WHEEL: dynamics (the choir "
+            "opening out). MACROS: VOWEL, SPACE, LEGION.");
+        choir.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.22f)
+             .filter (FilterType::lp12, 4500.0f, 0.05f, 0.0f)
+             .ampEnvelope (450.0f, 900.0f, 0.95f, 1300.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.15f).set (ParamIDs::voiceSize, 0.3f)
+             .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.85f);
+        pkSection (choir, 0, 5, 0.07f, 10.0f, 5.0f, 500.0f);
+        pkSection (choir, 1, 4, 0.06f, 12.0f, 5.5f, 500.0f);
+        noiseOsc (choir, 2, 0.03f, 0.06f);
+        pkShot (choir, 0, { PK { 0.0f, 0.0f, 0.3f }, PK { 0.6f, 1.0f, 0.0f } });   // "oo" opening into "ah"
+        route (choir, "env1", ParamIDs::voiceVowel, 0.35f);
+        route (choir, "keytrack", ParamIDs::voiceSize, 0.4f);
+        route (choir, "macro1", ParamIDs::voiceVowel, 0.3f);
+        wheelDynamics (choir, 0.15f);
+        macros (choir, "VOWEL", "SPACE", "LEGION");
+        reverb (choir, RT::cathedral, 0.85f, 0.32f, 30.0f);
+        eqBand (choir, 0, eq::Shape::lowCut, 80.0f, 0.0f);
+        space (choir);
+        choir.set (ParamIDs::patchLevel, -11.7f);
+        legion (choir, { 0.95f, 0.5f, 0.45f, 0.5f, 0.85f });
+        maestroOrchestra (choir, { { { 0, "Chorus - Performance/Large Chorus.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2 }, 6.3f,
+                                   "A vast choir singing over the battlefield, on the orchestra's large choir (looped, so "
+                                   "chords hold), a cathedral.",
+                                   200.0f, 300.0f, 1.0f, 1300.0f, -1.0f,
+                                   [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f).filter (FilterType::lp12, 6000.0f, 0.0f, 0.0f);
+                                                     route (s, "macro1", ParamIDs::fltCutoff, -0.3f);
+                                                     s.rig.modulation.macroNames[0] = "DARKER"; } });
+        x.add (choir);
+
+        auto low = x.make ("Dark Low Strings", 6, { "Pad", "Strings", "Celli", "Dark" },
+            "The celli and basses holding a dark, low chord under everything: saw players an octave apart, a slow bow "
+            "in, the tone kept dark and closing in, a grain of rosin, a big hall. Play low, slow chords. MOD WHEEL: "
+            "dynamics. MACROS: BRIGHT, SPACE, LEGION.");
+        low.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+           .filter (FilterType::lp24, 700.0f, 0.1f, 0.3f).set (ParamIDs::fltKey, 0.4f)
+           .filterEnvelope (500.0f, 1500.0f, 0.6f, 800.0f)
+           .ampEnvelope (500.0f, 1200.0f, 0.95f, 1200.0f);
+        pkSection (low, 0, 4, 0.05f, 6.0f, 4.8f, 600.0f);
+        pkSection (low, 1, 3, 0.04f, 5.0f, 4.5f, 700.0f);
+        noiseOsc (low, 2, 0.02f, 0.2f);
+        route (low, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (low, 0.2f);
+        macros (low, "BRIGHT", "SPACE", "LEGION");
+        reverb (low, RT::hall, 0.85f, 0.25f, 20.0f, 3.5f);
+        eqBand (low, 0, eq::Shape::lowCut, 35.0f, 0.0f);
+        space (low);
+        low.set (ParamIDs::patchLevel, -11.7f);
+        legion (low, { 0.75f, 0.45f, 0.35f, 0.45f });
+        maestroOrchestra (low, { { { 0, "Strings - Performance/Celli Sustain.sfz", 1.0f, -0.25f },
+                                   { 1, "Strings - Performance/Basses Sustain.sfz", 0.8f, 0.25f } },
+                                 { 0, 1, 2 }, -4.6f,
+                                 "The celli and basses holding a dark, low chord under everything, on the orchestra's "
+                                 "recordings (looped, so chords hold), a big hall. Play low, slow chords.",
+                                 300.0f, 300.0f, 1.0f, 1200.0f, -1.0f,
+                                 [] (Builder& s) { hallMacro (s); } });
+        x.add (low);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto hits = x.make ("Brass Hits", 7, { "Bass", "Brass", "Stab", "Epic" },
+            "The low brass hits that punctuate a trailer: trombones and tuba as saws and a pulse through the VOICE filter "
+            "on a wide \"ah\", each hit spat out hard and dying away, a sine an octave down off the filter for the floor, "
+            "the tone biting with how hard you hit, a big room. Play short, low notes or octaves. MOD WHEEL: dynamics. "
+            "MACROS: BRIGHT, SPACE, LEGION.");
+        hits.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Fine", -4.0f).osc (1, "Volume", 0.3f)
+            .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.35f).osc (2, "Filter", 0.0f)
+            .osc (2, "Voice", 0.0f)
+            .filter (FilterType::lp24, 700.0f, 0.1f, 0.5f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.4f)
+            .set (ParamIDs::fltEnvVel, 0.5f).filterEnvelope (3.0f, 280.0f, 0.2f, 200.0f)
+            .ampEnvelope (4.0f, 700.0f, 0.25f, 300.0f).set (ParamIDs::ampVel, 0.4f)
+            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.6f).set (ParamIDs::voiceSize, 0.0f)
+            .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.5f);
+        pkSection (hits, 0, 3, 0.04f, 0.0f, 5.0f, 0.0f);
+        route (hits, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (hits, 0.2f);
+        macros (hits, "BRIGHT", "SPACE", "LEGION");
+        reverb (hits, RT::hall, 0.65f, 0.2f, 15.0f);
+        space (hits);
+        hits.set (ParamIDs::patchLevel, -5.4f);
+        legion (hits, { 0.7f, 0.3f, 0.25f, 0.55f });
+        maestroOrchestra (hits, { { { 0, "Brass - Performance/All Brass Marcato.sfz", 1.0f } }, { 0, 1 }, 1.9f,
+                                  "The low brass hits that punctuate a trailer, on the orchestra's whole brass section "
+                                  "playing marcato, the sine floor kept under it, a big room. Play short, low notes.",
+                                  2.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                                  [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f).osc (2, "Volume", 0.2f); hallMacro (s, "ROOM"); } });
+        x.add (hits);
+
+        auto ostinato = x.make ("Ostinato Cellos", 8, { "Bass", "Strings", "Ostinato", "Arp" },
+            "The driving cello ostinato under a trailer's build: hold a note or a chord and ARP 1 drives it in sixteenths "
+            "(accents on the beat and the off-beat), celli and basses an octave apart bouncing the bow, each note bitten "
+            "off short, a hall, in time with your song. MOD WHEEL: dynamics (digging in). MACROS: BRIGHT, SPACE, LEGION.");
+        ostinato.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f).osc (1, "Arp", 1.0f)
+                .filter (FilterType::lp24, 900.0f, 0.1f, 0.45f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 110.0f, 0.2f, 80.0f)
+                .ampEnvelope (2.0f, 170.0f, 0.35f, 70.0f)
+                .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+                .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+                .set (ParamIDs::arp (0, "Gate"), 0.55f);
+        pkSection (ostinato, 0, 4, 0.05f, 0.0f, 5.0f, 0.0f);
+        {
+            auto& p = ostinato.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : k % 2 == 0 ? 0.8f : 0.6f;
+        }
+        route (ostinato, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (ostinato, 0.2f);
+        macros (ostinato, "BRIGHT", "SPACE", "LEGION");
+        reverb (ostinato, RT::hall, 0.6f, 0.15f);
+        space (ostinato);
+        ostinato.set (ParamIDs::patchLevel, 0.2f);
+        legion (ostinato, { 0.75f, 0.2f, 0.2f, 0.6f });
+        maestroOrchestra (ostinato, { { { 0, "Strings - Performance/Celli Staccato.sfz", 1.0f, -0.2f },
+                                        { 1, "Strings - Performance/Basses Staccato.sfz", 0.7f, 0.2f } },
+                                      { 0, 1 }, 9.5f,
+                                      "The driving cello ostinato under a trailer's build, on the orchestra's celli and basses "
+                                      "playing staccato: hold a note or a chord and ARP 1 drives it in sixteenths, a hall.",
+                                      1.0f, 300.0f, 1.0f, 120.0f, -1.0f,
+                                      [] (Builder& s) { hallMacro (s); } });
+        x.add (ostinato);
+
+        auto tuba = x.make ("Tuba Weight", 9, { "Bass", "Brass", "Tuba", "Low" },
+            "The tuba and bass trombone holding the floor of the orchestra: a round saw and a sine through the VOICE filter "
+            "on a dark \"oh\", each note pushed in with a breath, a gentle swell, a big hall. Play long low notes. MOD WHEEL: "
+            "dynamics (a brassier blare). MACROS: BRIGHT, SPACE, LEGION.");
+        tuba.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "Voice", 0.0f).osc (1, "Filter", 0.0f)
+            .filter (FilterType::lp24, 450.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltVel, 0.4f)
+            .filterEnvelope (40.0f, 500.0f, 0.5f, 400.0f)
+            .ampEnvelope (35.0f, 600.0f, 0.9f, 400.0f)
+            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.3f).set (ParamIDs::voiceSize, 0.0f)
+            .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.55f);
+        noiseOsc (tuba, 2, 0.02f, 0.3f);
+        pkBend (tuba, -0.4f, 0.07f, -0.3f);
+        route (tuba, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (tuba, 0.25f);
+        macros (tuba, "BRIGHT", "SPACE", "LEGION");
+        reverb (tuba, RT::hall, 0.7f, 0.18f, 15.0f, 3.5f);
+        space (tuba);
+        tuba.set (ParamIDs::patchLevel, -3.0f);
+        legion (tuba, { 0.6f, 0.35f, 0.25f, 0.45f });
+        maestroOrchestra (tuba, { { { 0, "Brass - Performance/Tuba Sustain (looped).sfz", 1.0f, -0.15f },
+                                    { 1, "Brass - Performance/Bass Trombone Solo Sustain (looped).sfz", 0.6f, 0.15f } },
+                                  { 0, 1, 2 }, 4.0f,
+                                  "The tuba and bass trombone holding the floor of the orchestra, on the orchestra's "
+                                  "recordings, a big hall. Play long low notes.",
+                                  30.0f, 300.0f, 1.0f, 450.0f, -1.0f,
+                                  [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hallMacro (s); } });
+        x.add (tuba);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto piano = x.make ("Trailer Piano", 10, { "Keys", "Piano", "Dark", "Epic" },
+            "The low piano that opens a trailer: a struck saw and a sine an octave below, the hammer's thump, the tone "
+            "closing fast after each strike (harder hits open it more), a long fall, a vast dark hall. Play single low "
+            "notes and octaves, slowly. MOD WHEEL: dynamics. MACROS: BRIGHT, SPACE, LEGION (more pianos, a hair apart).");
+        piano.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.45f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Fine", 3.0f).osc (2, "Volume", 0.08f)
+             .filter (FilterType::lp12, 500.0f, 0.05f, 0.5f).set (ParamIDs::fltKey, 0.6f).set (ParamIDs::fltVel, 0.45f)
+             .set (ParamIDs::fltEnvVel, 0.7f).filterEnvelope (0.0f, 500.0f, 0.1f, 300.0f)
+             .ampEnvelope (1.0f, 4000.0f, 0.0f, 700.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.6f);
+        pkStrike (piano, 3, 0, 0.15f, 40.0f, 0.6f);
+        route (piano, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (piano, 0.15f, 0.08f);
+        macros (piano, "BRIGHT", "SPACE", "LEGION");
+        reverb (piano, RT::hall, 0.9f, 0.32f, 20.0f, 3.0f);
+        space (piano);
+        piano.set (ParamIDs::patchLevel, -1.5f);
+        legion (piano, { 0.6f, 0.25f, 0.2f, 0.5f, 0.6f });
+        maestroOrchestra (piano, { { { 0, "Grand Piano/Grand Piano.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2, 3 }, 0.0f,
+                                   "The low piano that opens a trailer, on the orchestra's grand piano, its top closed down "
+                                   "a little, a vast dark hall. Play single low notes and octaves, slowly.",
+                                   0.0f, 300.0f, 1.0f, 900.0f, -1.0f,
+                                   [] (Builder& s) { s.filter (FilterType::lp12, 3500.0f, 0.0f, 0.0f).set (ParamIDs::fltKey, 0.5f);
+                                                     route (s, "macro1", ParamIDs::fltCutoff, 0.25f);
+                                                     s.rig.modulation.macroNames[0] = "BRIGHT"; } });
+        x.add (piano);
+
+        auto celesta = x.make ("Celesta Wonder", 11, { "Keys", "Celesta", "Bell", "Magic" },
+            "The celesta and glockenspiel of a moment of wonder: a sine struck with a small hammer, a bar's first overtone "
+            "(about 2.76 times up, fading fast), a glockenspiel's glint two octaves up, a tiny tap, ringing on into a hall "
+            "with soft echoes. MOD WHEEL: dynamics. MACROS: SPARKLE (more of the glockenspiel), SPACE, LEGION.");
+        celesta.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 18.0f).osc (1, "Fine", -42.0f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 24.0f).osc (2, "PhaseRand", 0.0f)
+               .filter (FilterType::lp12, 9000.0f, 0.0f, 0.0f)
+               .ampEnvelope (1.0f, 2000.0f, 0.0f, 700.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (celesta, 1, 0, 0.22f, 0.35f);
+        pkPartial (celesta, 2, 1, 0.12f, 0.9f);
+        pkStrike (celesta, 3, 2, 0.04f, 3.0f, 0.1f);
+        route (celesta, "macro1", ParamIDs::osc (2, "Volume"), 0.15f);
+        wheelDynamics (celesta, 0.0f, 0.12f);
+        macros (celesta, "SPARKLE", "SPACE", "LEGION");
+        delay (celesta, "1/8 dotted", 0.3f, 0.12f, true, 5.0f);
+        reverb (celesta, RT::hall, 0.75f, 0.25f);
+        space (celesta);
+        celesta.set (ParamIDs::patchLevel, -4.0f);
+        legion (celesta, { 0.8f, 0.3f, 0.3f, 0.7f, 0.7f });
+        maestroOrchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.0f, -0.15f },
+                                       { 1, "Percussion/Glockenspiel.sfz", 0.0f, 0.2f } },
+                                     { 0, 1, 2, 3 }, 5.0f,
+                                     "The celesta and glockenspiel of a moment of wonder, on the orchestra's recordings: "
+                                     "SPARKLE brings the glockenspiel in over the celesta, ringing on into a hall with soft "
+                                     "echoes.",
+                                     0.0f, 300.0f, 1.0f, 1200.0f, -1.0f,
+                                     [] (Builder& s) { route (s, "macro1", ParamIDs::osc (1, "Volume"), 0.35f); } });
+        x.add (celesta);
+
+        auto drums = x.make ("War Drums Hit", 12, { "Keys", "Timpani", "Percussion", "Hit" },
+            "The timpani hits of a trailer's impact: a tuned drum (a sine with the head's overtone a fifth and a bit up, "
+            "its pitch dropping as the skin settles, the stick's slap of noise), a deep boom under it, a vast hall. Play "
+            "low notes, alone or in rolls, as drums tuned to the key. MOD WHEEL: dynamics. MACROS: BOOM (more of the boom), "
+            "SPACE, LEGION (more drummers).");
+        drums.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 7.0f).osc (1, "Fine", 20.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (1, "Filter", 0.0f)
+             .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", -12.0f).osc (4, "Volume", 0.0f).osc (4, "PhaseRand", 0.0f)
+             .osc (4, "Filter", 0.0f)
+             .filter (FilterType::lp12, 1800.0f, 0.0f, 0.3f).filterEnvelope (0.0f, 80.0f, 0.0f, 80.0f)
+             .ampEnvelope (1.0f, 2600.0f, 0.0f, 900.0f).set (ParamIDs::ampDecayCurve, -0.7f).set (ParamIDs::ampVel, 0.7f);
+        pkPartial (drums, 1, 0, 0.3f, 0.5f);
+        pkStrike (drums, 3, 1, 0.25f, 25.0f, 0.5f);
+        pkBend (drums, 1.5f, 0.15f, -0.4f);
+        route (drums, "macro1", ParamIDs::osc (4, "Volume"), 0.3f);
+        wheelDynamics (drums, 0.2f, 0.12f);
+        macros (drums, "BOOM", "SPACE", "LEGION");
+        reverb (drums, RT::hall, 0.9f, 0.3f, 15.0f, 3.0f);
+        space (drums);
+        drums.set (ParamIDs::patchLevel, -6.0f);
+        legion (drums, { 0.7f, 0.6f, 0.15f, 0.5f, 0.75f });
+        maestroOrchestra (drums, { { { 0, "Percussion/Timpani.sfz", 1.0f } }, { 0, 1, 3 }, 4.0f,
+                                   "The timpani hits of a trailer's impact, on the orchestra's timpani (hits on alternating "
+                                   "sticks), PR7-K's deep boom kept under it for BOOM, a vast hall. Play low notes (C2 to "
+                                   "G3), alone or in rolls.",
+                                   0.0f, 300.0f, 1.0f, 2000.0f, -1.0f, {} });
+        x.add (drums);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto spiccato = x.make ("Racing Spiccato", 13, { "Arp", "Strings", "Spiccato", "Driving" },
+            "Violins racing in a chase: hold a chord and ARP 1 runs it up over two octaves in sixteenths, a section of "
+            "violins bouncing the bow (each note a quick bite), the celli an octave down, a hall, in time with your song. "
+            "MOD WHEEL: dynamics. MACROS: BRIGHT, SPACE, LEGION.");
+        spiccato.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f).osc (1, "Arp", 1.0f)
+                .filter (FilterType::lp24, 2600.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 90.0f, 0.25f, 60.0f)
+                .ampEnvelope (1.0f, 120.0f, 0.3f, 60.0f)
+                .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+                .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+                .set (ParamIDs::arp (0, "Gate"), 0.45f);
+        pkSection (spiccato, 0, 4, 0.05f, 0.0f, 5.0f, 0.0f);
+        {
+            auto& p = spiccato.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.7f;
+        }
+        route (spiccato, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (spiccato, 0.2f);
+        macros (spiccato, "BRIGHT", "SPACE", "LEGION");
+        reverb (spiccato, RT::hall, 0.65f, 0.18f);
+        space (spiccato);
+        spiccato.set (ParamIDs::patchLevel, 1.8f);
+        legion (spiccato, { 0.8f, 0.15f, 0.2f, 0.6f });
+        maestroOrchestra (spiccato, { { { 0, "Strings - Performance/1st Violins Staccato.sfz", 1.0f, -0.15f },
+                                        { 1, "Strings - Performance/Celli Staccato.sfz", 0.6f, 0.2f } },
+                                      { 0, 1 }, 8.0f,
+                                      "Violins racing in a chase, on the orchestra's first violins and celli playing "
+                                      "staccato: hold a chord and ARP 1 runs it up over two octaves in sixteenths, a hall.",
+                                      1.0f, 300.0f, 1.0f, 100.0f, -1.0f,
+                                      [] (Builder& s) { hallMacro (s); } });
+        x.add (spiccato);
+
+        auto gallop = x.make ("Pulse Brass", 14, { "Arp", "Brass", "Staccato", "Rhythm" },
+            "The brass pounding out a rhythm under the action: hold a chord and ARP 1 plays it in a driving eighth and "
+            "sixteenth figure (long, short-short, accents on the beat), horns and trombones as saws through the VOICE "
+            "filter, each note tongued hard and short, a big room, in time with your song. MOD WHEEL: dynamics. MACROS: "
+            "BRIGHT, SPACE, LEGION.");
+        gallop.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+             .filter (FilterType::lp24, 1100.0f, 0.1f, 0.45f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (2.0f, 160.0f, 0.3f, 100.0f)
+             .ampEnvelope (3.0f, 220.0f, 0.5f, 90.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.2f)
+             .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 0.5f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::asPlayed)
+             .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+             .set (ParamIDs::arp (0, "Length"), 8.0f).set (ParamIDs::arp (0, "Gate"), 0.6f);
+        pkSection (gallop, 0, 3, 0.04f, 0.0f, 5.0f, 0.0f);
+        {
+            // long (two steps), short, short, repeated: the gallop under a chase.
+            auto& p = gallop.rig.modulation.arps[0].patterns[0];
+            p = {};
+            const float velocity[8] { 1.0f, 0.0f, 0.65f, 0.7f, 0.9f, 0.0f, 0.65f, 0.7f };
+            for (int k = 0; k < 8; ++k)
+            {
+                auto& blk = p.blocks[(size_t) k];
+                blk.on = velocity[k] > 0.0f;
+                blk.velocity = juce::jmax (0.1f, velocity[k]);
+                blk.length = k % 4 == 0 ? 2 : 1;
+            }
+        }
+        route (gallop, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (gallop, 0.2f);
+        macros (gallop, "BRIGHT", "SPACE", "LEGION");
+        reverb (gallop, RT::room, 0.6f, 0.16f);
+        space (gallop);
+        gallop.set (ParamIDs::patchLevel, 2.0f);
+        legion (gallop, { 0.75f, 0.15f, 0.2f, 0.55f });
+        maestroOrchestra (gallop, { { { 0, "Brass - Performance/Horns Staccato.sfz", 1.0f, -0.2f },
+                                     { 1, "Brass - Performance/Trombones Staccato.sfz", 0.7f, 0.2f } },
+                                   { 0, 1 }, 7.5f,
+                                   "The brass pounding out a rhythm under the action, on the orchestra's horns and "
+                                   "trombones playing staccato: hold a chord and ARP 1 gallops through it, a big room.",
+                                   1.0f, 300.0f, 1.0f, 120.0f, -1.0f,
+                                   [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hallMacro (s, "ROOM"); } });
+        x.add (gallop);
+
+        auto tension = x.make ("Rising Tension", 15, { "Arp", "Strings", "Col Legno", "Suspense" },
+            "The ticking strings of a countdown: hold a chord and ARP 1's randomizer taps it out in sixteenths with the "
+            "wood of the bow (col legno: a dry click with a little pitch), rising over three octaves with rests, a new "
+            "pattern every pass, close echoes. MOD WHEEL: dynamics. MACROS: BRIGHT, SPACE, LEGION.");
+        tension.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Arp", 1.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.15f).osc (1, "Arp", 1.0f)
+               .filter (FilterType::lp12, 1500.0f, 0.15f, 0.5f).set (ParamIDs::fltKey, 0.6f).filterEnvelope (0.0f, 45.0f, 0.0f, 40.0f)
+               .ampEnvelope (0.5f, 70.0f, 0.0f, 50.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.4f);
+        pkStrike (tension, 2, 0, 0.08f, 2.0f, 0.2f);
+        {
+            auto& r = tension.rig.modulation.arpRandomizers[0];
+            r.scale = synth::arp::scaleNames.indexOf ("Minor");
+            r.restChance = 0.3f;
+            r.lengthChances = { 1.0f, 0.0f, 0.0f, 0.0f };
+            r.velocityLow = 0.55f;
+            r.autoDice = true;
+            r.seed = 31;
+            auto& pattern = tension.rig.modulation.arps[0].patterns[0];
+            pattern = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
+        }
+        route (tension, "macro1", ParamIDs::fltCutoff, 0.25f);
+        wheelDynamics (tension, 0.15f);
+        macros (tension, "BRIGHT", "SPACE", "LEGION");
+        delay (tension, "1/16", 0.25f, 0.12f, true, 5.0f);
+        reverb (tension, RT::room, 0.5f, 0.15f);
+        space (tension);
+        tension.set (ParamIDs::patchLevel, 6.0f);
+        legion (tension, { 0.85f, 0.2f, 0.3f, 0.6f });
+        maestroOrchestra (tension, { { { 0, "Strings - Performance/All Strings Col Legno.sfz", 1.41f } }, { 0, 1, 2 }, 12.0f,
+                                     "The ticking strings of a countdown, on the orchestra's whole string section playing "
+                                     "col legno (with the wood of the bow): hold a chord and ARP 1's randomizer taps it "
+                                     "out in sixteenths, close echoes.",
+                                     0.5f, 300.0f, 1.0f, 150.0f, -1.0f,
+                                     [] (Builder& s) { s.set (ParamIDs::fltType, (float) FilterType::lp12).set (ParamIDs::fltCutoff, 8000.0f);
+                                                       route (s, "macro1", ParamIDs::delayMix, 0.2f);
+                                                       s.rig.modulation.macroNames[0] = "ECHO"; } });
+        x.add (tension);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto pizz = x.make ("War Pizzicato", 16, { "Pluck", "Strings", "Pizzicato", "Section" },
+            "The whole string section plucking hard before the storm: violins and celli as saws, each plucked string a "
+            "quick filter snap and gone, the snap of the fingers off the string, harder playing brighter and a little "
+            "longer, a hall. MOD WHEEL: dynamics. MACROS: BRIGHT, SPACE, LEGION.");
+        pizz.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp12, 1500.0f, 0.1f, 0.5f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 80.0f, 0.0f, 70.0f)
+            .ampEnvelope (0.5f, 420.0f, 0.0f, 160.0f);
+        pkSection (pizz, 0, 3, 0.06f, 0.0f, 5.0f, 0.0f);
+        pkStrike (pizz, 2, 0, 0.07f, 3.0f, 0.2f);
+        pkVelocity (pizz, 0.5f, 0.3f, 0.5f);
+        route (pizz, "macro1", ParamIDs::fltCutoff, 0.2f);
+        wheelDynamics (pizz, 0.15f);
+        macros (pizz, "BRIGHT", "SPACE", "LEGION");
+        reverb (pizz, RT::hall, 0.65f, 0.2f);
+        space (pizz);
+        pizz.set (ParamIDs::patchLevel, -6.0f);
+        legion (pizz, { 0.85f, 0.25f, 0.25f, 0.6f });
+        maestroOrchestra (pizz, { { { 0, "Strings - Performance/All Strings Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 2.0f,
+                                  "The whole string section plucking hard before the storm, on the orchestra's strings "
+                                  "playing pizzicato, a hall.",
+                                  0.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                                  [] (Builder& s) { hallMacro (s); } });
+        x.add (pizz);
+
+        auto harp = x.make ("Harp Fall", 17, { "Pluck", "Harp", "Echo", "Cascade" },
+            "A harp's notes falling away into the distance: a triangle and a sine an octave up, each string plucked with a "
+            "fingertip, bright for a moment and mellowing as it rings, echoes cascading from side to side, a long hall. MOD "
+            "WHEEL: dynamics. MACROS: BRIGHT, SPACE, LEGION (harps all round).");
+        harp.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f)
+            .filter (FilterType::lp12, 2600.0f, 0.1f, 0.3f).set (ParamIDs::fltKey, 0.6f)
+            .filterEnvelope (0.5f, 300.0f, 0.2f, 300.0f)
+            .ampEnvelope (0.5f, 2200.0f, 0.0f, 900.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (harp, 1, 0, 0.25f, 0.6f);
+        pkStrike (harp, 2, 1, 0.05f, 4.0f, 0.3f);
+        pkVelocity (harp, 0.4f, 0.3f, 0.5f);
+        route (harp, "macro1", ParamIDs::fltCutoff, 0.2f);
+        wheelDynamics (harp, 0.15f);
+        macros (harp, "BRIGHT", "SPACE", "LEGION");
+        delay (harp, "1/8 dotted", 0.4f, 0.2f, true, 4.0f);
+        reverb (harp, RT::hall, 0.75f, 0.25f);
+        space (harp);
+        harp.set (ParamIDs::patchLevel, -6.0f);
+        legion (harp, { 0.9f, 0.4f, 0.25f, 0.65f });
+        maestroOrchestra (harp, { { { 0, "Concert Harp.sfz", 1.0f } }, { 0, 1, 2 }, 0.0f,
+                                  "A harp's notes falling away into the distance, on the orchestra's concert harp, echoes "
+                                  "cascading from side to side, a long hall.",
+                                  0.0f, 300.0f, 1.0f, 1500.0f, -1.0f,
+                                  [] (Builder& s) { route (s, "macro1", ParamIDs::delayFeedback, 0.25f);
+                                                    s.rig.modulation.macroNames[0] = "CASCADE"; } });
+        x.add (harp);
+
+        auto clock = x.make ("Clock Strings", 18, { "Pluck", "Strings", "Ticking", "Col Legno" },
+            "Strings ticking like a clock running out: a hollow pulse struck dry with the wood of the bow (a click and a "
+            "short, woody pitch), a plucked cello an octave down, close echoes. Play it on the beat. MOD WHEEL: dynamics. "
+            "MACROS: BRIGHT, SPACE, LEGION.");
+        clock.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.45f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+             .filter (FilterType::lp12, 1600.0f, 0.15f, 0.5f).set (ParamIDs::fltKey, 0.6f).filterEnvelope (0.0f, 50.0f, 0.0f, 40.0f)
+             .ampEnvelope (0.3f, 180.0f, 0.0f, 90.0f);
+        pkStrike (clock, 2, 0, 0.12f, 1.5f, 0.1f);
+        pkVelocity (clock, 0.4f, 0.3f, 0.5f);
+        route (clock, "macro1", ParamIDs::fltCutoff, 0.2f);
+        wheelDynamics (clock, 0.15f);
+        macros (clock, "BRIGHT", "SPACE", "LEGION");
+        delay (clock, "1/8", 0.2f, 0.12f, true, 5.0f);
+        reverb (clock, RT::room, 0.5f, 0.15f);
+        space (clock);
+        clock.set (ParamIDs::patchLevel, -4.0f);
+        legion (clock, { 0.8f, 0.2f, 0.2f, 0.6f });
+        maestroOrchestra (clock, { { { 0, "Strings - Performance/1st Violins Col Legno.sfz", 1.0f, -0.15f },
+                                     { 1, "Strings - Performance/Celli Pizzicato.sfz", 0.7f, 0.2f } },
+                                   { 0, 1, 2 }, 4.5f,
+                                   "Strings ticking like a clock running out, on the orchestra's first violins playing col "
+                                   "legno over the celli plucked, close echoes. Play it on the beat.",
+                                   0.0f, 300.0f, 1.0f, 200.0f, -1.0f,
+                                   [] (Builder& s) { s.set (ParamIDs::fltType, (float) FilterType::lp12).set (ParamIDs::fltCutoff, 9000.0f);
+                                                     route (s, "macro1", ParamIDs::delayMix, 0.2f);
+                                                     s.rig.modulation.macroNames[0] = "ECHO"; } });
+        x.add (clock);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -13566,5 +14216,6 @@ std::vector<Rig> makeExpansionRigs()
     atomicAge ({ Rig::numBanks + 24, rigs });
     hyperdrive ({ Rig::numBanks + 25, rigs });
     grandCinema ({ Rig::numBanks + 26, rigs });
+    maestro ({ Rig::numBanks + 27, rigs });
     return rigs;
 }
