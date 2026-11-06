@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 29> list
+    inline constexpr std::array<Expansion, 30> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -155,5 +155,13 @@ namespace expansions
           "pulses where they meet. Built round OVERCHARGE (0.77.0) and MACRO 3, OVERCHARGE: unstable magic, charging the "
           "sound then breaking it apart. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
           "(free). Our own sounds." },
+        { "STOLEN SKY", "SK",
+          "Inspired by a series about a hidden town built inside a mountain after the world ended, a perfect suburb under "
+          "a false sky: sweet whistles, warm pads, clean basses and a gentle piano for the town; concrete drones, "
+          "machine basses, cold arps and steel drips for the truth underneath; grieving strings, a lonely lead, urgent "
+          "arps and cold, emotional pianos for the end of the world. Built round AFTERMATH (0.79.0) and MACRO 3, "
+          "AFTERMATH: from under the open sky into a sealed concrete bunker. Its pianos play the Salamander Grand, and its "
+          "strings, solo violin, flute and low strings the Sonatina Symphonic Orchestra, once downloaded (free). Our own "
+          "sounds." },
     }};
 }

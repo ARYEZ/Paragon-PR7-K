@@ -89,6 +89,7 @@ target_sources(ParagonX1
         source/dsp/effects/Bloom.cpp
         source/dsp/effects/Legion.cpp
         source/dsp/effects/Overcharge.cpp
+        source/dsp/effects/Aftermath.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -138,6 +139,7 @@ target_sources(ParagonX1
         source/ui/BloomPage.cpp
         source/ui/LegionPage.cpp
         source/ui/OverchargePage.cpp
+        source/ui/AftermathPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

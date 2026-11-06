@@ -531,6 +531,16 @@ namespace ParamIDs
     inline constexpr auto overchargeTone   = "overchargeTone";     // 0 to 1: the glow's top, 3 to 16 kHz
     inline constexpr auto overchargeWidth  = "overchargeWidth";    // 0 to 1: how far the glow spreads
 
+    // AFTERMATH (0.79.0, version hint 46, effects::Aftermath): STOLEN SKY's signature.
+    inline constexpr auto aftermathOn    = "aftermathOn";
+    inline constexpr auto aftermathSeal  = "aftermathSeal";    // 0 to 1: open sky to sealed bunker (the macro's)
+    inline constexpr auto aftermathRoom  = "aftermathRoom";    // 0 to 1: the bunker's size
+    inline constexpr auto aftermathRing  = "aftermathRing";    // 0 to 1: how long the walls ring
+    inline constexpr auto aftermathDark  = "aftermathDark";    // 0 to 1: how dark when sealed, 6 kHz down to 1.2 kHz
+    inline constexpr auto aftermathHum   = "aftermathHum";     // 0 to 1: the machinery, -66 to -30 dB (0 none)
+    inline constexpr auto aftermathHumHz = "aftermathHumHz";   // Aftermath::humNames
+    inline constexpr auto aftermathWidth = "aftermathWidth";   // 0 to 1: the room's width
+
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
     inline constexpr int numInsertBuses = 4;
@@ -623,4 +633,5 @@ void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayou
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
 void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.76.0)
 void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.77.0)
+void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.79.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

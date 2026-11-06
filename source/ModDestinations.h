@@ -73,7 +73,9 @@ namespace ModDestinations
                                                  // 0.76.0: LEGION: how many players, how wide, how far out of tune
                                                  "legionSize", "legionSpread", "legionDetune",
                                                  // 0.77.0: OVERCHARGE: how charged, the crystals' share, how wild the overload
-                                                 "overchargeCharge", "overchargeGlow", "overchargeChaos" };
+                                                 "overchargeCharge", "overchargeGlow", "overchargeChaos",
+                                                 // 0.79.0: AFTERMATH: how sealed in, how long the walls ring, the machinery
+                                                 "aftermathSeal", "aftermathRing", "aftermathHum" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

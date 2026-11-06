@@ -320,6 +320,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->bloom.prepare (sampleRate, preparedBlockSize);
     rack->legion.prepare (sampleRate, preparedBlockSize);
     rack->overcharge.prepare (sampleRate, preparedBlockSize);
+    rack->aftermath.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1306,6 +1307,20 @@ effects::Overcharge::Settings ParagonX1AudioProcessor::getOverchargeSettings() c
     return s;
 }
 
+effects::Aftermath::Settings ParagonX1AudioProcessor::getAftermathSettings() const noexcept
+{
+    effects::Aftermath::Settings s;
+    s.on = isOn (ParamIDs::aftermathOn);
+    s.seal = effectParam (ModDestinations::effect ("aftermathSeal"), ParamIDs::aftermathSeal);
+    s.room = param (ParamIDs::aftermathRoom);
+    s.ring = effectParam (ModDestinations::effect ("aftermathRing"), ParamIDs::aftermathRing);
+    s.dark = param (ParamIDs::aftermathDark);
+    s.hum = effectParam (ModDestinations::effect ("aftermathHum"), ParamIDs::aftermathHum);
+    s.humHz = (int) param (ParamIDs::aftermathHumHz);
+    s.width = param (ParamIDs::aftermathWidth);
+    return s;
+}
+
 effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
 {
     effects::Bloom::Settings s;
@@ -1635,6 +1650,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->overcharge.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
             rack->overcharge.process (block, charge);
         }
+        rack->aftermath.process (block, getAftermathSettings());   // 0.79.0: from under the sky into the bunker
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 22> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 23> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 22> specs;
+    std::array<RackUnit::Spec, 23> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1498,6 +1498,45 @@ std::array<RackUnit::Spec, 22> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (21); };
+    }
+
+    // AFTERMATH (0.79.0): how sealed in, in big digits, and its settings; the keys set SEAL: SHELTER (half under), SEALED
+    // (all the way) and back to OPEN SKY; the ladder how sealed.
+    {
+        auto& s = specs[22];
+        s.name = "AFTERMATH";
+        s.kind = "SEAL  ROOM  RING";
+        s.onParameterIds = { ParamIDs::aftermathOn };
+        s.powerTooltip = "AFTERMATH on or off: from under an open sky into a sealed concrete room. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float seal; const char* tip; };
+        static constexpr Stage stages[] = { { "OPEN", 0.0f, "Under the open sky: your sound untouched" },
+                                            { "SHELTER", 0.5f, "Half under: the room closing in" },
+                                            { "SEALED", 1.0f, "Sealed in: concrete, the walls ringing, the machinery humming" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::aftermathSeal) - t.seal) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::aftermathSeal, t.seal); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::aftermathSeal, "SEAL" }, RackUnit::Knob { ParamIDs::aftermathRing, "RING" } };
+        s.ladderTitle = "SEALED";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "1/2", "", "SKY" };
+        s.ladderReading = [&p] { return p.getAftermathSettings().on ? p.getAftermath().getSeal() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto seal = p.getAftermathSettings().on ? p.getAftermath().getSeal() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * seal)), left.getTopLeft(), h);
+            line (g, seal < 0.001f ? "OPEN SKY" : seal >= 0.999f ? "SEALED" : "SEALING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "SEAL " + textOf (p, ParamIDs::aftermathSeal), "ROOM " + textOf (p, ParamIDs::aftermathRoom),
+                                  "RING " + textOf (p, ParamIDs::aftermathRing), "HUM " + textOf (p, ParamIDs::aftermathHum) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (22); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

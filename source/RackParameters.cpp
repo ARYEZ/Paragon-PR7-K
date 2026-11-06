@@ -28,6 +28,7 @@
 #include "dsp/effects/Bloom.h"
 #include "dsp/effects/Legion.h"
 #include "dsp/effects/Overcharge.h"
+#include "dsp/effects/Aftermath.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -814,4 +815,31 @@ void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayou
     layout.add (makeFloat (ParamIDs::overchargeChaos, "Overcharge Chaos", { 0.0f, 1.0f, 0.01f }, d.chaos, v, asPercent));
     layout.add (makeFloat (ParamIDs::overchargeTone, "Overcharge Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::overchargeWidth, "Overcharge Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // AFTERMATH (0.79.0, our own design): off and at SEAL 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 46;
+    using A = effects::Aftermath;
+    const A::Settings d;
+    const ToText asSeal = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Open sky") : value >= 0.999f ? juce::String ("Sealed")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% sealed";
+    };
+    const ToText asRing = [] (float value, int) { return juce::String (A::ringSeconds (0.4f, value), 2) + " s"; };
+    const ToText asDark = [] (float value, int) { return juce::String (A::darkHz (value) / 1000.0f, 1) + " kHz"; };
+    const ToText asHum = [] (float value, int)
+    {
+        return value <= 0.0f ? juce::String ("None") : juce::String (juce::roundToInt (A::humDb (value))) + " dB";
+    };
+    layout.add (makeSwitch (ParamIDs::aftermathOn, "Aftermath On", v, false));
+    layout.add (makeFloat (ParamIDs::aftermathSeal, "Aftermath Seal", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asSeal));
+    layout.add (makeFloat (ParamIDs::aftermathRoom, "Aftermath Room", { 0.0f, 1.0f, 0.01f }, d.room, v, asPercent));
+    layout.add (makeFloat (ParamIDs::aftermathRing, "Aftermath Ring", { 0.0f, 1.0f, 0.01f }, d.ring, v, asRing));
+    layout.add (makeFloat (ParamIDs::aftermathDark, "Aftermath Dark", { 0.0f, 1.0f, 0.01f }, d.dark, v, asDark));
+    layout.add (makeFloat (ParamIDs::aftermathHum, "Aftermath Hum", { 0.0f, 1.0f, 0.01f }, d.hum, v, asHum));
+    layout.add (makeChoice (ParamIDs::aftermathHumHz, "Aftermath Hum Hz", v, A::humNames, d.humHz));
+    layout.add (makeFloat (ParamIDs::aftermathWidth, "Aftermath Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

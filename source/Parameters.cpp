@@ -568,5 +568,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addBloomParameters (layout);           // BLOOM (0.74.0): RackParameters.cpp
     addLegionParameters (layout);          // LEGION (0.76.0): RackParameters.cpp
     addOverchargeParameters (layout);      // OVERCHARGE (0.77.0): RackParameters.cpp
+    addAftermathParameters (layout);       // AFTERMATH (0.79.0): RackParameters.cpp
     return layout;
 }

@@ -81,6 +81,8 @@ add_executable(ParagonX1Tests
     LegionPluginTests.cpp
     OverchargeTests.cpp
     OverchargePluginTests.cpp
+    AftermathTests.cpp
+    AftermathPluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
