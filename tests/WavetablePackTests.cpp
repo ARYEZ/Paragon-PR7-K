@@ -203,3 +203,126 @@ TEST_CASE ("Wavetable packs: presets, projects and undo keep the reference; noth
     CHECK (plugin.processor.resolveWavetableRef ("{wt:../x}/a.wav") == juce::File());
     CHECK (plugin.processor.resolveWavetableRef ("{wt:}/a.wav") == juce::File());
 }
+
+// Clips of bank A's Orbit presets (not run by default): PARAGON_WTPACK (a folder holding the Orbit tables), PARAGON_RENDER.
+// Each played as its kind is played, 100 BPM in A minor, the song running (TRAVEL follows it).
+#include "rigs/FactoryRigs.h"
+TEST_CASE ("Render the Orbit wavetable presets", "[.orbitrender]")
+{
+    const juce::File pack (juce::SystemStats::getEnvironmentVariable ("PARAGON_WTPACK", {}));
+    REQUIRE (pack.isDirectory());
+    const auto folder = juce::File (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", "/tmp/paragon-render"));
+    folder.createDirectory();
+    TempFolder t;
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.getChildFile ("Libraries").createDirectory();
+    REQUIRE (pack.createSymbolicLink (presets.getChildFile ("Libraries/Orbit Wavetables"), true));
+    const auto macro3 = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_MACRO3", {});
+
+    struct Song final : juce::AudioPlayHead
+    {
+        double ppq = 0.0;
+        juce::Optional<PositionInfo> getPosition() const override
+        {
+            PositionInfo info;
+            info.setBpm (100.0);
+            info.setPpqPosition (ppq);
+            info.setIsPlaying (true);
+            info.setTimeSignature (juce::AudioPlayHead::TimeSignature { 4, 4 });
+            return info;
+        }
+    } song;
+
+    struct Event { double beat; bool on; int note; float velocity; };
+    const auto phrase = [] (const Rig& rig)
+    {
+        std::vector<Event> e;
+        const auto note = [&e] (double at, double length, int n, float v) { e.push_back ({ at, true, n, v }); e.push_back ({ at + length, false, n, 0.0f }); };
+        const std::vector<std::vector<int>> chords { { 57, 60, 64, 67 }, { 53, 57, 60, 64 }, { 48, 55, 60, 64 }, { 55, 59, 62, 67 } };
+        if (rig.tags.contains ("Lead"))
+        {
+            const int m[] { 69, 72, 76, 74, 72, 74, 76, 79, 77, 76, 74, 72 };
+            const double len[] { 1, 1, 2, 1, 1, 1, 1, 4, 1, 1, 1, 3 };
+            double at = 0.0;
+            for (int k = 0; k < 12; ++k) { note (at, len[k] * 0.95, m[k], 0.8f); at += len[k]; }
+        }
+        else if (rig.tags.contains ("Bass"))
+        {
+            const int roots[] { 33, 29, 36, 31 };
+            for (int bar = 0; bar < 4; ++bar)
+                for (int k = 0; k < 8; ++k)
+                    if (k != 3)
+                        note (bar * 4.0 + k * 0.5, k == 7 ? 0.9 : 0.4, roots[bar] + (k == 6 ? 12 : 0), k % 2 == 0 ? 0.9f : 0.7f);
+            note (16.0, 3.5, 33, 0.9f);
+        }
+        else if (rig.tags.contains ("Keys"))
+        {
+            for (int bar = 0; bar < 4; ++bar)
+            {
+                for (auto n : chords[(size_t) bar]) note (bar * 4.0, 1.9, n, 0.75f);
+                note (bar * 4.0 + 2.0, 0.9, chords[(size_t) bar][2] + 12, 0.6f);
+                note (bar * 4.0 + 3.0, 0.9, chords[(size_t) bar][3] + 12, 0.5f);
+            }
+        }
+        else   // pads and arps: held chords
+            for (int bar = 0; bar < 4; ++bar)
+                for (auto n : chords[(size_t) bar]) note (bar * 4.0, 3.9, n, 0.75f);
+        std::stable_sort (e.begin(), e.end(), [] (const Event& a, const Event& b) { return a.beat < b.beat; });
+        return e;
+    };
+
+    const auto beatSeconds = 60.0 / 100.0;
+    for (const auto& rig : makeFactoryRigs())
+    {
+        if (rig.wavetableRefs.empty())
+            continue;
+        ParagonX1AudioProcessor processor;
+        processor.useRigFolder (presets);
+        processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+        processor.setPlayHead (&song);
+        RigLibrary::Entry entry;
+        entry.rig = rig;
+        entry.isFactory = true;
+        processor.loadRig (entry);
+        for (const auto& [osc, ref] : rig.wavetableRefs)
+            REQUIRE (! processor.isWavetableMissing (osc));
+        if (macro3.isNotEmpty())   // PARAGON_RENDER_MACRO3: MACRO 3 ORBIT's setting (0 to 1)
+            if (auto* m = processor.getParameters().getParameter (ParamIDs::macros[2]))
+                m->setValueNotifyingHost (m->convertTo0to1 (macro3.getFloatValue()));
+        // PARAGON_RENDER_PARAMS: "id=value,..." set after loading (to hear what a setting does).
+        for (const auto& item : juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_PARAMS", {}), ",", {}))
+            if (auto* parameter = processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
+                parameter->setValueNotifyingHost (parameter->convertTo0to1 (item.fromFirstOccurrenceOf ("=", false, false).getFloatValue()));
+        processor.prepareToPlay (48000.0, 256);
+        processor.seedRandomForTest (1);
+        processor.setNonRealtime (true);
+        const auto events = phrase (rig);
+        const auto total = (int) ((20.0 * beatSeconds + 4.0) * 48000.0);
+        juce::AudioBuffer<float> out (2, total + 256), block (2, 256);
+        song.ppq = 0.0;
+        size_t next = 0;
+        for (int at = 0; at < total; at += 256)
+        {
+            juce::MidiBuffer midi;
+            while (next < events.size() && (int) (events[next].beat * beatSeconds * 48000.0) < at + 256)
+            {
+                const auto& e = events[next++];
+                const auto offset = juce::jlimit (0, 255, (int) (e.beat * beatSeconds * 48000.0) - at);
+                midi.addEvent (e.on ? juce::MidiMessage::noteOn (1, e.note, e.velocity) : juce::MidiMessage::noteOff (1, e.note), offset);
+            }
+            block.clear();
+            processor.processBlock (block, midi);
+            song.ppq += 256.0 / 48000.0 / beatSeconds;
+            for (int c = 0; c < 2; ++c)
+                out.copyFrom (c, at, block, c, 0, 256);
+        }
+        out.setSize (2, total, true);
+        const auto file = folder.getChildFile (rig.getSlotName() + " " + rig.name + ".wav");
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions{}.withSampleRate (48000.0).withNumChannels (2).withBitsPerSample (24));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (out, 0, total);
+    }
+}

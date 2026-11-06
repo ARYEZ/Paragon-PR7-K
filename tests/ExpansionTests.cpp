@@ -698,7 +698,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     REQUIRE (p.processor.saveCurrentRigAs ("My Brass"));
     const auto& saved = p.entryNamed ("My Brass");
     CHECK (saved.rig.bank == 0);
-    CHECK (saved.rig.getSlotName() == "A48");   // after bank A's factory presets (A01-A47)
+    CHECK (saved.rig.getSlotName() == "A60");   // after bank A's factory presets (A01-A59)
 
     Rig details = saved.rig;
     details.bank = Rig::numBanks;   // asked for an expansion's bank
@@ -713,7 +713,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     CHECK (back->bank == Rig::numBanks - 1);
 
     // < > step on into the expansions after the last user bank, and round.
-    p.processor.loadRig (p.entryNamed ("Starlight Piano"));
+    p.processor.loadRig (p.entryNamed ("Orbit Arp"));   // A59, the last factory preset in bank A
     p.processor.stepRig (1);
     CHECK (p.processor.getCurrentRig().name == "My Brass");
     p.processor.stepRig (1);
