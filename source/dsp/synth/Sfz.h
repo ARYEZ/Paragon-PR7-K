@@ -75,6 +75,10 @@ namespace synth::sfz
         bool release = false;                   // TRIGGER=RELEASE
         float rtDecayDb = 0.0f;                 // dB a second of the note held, off a release sample
         float velTrack = 1.0f;                  // AMP_VELTRACK / 100
+        // AMP_VELCURVE_N (0.81.0, Sam's Sonor's layers): the level at velocity N (0-127), straight lines between the
+        // points, (0, 0) and (127, 1) where not given; when there are any, they replace AMP_VELTRACK. Kept as a
+        // vector (a 128-point table inline would grow every region).
+        std::vector<std::pair<int, float>> velCurve;
         int seqLength = 1, seqPosition = 1;
         float loRand = 0.0f, hiRand = 1.0f;
         int loPedal = 0, hiPedal = 127;         // LOCC64 / HICC64
@@ -143,7 +147,25 @@ namespace synth::sfz
 
         bool plays (int key, int velocity) const noexcept { return key >= loKey && key <= hiKey && velocity >= loVel && velocity <= hiVel; }
         // A note's level from its velocity (0-1) as AMP_VELTRACK says: at 100%, (velocity)^2 (SFZ's curve).
-        float velocityGain (float velocity) const noexcept { return 1.0f + velTrack * (velocity * velocity - 1.0f); }
+        float velocityGain (float velocity) const noexcept
+        {
+            if (velCurve.empty())
+                return 1.0f + velTrack * (velocity * velocity - 1.0f);
+            const auto v = juce::jlimit (0.0f, 127.0f, velocity * 127.0f);
+            const auto between = [v] (float x0, float y0, float x1, float y1)
+            {
+                return x1 <= x0 ? y1 : y0 + (y1 - y0) * (v - x0) / (x1 - x0);
+            };
+            auto x0 = 0.0f, y0 = 0.0f;   // (0, 0) unless the curve gives velocity 0
+            for (const auto& [x, y] : velCurve)
+            {
+                if (v <= (float) x)
+                    return between (x0, y0, (float) x, y);
+                x0 = (float) x;
+                y0 = y;
+            }
+            return between (x0, y0, 127.0f, x0 >= 127.0f ? y0 : 1.0f);   // to (127, 1) unless given
+        }
     };
 
     struct Instrument

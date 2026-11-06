@@ -35,9 +35,44 @@ namespace libraries
         return library;
     }
 
+    const Library& versilianCollection()
+    {
+        static const Library library {
+            "Versilian Community Sample Library",
+            "https://github.com/sgossner/VCSL/archive/dfcf4a4918771eee884b96ad4493de82ef84daf6.tar.gz",
+            3900000000,
+            "VCSL-dfcf4a4918771eee884b96ad4493de82ef84daf6",
+            "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz",
+            "Versilian Community Sample Library by Versilian Studios (CC0; its pipe organ sampled by Simon Dalzell of Ivy Audio), github.com/sgossner/VCSL",
+            "COLLECTION",
+            false,
+            2500,
+            { "Chordophones/Zithers/Grand Piano", "Chordophones/Zithers/Upright Piano", "Chordophones/Zithers/Harpsichord",
+              "Electrophones/", "Aerophones/Reed Aerophones/", "Assets/" },
+            { " - Legacy" }
+        };
+        return library;
+    }
+
+    const Library& samsSonor()
+    {
+        static const Library library {
+            "Sam's Sonor",
+            "https://github.com/sfzinstruments/SamsSonor/archive/ef3e32058924ed1c3335e86d03094d3f310a9104.tar.gz",
+            36400000,
+            "SamsSonor-ef3e32058924ed1c3335e86d03094d3f310a9104",
+            "SamsSonor.sfz",
+            "Sam's Sonor by Sam Greene, SFZ mapping by kinwie (CC BY-SA 4.0), github.com/sfzinstruments/SamsSonor",
+            "DRUM KIT",
+            false,
+            36
+        };
+        return library;
+    }
+
     std::vector<const Library*> all()
     {
-        return { &salamanderGrand(), &sonatinaOrchestra() };
+        return { &salamanderGrand(), &sonatinaOrchestra(), &versilianCollection(), &samsSonor() };
     }
 
     juce::String refFor (const Library& library)
@@ -101,7 +136,7 @@ namespace libraries
     }
 
     bool extractTarGz (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
-                       const std::atomic<bool>* cancel, juce::String& error)
+                       const std::atomic<bool>* cancel, juce::String& error, std::function<bool (const juce::String&)> keep)
     {
         auto file = std::make_unique<juce::FileInputStream> (archive);
         if (! file->openedOk())
@@ -173,7 +208,9 @@ namespace libraries
                 continue;
             }
 
-            const auto target = safeChild (destination, name);
+            auto target = safeChild (destination, name);
+            if (keep && ! keep (name))
+                target = juce::File();   // read past, not written
             if (type == '5')
             {
                 if (target != juce::File())
@@ -333,7 +370,12 @@ namespace libraries
         progress = 0.0f;
         destination.getChildFile (library.folder).deleteRecursively();
         juce::String error;
-        const auto ok = extractTarGz (archive, destination, [this] (float p) { progress = p; }, &cancelled, error);
+        const auto& lib = library;
+        const auto ok = extractTarGz (archive, destination, [this] (float p) { progress = p; }, &cancelled, error,
+                                      [&lib] (const juce::String& path)
+                                      {
+                                          return ! path.startsWith (lib.folder + "/") || lib.keeps (path.substring (lib.folder.length() + 1));
+                                      });
         archive.deleteFile();
         if (! ok)
         {

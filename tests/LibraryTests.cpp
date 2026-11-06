@@ -159,6 +159,45 @@ TEST_CASE ("Libraries: a .tar.gz unpacks, long names too, and nothing lands outs
     CHECK (error.isNotEmpty());
 }
 
+TEST_CASE ("Libraries: the Versilian collection and Sam's Sonor; what a library skips isn't unpacked", "[library]")
+{
+    // 0.81.0: VCSL is about 6 GB, most of it pianos and harpsichords PR7-K has already: they're left in the archive.
+    const auto& vcsl = libraries::versilianCollection();
+    const auto& sonor = libraries::samsSonor();
+    CHECK (libraries::libraryFor (libraries::refFor (vcsl)) == &vcsl);
+    CHECK (libraries::libraryFor (libraries::refFor (sonor)) == &sonor);
+    CHECK (vcsl.url.contains (vcsl.folder.fromFirstOccurrenceOf ("VCSL-", false, false)));    // pinned to one commit
+    CHECK (sonor.url.contains (sonor.folder.fromFirstOccurrenceOf ("SamsSonor-", false, false)));
+    CHECK_FALSE (vcsl.keeps ("Chordophones/Zithers/Grand Piano, Steinway B.sfz"));
+    CHECK_FALSE (vcsl.keeps ("Chordophones/Zithers/Grand Piano, Steinway B/C4.wav"));
+    CHECK_FALSE (vcsl.keeps ("Membranophones/Struck Membranophones/Bass Drum 3 - Legacy.sfz"));
+    CHECK (vcsl.keeps (vcsl.sfz));
+    CHECK (vcsl.keeps ("Idiophones/Struck Idiophones/Tubular Bells 1.sfz"));
+    CHECK (vcsl.keeps ("Membranophones/Struck Membranophones/Snare Drum, Rope Tension.sfz"));
+    CHECK (sonor.keeps (sonor.sfz));
+
+    TempFolder t;
+    const auto archive = t.dir.getChildFile ("vcsl.tar.gz");
+    {
+        TarWriter tar;
+        tar.folder (vcsl.folder + "/");
+        tar.file (vcsl.folder + "/" + vcsl.sfz, text ("<region> sample=x.wav"), 'x');
+        tar.file (vcsl.folder + "/Chordophones/Zithers/Grand Piano, Kawai.sfz", text ("<region> sample=y.wav"), 'x');
+        tar.file (vcsl.folder + "/Chordophones/Zithers/Grand Piano, Kawai/C4.wav", sineWav(), 'x');
+        tar.write (archive);
+    }
+    juce::String error;
+    const auto into = t.dir.getChildFile ("out");
+    REQUIRE (libraries::extractTarGz (archive, into, {}, nullptr, error,
+                                      [&vcsl] (const juce::String& path)
+                                      {
+                                          return ! path.startsWith (vcsl.folder + "/") || vcsl.keeps (path.substring (vcsl.folder.length() + 1));
+                                      }));
+    CHECK (into.getChildFile (vcsl.folder).getChildFile (vcsl.sfz).existsAsFile());
+    CHECK_FALSE (into.getChildFile (vcsl.folder).getChildFile ("Chordophones/Zithers/Grand Piano, Kawai.sfz").exists());
+    CHECK_FALSE (into.getChildFile (vcsl.folder).getChildFile ("Chordophones/Zithers/Grand Piano, Kawai").exists());
+}
+
 TEST_CASE ("Libraries: GET THE PIANO downloads the library and a preset waiting for it plays", "[library][plugin]")
 {
     MainView::offerLibrary = false;
@@ -228,7 +267,7 @@ TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets
     CHECK (libraries::libraryFor (libraries::refFor (sso, horns)) == &sso);
     CHECK (libraries::libraryFor (libraries::refFor (piano)) == &piano);
     CHECK (libraries::libraryFor ("{sfz:some other folder}/x.sfz") == nullptr);
-    CHECK (libraries::all().size() == 2);
+    CHECK (libraries::all().size() == 4);   // 0.81.0: the Versilian collection and Sam's Sonor too
 
     TempFolder t;
     const auto presets = t.dir.getChildFile ("presets");

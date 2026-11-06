@@ -24,6 +24,19 @@ namespace libraries
         juce::String what;          // what the plugin calls it in short ("PIANO": GET THE PIANO)
         bool exactSize = true;      // `bytes` is exact (a cut-off download is caught by it); else about (progress only)
         int unpackedMb = 0;         // what it takes on disk once unpacked
+        // (0.81.0) Paths in the archive (under `folder`) not unpacked: a prefix, or a part of a name (" - Legacy").
+        // VCSL's pianos and harpsichords are most of its 6 GB and PR7-K has its own.
+        juce::StringArray skipPrefixes, skipContaining;
+        bool keeps (const juce::String& pathInFolder) const
+        {
+            for (const auto& p : skipPrefixes)
+                if (pathInFolder.startsWith (p))
+                    return false;
+            for (const auto& p : skipContaining)
+                if (pathInFolder.contains (p))
+                    return false;
+            return true;
+        }
     };
 
     // The Salamander Grand Piano (Yamaha C5, 16 velocity layers, by Alexander Holm, CC-BY 3.0), the FreePats project's
@@ -33,6 +46,15 @@ namespace libraries
     // The Sonatina Symphonic Orchestra (0.73.0; Mattias Westlund, Peter Eastman; Creative Commons Sampling Plus 1.0),
     // version 4.0: GitHub's archive of its release (about 1.4 GB; GitHub makes it, so its exact size isn't fixed).
     const Library& sonatinaOrchestra();
+
+    // The Versilian Community Sample Library (0.81.0; Versilian Studios, CC0: public domain), its SFZ edition at a fixed
+    // commit: two pipe organs, tubular bells, handbells, a rope-tension field drum and other snares, timpani, gongs,
+    // a siren, harps, harpsichords, pianos, recorders, wine glasses and more. GitHub makes the archive (no exact size).
+    const Library& versilianCollection();
+
+    // Sam's Sonor (0.81.0; Sam Greene, mapped by kinwie, CC BY-SA 4.0): a Sonor Force 3001 kit, its snare with a left
+    // and a right hand for rolls, at a fixed commit of the SFZ Instruments edition.
+    const Library& samsSonor();
 
     // Every library PR7-K can download.
     std::vector<const Library*> all();
@@ -47,8 +69,10 @@ namespace libraries
     // Unpacks a .tar.gz into `destination` (regular files and folders; links and anything naming a place outside it
     // are skipped). `progress` 0-1 by the compressed bytes read. False (and why, in `error`) if it isn't a readable
     // tar.gz or `cancel` was set.
+    // (0.81.0) `keep`, when given, decides per path (as in the archive) whether it's unpacked.
     bool extractTarGz (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
-                       const std::atomic<bool>* cancel, juce::String& error);
+                       const std::atomic<bool>* cancel, juce::String& error,
+                       std::function<bool (const juce::String&)> keep = {});
 
     // Fetches and unpacks a library on a thread of its own: `destination` / library.folder once it's done.
     class Download final : private juce::Thread

@@ -274,6 +274,37 @@ TEST_CASE ("SFZ: velocity layers, AMP_VELTRACK, VOLUME and AMPLITUDE", "[sfz]")
                 WithinAbs (std::pow (64.0 / 127.0, 2.0), 0.005));
 }
 
+TEST_CASE ("SFZ: AMP_VELCURVE_N sets each layer's level by velocity, straight between its points", "[sfz]")
+{
+    // 0.81.0 (Sam's Sonor's layers): AMP_VELCURVE_50=1 on a layer for velocities 1-50 plays velocity 25 at half level
+    // and 50 at full (from (0, 0)); a point at 64 = 0.25 then (127, 1) where not given; AMP_VELTRACK is replaced.
+    Folder f;
+    writeSine (f.dir.getChildFile ("tone.wav"), hzOf (60), 0.5);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<region> sample=tone.wav key=60 lovel=1 hivel=50 amp_velcurve_50=1\n"
+        "<region> sample=tone.wav key=62 pitch_keycenter=62 amp_velcurve_64=0.25 amp_veltrack=0\n"
+        "<region> sample=tone.wav key=64 pitch_keycenter=64 amp_velcurve_0=0.5 amp_velcurve_127=0.5\n"));
+    REQUIRE (inst != nullptr);
+    const auto level = [&] (int note, int velocity)
+    {
+        SfzPlayer p (inst.get());
+        p.on (note, (float) velocity / 127.0f);
+        const auto out = p.render (0.2);
+        return rms (out[0], 960, out[0].size());
+    };
+    const auto top = level (60, 50);
+    REQUIRE (top > 0.01);
+    CHECK_THAT (level (60, 25) / top, WithinAbs (0.5, 0.01));
+    CHECK_THAT (level (60, 10) / top, WithinAbs (0.2, 0.01));
+    // Points (0, 0), (64, 0.25), (127, 1): velocity 32 at 0.125, 64 at 0.25, 96 halfway from 0.25 to 1.
+    const auto full = level (62, 127);
+    CHECK_THAT (level (62, 64) / full, WithinAbs (0.25, 0.01));
+    CHECK_THAT (level (62, 32) / full, WithinAbs (0.125, 0.01));
+    CHECK_THAT (level (62, 96) / full, WithinAbs (0.25 + 0.75 * 32.0 / 63.0, 0.01));
+    // Given at both ends: flat.
+    CHECK_THAT (level (64, 20) / level (64, 120), WithinAbs (1.0, 0.01));
+}
+
 TEST_CASE ("SFZ: loops hold a note for as long as it's held; LOOP_SUSTAIN lets go at the release; a WAV's own loop", "[sfz]")
 {
     // 480 Hz at 48 kHz: 100 samples a cycle, so a loop of whole cycles is seamless. 0.5 s long; the loop 0.1-0.3 s.
@@ -1316,5 +1347,68 @@ TEST_CASE ("SFZ: dynamics and key switch demo clips (render)", "[.dynamicsdemo]"
             c.add (p.render (0.9));
         }
         write ("3 Trumpets - wheel low, middle, high", c.l, c.r, 1.8f);
+    }
+}
+
+TEST_CASE ("SFZ: the Versilian collection's and Sam's Sonor's instruments load and play (report)", "[.vcslcheck]")
+{
+    // 0.81.0: PARAGON_LIBRARIES (a folder holding both, under their pinned folder names): every instrument the coming
+    // presets might use, its regions, what isn't played, and its level at C4 (or its own keys) soft and hard.
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    REQUIRE (folder.isDirectory());
+    struct Item { const char* library; const char* sfz; int note; };
+    const auto vcsl = "VCSL-dfcf4a4918771eee884b96ad4493de82ef84daf6", sonor = "SamsSonor-ef3e32058924ed1c3335e86d03094d3f310a9104";
+    const Item items[] {
+        { vcsl, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz", 60 },
+        { vcsl, "Aerophones/Edge-blown Aerophones/Pipe Organ - Quiet.sfz", 60 },
+        { vcsl, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud Pedal.sfz", 36 },
+        { vcsl, "Aerophones/Edge-blown Aerophones/Renaissance Organ - Full.sfz", 60 },
+        { vcsl, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 60 },
+        { vcsl, "Idiophones/Struck Idiophones/Tubular Bells 2.sfz", 60 },
+        { vcsl, "Idiophones/Struck Idiophones/Hand Chimes.sfz", 72 },
+        { vcsl, "Idiophones/Struck Idiophones/Hand Bells, Nepalese.sfz", 72 },
+        { vcsl, "Idiophones/Struck Idiophones/Gong 1.sfz", 60 },
+        { vcsl, "Idiophones/Friction Idiophones/Wine Glasses.sfz", 72 },
+        { vcsl, "Membranophones/Struck Membranophones/Snare Drum, Rope Tension.sfz", 60 },
+        { vcsl, "Membranophones/Struck Membranophones/Timpani 1.sfz", 43 },
+        { vcsl, "Membranophones/Struck Membranophones/Bass Drum 1.sfz", 60 },
+        { vcsl, "Aerophones/Free Aerophones/Siren.sfz", 60 },
+        { vcsl, "Chordophones/Zithers/Psaltery, Bowed and Plucked - Keyswitch.sfz", 72 },
+        { sonor, "SamsSonor.sfz", 38 },
+        { sonor, "SamsSonor.sfz", 40 },
+        { sonor, "SamsSonor.sfz", 36 },
+    };
+    for (const auto& item : items)
+    {
+        const auto file = folder.getChildFile (item.library).getChildFile (item.sfz);
+        if (! file.existsAsFile())
+        {
+            WARN ("missing: " << file.getFullPathName());
+            continue;
+        }
+        const auto inst = synth::sfz::load (file);
+        REQUIRE (inst != nullptr);
+        juce::String line = juce::String (item.sfz) + " (key " + juce::String (item.note) + "): " + juce::String ((int) inst->regions.size())
+                          + " regions, keys " + juce::String (inst->loKey) + "-" + juce::String (inst->hiKey) + ", problems: "
+                          + inst->problems.joinIntoString ("; ");
+        if (! inst->switchLabels.empty())
+        {
+            line << "\n   switches:";
+            for (const auto& [k, label] : inst->switchLabels)
+                line << " " << k << "=" << label;
+        }
+        for (const auto velocity : { 0.3f, 0.6f, 1.0f })
+        {
+            SfzPlayer p (inst.get());
+            p.on (item.note, velocity);
+            auto out = p.render (2.0);
+            float peak = 0.0f;
+            for (auto v : out[0])
+                peak = juce::jmax (peak, std::abs (v));
+            line << "\n   velocity " << velocity << ": rms " << juce::String (db (rms (out[0], 0, out[0].size())), 1) << " dB, peak "
+                 << juce::String (juce::Decibels::gainToDecibels (peak), 1) << " dB, still sounding at 1.8 s "
+                 << juce::String (db (rms (out[0], (size_t) (1.8 * sampleRate), out[0].size())), 1) << " dB";
+        }
+        WARN (line);
     }
 }

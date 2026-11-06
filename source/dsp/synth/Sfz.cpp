@@ -431,6 +431,11 @@ namespace synth::sfz
             r.release = get (op, "trigger", "attack").trim().toLowerCase() == "release";
             r.rtDecayDb = juce::jmax (0.0f, number (op, "rt_decay", 0.0f));
             r.velTrack = number (op, "amp_veltrack", 100.0f) / 100.0f;
+            for (const auto& [name, value] : op)   // AMP_VELCURVE_N (0.81.0)
+                if (name.startsWith ("amp_velcurve_"))
+                    r.velCurve.emplace_back (juce::jlimit (0, 127, name.fromFirstOccurrenceOf ("amp_velcurve_", false, false).getIntValue()),
+                                             juce::jmax (0.0f, value.getFloatValue()));
+            std::sort (r.velCurve.begin(), r.velCurve.end());
             r.seqLength = juce::jmax (1, get (op, "seq_length", "1").getIntValue());
             r.seqPosition = juce::jlimit (1, r.seqLength, get (op, "seq_position", "1").getIntValue());
             r.loRand = number (op, "lorand", 0.0f);
