@@ -2,6 +2,26 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.80.0
+
+**DROWNED DECO, an expansion of a city under the sea falling into madness, built round SUBMERGE.**
+
+- **DROWNED DECO** (DD01-DD18): a city built under the sea in the 1940s, from its last party to the silence after. Every category has three sides, in time. Our own sounds and phrases.
+  - The last party (1940s jazz, already a little warped): Ballroom Clarinet, Chandelier Strings, Upright Swing Bass, Cocktail Piano, Gin Fizz Swing, Vibraphone Toast.
+  - The fall into madness: Mad Theremin, Flooding Halls, Pressure Groan, Broken Record Piano, Panic Pulse, Snapped Strings.
+  - The silence after: Drowned Trumpet, Abyssal Choir, Trench Drone, Sunken Celesta, Sonar Sweep, Bubble Pluck.
+  - **MACRO 3 is SUBMERGE on every preset.** MACRO 2 is SPACE as always.
+  - **The libraries:** Cocktail Piano and Broken Record Piano play the Salamander Grand once it's downloaded; Ballroom Clarinet (solo clarinet), Chandelier Strings (the string section), Abyssal Choir (the large choir), Upright Swing Bass (solo bass, plucked), Sunken Celesta (celeste), Gin Fizz Swing (vibraphone) and Snapped Strings (the section's pizzicato) play the orchestra once it's downloaded.
+  - Until the libraries are downloaded, every preset plays PR7-K's own synthesized version.
+  - Levelled by measurement to sit with the other banks, both versions.
+- **SUBMERGE**, a new signature effect (FX page, SIGNATURE slot): one knob, DEPTH, sinks your sound from dry land to the sea floor.
+  - The water closes over it: the top goes, as dark as MURK says.
+  - The pressure bends the pitch, unevenly, never in a steady rhythm (CURRENT, up to about 16 cents either way).
+  - Bubbles rise, each a little note climbing as it goes (BUBBLES). They only rise while you play, so silence stays silent.
+  - The sea's dark wash surrounds it (SEA), as wide as WIDTH.
+  - The level is kept, and at DEPTH 0 your sound passes through untouched.
+  - Its page shows a ballroom's arched window going under: the water rising up the glass, the light fading to the sea's, the bubbles rising, the glass swaying with the pressure. Our own design.
+
 ## 0.79.0
 
 **STOLEN SKY, an expansion of a perfect town under a false sky, built round AFTERMATH.**
