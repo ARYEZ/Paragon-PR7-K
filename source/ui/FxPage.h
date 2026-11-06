@@ -23,6 +23,7 @@
 #include "ui/LegionPage.h"
 #include "ui/OverchargePage.h"
 #include "ui/AftermathPage.h"
+#include "ui/SubmergePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -62,7 +63,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, lightSpeed, bloom, legion, overcharge, aftermath };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, lightSpeed, bloom, legion, overcharge, aftermath, submerge };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -94,6 +95,7 @@ public:
     LegionPage& getLegionPage() noexcept { return legionPage; }
     OverchargePage& getOverchargePage() noexcept { return overchargePage; }
     AftermathPage& getAftermathPage() noexcept { return aftermathPage; }
+    SubmergePage& getSubmergePage() noexcept { return submergePage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -119,7 +121,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 23> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 24> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -151,6 +153,7 @@ private:
     LegionPage legionPage;   // 0.76.0
     OverchargePage overchargePage;   // 0.77.0
     AftermathPage aftermathPage;     // 0.79.0
+    SubmergePage submergePage;       // 0.80.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

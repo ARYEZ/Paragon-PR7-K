@@ -540,6 +540,14 @@ namespace ParamIDs
     inline constexpr auto aftermathHum   = "aftermathHum";     // 0 to 1: the machinery, -66 to -30 dB (0 none)
     inline constexpr auto aftermathHumHz = "aftermathHumHz";   // Aftermath::humNames
     inline constexpr auto aftermathWidth = "aftermathWidth";   // 0 to 1: the room's width
+    // SUBMERGE (0.80.0, version hint 47, effects::Submerge): DROWNED DECO's signature.
+    inline constexpr auto submergeOn      = "submergeOn";
+    inline constexpr auto submergeDepth   = "submergeDepth";     // 0 to 1: dry land to the sea floor (the macro's)
+    inline constexpr auto submergeMurk    = "submergeMurk";      // 0 to 1: how dark at full depth, 4 kHz down to 400 Hz
+    inline constexpr auto submergeCurrent = "submergeCurrent";   // 0 to 1: the pressure's pitch bend, up to about +-20 cents
+    inline constexpr auto submergeBubbles = "submergeBubbles";   // 0 to 1: how many bubbles rise
+    inline constexpr auto submergeSea     = "submergeSea";       // 0 to 1: the sea's wash
+    inline constexpr auto submergeWidth   = "submergeWidth";     // 0 to 1: how wide the bubbles and the sea
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -634,4 +642,5 @@ void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); 
 void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.76.0)
 void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.77.0)
 void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.79.0)
+void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.80.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

@@ -75,7 +75,9 @@ namespace ModDestinations
                                                  // 0.77.0: OVERCHARGE: how charged, the crystals' share, how wild the overload
                                                  "overchargeCharge", "overchargeGlow", "overchargeChaos",
                                                  // 0.79.0: AFTERMATH: how sealed in, how long the walls ring, the machinery
-                                                 "aftermathSeal", "aftermathRing", "aftermathHum" };
+                                                 "aftermathSeal", "aftermathRing", "aftermathHum",
+                                                 // 0.80.0: SUBMERGE: how deep, the bubbles, the pressure's bend
+                                                 "submergeDepth", "submergeBubbles", "submergeCurrent" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

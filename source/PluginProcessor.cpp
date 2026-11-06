@@ -321,6 +321,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->legion.prepare (sampleRate, preparedBlockSize);
     rack->overcharge.prepare (sampleRate, preparedBlockSize);
     rack->aftermath.prepare (sampleRate, preparedBlockSize);
+    rack->submerge.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1321,6 +1322,19 @@ effects::Aftermath::Settings ParagonX1AudioProcessor::getAftermathSettings() con
     return s;
 }
 
+effects::Submerge::Settings ParagonX1AudioProcessor::getSubmergeSettings() const noexcept
+{
+    effects::Submerge::Settings s;
+    s.on = isOn (ParamIDs::submergeOn);
+    s.depth = effectParam (ModDestinations::effect ("submergeDepth"), ParamIDs::submergeDepth);
+    s.murk = param (ParamIDs::submergeMurk);
+    s.current = effectParam (ModDestinations::effect ("submergeCurrent"), ParamIDs::submergeCurrent);
+    s.bubbles = effectParam (ModDestinations::effect ("submergeBubbles"), ParamIDs::submergeBubbles);
+    s.sea = param (ParamIDs::submergeSea);
+    s.width = param (ParamIDs::submergeWidth);
+    return s;
+}
+
 effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
 {
     effects::Bloom::Settings s;
@@ -1651,6 +1665,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->overcharge.process (block, charge);
         }
         rack->aftermath.process (block, getAftermathSettings());   // 0.79.0: from under the sky into the bunker
+        rack->submerge.process (block, getSubmergeSettings());     // 0.80.0: under the water
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

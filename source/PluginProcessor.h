@@ -278,6 +278,7 @@ public:
         rack->crackle.seedRandom ((std::uint32_t) seed);
         rack->overcharge.seedRandom ((std::uint32_t) seed);
         rack->aftermath.seedRandom ((std::uint32_t) seed);
+        rack->submerge.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
         rack->blackHole.seedRandom ((std::uint32_t) seed);
@@ -421,6 +422,8 @@ public:
     const effects::Overcharge& getOvercharge() const noexcept { return rack->overcharge; }
     effects::Aftermath::Settings getAftermathSettings() const noexcept;          // AFTERMATH (0.79.0)
     const effects::Aftermath& getAftermath() const noexcept { return rack->aftermath; }
+    effects::Submerge::Settings getSubmergeSettings() const noexcept;            // SUBMERGE (0.80.0)
+    const effects::Submerge& getSubmerge() const noexcept { return rack->submerge; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {

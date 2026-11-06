@@ -88,7 +88,8 @@ namespace ModDestinations
                 { "FX Bloom", "Amount" }, { "FX Bloom", "Resonance" }, { "FX Bloom", "Size" },
                 { "FX Legion", "Size" }, { "FX Legion", "Spread" }, { "FX Legion", "Detune" },
                 { "FX Overcharge", "Charge" }, { "FX Overcharge", "Glow" }, { "FX Overcharge", "Chaos" },
-                { "FX Aftermath", "Seal" }, { "FX Aftermath", "Ring" }, { "FX Aftermath", "Hum" } };
+                { "FX Aftermath", "Seal" }, { "FX Aftermath", "Ring" }, { "FX Aftermath", "Hum" },
+                { "FX Submerge", "Depth" }, { "FX Submerge", "Bubbles" }, { "FX Submerge", "Current" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

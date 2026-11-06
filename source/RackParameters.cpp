@@ -29,6 +29,7 @@
 #include "dsp/effects/Legion.h"
 #include "dsp/effects/Overcharge.h"
 #include "dsp/effects/Aftermath.h"
+#include "dsp/effects/Submerge.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -842,4 +843,31 @@ void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::aftermathHum, "Aftermath Hum", { 0.0f, 1.0f, 0.01f }, d.hum, v, asHum));
     layout.add (makeChoice (ParamIDs::aftermathHumHz, "Aftermath Hum Hz", v, A::humNames, d.humHz));
     layout.add (makeFloat (ParamIDs::aftermathWidth, "Aftermath Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SUBMERGE (0.80.0, our own design): off and at DEPTH 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 47;
+    using S = effects::Submerge;
+    const S::Settings d;
+    const ToText asDepth = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Dry land") : value >= 0.999f ? juce::String ("Sea floor")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% under";
+    };
+    const ToText asMurk = [] (float value, int)
+    {
+        const auto hz = S::murkHz (value);
+        return hz >= 1000.0f ? juce::String (hz / 1000.0f, 1) + " kHz" : juce::String (juce::roundToInt (hz)) + " Hz";
+    };
+    const ToText asCurrent = [] (float value, int) { return "+-" + juce::String (juce::roundToInt (S::maxCents * value)) + " cents"; };
+    const ToText asBubbles = [] (float value, int) { return juce::String (S::bubbleRate (value, 1.0f), 1) + " a second"; };
+    layout.add (makeSwitch (ParamIDs::submergeOn, "Submerge On", v, false));
+    layout.add (makeFloat (ParamIDs::submergeDepth, "Submerge Depth", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asDepth));
+    layout.add (makeFloat (ParamIDs::submergeMurk, "Submerge Murk", { 0.0f, 1.0f, 0.01f }, d.murk, v, asMurk));
+    layout.add (makeFloat (ParamIDs::submergeCurrent, "Submerge Current", { 0.0f, 1.0f, 0.01f }, d.current, v, asCurrent));
+    layout.add (makeFloat (ParamIDs::submergeBubbles, "Submerge Bubbles", { 0.0f, 1.0f, 0.01f }, d.bubbles, v, asBubbles));
+    layout.add (makeFloat (ParamIDs::submergeSea, "Submerge Sea", { 0.0f, 1.0f, 0.01f }, d.sea, v, asPercent));
+    layout.add (makeFloat (ParamIDs::submergeWidth, "Submerge Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

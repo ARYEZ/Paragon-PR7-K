@@ -170,6 +170,7 @@ namespace
             { "Battle Pizzicato", -8.5f },
             { "Bike Spokes", -8.1f },
             { "Bloom Formant", -3.7f },
+            { "Bubble Pluck", -6.8f },
             { "Cassette Harp", -9.7f },
             { "Cave Drip", -4.6f },
             { "Chain Snap", -5.4f },
@@ -233,6 +234,7 @@ namespace
             { "Shell Harp", -9.3f },
             { "Sinking Harp", -8.7f },
             { "Slingshot Wah", -5.8f },
+            { "Snapped Strings", -1.9f },
             { "Snowflake Pluck", 0.4f },
             { "Sonar Ping", -6.1f },
             { "Spark Plug", -9.5f },
@@ -244,6 +246,7 @@ namespace
             { "Tape Loop Pluck", -5.4f },
             { "Ticking Pizzicato", -6.2f },
             { "VHS Pluck", -2.1f },
+            { "Vibraphone Toast", -4.7f },
             { "Wasteland Pick", -5.1f },
             { "Wet Neon Pluck", -9.8f },
             { "Wire Shamisen", -5.3f },
@@ -15150,6 +15153,539 @@ namespace
             "a soft echo far behind each one." });
         x.add (ashPiano);
     }
+
+    // ---- DROWNED DECO (0.80.0) -----------------------------------------------------------------------------------
+    // The owner's theme (a city built under the sea in the 1940s, its gilded jazz age falling into madness and the
+    // ocean coming in) and name, leaning into the dark side at the owner's ask; no game title, city, characters,
+    // creatures, terms or its licensed songs on the plugin; our own sounds and phrases. Three columns in every
+    // category, in time: the last party (1940s jazz, already a little warped), the fall (madness), the silence after
+    // (the sea).
+    // MACRO 3 on every preset is SUBMERGE (the bank's own effect, 0.80.0): at its left dry land, untouched; turned up,
+    // the sound sinks: the water takes its top, the pressure bends its pitch, bubbles rise and the sea washes round.
+    struct Waters
+    {
+        float murk = 0.5f, current = 0.5f, bubbles = 0.5f, sea = 0.5f, width = 0.7f;
+        float top = 1.0f;   // the macro's DEPTH at full
+    };
+
+    void submerge (Builder& b, Waters d)
+    {
+        b.set (ParamIDs::submergeOn, 1.0f).set (ParamIDs::submergeDepth, 0.0f).set (ParamIDs::submergeMurk, d.murk)
+         .set (ParamIDs::submergeCurrent, d.current).set (ParamIDs::submergeBubbles, d.bubbles)
+         .set (ParamIDs::submergeSea, d.sea).set (ParamIDs::submergeWidth, d.width);
+        route (b, "macro3", ParamIDs::submergeDepth, d.top);
+    }
+
+    void drownedDeco (Expansion x)
+    {
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        // The record's warp: a slow, wandering LFO (LFO `l`) nudging the oscillators' tuning a few cents.
+        const auto warp = [] (Builder& b, int l, float rate, std::initializer_list<int> oscs, float amount)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (l, "Rate"), rate)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+            for (const auto o : oscs)
+                route (b, ("lfo" + juce::String (l + 1)).toRawUTF8(), ParamIDs::osc (o, "Fine"), amount);
+        };
+        const auto hall = [] (Builder& s, const char* name = "HALL")
+        {
+            route (s, "macro1", ParamIDs::reverbSize, 0.2f);
+            s.rig.modulation.macroNames[0] = name;
+        };
+        const auto felt = [] (Builder& b)
+        {
+            feltPiano (b);
+            dropMacro3 (b);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto clarinet = x.make ("Ballroom Clarinet", 1, { "Lead", "Clarinet", "Party", "Jazz" },
+            "The last song at the ballroom's last party: a woody clarinet (a hollow square, its breath, a little "
+            "vibrato coming in late) sliding between notes, the record under it already a few cents out and wavering. "
+            "Play it like a 1940s band leader. MOD WHEEL: more vibrato. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        clarinet.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.7f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.25f)
+                .filter (FilterType::lp12, 2200.0f, 0.1f, 0.2f).set (ParamIDs::fltKey, 0.6f)
+                .filterEnvelope (30.0f, 400.0f, 0.7f, 200.0f)
+                .ampEnvelope (25.0f, 300.0f, 0.9f, 180.0f)
+                .mono (45.0f);
+        noiseOsc (clarinet, 2, 0.06f, 0.15f);
+        vibrato (clarinet, 0, 10.0f, 5.2f, 400.0f);
+        vibrato (clarinet, 1, 10.0f, 5.2f, 400.0f);
+        warp (clarinet, 0, 0.35f, { 0, 1 }, 0.05f);
+        route (clarinet, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        route (clarinet, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
+        route (clarinet, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (clarinet, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (clarinet, RT::room, 0.5f, 0.18f, 15.0f, 5.0f);
+        space (clarinet);
+        clarinet.set (ParamIDs::patchLevel, -8.1f);
+        submerge (clarinet, { 0.5f, 0.55f, 0.5f, 0.45f, 0.6f });
+        orchestra (clarinet, { { { 0, "Woodwinds - Notation/Clarinet Solo Sustain (looped).sfz", 1.0f, 0.0f } },
+                               { 0, 1, 2 }, 2.0f,
+                               "The last song at the ballroom's last party on a solo clarinet, sliding between notes, the "
+                               "room's warm walls round it. Play it like a 1940s band leader.",
+                               30.0f, 300.0f, 1.0f, 250.0f, 40.0f,
+                               [] (Builder& s) { route (s, "macro1", ParamIDs::reverbMix, 0.1f);
+                                                 s.rig.modulation.macroNames[0] = "ROOM"; } });
+        x.add (clarinet);
+
+        auto theremin = x.make ("Mad Theremin", 2, { "Lead", "Theremin", "Fall", "Unstable" },
+            "The mind going: a pure, singing sine that slides slowly from note to note, a wide vibrato, and a pitch that "
+            "wanders on its own, never quite where you put it. Play slow, wide intervals. MOD WHEEL: wilder (more "
+            "vibrato, more wander). MACROS: BRIGHT, SPACE, SUBMERGE.");
+        theremin.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.06f)
+                .filter (FilterType::lp12, 6000.0f, 0.0f, 0.0f)
+                .ampEnvelope (80.0f, 400.0f, 0.95f, 500.0f)
+                .mono (220.0f);
+        vibrato (theremin, 0, 32.0f, 6.4f, 250.0f);
+        vibrato (theremin, 1, 32.0f, 6.4f, 250.0f);
+        warp (theremin, 0, 0.9f, { 0, 1 }, 0.12f);
+        route (theremin, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (theremin, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.25f);
+        route (theremin, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        macros (theremin, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (theremin, "1/4 dotted", 0.35f, 0.14f, true, 4.0f);
+        reverb (theremin, RT::plate, 0.65f, 0.24f, 30.0f, 5.0f);
+        space (theremin);
+        theremin.set (ParamIDs::patchLevel, -6.2f);
+        submerge (theremin, { 0.55f, 0.8f, 0.45f, 0.5f, 0.7f });
+        x.add (theremin);
+
+        auto trumpet = x.make ("Drowned Trumpet", 3, { "Lead", "Trumpet", "Sea", "Distant" },
+            "A muted trumpet still playing somewhere under the water: a brassy saw through a sung OO (the mute), a slow "
+            "vibrato, far away in a long dark hall with an echo behind it. Lonely, slow phrases. MOD WHEEL: the mute "
+            "opens. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        trumpet.osc (0, "Wave", saw).osc (0, "Volume", 0.7f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.25f)
+               .filter (FilterType::lp24, 2400.0f, 0.1f, 0.3f).set (ParamIDs::fltKey, 0.5f)
+               .filterEnvelope (50.0f, 500.0f, 0.6f, 300.0f)
+               .ampEnvelope (60.0f, 500.0f, 0.85f, 600.0f)
+               .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.1f).set (ParamIDs::voiceSize, 0.5f)
+               .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 1.0f)
+               .mono (60.0f);
+        vibrato (trumpet, 0, 8.0f, 5.0f, 500.0f);
+        vibrato (trumpet, 1, 8.0f, 5.0f, 500.0f);
+        route (trumpet, "modWheel", ParamIDs::voiceVowel, 0.4f);
+        route (trumpet, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (trumpet, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (trumpet, "1/4 dotted", 0.35f, 0.16f, true, 3.0f);
+        reverb (trumpet, RT::hall, 0.85f, 0.3f, 60.0f, 3.5f);
+        space (trumpet);
+        trumpet.set (ParamIDs::patchLevel, -5.9f);
+        submerge (trumpet, { 0.6f, 0.5f, 0.55f, 0.7f, 0.8f });
+        x.add (trumpet);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto chandelier = x.make ("Chandelier Strings", 4, { "Pad", "Strings", "Party", "Warped" },
+            "Strings under the ballroom's chandeliers, playing from an old record: violins over violas, each player "
+            "their own vibrato, swelling in slowly, the whole section sagging a few cents and back as the disc warps. "
+            "MOD WHEEL: more bow (brighter). MACROS: BRIGHT, SPACE, SUBMERGE.");
+        chandelier.osc (0, "Wave", saw).osc (0, "Volume", 0.35f)
+                  .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+                  .filter (FilterType::lp24, 2300.0f, 0.1f, 0.25f).set (ParamIDs::fltKey, 0.5f)
+                  .filterEnvelope (500.0f, 1500.0f, 0.7f, 1200.0f)
+                  .ampEnvelope (500.0f, 1500.0f, 0.9f, 1400.0f).set (ParamIDs::ampReleaseCurve, -0.4f);
+        pkSection (chandelier, 0, 5, 0.12f, 10.0f, 5.2f, 700.0f);
+        pkSection (chandelier, 1, 3, 0.10f, 9.0f, 4.8f, 800.0f);
+        chandelier.set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sine).set (ParamIDs::lfo (0, "Rate"), 0.55f)
+                  .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (chandelier, "lfo1", ParamIDs::osc (0, "Fine"), 0.05f);   // the disc's warp: once round every 1.8 s
+        route (chandelier, "lfo1", ParamIDs::osc (1, "Fine"), 0.05f);
+        route (chandelier, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (chandelier, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (chandelier, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (chandelier, RT::hall, 0.75f, 0.26f, 25.0f, 4.5f);
+        space (chandelier);
+        chandelier.set (ParamIDs::patchLevel, -8.5f);
+        submerge (chandelier, { 0.5f, 0.5f, 0.4f, 0.6f, 0.8f });
+        orchestra (chandelier, { { { 2, "Strings - Notation/All Strings Sustain.sfz", 0.9f, 0.0f } },
+                                 {}, -7.4f,
+                                 "Strings under the ballroom's chandeliers: the orchestra's full section swelling in, over "
+                                 "PR7-K's own warped strings (the recordings fade after a few seconds; the synthesized "
+                                 "section holds the chord).",
+                                 500.0f, 1500.0f, 0.9f, 1400.0f, -1.0f,
+                                 [] (Builder& s) { s.osc (0, "Volume", 0.18f).osc (1, "Volume", 0.14f); } });
+        x.add (chandelier);
+
+        using SPD = synth::mod::ShapePoint;
+        auto flooding = x.make ("Flooding Halls", 5, { "Pad", "Cluster", "Fall", "Rising" },
+            "The water coming into the halls: a dark chord whose upper voices creep slowly upward away from the root "
+            "(a semitone over eight seconds), so the longer you hold it the more it grinds, with the rush of water "
+            "under it. Hold it. MOD WHEEL: more rush. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        flooding.osc (0, "Wave", saw).osc (0, "Volume", 0.35f).osc (0, "PitchEnv", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.3f).osc (1, "Pan", -0.4f)
+                .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.3f).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.15f).osc (2, "Pan", 0.4f)
+                .filter (FilterType::lp24, 900.0f, 0.2f, 0.15f).set (ParamIDs::fltKey, 0.4f)
+                .ampEnvelope (1500.0f, 2000.0f, 0.9f, 2500.0f)
+                .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 1.0f);
+        flooding.rig.modulation.pitchEnvelope = { { SPD { 0.0f, 0.5f, 0.2f }, SPD { 8.0f, 1.0f, 0.0f } }, -1, -1, -1 };
+        noiseOsc (flooding, 3, 0.05f, 0.35f);
+        flooding.osc (3, "PitchEnv", 0.0f);
+        flooding.set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.3f)
+                .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (flooding, "lfo1", ParamIDs::osc (3, "Volume"), 0.04f);
+        route (flooding, "modWheel", ParamIDs::osc (3, "Volume"), 0.08f);
+        route (flooding, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (flooding, "BRIGHT", "SPACE", "SUBMERGE");
+        chorus (flooding, ParamIDs::modIds, MT::chorus, 0.3f, 0.4f, 0.4f);
+        reverb (flooding, RT::hall, 0.8f, 0.28f, 30.0f, 3.5f);
+        space (flooding);
+        flooding.set (ParamIDs::patchLevel, -6.6f);
+        submerge (flooding, { 0.55f, 0.6f, 0.5f, 0.6f, 0.8f });
+        x.add (flooding);
+
+        auto choir = x.make ("Abyssal Choir", 6, { "Pad", "Choir", "Sea", "Vast" },
+            "Voices from the bottom of the sea: a slow choir singing OO, each singer their own vibrato, the vowel "
+            "drifting open and closed as if heard through deep water, bass voices under it. Hold long chords. MOD "
+            "WHEEL: the vowel opens. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        choir.osc (0, "Wave", saw).osc (0, "Volume", 0.4f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp24, 3000.0f, 0.1f, 0.2f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (900.0f, 1500.0f, 0.9f, 2000.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.08f).set (ParamIDs::voiceSize, 0.35f)
+             .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 1.0f);
+        pkSection (choir, 0, 5, 0.1f, 14.0f, 5.0f, 900.0f);
+        pkSection (choir, 1, 3, 0.08f, 12.0f, 4.6f, 900.0f);
+        choir.set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.15f)
+             .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (choir, "lfo1", ParamIDs::voiceVowel, 0.12f);
+        route (choir, "modWheel", ParamIDs::voiceVowel, 0.35f);
+        route (choir, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (choir, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (choir, RT::hall, 0.9f, 0.32f, 40.0f, 3.5f);
+        space (choir);
+        choir.set (ParamIDs::patchLevel, -12.2f);
+        submerge (choir, { 0.6f, 0.45f, 0.45f, 0.7f, 0.9f });
+        orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
+                            { 0, 1 }, -1.0f,
+                            "Voices from the bottom of the sea: the orchestra's large choir, slow and vast, a long dark hall "
+                            "round it. Hold long chords.",
+                            700.0f, 1500.0f, 1.0f, 2000.0f, -1.0f,
+                            [hall] (Builder& s) { hall (s); } });
+        x.add (choir);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto upright = x.make ("Upright Swing Bass", 7, { "Bass", "Upright", "Party", "Plucked" },
+            "The band's upright bass walking under the last dance: a round, woody pluck (a triangle and a sine, the "
+            "finger's thump, the string a hair sharp as it's struck), short and swinging. Walk it in quarter notes. "
+            "MACROS: BRIGHT, SPACE, SUBMERGE.");
+        upright.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.6f).osc (1, "PhaseRand", 0.0f)
+               .filter (FilterType::lp24, 500.0f, 0.15f, 0.45f).set (ParamIDs::fltKey, 0.5f)
+               .filterEnvelope (0.0f, 220.0f, 0.15f, 120.0f)
+               .ampEnvelope (1.0f, 700.0f, 0.0f, 120.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (upright, 2, 0, 0.35f, 18.0f, 0.4f);
+        pkBend (upright, 0.3f, 0.05f, -0.5f);
+        pkVelocity (upright, 0.5f, 0.3f, 0.5f);
+        route (upright, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (upright, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (upright, RT::room, 0.4f, 0.1f);
+        space (upright);
+        upright.set (ParamIDs::patchLevel, 2.9f);
+        submerge (upright, { 0.4f, 0.45f, 0.5f, 0.35f, 0.5f });
+        orchestra (upright, { { { 0, "Strings - Notation/Bass Solo Pizzicato.sfz", 1.4f, 0.0f } },
+                              { 0, 1, 2 }, 12.0f,
+                              "The band's upright bass walking under the last dance: the orchestra's solo bass, plucked. "
+                              "Walk it in quarter notes.",
+                              1.0f, 700.0f, 0.0f, 150.0f, -1.0f,
+                              [] (Builder& s) { route (s, "macro1", ParamIDs::reverbMix, 0.1f);
+                                                s.rig.modulation.macroNames[0] = "ROOM"; } });
+        x.add (upright);
+
+        auto groan = x.make ("Pressure Groan", 8, { "Bass", "Metallic", "Fall", "Growl" },
+            "The city's steel groaning under the sea: two saws a fifth of a semitone apart through a growling "
+            "resonant band, a tube shaper, the pitch sagging and recovering on its own like a hull under strain. MOD "
+            "WHEEL: groan harder. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        groan.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Fine", -10.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Volume", 0.4f).osc (1, "Fine", 10.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.45f)
+             .osc (2, "Filter", 0.0f).osc (2, "Shp1", 0.0f)
+             .filter (FilterType::bp12, 300.0f, 0.55f, 0.3f).set (ParamIDs::fltKey, 0.7f)
+             .filterEnvelope (0.0f, 600.0f, 0.4f, 300.0f)
+             .ampEnvelope (5.0f, 600.0f, 0.85f, 250.0f)
+             .shaper (0, synth::ShaperModel::tube, 0.4f)
+             .mono (60.0f);
+        warp (groan, 0, 0.45f, { 0, 1 }, 0.15f);
+        groan.set (ParamIDs::lfo (1, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (1, "Rate"), 0.6f)
+             .set (ParamIDs::lfo (1, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (groan, "lfo2", ParamIDs::fltCutoff, 0.12f);
+        route (groan, "modWheel", ParamIDs::shp (0, "Drive"), 0.3f);
+        route (groan, "modWheel", ParamIDs::fltRes, 0.2f);
+        route (groan, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (groan, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (groan, RT::plate, 0.5f, 0.12f);
+        space (groan);
+        groan.set (ParamIDs::patchLevel, 6.9f);
+        submerge (groan, { 0.45f, 0.65f, 0.55f, 0.45f, 0.5f });
+        x.add (groan);
+
+        auto trench = x.make ("Trench Drone", 9, { "Bass", "Drone", "Sea", "Deep" },
+            "The deepest water, where nothing moves: a sine an octave down under two detuned saws through a closed "
+            "filter that breathes open every two bars, the sea's rumble under it. Hold one low note. MOD WHEEL: the "
+            "filter opens. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        trench.osc (0, "Wave", sine).osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.6f).osc (0, "Filter", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.35f).osc (1, "Fine", -8.0f)
+              .osc (2, "On", 1.0f).osc (2, "Wave", saw).osc (2, "Volume", 0.35f).osc (2, "Fine", 8.0f)
+              .filter (FilterType::lp24, 260.0f, 0.25f, 0.1f).set (ParamIDs::fltKey, 0.3f)
+              .ampEnvelope (1500.0f, 2000.0f, 0.95f, 3000.0f);
+        noiseOsc (trench, 3, 0.05f, 0.6f);
+        trench.set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sine)
+              .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight).set (ParamIDs::lfo (0, "Division"), lfoDivision ("2/1"))
+              .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global).set (ParamIDs::lfo (0, "Offset"), 1.0f);
+        route (trench, "lfo1", ParamIDs::fltCutoff, 0.15f);
+        route (trench, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (trench, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (trench, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (trench, RT::hall, 0.8f, 0.2f, 30.0f, 2.5f);
+        space (trench);
+        trench.set (ParamIDs::patchLevel, 0.8f);
+        submerge (trench, { 0.7f, 0.4f, 0.6f, 0.7f, 0.8f });
+        x.add (trench);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto cocktail = x.make ("Cocktail Piano", 10, { "Keys", "Piano", "Party", "Jazz" },
+            "The lounge piano at the last party: bright and a little honky (its strings slightly apart), a small warm "
+            "room, the tuning drifting a few cents as if the room were tilting. Swing it. MACROS: BRIGHT, SPACE, "
+            "SUBMERGE.");
+        felt (cocktail);
+        cocktail.set (ParamIDs::fltCutoff, 2400.0f).set (ParamIDs::fltEnv, 0.4f).osc (1, "Fine", 7.0f);
+        warp (cocktail, 1, 0.3f, { 0, 1, 2 }, 0.04f);
+        macros (cocktail, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (cocktail, RT::room, 0.45f, 0.14f, 10.0f, 5.0f);
+        space (cocktail);
+        cocktail.set (ParamIDs::patchLevel, -4.4f);
+        submerge (cocktail, { 0.5f, 0.5f, 0.5f, 0.45f, 0.7f });
+        grand (cocktail, { 4, 6000.0f, 0.4f, 0.4f, 8.7f, 1.0f, 0.0f, 300.0f, 1.0f, 700.0f,
+            "The lounge piano at the last party: the Salamander Grand, bright, in a small warm room, its tuning drifting a "
+            "few cents as if the room were tilting. Swing it.",
+            [] (Builder& s) { route (s, "lfo2", ParamIDs::osc (0, "Fine"), 0.04f); } });
+        x.add (cocktail);
+
+        auto record = x.make ("Broken Record Piano", 11, { "Keys", "Piano", "Fall", "Stutter" },
+            "A gramophone playing a piano record as everything falls apart: the music skips (the STEP SEQUENCER drops "
+            "beats out of every bar, never the same way twice in a bar), and the whole thing sags flat and catches up "
+            "again as the turntable slows. Hold chords. MOD WHEEL: more skipping. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        felt (record);
+        record.set (ParamIDs::fltCutoff, 1600.0f)
+              .set (ParamIDs::ampDecay, 9000.0f)
+              .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqMode, (float) synth::seq::Mode::mono)
+              .set (ParamIDs::seqVolMix, 0.75f).set (ParamIDs::seqGate, 0.9f).set (ParamIDs::seqContour, 0.06f)
+              .set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 16.0f);
+        {
+            static constexpr bool skips[16] = { 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 };
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = record.rig.modulation.stepPattern.rows[0][(size_t) k];
+                step.on = skips[k % 16];
+                step.level = 1.0f;
+            }
+        }
+        record.set (ParamIDs::lfo (1, "Wave"), (float) synth::mod::LfoWave::sawDown)
+              .set (ParamIDs::lfo (1, "Sync"), (float) synth::mod::LfoSync::straight).set (ParamIDs::lfo (1, "Division"), lfoDivision ("2/1"))
+              .set (ParamIDs::lfo (1, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        for (int o = 0; o < 3; ++o)
+            route (record, "lfo2", ParamIDs::osc (o, "Fine"), -0.15f);   // sagging up to 30 cents flat over two bars, then caught
+        route (record, "modWheel", ParamIDs::seqVolMix, 0.25f);
+        macros (record, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (record, RT::room, 0.5f, 0.16f, 10.0f, 4.0f);
+        space (record);
+        record.set (ParamIDs::patchLevel, -4.8f);
+        submerge (record, { 0.5f, 0.6f, 0.5f, 0.45f, 0.7f });
+        grand (record, { 4, 3500.0f, 0.4f, 0.4f, 8.4f, 1.0f, 0.0f, 300.0f, 1.0f, 700.0f,
+            "A gramophone playing a piano record as everything falls apart: the Salamander Grand skipping beats out of "
+            "every bar and sagging flat as the turntable slows.",
+            [] (Builder& s) { route (s, "lfo2", ParamIDs::osc (0, "Fine"), -0.15f); } });
+        x.add (record);
+
+        auto celesta = x.make ("Sunken Celesta", 12, { "Keys", "Celesta", "Sea", "Bell" },
+            "A celesta in a flooded nursery: soft bell tones (a sine and its octave and a faint high partial, each "
+            "fading on its own) in a long, dark hall, an echo far behind. Play slowly, high. MACROS: BRIGHT, SPACE, "
+            "SUBMERGE.");
+        celesta.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 31.0f).osc (2, "Fine", -14.0f)
+               .ampEnvelope (1.0f, 2500.0f, 0.0f, 900.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (celesta, 1, 0, 0.3f, 0.9f);
+        pkPartial (celesta, 2, 1, 0.08f, 0.25f);
+        route (celesta, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
+        macros (celesta, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (celesta, "1/4 dotted", 0.35f, 0.14f, true, 3.0f);
+        reverb (celesta, RT::hall, 0.8f, 0.3f, 40.0f, 3.5f);
+        space (celesta);
+        celesta.set (ParamIDs::patchLevel, -6.3f);
+        submerge (celesta, { 0.55f, 0.5f, 0.5f, 0.65f, 0.8f });
+        orchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.16f } }, { 0, 1, 2 }, 12.0f,
+                              "A celesta in a flooded nursery: the orchestra's celeste in a long, dark hall, an echo far "
+                              "behind. Play slowly, high.",
+                              1.0f, 2500.0f, 0.0f, 900.0f, -1.0f,
+                              [hall] (Builder& s) { hall (s); } });
+        x.add (celesta);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        const auto vibraphone = [&] (Builder& b)
+        {
+            // A vibraphone: a sine bar with its two-octave partial fading fast, a soft mallet, and the motor's tremolo.
+            b.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "PhaseRand", 0.0f)
+             .ampEnvelope (1.0f, 1800.0f, 0.0f, 400.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+            pkPartial (b, 1, 0, 0.18f, 0.18f);
+            pkStrike (b, 2, 1, 0.1f, 6.0f, 0.2f, false);
+            b.set (ParamIDs::lfo (2, "Wave"), (float) synth::mod::LfoWave::sine).set (ParamIDs::lfo (2, "Rate"), 5.5f)
+             .set (ParamIDs::lfo (2, "Trigger"), (float) synth::mod::LfoTrigger::global);
+            route (b, "lfo3", ParamIDs::osc (0, "Volume"), 0.08f);
+        };
+        auto gin = x.make ("Gin Fizz Swing", 13, { "Arp", "Vibraphone", "Party", "Swing" },
+            "Cocktails at the bar: hold a chord and ARP 1 turns it over on a vibraphone in swung eighths, up and down, "
+            "the motor's tremolo shimmering, a dotted echo. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        vibraphone (gin);
+        gin.osc (0, "Arp", 1.0f).osc (1, "Arp", 1.0f).osc (2, "Arp", 1.0f)
+           .set (ParamIDs::shuffle, 0.35f)
+           .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+           .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+           .set (ParamIDs::arp (0, "Gate"), 0.8f);
+        {
+            auto& p = gin.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 2 == 0 ? 0.9f : 0.65f;
+        }
+        route (gin, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        macros (gin, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (gin, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
+        reverb (gin, RT::room, 0.5f, 0.16f, 12.0f, 5.0f);
+        space (gin);
+        gin.set (ParamIDs::patchLevel, -1.5f);
+        submerge (gin, { 0.5f, 0.5f, 0.5f, 0.45f, 0.7f });
+        orchestra (gin, { { { 0, "Percussion/Vibraphone.sfz", 1.1f } }, { 0, 1, 2 }, 12.0f,
+                          "Cocktails at the bar: the orchestra's vibraphone turning a held chord over in swung eighths, a "
+                          "dotted echo.",
+                          1.0f, 1800.0f, 0.0f, 400.0f, -1.0f,
+                          [] (Builder& s) { route (s, "macro1", ParamIDs::reverbMix, 0.1f);
+                                            s.rig.modulation.macroNames[0] = "ROOM"; } });
+        x.add (gin);
+
+        auto panic = x.make ("Panic Pulse", 14, { "Arp", "Ostinato", "Fall", "Accelerating" },
+            "Running through the halls as they flood: hold a chord and ARP 1 hammers it out in eighths that break into "
+            "double and triple hits through the bar, faster and faster, thin, hard saws with the filter climbing. MOD "
+            "WHEEL: the filter opens. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        panic.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+             .filter (FilterType::lp24, 1200.0f, 0.3f, 0.4f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 90.0f, 0.1f, 60.0f)
+             .ampEnvelope (1.0f, 120.0f, 0.1f, 60.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+             .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.5f);
+        {
+            auto& p = panic.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                p.blocks[(size_t) k].ratchet = k < 4 ? 1 : k < 8 ? 2 : k < 12 ? 3 : 4;   // faster and faster
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.7f;
+            }
+        }
+        panic.set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sawUp)
+             .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight).set (ParamIDs::lfo (0, "Division"), lfoDivision ("2/1"))
+             .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global).set (ParamIDs::lfo (0, "Offset"), 1.0f);
+        route (panic, "lfo1", ParamIDs::fltCutoff, 0.2f);
+        route (panic, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (panic, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (panic, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (panic, "1/16 dotted", 0.25f, 0.1f, true, 4.0f);
+        reverb (panic, RT::plate, 0.45f, 0.12f);
+        space (panic);
+        panic.set (ParamIDs::patchLevel, 3.3f);
+        submerge (panic, { 0.5f, 0.6f, 0.5f, 0.45f, 0.7f });
+        x.add (panic);
+
+        auto sonar = x.make ("Sonar Sweep", 15, { "Arp", "Ping", "Sea", "Slow" },
+            "Searching the black water: hold a chord and ARP 1 sends out one ping a beat, up through two octaves, each "
+            "a pure sine with a soft chirp, ringing out and echoing back from far away. MACROS: BRIGHT, SPACE, "
+            "SUBMERGE.");
+        sonar.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.0f).osc (1, "Arp", 1.0f)
+             .ampEnvelope (2.0f, 1400.0f, 0.0f, 600.0f).set (ParamIDs::ampDecayCurve, -0.6f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (0, "Division"), division ("1/4")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.9f);
+        pkPartial (sonar, 1, 0, 0.12f, 0.08f);
+        pkBend (sonar, -0.8f, 0.04f, 0.3f);
+        route (sonar, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        macros (sonar, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (sonar, "1/4 dotted", 0.45f, 0.2f, true, 2.5f);
+        reverb (sonar, RT::hall, 0.85f, 0.3f, 60.0f, 3.0f);
+        space (sonar);
+        sonar.set (ParamIDs::patchLevel, -1.3f);
+        submerge (sonar, { 0.6f, 0.5f, 0.6f, 0.7f, 0.8f });
+        x.add (sonar);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto toast = x.make ("Vibraphone Toast", 16, { "Pluck", "Vibraphone", "Party", "Mallet" },
+            "Glasses raised to the city: a vibraphone struck with a soft mallet, its high partial gone almost at once, "
+            "the motor's tremolo on the ringing note. Harder playing, a harder mallet. MACROS: BRIGHT, SPACE, SUBMERGE.");
+        vibraphone (toast);
+        toast.ampEnvelope (1.0f, 1200.0f, 0.0f, 300.0f);
+        pkVelocity (toast, 0.0f, 0.0f, 0.6f);
+        route (toast, "velocity", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (toast, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        macros (toast, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (toast, RT::room, 0.45f, 0.14f, 10.0f, 5.0f);
+        space (toast);
+        submerge (toast, { 0.5f, 0.5f, 0.6f, 0.45f, 0.7f });
+        pkAdd (x, toast);
+
+        auto snapped = x.make ("Snapped Strings", 17, { "Pluck", "Pizzicato", "Fall", "Frantic" },
+            "A string section losing its nerve: hard pizzicato, every player a little off and each note snapped a hair "
+            "sharp before it settles, the pitch of each pluck never quite the same. Play fast, nervous figures. MACROS: "
+            "BRIGHT, SPACE, SUBMERGE.");
+        snapped.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "Random", -0.15f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f).osc (1, "Random", -0.15f)
+               .filter (FilterType::lp24, 700.0f, 0.15f, 0.55f).set (ParamIDs::fltKey, 0.6f)
+               .filterEnvelope (0.0f, 140.0f, 0.0f, 90.0f)
+               .ampEnvelope (1.0f, 300.0f, 0.0f, 120.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkSection (snapped, 0, 3, 0.08f, 0.0f, 5.0f, 0.0f);
+        pkBend (snapped, 0.5f, 0.04f, -0.5f);
+        pkVelocity (snapped, 0.6f, 0.3f, 0.5f);
+        route (snapped, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (snapped, "BRIGHT", "SPACE", "SUBMERGE");
+        reverb (snapped, RT::hall, 0.6f, 0.18f);
+        space (snapped);
+        submerge (snapped, { 0.5f, 0.6f, 0.55f, 0.5f, 0.7f });
+        orchestra (snapped, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f, 0.0f } },
+                              { 0, 1 }, 10.2f,
+                              "A string section losing its nerve: the orchestra's full section, plucked hard. Play fast, "
+                              "nervous figures.",
+                              1.0f, 300.0f, 0.0f, 150.0f, -1.0f,
+                              [] (Builder& s) { route (s, "macro1", ParamIDs::reverbMix, 0.1f);
+                                                s.rig.modulation.macroNames[0] = "ROOM"; } });
+        pkAdd (x, snapped);
+
+        auto bubble = x.make ("Bubble Pluck", 18, { "Pluck", "Water", "Sea", "Chirp" },
+            "A bubble rising from the wreck: a sine whose pitch climbs into the note as it's struck (as a bubble's does), "
+            "through a soft band-pass, a quick drop of brightness, a wet echo. Short notes, space between. MACROS: "
+            "BRIGHT, SPACE, SUBMERGE.");
+        bubble.osc (0, "Wave", sine).osc (0, "Volume", 1.0f).osc (0, "PhaseRand", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.0f)
+              .ampEnvelope (0.5f, 350.0f, 0.0f, 150.0f).set (ParamIDs::ampDecayCurve, -0.7f);
+        pkPartial (bubble, 1, 0, 0.2f, 0.06f);
+        pkBend (bubble, -5.0f, 0.05f, 0.4f);
+        pkVelocity (bubble, 0.0f, 0.0f, 0.5f);
+        route (bubble, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        macros (bubble, "BRIGHT", "SPACE", "SUBMERGE");
+        delay (bubble, "1/8 dotted", 0.35f, 0.15f, true, 3.0f);
+        reverb (bubble, RT::hall, 0.7f, 0.22f, 30.0f, 3.5f);
+        space (bubble);
+        submerge (bubble, { 0.55f, 0.5f, 0.8f, 0.6f, 0.8f });
+        pkAdd (x, bubble);
+    }
 }
 
 std::vector<Rig> makeExpansionRigs()
@@ -15185,5 +15721,6 @@ std::vector<Rig> makeExpansionRigs()
     maestro ({ Rig::numBanks + 27, rigs });
     twinSpires ({ Rig::numBanks + 28, rigs });
     stolenSky ({ Rig::numBanks + 29, rigs });
+    drownedDeco ({ Rig::numBanks + 30, rigs });
     return rigs;
 }

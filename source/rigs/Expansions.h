@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 30> list
+    inline constexpr std::array<Expansion, 31> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -163,5 +163,13 @@ namespace expansions
           "AFTERMATH: from under the open sky into a sealed concrete bunker. Its pianos play the Salamander Grand, and its "
           "strings, solo violin, flute and low strings the Sonatina Symphonic Orchestra, once downloaded (free). Our own "
           "sounds." },
+        { "DROWNED DECO", "DD",
+          "Inspired by a city built under the sea in the 1940s and its fall: its gilded jazz age, already warped (a "
+          "clarinet, chandelier strings, an upright bass, a cocktail piano, a vibraphone), its fall into madness (a "
+          "theremin, flooding clusters, groaning steel, a skipping record, frantic pizzicato) and the silence of the sea "
+          "after (a drowned trumpet, an abyssal choir, a trench drone, a sunken celesta, sonar). Built round SUBMERGE "
+          "(0.80.0) and MACRO 3, SUBMERGE: the sound sinking under water. Its pianos play the Salamander Grand, and its "
+          "clarinet, strings, choir, bass, celesta, vibraphone and pizzicato the Sonatina Symphonic Orchestra, once "
+          "downloaded (free). Our own sounds." },
     }};
 }

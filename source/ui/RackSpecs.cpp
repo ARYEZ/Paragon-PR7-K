@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 23> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 24> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 23> specs;
+    std::array<RackUnit::Spec, 24> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1537,6 +1537,45 @@ std::array<RackUnit::Spec, 23> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (22); };
+    }
+
+    // SUBMERGE (0.80.0): how deep, in big digits, and its settings; the keys set DEPTH: SHALLOWS, UNDER and the
+    // ABYSS; the ladder how deep.
+    {
+        auto& s = specs[23];
+        s.name = "SUBMERGE";
+        s.kind = "DEPTH  MURK  BUBBLES";
+        s.onParameterIds = { ParamIDs::submergeOn };
+        s.powerTooltip = "SUBMERGE on or off: the sound sinking under water. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float depth; const char* tip; };
+        static constexpr Stage stages[] = { { "SHALLOWS", 0.3f, "Just under the surface: the top dulled, the first bubbles" },
+                                            { "UNDER", 0.6f, "Under: the pressure bending the pitch, the sea around it" },
+                                            { "ABYSS", 1.0f, "The sea floor: dark, bent and drowned" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::submergeDepth) - t.depth) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::submergeDepth, t.depth); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::submergeDepth, "DEPTH" }, RackUnit::Knob { ParamIDs::submergeBubbles, "BUBBLES" } };
+        s.ladderTitle = "DEPTH";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "FLOOR", "", "1/2", "", "DRY" };
+        s.ladderReading = [&p] { return p.getSubmergeSettings().on ? p.getSubmerge().getDepth() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto depth = p.getSubmergeSettings().on ? p.getSubmerge().getDepth() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * depth)), left.getTopLeft(), h);
+            line (g, depth < 0.001f ? "DRY LAND" : depth >= 0.999f ? "SEA FLOOR" : "SINKING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "DEPTH " + textOf (p, ParamIDs::submergeDepth), "MURK " + textOf (p, ParamIDs::submergeMurk),
+                                  "BUBBLES " + textOf (p, ParamIDs::submergeBubbles), "SEA " + textOf (p, ParamIDs::submergeSea) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (23); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
