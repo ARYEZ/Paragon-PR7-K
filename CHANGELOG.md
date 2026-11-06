@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.78.0
+
+**ORBIT: 12 presets in bank A (A48-A59) built on your Orbit wavetables.**
+
+- **The presets:** Orbit Lead, Orbit Reed and Comet Lead (leads); Gravity Bass, Ellipse Bass and Hollow Moon Bass (basses); Orbit Pad, Nebula Pad and Halo Pad (pads); Satellite Keys and Moonlight Keys (keys); Orbit Arp.
+- **Every one circles its table.** The Orbit tables come back round to where they started, so TRAVEL loops through each one with no jump, in time with your song: some turn every eighth note, others once every four bars.
+  - On Nebula Pad each note starts its own turn, so a chord's notes drift apart and back.
+  - On Orbit Arp the whole run turns together, once a bar.
+- **Macros:** MACRO 1 BRIGHT, MACRO 2 SPACE, MACRO 3 ORBIT (how far round the table the tone travels).
+- **The tables stay on your computer.** Their licence isn't known, so they're not in the plugin. Put the 17 WAV files in a folder named **Orbit Wavetables** inside the **Libraries** folder in your PR7-K presets folder. Without it, each preset plays one of PR7-K's own tables instead and shows MISSING.
+- **Some of the tables are very thin on their own:** almost nothing at the note's own pitch, their energy high up. So the leads carry a quiet sine at the note's pitch and darker filters.
+- Levelled by measurement to sit with the other presets. Our own settings, not tuned by ear.
+- **Your own presets in bank A** now start from A60, after the factory ones. Any you'd already saved at A48-A59 are all still there: each shares its slot number with the new factory preset and is listed just after it.
+
 ## 0.77.0
 
 **TWIN SPIRES, an expansion of two sister cities, built round OVERCHARGE.**
