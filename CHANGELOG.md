@@ -2,6 +2,26 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.79.0
+
+**STOLEN SKY, an expansion of a perfect town under a false sky, built round AFTERMATH.**
+
+- **STOLEN SKY** (SK01-SK18): a hidden town built inside a mountain after the world ended. Every category has three sides. Our own sounds and phrases.
+  - The perfect town: Picket Fence Whistle, Painted Sky, Cul-de-Sac Bass, Quiet Kitchen Piano, Sprinkler Arp, Lullaby Box.
+  - The truth underneath: Vent Shaft Lead, Concrete Lung, Generator Bass, Underground Piano, Surveillance Arp, Steel Drip.
+  - The end of the world: Last Broadcast, Ash Snow, Countdown Bass, Final Morning Piano, Evacuation Arp, Falling Ash Piano.
+  - **MACRO 3 is AFTERMATH on every preset.** MACRO 2 is SPACE as always.
+  - **Cold, sad pianos at its heart:** Quiet Kitchen Piano, Underground Piano, Final Morning Piano, Sprinkler Arp and Falling Ash Piano play the Salamander Grand once it's downloaded.
+  - **The orchestra:** Picket Fence Whistle on a solo flute, Last Broadcast on a solo violin, Ash Snow on the full string section, Countdown Bass on celli and basses, once the orchestra is downloaded.
+  - Until the libraries are downloaded, every preset plays PR7-K's own synthesized version.
+  - Levelled by measurement to sit with the other banks, both versions.
+- **AFTERMATH**, a new signature effect (FX page, SIGNATURE slot): one knob, SEAL, takes your sound from under an open sky into a sealed concrete room.
+  - The room closes in and its walls ring (ROOM sets its size, RING how long it rings).
+  - The top of the sound darkens (DARK).
+  - A mains hum and a ventilation shaft's air rise underneath (HUM, at 50 or 60 Hz). They only sound while you play, so silence stays silent.
+  - The level is kept, and at SEAL 0 your sound passes through untouched.
+  - Its page shows the sky being sealed over: concrete walls slide in, the ceiling comes down over the stars, the room rings, a vent glows with the hum. Our own design.
+
 ## 0.78.0
 
 **ORBIT: 12 presets in bank A (A48-A59) built on your Orbit wavetables.**
