@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Parameters.h"
+
+#include <memory>
 #include "Rig.h"
 #include "dsp/synth/SynthSettings.h"
 
@@ -10,7 +12,14 @@ namespace rigbuilder
 {
     struct Builder
     {
-        Rig rig;
+        // The preset lives on the heap (0.78.0): a Rig is several KB, and the factory and expansion functions hold
+        // dozens of builders at once. On the stack they took makeFactoryRigs to 418 KB of a Windows thread's 1 MB, and a
+        // deep test crashed there (Linux has 8 MB). Copies copy the preset.
+        std::unique_ptr<Rig> storage = std::make_unique<Rig>();
+        Rig& rig = *storage;
+
+        Builder (const Builder& other) : storage (std::make_unique<Rig> (*other.storage)), rig (*storage) {}
+        Builder& operator= (const Builder& other) { *storage = *other.storage; return *this; }
 
         Builder (const juce::String& name, int number, const juce::StringArray& tags, const juce::String& notes)
         {
