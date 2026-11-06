@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.77.0
+
+**TWIN SPIRES, an expansion of two sister cities, built round OVERCHARGE.**
+
+- **TWIN SPIRES** (TS01-TS18): a gilded city of inventors above and a grimy, chemical one below, with sounds for each and for where they meet. Our own sounds and phrases.
+  - The city above: Spire Fanfare (bright brass), Gilded Strings, Clockwork Bass (staccato), Salon Harpsichord, Clockwork Gears (a ticking arp), Gear Pluck.
+  - The city below: Fuse Lead (a punk lead with grit and glide), Toxic Fog (a smoky, chemical haze), Pipe Growl (a distorted machine bass), Broken Music Box, Fuse Countdown (a fizzing randomized arp), Spark Pluck.
+  - Where they meet: Crystal Whistle, Blue Glow Choir, Wobble Drop (a synced wobble bass), Heartbreak Piano, Neon Alley (a gated chord pulse), Glass Shard.
+  - **MACRO 3 is OVERCHARGE on every preset.** MACRO 2 is SPACE as always.
+  - Spire Fanfare, Gilded Strings, Clockwork Bass, Salon Harpsichord and Heartbreak Piano play the free orchestra library's recordings (trumpets and horns, the string section, celli and basses, its harpsichord, its grand piano) once it's downloaded, and PR7-K's own synthesized versions until then.
+  - Levelled by measurement to sit with the other banks; full OVERCHARGE keeps the loudness within about 1 dB.
+- **OVERCHARGE**, a new signature effect (FX page, SIGNATURE slot): unstable magic. One knob, CHARGE:
+  - **Its first half charges the sound:** crystal tones ring above whatever you play (an octave, an octave and a fifth, and two octaves up, always in tune with your notes), and shimmering repeats climb an octave each.
+  - **Its second half overloads it:** the energy breaks up in bursts at random moments (short stutters, crushed digital steps, the pitch jolting up or down), with a burn and crackling sparks, more often and more violently with CHAOS.
+  - GLOW sets how much of the crystal tones, TONE their brightness, WIDTH how far they spread.
+  - The level is kept, so it gets wilder, not louder. At CHARGE 0 your sound passes through untouched.
+  - Its page shows a glowing crystal that cracks and throws arcs of energy as it overloads. Our own design.
+
 ## 0.76.0
 
 **MAESTRO, an epic trailer-orchestra expansion, built round LEGION; wavetable packs from your own computer.**
