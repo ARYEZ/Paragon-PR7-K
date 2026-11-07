@@ -35,7 +35,7 @@ namespace
             processor.getKeyboardState().noteOn (1, note, 0.9f);
             for (int b = 0; b < (int) (seconds * sampleRate / blockSize); ++b)
             {
-                if (b * blockSize >= (int) (releaseAt * sampleRate))
+                if ((double) b * blockSize >= releaseAt * sampleRate)   // in double: 1e9 s in an int is out of range (MSVC and Clang released at once)
                     processor.getKeyboardState().noteOff (1, note, 0.0f);
                 buffer.clear();
                 processor.processBlock (buffer, midi);
@@ -105,7 +105,6 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
     std::array<std::vector<float>, 2> out;
     juce::AudioBuffer<float> buffer (2, blockSize);
     juce::MidiBuffer midi;
-    double restedAt = -1.0;
     p.processor.getKeyboardState().noteOn (1, 57, 0.9f);
     for (int b = 0; b < (int) (16.0 * sampleRate / blockSize); ++b)
     {
@@ -114,40 +113,10 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
         buffer.clear();
         p.processor.processBlock (buffer, midi);
         out[0].insert (out[0].end(), buffer.getReadPointer (0), buffer.getReadPointer (0) + blockSize);
-        if (restedAt < 0.0 && p.processor.getColossus().isResting() && b * blockSize > (int) sampleRate)
-            restedAt = (double) (b + 1) * blockSize / sampleRate;
     }
     const auto at = (size_t) (0.5 * sampleRate), late = (size_t) (15.0 * sampleRate);
     CHECK (std::abs (out[0][at] - reference[0][at]) + std::abs (out[0][at + 100] - reference[0][at + 100]) > 0.0f);
-    // The hall (up to 10 s) dies away, then the sound passes untouched again (at rest by about 2 s).
-    size_t lastDiff = 0;
-    float largest = 0.0f;
-    for (size_t i = 0; i < out[0].size(); ++i)
-        if (out[0][i] != reference[0][i])
-        {
-            lastDiff = i;
-            largest = juce::jmax (largest, std::abs (out[0][i] - reference[0][i]));
-        }
-    // Where it differs after 2 s (at rest by then on Linux), and whether two plain synths even match over 16 s.
-    size_t firstLate = 0;
-    for (size_t i = (size_t) (2.0 * sampleRate); i < out[0].size(); ++i)
-        if (out[0][i] != reference[0][i]) { firstLate = i; break; }
-    Plugin plainAgain;
-    const auto again = plainAgain.play (16.0);
-    size_t plainDiff = 0;
-    for (size_t i = 0; i < again[0].size(); ++i)
-        if (again[0][i] != reference[0][i]) { plainDiff = i; break; }
-    float lateLargest = 0.0f;
-    int nans = 0;
-    for (size_t i = 0; i < out[0].size(); ++i)
-    {
-        if (std::isnan (out[0][i])) ++nans;
-        if (i >= (size_t) (3.0 * sampleRate)) lateLargest = juce::jmax (lateLargest, std::abs (out[0][i] - reference[0][i]));
-    }
-    INFO ("rested at " << restedAt << " s, largest difference after 3 s " << lateLargest << ", NaN samples " << nans);
-    INFO ("last difference at " << (double) lastDiff / sampleRate << " s, largest " << largest
-          << ", first after 2 s at " << (double) firstLate / sampleRate << " s; two plain synths first differ at "
-          << (double) plainDiff / sampleRate << " s (0 = never)");
+    // The hall (up to 10 s) dies away, then the sound passes untouched again.
     CHECK (p.processor.getColossus().isResting());
     CHECK (std::equal (out[0].begin() + (long) late, out[0].end(), reference[0].begin() + (long) late));
 }
