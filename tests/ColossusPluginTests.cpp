@@ -105,6 +105,7 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
     std::array<std::vector<float>, 2> out;
     juce::AudioBuffer<float> buffer (2, blockSize);
     juce::MidiBuffer midi;
+    double restedAt = -1.0;
     p.processor.getKeyboardState().noteOn (1, 57, 0.9f);
     for (int b = 0; b < (int) (16.0 * sampleRate / blockSize); ++b)
     {
@@ -113,6 +114,8 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
         buffer.clear();
         p.processor.processBlock (buffer, midi);
         out[0].insert (out[0].end(), buffer.getReadPointer (0), buffer.getReadPointer (0) + blockSize);
+        if (restedAt < 0.0 && p.processor.getColossus().isResting() && b * blockSize > (int) sampleRate)
+            restedAt = (double) (b + 1) * blockSize / sampleRate;
     }
     const auto at = (size_t) (0.5 * sampleRate), late = (size_t) (15.0 * sampleRate);
     CHECK (std::abs (out[0][at] - reference[0][at]) + std::abs (out[0][at + 100] - reference[0][at + 100]) > 0.0f);
@@ -134,6 +137,14 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
     size_t plainDiff = 0;
     for (size_t i = 0; i < again[0].size(); ++i)
         if (again[0][i] != reference[0][i]) { plainDiff = i; break; }
+    float lateLargest = 0.0f;
+    int nans = 0;
+    for (size_t i = 0; i < out[0].size(); ++i)
+    {
+        if (std::isnan (out[0][i])) ++nans;
+        if (i >= (size_t) (3.0 * sampleRate)) lateLargest = juce::jmax (lateLargest, std::abs (out[0][i] - reference[0][i]));
+    }
+    INFO ("rested at " << restedAt << " s, largest difference after 3 s " << lateLargest << ", NaN samples " << nans);
     INFO ("last difference at " << (double) lastDiff / sampleRate << " s, largest " << largest
           << ", first after 2 s at " << (double) firstLate / sampleRate << " s; two plain synths first differ at "
           << (double) plainDiff / sampleRate << " s (0 = never)");
