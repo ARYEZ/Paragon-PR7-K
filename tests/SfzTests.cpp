@@ -296,6 +296,34 @@ TEST_CASE ("SFZ: other controllers stay at their starting values: a mixer's chan
     CHECK_THAT (rms (b[0], 960, b[0].size()) / rms (a[0], 960, a[0].size()), WithinAbs (0.5, 0.02));
 }
 
+TEST_CASE ("SFZ: controllers through their curves; includes found from the main file's folder (0.82.2)", "[sfz]")
+{
+    // Big Rusty Drums: its tuning controls go through a <curve> centred on the starting value (v063 = 0), so the kit
+    // plays at its recorded pitch; read straight, 63 of 127 x 1200 cents put the kick half an octave sharp. Its
+    // mappings include their files from the main file's folder (sfizz's way), and the kit loaded nothing.
+    Folder f;
+    writeSine (f.dir.getChildFile ("kick.wav"), hzOf (60), 1.0);
+    f.dir.getChildFile ("maps").createDirectory();
+    f.dir.getChildFile ("maps/kick_map.sfz").replaceWithText ("#include \"maps/kick_regions.sfz\"\n");
+    f.dir.getChildFile ("maps/kick_regions.sfz").replaceWithText (
+        "<region> sample=kick.wav key=60 pitch_keycenter=60 tune_cc75=1200 tune_curvecc75=9\n"
+        "<region> sample=kick.wav key=62 pitch_keycenter=62 tune_cc75=1200\n"
+        "<region> sample=kick.wav key=64 pitch_keycenter=64 pan_cc17=100 pan_curvecc17=1\n");
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<control> set_cc75=63 set_cc17=127\n"
+        "<curve> curve_index=9 v000=-1 v063=0 v127=1\n"
+        "#include \"maps/kick_map.sfz\"\n"));
+    REQUIRE (inst != nullptr);
+    REQUIRE (inst->regions.size() == 3);
+    CHECK_THAT (inst->regions[0].tuneSemitones, WithinAbs (0.0, 1.0e-4));            // the curve's centre: as recorded
+    CHECK_THAT (inst->regions[1].tuneSemitones, WithinAbs (63.0 / 127.0 * 12.0, 1.0e-3));   // no curve: straight
+    CHECK_THAT (inst->regions[2].pan, WithinAbs (1.0, 1.0e-4));                       // built-in curve 1 at 127: +1
+    SfzPlayer p (inst.get());
+    p.on (60);
+    const auto out = p.render (0.2);
+    CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (60), hzOf (60) * 0.001));
+}
+
 TEST_CASE ("SFZ: samples at another rate play at their pitch; stereo samples keep their sides; PAN", "[sfz]")
 {
     Folder f;

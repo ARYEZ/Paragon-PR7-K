@@ -32,8 +32,10 @@ namespace synth::sfz
 
         // The file's text, comments out, #include read in (up to 8 deep), #define put in.
         juce::String preprocess (const juce::File& file, std::map<juce::String, juce::String>& defines, int depth,
-                                 juce::StringArray& problems)
+                                 juce::StringArray& problems, juce::File root = {})
         {
+            if (root == juce::File())
+                root = file.getParentDirectory();
             if (depth > 8 || ! file.existsAsFile())
             {
                 problems.add ("missing: " + file.getFullPathName());
@@ -84,8 +86,14 @@ namespace synth::sfz
                     // 0.76.0: the name's defines put in too ("$DIR/$DYN.txt": SSO's grand piano includes its velocity
                     // layers so, and loaded nothing before).
                     const auto name = expand (trimmed.fromFirstOccurrenceOf ("\"", false, false).upToLastOccurrenceOf ("\"", false, false));
-                    result << preprocess (file.getParentDirectory().getChildFile (name.replaceCharacter ('\\', '/')),
-                                          defines, depth + 1, problems) << "\n";
+                    // (0.82.2) An include is found from the main file's folder, as sfizz and ARIA read it (Big Rusty
+                    // Drums' mappings include their own files so, and the kit loaded nothing); else from the including
+                    // file's own folder, where PR7-K looked before.
+                    const auto relative = name.replaceCharacter ('\\', '/');
+                    auto included = root.getChildFile (relative);
+                    if (! included.existsAsFile())
+                        included = file.getParentDirectory().getChildFile (relative);
+                    result << preprocess (included, defines, depth + 1, problems, root) << "\n";
                     continue;
                 }
                 line = expand (line);
@@ -95,14 +103,29 @@ namespace synth::sfz
         }
 
         // The headers and their opcodes, each region with everything it inherits.
-        std::vector<Opcodes> parse (const juce::String& text, juce::String& defaultPath, Opcodes* controlOut = nullptr)
+        // (0.82.2) A <curve>'s points: v000 to v127, straight between those given.
+        using Curves = std::map<int, std::map<int, float>>;
+
+        std::vector<Opcodes> parse (const juce::String& text, juce::String& defaultPath, Opcodes* controlOut = nullptr,
+                                    Curves* curvesOut = nullptr)
         {
             std::vector<Opcodes> regions;
             Opcodes control, global, master, group, current;
             juce::String header;
             const auto flush = [&]
             {
-                if (header == "region")
+                if (header == "curve" && curvesOut != nullptr)
+                {
+                    if (const auto it = current.find ("curve_index"); it != current.end())
+                    {
+                        auto& points = (*curvesOut)[it->second.getIntValue()];
+                        points.clear();
+                        for (const auto& [k, v] : current)
+                            if (k.length() > 1 && k[0] == 'v' && k.substring (1).containsOnly ("0123456789"))
+                                points[juce::jlimit (0, 127, k.substring (1).getIntValue())] = v.getFloatValue();
+                    }
+                }
+                else if (header == "region")
                 {
                     Opcodes r;
                     for (const auto* level : { &global, &master, &group, &current })
@@ -256,7 +279,36 @@ namespace synth::sfz
         std::map<juce::String, juce::String> defines;
         juce::String defaultPath;
         Opcodes control;
-        const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath, &control);
+        Curves curves;
+        const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath, &control, &curves);
+        // A controller's place through a curve (0.82.2): the file's own (<curve>), else the standard ones (0: 0 to 1,
+        // 1: -1 to 1, 2: 1 to 0, 3: 1 to -1, 4: squared, 5: square root, 6: square root falling); 0 when none is named.
+        const auto throughCurve = [&curves] (int index, int cc127) -> float
+        {
+            const auto x = (float) juce::jlimit (0, 127, cc127) / 127.0f;
+            if (const auto it = curves.find (index); it != curves.end() && ! it->second.empty())
+            {
+                const auto& points = it->second;
+                const auto above = points.lower_bound (cc127);
+                if (above == points.end())
+                    return std::prev (above)->second;
+                if (above->first == cc127 || above == points.begin())
+                    return above->second;
+                const auto below = std::prev (above);
+                const auto t = (float) (cc127 - below->first) / (float) (above->first - below->first);
+                return below->second + t * (above->second - below->second);
+            }
+            switch (index)
+            {
+                case 1:  return 2.0f * x - 1.0f;
+                case 2:  return 1.0f - x;
+                case 3:  return 1.0f - 2.0f * x;
+                case 4:  return x * x;
+                case 5:  return std::sqrt (x);
+                case 6:  return std::sqrt (1.0f - x);
+                default: return x;
+            }
+        };
         if (const auto it = control.find ("set_cc1"); it != control.end())
             inst->setCc1 = juce::jlimit (0, 127, it->second.getIntValue());
         // Every other controller's starting value (0.82.0): SET_CCn, 0 where not given. Only the mod wheel and the pedal
@@ -451,7 +503,8 @@ namespace synth::sfz
                                 + number (op, "global_volume", 0.0f);
             r.gain = juce::Decibels::decibelsToGain (volumeDb) * number (op, "amplitude", 100.0f) / 100.0f;
             // Other controllers at their starting values (0.82.0): AMPLITUDE_CCn / _ONCCn (% at 127, multiplying),
-            // GAIN / VOLUME_ONCCn (dB at 127), TUNE_CCn (cents at 127), PAN_CCn (% at 127). Curves are taken as straight.
+            // GAIN / VOLUME_ONCCn (dB at 127), TUNE_CCn (cents at 127), PAN_CCn (% at 127), each through its curve
+            // (0.82.2: <kind>_CURVECCn, e.g. TUNE_CURVECC75; Big Rusty Drums' tuning is centred on its starting value).
             auto panPercent = number (op, "pan", 0.0f);
             for (const auto& [name, value] : op)
             {
@@ -463,15 +516,20 @@ namespace synth::sfz
                     return digits.isNotEmpty() && digits.containsOnly ("0123456789") ? digits.getIntValue() : -1;
                 };
                 const auto amount = value.getFloatValue();
+                const auto placeOf = [&] (const char* curveName, int controller)
+                {
+                    const auto found = op.find (juce::String (curveName) + juce::String (controller));
+                    return throughCurve (found != op.end() ? found->second.getIntValue() : 0, ccStart[(size_t) controller]);
+                };
                 auto cc = -1;
                 if ((cc = juce::jmax (ccOf ("amplitude_cc"), ccOf ("amplitude_oncc"))) > 1 && cc < 128 && cc != 64)
-                    r.gain *= amount / 100.0f * (float) ccStart[(size_t) cc] / 127.0f;
+                    r.gain *= amount / 100.0f * placeOf ("amplitude_curvecc", cc);
                 else if ((cc = juce::jmax (juce::jmax (ccOf ("gain_cc"), ccOf ("gain_oncc")), ccOf ("volume_oncc"))) > 1 && cc < 128 && cc != 64)
-                    r.gain *= juce::Decibels::decibelsToGain (amount * (float) ccStart[(size_t) cc] / 127.0f);
+                    r.gain *= juce::Decibels::decibelsToGain (amount * placeOf (name.startsWith ("volume") ? "volume_curvecc" : "gain_curvecc", cc));
                 else if ((cc = juce::jmax (ccOf ("tune_cc"), ccOf ("tune_oncc"))) > 1 && cc < 128 && cc != 64)
-                    r.tuneSemitones += amount * (float) ccStart[(size_t) cc] / 127.0f / 100.0f;
+                    r.tuneSemitones += amount * placeOf ("tune_curvecc", cc) / 100.0f;
                 else if ((cc = juce::jmax (ccOf ("pan_cc"), ccOf ("pan_oncc"))) > 1 && cc < 128 && cc != 64)
-                    panPercent += amount * (float) ccStart[(size_t) cc] / 127.0f;
+                    panPercent += amount * placeOf ("pan_curvecc", cc);
             }
             r.pan = juce::jlimit (-1.0f, 1.0f, panPercent / 100.0f);
             const auto& sample = *inst->samples[(size_t) index];
