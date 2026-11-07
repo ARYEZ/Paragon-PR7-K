@@ -2,6 +2,12 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.82.1
+
+**A crash fix for presets on looped samples.**
+
+- **Fixed: the plugin could crash the studio when you changed presets while a looped sampled note was still sounding** (reported on Sanctuary Organ, whose orchestra choir loops). When a preset changes, notes already sounding keep playing from the old preset's samples. PR7-K used to free those samples a fixed time later (the longest sample's length plus 2 seconds), which is safe for a piano but not for a looped sound: a held chord or the sustain pedal can keep it going for ever, and it then read memory that had been freed. Now old samples are kept until no note is reading them. The sound is unchanged.
+
 ## 0.82.0
 
 **COLOSSUS, a new signature effect: the sound made enormous; three more free sample libraries.**
