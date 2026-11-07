@@ -77,7 +77,9 @@ namespace ModDestinations
                                                  // 0.79.0: AFTERMATH: how sealed in, how long the walls ring, the machinery
                                                  "aftermathSeal", "aftermathRing", "aftermathHum",
                                                  // 0.80.0: SUBMERGE: how deep, the bubbles, the pressure's bend
-                                                 "submergeDepth", "submergeBubbles", "submergeCurrent" };
+                                                 "submergeDepth", "submergeBubbles", "submergeCurrent",
+                                                 // 0.81.0: LOCKSTEP: how drilled, how flat, the boots
+                                                 "lockstepAmount", "lockstepSqueeze", "lockstepStamp" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

@@ -30,6 +30,7 @@
 #include "dsp/effects/Overcharge.h"
 #include "dsp/effects/Aftermath.h"
 #include "dsp/effects/Submerge.h"
+#include "dsp/effects/Lockstep.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -870,4 +871,29 @@ void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::submergeBubbles, "Submerge Bubbles", { 0.0f, 1.0f, 0.01f }, d.bubbles, v, asBubbles));
     layout.add (makeFloat (ParamIDs::submergeSea, "Submerge Sea", { 0.0f, 1.0f, 0.01f }, d.sea, v, asPercent));
     layout.add (makeFloat (ParamIDs::submergeWidth, "Submerge Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LOCKSTEP (0.81.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 48;
+    using L = effects::Lockstep;
+    const L::Settings d;
+    const ToText asAmount = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Free") : value >= 0.999f ? juce::String ("Drilled")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% in step";
+    };
+    const ToText asGate = [] (float value, int) { return juce::String (juce::roundToInt (100.0f * L::gateShare (value))) + "% open"; };
+    const ToText asAccent = [] (float value, int)
+    {
+        return "Off-beat " + juce::String (juce::roundToInt (juce::Decibels::gainToDecibels (L::offBeatLevel (value)))) + " dB";
+    };
+    layout.add (makeSwitch (ParamIDs::lockstepOn, "Lockstep On", v, false));
+    layout.add (makeFloat (ParamIDs::lockstepAmount, "Lockstep Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeChoice (ParamIDs::lockstepDivision, "Lockstep Division", v, L::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::lockstepGate, "Lockstep Gate", { 0.0f, 1.0f, 0.01f }, d.gate, v, asGate));
+    layout.add (makeFloat (ParamIDs::lockstepAccent, "Lockstep Accent", { 0.0f, 1.0f, 0.01f }, d.accent, v, asAccent));
+    layout.add (makeFloat (ParamIDs::lockstepSqueeze, "Lockstep Squeeze", { 0.0f, 1.0f, 0.01f }, d.squeeze, v, asPercent));
+    layout.add (makeFloat (ParamIDs::lockstepStamp, "Lockstep Stamp", { 0.0f, 1.0f, 0.01f }, d.stamp, v, asPercent));
 }

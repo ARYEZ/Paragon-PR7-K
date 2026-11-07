@@ -91,6 +91,7 @@ target_sources(ParagonX1
         source/dsp/effects/Overcharge.cpp
         source/dsp/effects/Aftermath.cpp
         source/dsp/effects/Submerge.cpp
+        source/dsp/effects/Lockstep.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -142,6 +143,7 @@ target_sources(ParagonX1
         source/ui/OverchargePage.cpp
         source/ui/AftermathPage.cpp
         source/ui/SubmergePage.cpp
+        source/ui/LockstepPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

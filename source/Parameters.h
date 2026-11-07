@@ -548,6 +548,14 @@ namespace ParamIDs
     inline constexpr auto submergeBubbles = "submergeBubbles";   // 0 to 1: how many bubbles rise
     inline constexpr auto submergeSea     = "submergeSea";       // 0 to 1: the sea's wash
     inline constexpr auto submergeWidth   = "submergeWidth";     // 0 to 1: how wide the bubbles and the sea
+    // LOCKSTEP (0.81.0, version hint 48, effects::Lockstep): NEW EDEN's signature.
+    inline constexpr auto lockstepOn       = "lockstepOn";
+    inline constexpr auto lockstepAmount   = "lockstepAmount";     // 0 to 1: free to drilled (the macro's)
+    inline constexpr auto lockstepDivision = "lockstepDivision";   // Lockstep::divisionNames
+    inline constexpr auto lockstepGate     = "lockstepGate";       // 0 to 1: each step open 15% to 90%
+    inline constexpr auto lockstepAccent   = "lockstepAccent";     // 0 to 1: the off-beat steps lower
+    inline constexpr auto lockstepSqueeze  = "lockstepSqueeze";    // 0 to 1: how flat
+    inline constexpr auto lockstepStamp    = "lockstepStamp";      // 0 to 1: the boots
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -643,4 +651,5 @@ void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.77.0)
 void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.79.0)
 void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.80.0)
+void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.81.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

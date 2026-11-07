@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 24> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 25> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 24> specs;
+    std::array<RackUnit::Spec, 25> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1576,6 +1576,45 @@ std::array<RackUnit::Spec, 24> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (23); };
+    }
+
+    // LOCKSTEP (0.81.0): how drilled, in big digits, and its settings; the keys set AMOUNT: RANKS, MARCH and DRILLED;
+    // the ladder how drilled.
+    {
+        auto& s = specs[24];
+        s.name = "LOCKSTEP";
+        s.kind = "AMOUNT  GATE  STAMP";
+        s.onParameterIds = { ParamIDs::lockstepOn };
+        s.powerTooltip = "LOCKSTEP on or off: the sound forced into lockstep. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "RANKS", 0.35f, "Falling in: the steps marked, the sound still its own" },
+                                            { "MARCH", 0.7f, "Marching: cut into steps, squeezed, the boots heard" },
+                                            { "DRILLED", 1.0f, "Drilled: every step the same, nothing left between them" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::lockstepAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::lockstepAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::lockstepAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::lockstepStamp, "STAMP" } };
+        s.ladderTitle = "IN STEP";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "1/2", "", "FREE" };
+        s.ladderReading = [&p] { return p.getLockstepSettings().on ? p.getLockstep().getAmount() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto amount = p.getLockstepSettings().on ? p.getLockstep().getAmount() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * amount)), left.getTopLeft(), h);
+            line (g, amount < 0.001f ? "FREE" : amount >= 0.999f ? "DRILLED" : "MARCHING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::lockstepAmount), "STEP " + textOf (p, ParamIDs::lockstepDivision),
+                                  "GATE " + textOf (p, ParamIDs::lockstepGate), "STAMP " + textOf (p, ParamIDs::lockstepStamp) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (24); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

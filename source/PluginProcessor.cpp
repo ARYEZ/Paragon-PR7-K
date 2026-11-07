@@ -322,6 +322,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->overcharge.prepare (sampleRate, preparedBlockSize);
     rack->aftermath.prepare (sampleRate, preparedBlockSize);
     rack->submerge.prepare (sampleRate, preparedBlockSize);
+    rack->lockstep.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1335,6 +1336,19 @@ effects::Submerge::Settings ParagonX1AudioProcessor::getSubmergeSettings() const
     return s;
 }
 
+effects::Lockstep::Settings ParagonX1AudioProcessor::getLockstepSettings() const noexcept
+{
+    effects::Lockstep::Settings s;
+    s.on = isOn (ParamIDs::lockstepOn);
+    s.amount = effectParam (ModDestinations::effect ("lockstepAmount"), ParamIDs::lockstepAmount);
+    s.division = juce::roundToInt (param (ParamIDs::lockstepDivision));
+    s.gate = param (ParamIDs::lockstepGate);
+    s.accent = param (ParamIDs::lockstepAccent);
+    s.squeeze = effectParam (ModDestinations::effect ("lockstepSqueeze"), ParamIDs::lockstepSqueeze);
+    s.stamp = effectParam (ModDestinations::effect ("lockstepStamp"), ParamIDs::lockstepStamp);
+    return s;
+}
+
 effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
 {
     effects::Bloom::Settings s;
@@ -1666,6 +1680,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         }
         rack->aftermath.process (block, getAftermathSettings());   // 0.79.0: from under the sky into the bunker
         rack->submerge.process (block, getSubmergeSettings());     // 0.80.0: under the water
+        rack->lockstep.process (block, getLockstepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.81.0: in step
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }
