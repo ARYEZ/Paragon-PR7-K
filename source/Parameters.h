@@ -56,7 +56,10 @@ namespace ParamIDs
         // 0.39.0: whether it goes through the VOICE filter (when that's on).
         "Voice",
         // 0.81.0: SFZ KEY (0 the key played; n: every note plays key n - 1's samples, at their own pitch: a drum on any key).
-        "SfzKey" };
+        "SfzKey",
+        // 0.83.0: SFZ KEY TRACK (on: that key's samples pitched by the key played, from the chosen key: one gong or drone
+        // across the keyboard).
+        "SfzKeyTrack" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)

@@ -148,7 +148,7 @@ TEST_CASE ("The oscillator tabs point one set of controls at the chosen oscillat
     // SFZ KEY (0.81.0) is set by presets and automation; it has no control on the panel yet.)
     for (const auto* what : ParamIDs::oscSettings)
         if (juce::String (what) != "On" && juce::String (what) != "Table" && ! juce::String (what).startsWith ("Shp")
-            && juce::String (what) != "SfzKey")
+            && juce::String (what) != "SfzKey" && juce::String (what) != "SfzKeyTrack")
             CHECK (controlFor (*w.view, ParamIDs::osc (2, what)) != nullptr);
 }
 

@@ -260,6 +260,17 @@ TEST_CASE ("SFZ: SFZ KEY plays one key's samples, at their own pitch, from every
         const auto out = p.render (0.2);
         CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (65), 0.2));
     }
+    // SFZ KEY TRACK (0.83.0): key 40's sample pitched by the key played, from key 40 (a 5th up at 47, an octave down at 28).
+    for (const auto& [note, hz] : std::vector<std::pair<int, double>> { { 40, hzOf (60) }, { 47, hzOf (67) }, { 28, hzOf (48) } })
+    {
+        SfzPlayer p (inst.get());
+        p.osc().sfzKey = 40;
+        p.osc().sfzKeyTrack = true;
+        p.on (note);
+        const auto out = p.render (0.2);
+        INFO ("tracked note " << note);
+        CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hz, hz * 0.002));
+    }
     {
         SfzPlayer p (inst.get());   // PLAYED (-1): key 52 has no region, silence
         p.on (52);
@@ -322,6 +333,24 @@ TEST_CASE ("SFZ: controllers through their curves; includes found from the main 
     p.on (60);
     const auto out = p.render (0.2);
     CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (60), hzOf (60) * 0.001));
+}
+
+TEST_CASE ("SFZ: CUTOFF on another controller at its starting value; TRIGGER=LEGATO layers left out (0.83.0)", "[sfz]")
+{
+    // Squidpipes: a 250 Hz one-pole opened to 6000 cents more (32x: 8 kHz) by CC120, set to 127; its slurred-note layers
+    // (TRIGGER=LEGATO) are the same recordings started later, which would double every note here.
+    Folder f;
+    writeSine (f.dir.getChildFile ("pipe.wav"), hzOf (60), 1.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<control> set_cc120=127\n"
+        "<global> fil_type=lpf_1p cutoff=250 cutoff_oncc120=6000\n"
+        "<region> sample=pipe.wav key=60 pitch_keycenter=60 trigger=first\n"
+        "<region> sample=pipe.wav key=60 pitch_keycenter=60 trigger=legato offset=2000\n"));
+    REQUIRE (inst != nullptr);
+    REQUIRE (inst->regions.size() == 1);
+    CHECK_THAT (inst->regions[0].cutoff, WithinAbs (8000.0, 1.0));
+    CHECK_FALSE (inst->regions[0].release);
+    CHECK (inst->problems.joinIntoString (" ").contains ("legato"));
 }
 
 TEST_CASE ("SFZ: samples at another rate play at their pitch; stereo samples keep their sides; PAN", "[sfz]")

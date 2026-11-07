@@ -2907,7 +2907,8 @@ namespace synth
         // SFZ KEY (0.81.0): another key's samples, played at their own pitch (`sfzPlayed` cancels the note's).
         const auto key = juce::jlimit (0, 127, s.sfzKey >= 0 ? s.sfzKey : voice.note);
         osc.sfzKey = key;
-        osc.sfzPlayed = s.sfzKey >= 0 ? juce::jlimit (0, 127, voice.note) : key;
+        // SFZ KEY TRACK (0.83.0): the chosen key's samples pitched by how far the played key is from it.
+        osc.sfzPlayed = s.sfzKey >= 0 && ! s.sfzKeyTrack ? juce::jlimit (0, 127, voice.note) : key;
         const auto velocity127 = juce::jlimit (1, 127, juce::roundToInt (voice.velocity * 127.0f));
         auto& turn = sfzTurns[index][(size_t) key];
         std::array<const sfz::Region*, sfz::maxPlayers> chosen {};

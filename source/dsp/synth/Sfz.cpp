@@ -335,6 +335,14 @@ namespace synth::sfz
             const auto samplePath = get (op, "sample");
             if (samplePath.isEmpty() || samplePath.startsWithChar ('*'))   // "*sine" and the like: generated, not read
                 continue;
+            // TRIGGER=LEGATO (0.83.0): a note slurred from another is played as any note here, so these layers (the
+            // same recordings started later) would double it: left out. TRIGGER=FIRST plays as an ordinary note.
+            if (get (op, "trigger").trim().toLowerCase() == "legato")
+            {
+                if (leftOutSeen.insert ("trigger=legato").second)
+                    inst->problems.add ("not played: trigger=legato (slurred notes play their ordinary layers)");
+                continue;
+            }
             // LOCCn / HICCn for controllers other than the wheel and the pedal (0.82.0): a region outside the range at
             // the controller's starting value never plays (a mixer's channel turned off, another articulation): left out
             // before its sample is read.
@@ -455,7 +463,23 @@ namespace synth::sfz
                 if (type != "lpf_1p" && type != "lpf_2p" && type != "hpf_1p" && type != "hpf_2p" && leftOutSeen.insert ("fil_type").second)
                     inst->problems.add ("filter type " + type + " played as lpf_2p");
                 r.cutoff = juce::jmax (1.0f, number (op, "cutoff", 20000.0f));
-                r.cutoffCcCents = number (op, "cutoff_cc1", 0.0f);
+                r.cutoffCcCents = number (op, "cutoff_cc1", number (op, "cutoff_oncc1", 0.0f));
+                // (0.83.0) Other controllers' CUTOFF_CCn / _ONCCn at their starting values (cents at 127, through
+                // FIL_CURVECCn... read as CUTOFF_CURVECCn): Squidpipes opens its 250 Hz filter to 6 kHz on CC120 so.
+                for (const auto& [name, value] : op)
+                {
+                    const auto prefix = name.startsWith ("cutoff_oncc") ? juce::String ("cutoff_oncc")
+                                      : name.startsWith ("cutoff_cc") ? juce::String ("cutoff_cc") : juce::String();
+                    if (prefix.isEmpty())
+                        continue;
+                    const auto digits = name.substring (prefix.length());
+                    const auto cc = digits.containsOnly ("0123456789") && digits.isNotEmpty() ? digits.getIntValue() : -1;
+                    if (cc <= 1 || cc == 64 || cc > 127)
+                        continue;
+                    const auto curve = op.find ("cutoff_curvecc" + digits);
+                    const auto place = throughCurve (curve != op.end() ? curve->second.getIntValue() : 0, ccStart[(size_t) cc]);
+                    r.cutoff *= std::exp2 (value.getFloatValue() * place / 1200.0f);
+                }
                 r.filterKeytrack = number (op, "fil_keytrack", 0.0f);
                 r.filterVeltrack = number (op, "fil_veltrack", 0.0f);
                 if (has (op, "fil_keycenter"))
@@ -592,7 +616,7 @@ namespace synth::sfz
         // Other controllers' crossfades and gains aren't played.
         for (const auto& op : opcodes)
             for (const auto& [name, value] : op)
-                if ((name.startsWith ("xfin_locc") || name.startsWith ("xfout_locc") || name.startsWith ("cutoff_cc"))
+                if ((name.startsWith ("xfin_locc") || name.startsWith ("xfout_locc"))
                     && ! name.endsWith ("cc1") && leftOutSeen.insert ("othercc").second)
                     inst->problems.add ("held at their starting values: controllers other than the mod wheel and the pedal");
         if (progress)

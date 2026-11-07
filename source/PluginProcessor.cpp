@@ -878,6 +878,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.toFilter = get (oscSetting ("Filter")) > 0.5f;
         o.toVoice = get (oscSetting ("Voice")) > 0.5f;
         o.sfzKey = juce::roundToInt (get (oscSetting ("SfzKey"))) - 1;
+        o.sfzKeyTrack = get (oscSetting ("SfzKeyTrack")) > 0.5f;
         o.voiceLimit = juce::jlimit (1, synth::maxVoices, juce::roundToInt (get (oscSetting ("Voices"))));
         for (int k = 0; k < synth::numShapers; ++k)
             o.toShaper[(size_t) k] = get (oscSetting ("Shp1") + k) > 0.5f;

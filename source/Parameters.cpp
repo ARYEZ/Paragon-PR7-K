@@ -32,6 +32,7 @@ namespace
     constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
     constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
     constexpr int stageSirocco = 30;
+    constexpr int stageSfzKeyTrack = 51;  // 0.83.0: SFZ KEY TRACK (50: COLOSSUS, in RackParameters.cpp)
     constexpr int stageSfzKey = 49;       // 0.81.0: SFZ KEY (48: LOCKSTEP, in RackParameters.cpp)      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
@@ -347,6 +348,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
              [] (float value, int) { const auto k = juce::roundToInt (value) - 1;
                                      return k < 0 ? juce::String ("PLAYED") : juce::MidiMessage::getMidiNoteName (k, true, true, 4); },
              stageSfzKey);
+        // SFZ KEY TRACK (0.83.0): SFZ KEY's samples follow the key played (off: at their own pitch).
+        addSwitch (layout, osc (i, "SfzKeyTrack"), name + "Sfz Key Track", defaults.sfzKeyTrack, stageSfzKeyTrack);
     }
 
     // The VOICE filter (0.39.0): off in a new sound.
