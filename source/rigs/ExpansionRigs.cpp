@@ -15870,7 +15870,7 @@ namespace
         lockstep (sanctuary, { 1, 0.75f, 0.4f, 0.3f, 0.3f });
         orchestra (sanctuary, { { { 0, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz", 1.0f, 0.0f, false, &vcsl },
                                   { 5, "Chorus - Notation/Large Chrous.sfz", 0.35f, 0.0f } },
-                                { 0, 1, 2, 3, 4, 5 }, -3.2f,
+                                { 0, 1, 2, 3, 4, 5 }, -4.2f,
                                 "The great organ filling the sanctuary: a real pipe organ, its full chorus, with the "
                                 "orchestra's large choir under it, a vast stone room. Hold chords.",
                                 10.0f, 500.0f, 1.0f, 900.0f, -1.0f,
