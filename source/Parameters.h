@@ -54,7 +54,9 @@ namespace ParamIDs
         // Stage 7d: the insert bus it plays into (NONE, A to D).
         "Insert",
         // 0.39.0: whether it goes through the VOICE filter (when that's on).
-        "Voice" };
+        "Voice",
+        // 0.81.0: SFZ KEY (0 the key played; n: every note plays key n - 1's samples, at their own pitch: a drum on any key).
+        "SfzKey" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)

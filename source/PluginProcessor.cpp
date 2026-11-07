@@ -876,6 +876,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.subInvert = get (oscSetting ("SubInvert")) > 0.5f;
         o.toFilter = get (oscSetting ("Filter")) > 0.5f;
         o.toVoice = get (oscSetting ("Voice")) > 0.5f;
+        o.sfzKey = juce::roundToInt (get (oscSetting ("SfzKey"))) - 1;
         o.voiceLimit = juce::jlimit (1, synth::maxVoices, juce::roundToInt (get (oscSetting ("Voices"))));
         for (int k = 0; k < synth::numShapers; ++k)
             o.toShaper[(size_t) k] = get (oscSetting ("Shp1") + k) > 0.5f;
@@ -2539,8 +2540,9 @@ void ParagonX1AudioProcessor::loadRig (const RigLibrary::Entry& entry)
 {
     // Copy first: applying parameters can't invalidate it, but be safe. A factory preset with a sampled version
     // (0.72.0) plays that when its library is installed, else itself.
-    const auto* needs = entry.rig.sampled != nullptr ? libraryOf (*entry.rig.sampled) : nullptr;
-    const auto rig = needs != nullptr && isLibraryInstalled (*needs) ? *entry.rig.sampled : entry.rig;
+    const auto playsSampled = entry.rig.sampled != nullptr && libraryOf (*entry.rig.sampled) != nullptr
+                           && missingLibraryOf (*entry.rig.sampled) == nullptr;
+    const auto rig = playsSampled ? *entry.rig.sampled : entry.rig;
     currentRig = { rig.name, entry.file, entry.isFactory ? rig.name : juce::String() };
     applyRig (rig);
     requestCheckpoint();

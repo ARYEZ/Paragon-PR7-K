@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 31> list
+    inline constexpr std::array<Expansion, 32> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -171,5 +171,14 @@ namespace expansions
           "(0.80.0) and MACRO 3, SUBMERGE: the sound sinking under water. Its pianos play the Salamander Grand, and its "
           "clarinet, strings, choir, bass, celesta, vibraphone and pizzicato the Sonatina Symphonic Orchestra, once "
           "downloaded (free). Our own sounds." },
+        { "NEW EDEN", "NE",
+          "Inspired by a series about a near-future theocracy that took power by force: the church (a cantor, a "
+          "sanctuary organ, pedal bourdon, chapel bells, psalm chimes, handbells), the regime (command brass, a state "
+          "anthem, iron boots marching, a tolling bell, a snare roll, a drill snare) and the women who keep their own "
+          "voice (a lone hymn, glass prayer, an undertone, a hidden piano, hidden letters, a thread of harp). Built round "
+          "LOCKSTEP (0.81.0) and MACRO 3, LOCKSTEP: the sound drilled into a march. Its organ, bells, chimes, glasses and "
+          "snare play the Versilian Community Sample Library, its snare roll Sam's Sonor, its brass, choir, strings and "
+          "harp the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
+          "sounds." },
     }};
 }

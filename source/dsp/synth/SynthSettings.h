@@ -122,6 +122,8 @@ namespace synth
         bool subInvert = false;
         bool toFilter = true;       // through the FILTER (off: straight to the AMP)
         bool toVoice = true;        // through the VOICE filter (0.39.0), when it's on
+        int sfzKey = -1;            // 0.81.0: -1 an SFZ plays the key pressed; else this key's samples for every note,
+                                    // at their own pitch (TRANSPOSE and FINE still move it): a drum on any key
         // Through which SHAPERs (stage 3e), when they're on: all four, unless unticked.
         std::array<bool, numShapers> toShaper { true, true, true, true };
         // Follows the PITCH module's envelope (stage 4c), when it's on.

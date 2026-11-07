@@ -284,7 +284,7 @@ void MainView::offerMissingLibrary()
     auto fallback = false;
     if (missing == nullptr)
         if (const auto* entry = audioProcessor.findCurrentRigEntry(); entry != nullptr && entry->isFactory && entry->rig.sampled != nullptr)
-            if (const auto* needs = ParagonX1AudioProcessor::libraryOf (*entry->rig.sampled); needs != nullptr && ! audioProcessor.isLibraryInstalled (*needs))
+            if (const auto* needs = audioProcessor.missingLibraryOf (*entry->rig.sampled); needs != nullptr)
             {
                 missing = needs;
                 fallback = true;

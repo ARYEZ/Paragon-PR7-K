@@ -206,6 +206,15 @@ public:
         return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()
             || resolveSfz (libraries::refFor (library)).existsAsFile();
     }
+    // 0.81.0: a sampled version may play on more than one library (NEW EDEN's organ and choir): the first it needs
+    // that isn't installed, or nullptr when all are.
+    const libraries::Library* missingLibraryOf (const Rig& rig) const
+    {
+        for (const auto& [osc, ref] : rig.sfz)
+            if (const auto* library = libraries::libraryFor (ref); library != nullptr && ! isLibraryInstalled (*library))
+                return library;
+        return nullptr;
+    }
     // The library an oscillator's SFZ couldn't be found for, if it's one PR7-K can download (else null).
     const libraries::Library* missingLibrary (int osc) const;
     int getSfzUnderruns() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getUnderruns() : 0; }

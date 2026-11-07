@@ -172,6 +172,7 @@ namespace synth
             std::array<SfzPlayer, maxSfzPlayers> players {};
             const sfz::Instrument* instrument = nullptr;
             int sfzKey = 60;                                 // the key the regions were chosen for
+            int sfzPlayed = 60;                              // the key played (0.81.0: SFZ KEY may choose another)
             double heldSamples = 0.0;                        // since the note started (RT_DECAY)
         };
 

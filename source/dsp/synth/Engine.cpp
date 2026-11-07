@@ -2870,8 +2870,10 @@ namespace synth
         if (inst == nullptr)
             return;
 
-        const auto key = juce::jlimit (0, 127, voice.note);
+        // SFZ KEY (0.81.0): another key's samples, played at their own pitch (`sfzPlayed` cancels the note's).
+        const auto key = juce::jlimit (0, 127, s.sfzKey >= 0 ? s.sfzKey : voice.note);
         osc.sfzKey = key;
+        osc.sfzPlayed = s.sfzKey >= 0 ? juce::jlimit (0, 127, voice.note) : key;
         const auto velocity127 = juce::jlimit (1, 127, juce::roundToInt (voice.velocity * 127.0f));
         auto& turn = sfzTurns[index][(size_t) key];
         std::array<const sfz::Region*, sfz::maxPlayers> chosen {};
@@ -2977,7 +2979,7 @@ namespace synth
             const auto& sample = *player.sample;
             // Its speed: the key played against the region's PITCH_KEYCENTER (PITCH_KEYTRACK cents a key), its TUNE,
             // and the oscillator's pitch against the key (TRANSPOSE, FINE, bend, glide, vibrato...).
-            const auto offset = (semitones - (float) osc.sfzKey) + ((float) osc.sfzKey - region.keyCenter) * region.keytrack + region.tuneSemitones;
+            const auto offset = (semitones - (float) osc.sfzPlayed) + ((float) osc.sfzKey - region.keyCenter) * region.keytrack + region.tuneSemitones;
             const auto step = sample.sampleRate / sampleRate * std::exp2 ((double) offset / 12.0);
             const auto length = sample.length;
             const auto readable = player.stream >= 0 ? length : (juce::int64) sample.headFrames;

@@ -31,7 +31,8 @@ namespace
     // 20 to 23 were THE DRUMS (0.21.0 to 0.23.0), removed in 0.54.0: never reuse them.
     constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
     constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
-    constexpr int stageSirocco = 30;      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
+    constexpr int stageSirocco = 30;
+    constexpr int stageSfzKey = 49;       // 0.81.0: SFZ KEY (48: LOCKSTEP, in RackParameters.cpp)      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
     const ToText asPercent = [] (float value, int) { return juce::String (juce::roundToInt (value * 100.0f)) + "%"; };
@@ -340,6 +341,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 
         // Whether it goes through the VOICE filter (0.39.0).
         addSwitch (layout, osc (i, "Voice"), name + "Voice", defaults.toVoice, stageVoice);
+
+        // SFZ KEY (0.81.0): which key's samples an SFZ plays (PLAYED: the key you press).
+        add (layout, osc (i, "SfzKey"), name + "Sfz Key", { 0.0f, 128.0f, 1.0f }, (float) (defaults.sfzKey + 1),
+             [] (float value, int) { const auto k = juce::roundToInt (value) - 1;
+                                     return k < 0 ? juce::String ("PLAYED") : juce::MidiMessage::getMidiNoteName (k, true, true, 4); },
+             stageSfzKey);
     }
 
     // The VOICE filter (0.39.0): off in a new sound.

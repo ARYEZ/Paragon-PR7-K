@@ -226,6 +226,48 @@ TEST_CASE ("SFZ: each key plays its region at the right pitch, with TUNE, PITCH_
     }
 }
 
+TEST_CASE ("SFZ: SFZ KEY plays one key's samples, at their own pitch, from every key (0.81.0)", "[sfz]")
+{
+    // A drum kit maps each drum to a key; SFZ KEY lets any key play the snare (key 40 here, a C4 "drum").
+    Folder f;
+    writeSine (f.dir.getChildFile ("snare.wav"), hzOf (60), 1.0);
+    writeSine (f.dir.getChildFile ("kick.wav"), hzOf (36), 1.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<region> sample=snare.wav key=40 pitch_keycenter=60 pitch_keytrack=0\n"
+        "<region> sample=kick.wav key=36 pitch_keycenter=36\n"));
+    REQUIRE (inst != nullptr);
+    for (const auto note : { 30, 52, 60, 77 })
+    {
+        SfzPlayer p (inst.get());
+        p.osc().sfzKey = 40;
+        p.on (note);
+        const auto out = p.render (0.2);
+        INFO ("note " << note);
+        CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (60), 0.2));
+    }
+    {
+        SfzPlayer p (inst.get());   // a tracking sample (keytrack 1) plays as recorded too: the key's pitch, not the note's
+        p.osc().sfzKey = 36;
+        p.on (64);
+        const auto out = p.render (0.2);
+        CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (36), 0.05));
+    }
+    {
+        SfzPlayer p (inst.get());   // TRANSPOSE still moves it
+        p.osc().sfzKey = 40;
+        p.osc().transpose = 5.0f;
+        p.on (71);
+        const auto out = p.render (0.2);
+        CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (65), 0.2));
+    }
+    {
+        SfzPlayer p (inst.get());   // PLAYED (-1): key 52 has no region, silence
+        p.on (52);
+        const auto out = p.render (0.1);
+        CHECK (rms (out[0], 0, out[0].size()) == 0.0);
+    }
+}
+
 TEST_CASE ("SFZ: samples at another rate play at their pitch; stereo samples keep their sides; PAN", "[sfz]")
 {
     Folder f;
