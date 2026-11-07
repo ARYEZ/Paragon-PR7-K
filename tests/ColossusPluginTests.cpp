@@ -116,7 +116,17 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
     }
     const auto at = (size_t) (0.5 * sampleRate), late = (size_t) (15.0 * sampleRate);
     CHECK (std::abs (out[0][at] - reference[0][at]) + std::abs (out[0][at + 100] - reference[0][at + 100]) > 0.0f);
-    // The hall (up to 10 s) dies away, then the sound passes untouched again.
+    // The hall (up to 10 s) dies away, then the sound passes untouched again (at rest by about 2 s).
+    size_t lastDiff = 0;
+    float largest = 0.0f;
+    for (size_t i = 0; i < out[0].size(); ++i)
+        if (out[0][i] != reference[0][i])
+        {
+            lastDiff = i;
+            largest = juce::jmax (largest, std::abs (out[0][i] - reference[0][i]));
+        }
+    INFO ("last difference at " << (double) lastDiff / sampleRate << " s, largest " << largest);
+    CHECK (p.processor.getColossus().isResting());
     CHECK (std::equal (out[0].begin() + (long) late, out[0].end(), reference[0].begin() + (long) late));
 }
 
