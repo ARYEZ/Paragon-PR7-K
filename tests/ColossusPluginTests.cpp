@@ -125,7 +125,18 @@ TEST_CASE ("COLOSSUS in the plugin: MACRO 3 takes it up through the matrix and b
             lastDiff = i;
             largest = juce::jmax (largest, std::abs (out[0][i] - reference[0][i]));
         }
-    INFO ("last difference at " << (double) lastDiff / sampleRate << " s, largest " << largest);
+    // Where it differs after 2 s (at rest by then on Linux), and whether two plain synths even match over 16 s.
+    size_t firstLate = 0;
+    for (size_t i = (size_t) (2.0 * sampleRate); i < out[0].size(); ++i)
+        if (out[0][i] != reference[0][i]) { firstLate = i; break; }
+    Plugin plainAgain;
+    const auto again = plainAgain.play (16.0);
+    size_t plainDiff = 0;
+    for (size_t i = 0; i < again[0].size(); ++i)
+        if (again[0][i] != reference[0][i]) { plainDiff = i; break; }
+    INFO ("last difference at " << (double) lastDiff / sampleRate << " s, largest " << largest
+          << ", first after 2 s at " << (double) firstLate / sampleRate << " s; two plain synths first differ at "
+          << (double) plainDiff / sampleRate << " s (0 = never)");
     CHECK (p.processor.getColossus().isResting());
     CHECK (std::equal (out[0].begin() + (long) late, out[0].end(), reference[0].begin() + (long) late));
 }
