@@ -30,10 +30,11 @@ namespace expansions
           "chords, string-machine and polysynth pads, haunting leads, eighth-note basses. Built round AFTERGLOW (0.60.0), "
           "an old polysynth's glow, and MACRO 3, GLOW. Our own sounds." },
         { "SANDSEA", "SS",
-          "Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices, "
-          "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Built round SIROCCO "
-          "(0.58.0), a harmony answering every note in the bank's scale, and MACRO 3, SIROCCO: from one voice to a small "
-          "choir. Our own sounds." },
+          "Inspired by the score of an epic desert science-fiction film, in three columns: the deep desert (the sand "
+          "sea, a keening voice, what moves under it), the desert people (chant, reed, didgeridoo, hand drums, zither, oud) "
+          "and the invaders (colossal horns, pipes, engines, war drums). Melodies in the Phrygian dominant scale. Built "
+          "round COLOSSUS (0.82.0) and MACRO 3, COLOSSUS: the sound made enormous. Many play free sample libraries (VCSL, "
+          "the orchestra, Big Rusty Drums, Gogodze Phu, Squidpipes) when downloaded. Our own sounds." },
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
           "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Built round "

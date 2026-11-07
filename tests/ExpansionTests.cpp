@@ -277,25 +277,67 @@ TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its 
     CHECK (count == 18);
 }
 
-TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left", "[rigs][expansions][sirocco]")
+TEST_CASE ("SANDSEA: MACRO 3 is COLOSSUS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][colossus]")
 {
-    int count = 0;
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
     for (const auto& rig : makeExpansionRigs())
     {
-        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion
+        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion (rebuilt in 0.83.0)
             continue;
         ++count;
         INFO (rig.name);
-        CHECK (rig.modulation.macroNames[2] == "SIROCCO");
-        CHECK (rig.notes.contains ("SIROCCO ("));
-        CHECK (rig.parameters.at (ParamIDs::siroccoOn) == 1.0f);
-        CHECK (rig.parameters.at (ParamIDs::siroccoLevel) == 0.0f);   // no answers until the macro brings them: the sound as approved
-        CHECK (rig.parameters.at (ParamIDs::siroccoKey) == 2.0f);     // D
-        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
-                                         { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
-        CHECK (routed);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "COLOSSUS");
+            CHECK (version->notes.contains ("COLOSSUS"));
+            CHECK (version->parameters.at (ParamIDs::colossusOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::colossusSize) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::colossusSize && r.amount >= 0.7f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on the libraries: every setting and route a real one, every instrument known and found.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
     }
     CHECK (count == 18);
+    CHECK (sampled == 15);      // (Duduk Lament, Iron Engine and Desert Oud: synthesized only)
+    CHECK (used.size() == 5);   // VCSL, the orchestra, Big Rusty Drums, Gogodze Phu and Squidpipes
 }
 
 TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
@@ -2662,57 +2704,63 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sand && type == "Lead")
         {
-            // D Phrygian dominant: D Eb F# G A Bb C.
-            line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
-                    { 8, 1, 69 }, { 9, 1, 67 }, { 10, 1, 66 }, { 11, 1, 63 }, { 12, 4, 62 } }, 100);
-            if (rig.name == "Desert Voice")
+            // D Phrygian dominant: D Eb F# G A Bb C. The horn low and long; the voice and the reed a singing line.
+            if (rig.name == "Colossus Horn")
+                line ({ { 0, 3, 38 }, { 3, 1, 39 }, { 4, 4, 38 }, { 8, 3, 42 }, { 11, 1, 43 }, { 12, 4, 38 } }, 110);
+            else
+                line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
+                        { 8, 1, 69 }, { 9, 1, 67 }, { 10, 1, 66 }, { 11, 1, 63 }, { 12, 4, 62 } }, 100);
+            if (rig.name == "Keening Voice")
                 wheel (6.0, 11.0, 110);
             length = 19.0 * beat;
         }
         else if (sand && type == "Pad")
         {
-            chord (e, at (0), at (7.8), { 38, 45, 50, 54 }, 95);   // D, a low fifth and the major third
-            chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 95);  // E flat: the flat second
+            if (rig.name == "Pipes of Arrival")
+            {
+                chord (e, at (0), at (7.8), { 50, 57, 62 }, 95);   // in the chanter's range (from G2)
+                chord (e, at (8), at (15.8), { 51, 58, 63 }, 95);
+            }
+            else
+            {
+                chord (e, at (0), at (7.8), { 38, 45, 50, 54 }, 95);   // D, a low fifth and the major third
+                chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 95);  // E flat: the flat second
+            }
             length = 22.0 * beat;
         }
         else if (sand && type == "Bass")
         {
-            if (rig.name == "Quake Pulse")
-            {
-                chord (e, at (0), at (3), { 26 }, 120);
-                chord (e, at (8), at (11), { 27 }, 115);
-            }
-            else if (rig.name == "Iron Ritual")
+            if (rig.name == "Iron Engine")
             {
                 const int notes[] = { 38, 38, 39, 38, 42, 38, 39, 38 };
                 for (int bar = 0; bar < 4; ++bar)
                     for (int k = 0; k < 8; ++k)
                         chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.35), { notes[k] }, k % 2 == 0 ? 110 : 90);
             }
+            else if (rig.name == "Didgeridoo Bass")
+                line ({ { 0, 6, 38 }, { 6, 2, 39 }, { 8, 6, 38 }, { 14, 2, 42 } }, 105);
             else
                 line ({ { 0, 6, 26 }, { 6, 2, 27 }, { 8, 6, 26 }, { 14, 2, 30 } }, 105);
             length = 18.0 * beat;
         }
         else if (sand && type == "Keys")
         {
-            if (rig.name == "Ritual Gong")
+            if (rig.name == "Sun Gong")
             {
                 chord (e, at (0), at (3), { 38 }, 115);
-                chord (e, at (8), at (11), { 33 }, 110);
+                chord (e, at (8), at (11), { 38, 45 }, 110);
             }
             else
                 line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 66 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 0.5, 70 }, { 4.5, 0.5, 69 },
-                        { 5, 1, 67 }, { 6, 2, 66 }, { 8, 1, 63 }, { 9, 1, 62 }, { 10, 3, 62 } }, rig.name == "Copper Bells" ? 85 : 100);
+                        { 5, 1, 67 }, { 6, 2, 66 }, { 8, 1, 63 }, { 9, 1, 62 }, { 10, 3, 62 } }, rig.name == "Spice Bells" ? 110 : 100);
             length = 19.0 * beat;
         }
         else if (sand)
         {
-            if (rig.name == "Sand Ripple")
-                chord (e, at (0), at (15.9), { 62 }, 100);
-            else if (rig.name == "War Pulse")
-                chord (e, at (0), at (15.9), { 50, 57 }, 105);
+            if (rig.name == "Thumper")
+                chord (e, at (0), at (15.9), { 38 }, 110);
             else
-                chord (e, at (0), at (15.9), { 50, 54, 57 }, 100);
+                chord (e, at (0), at (15.9), { 50 }, 105);   // the drums: any key
             length = 19.0 * beat;
         }
         else if (star && type == "Lead")
