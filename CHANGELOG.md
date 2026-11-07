@@ -2,6 +2,27 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.83.0
+
+**SANDSEA rebuilt: 18 new presets round COLOSSUS, 15 of them with versions on the free sample libraries.**
+
+- **SANDSEA, rebuilt from the ground up** (SS01-SS18; the old presets are gone). Three columns in every category: the deep desert, the desert people and the invaders. **MACRO 3 COLOSSUS** on every preset: from the sound as it is to enormous (an octave under it, a vast hall, a boom under each new note), keeping its loudness within about 3 dB.
+  - Leads: Keening Voice, Duduk Lament, Colossus Horn.
+  - Pads: Sand Sea, Chant Circle, Pipes of Arrival.
+  - Basses: Worm Rumble, Didgeridoo Bass, Iron Engine.
+  - Keys: Sun Gong, Kanun, Spice Bells.
+  - Arps: Thumper, Hand Drum Rite, War Drums.
+  - Plucks: Mbira Dune, Desert Oud, Frame Drum Strike.
+- **15 have a version on the free libraries**, played automatically once the library is downloaded; until then the synthesized version plays. The libraries: the orchestra's choir and brass, the Versilian collection (ocean drum, didgeridoo, gong, zither, finger cymbals and bell tree, slit drum, darbuka, frame drum, mbira), Squidpipes, Big Rusty Drums and Gogodze Phu. Duduk Lament, Iron Engine and Desert Oud are synthesized only (no free duduk or oud can be downloaded without an account).
+  - The pitches of the untuned instruments (the gong, frame drum, slit drum, didgeridoo and finger cymbals) were measured or estimated here, not given by the libraries: tell us if one sounds out of key.
+- **SFZ KEY TRACK** (per oscillator, set by presets): a sample chosen by SFZ KEY can now follow the keyboard from that key, so one recorded drum, gong or didgeridoo can be played as a tuned instrument.
+- **SFZ reading:**
+  - Fixed: Big Rusty Drums didn't load. Its files include others by a path from the main file's folder; PR7-K now looks there.
+  - Fixed: its kick played about six semitones sharp. Libraries can pass a controller through a curve before it sets tuning or level (`<curve>`); those curves are read now.
+  - A library's filter set by a controller other than the mod wheel (Squidpipes' drones) takes the controller's starting value: it sounded muffled.
+  - Legato layers (played only when one note slides into the next) are left out: they used to sound with every note, doubling it.
+- **Fixed: the HALO drive could become dangerously loud.** On loud, bright sound HALO's circuit model sometimes fails to settle, and when it did, the error carried on from sample to sample and kept growing: one of our random-settings tests reached +120 dB. Now no point in its 9-volt circuit can go past 45 volts, so the worst it can do is distort; the sound whenever it settles (normal playing) is exactly as before, checked sample for sample.
+
 ## 0.82.1
 
 **A crash fix for presets on looped samples.**
