@@ -179,6 +179,9 @@ namespace synth::sfz
         bool hasRelease = false;                // some region is TRIGGER=RELEASE
         bool hasPedalSounds = false;            // some region plays when the pedal moves
         double longestSeconds = 0.0;            // the longest sample (how long a note can read it)
+        // (0.82.1) The engine's last check that found a note reading this instrument (Engine::markSfzInUse): a retired
+        // instrument is freed only once a later check has found none (a looped note can read it for ever).
+        mutable std::atomic<std::uint64_t> lastUsedCheck { 0 };
         int setCc1 = -1;                        // SET_CC1 (0.75.0): the wheel until it's moved (-1: none given)
         bool wheelDynamics = false;             // some region fades or swells with the wheel, or opens a filter with it
         // KEY SWITCHES (0.75.0): the switch keys (none: -1), the one down before any is pressed, and each one's name.

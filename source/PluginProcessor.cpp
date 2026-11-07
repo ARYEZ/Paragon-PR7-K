@@ -1216,6 +1216,7 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // prepareToPlay; work through an oversized block in promised-size pieces.
     for (int start = 0; start < numSamples; start += preparedBlockSize)
         processChunk (buffer, keyboardMidi, start, juce::jmin (preparedBlockSize, numSamples - start));
+    engine.markSfzInUse();   // (0.82.1) which SFZ instruments notes still read: a retired one is freed only when none does
 
     // MIMIC's recording, beside the synth, through the OUTPUT knob as the synth is.
     if (const auto* reference = referenceForAudio.load(); reference != nullptr && referencePosition.load() >= 0)
@@ -1783,7 +1784,8 @@ void ParagonX1AudioProcessor::updateWavetables()
     }
     updateSpectra();
     std::erase_if (retiredTables, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
-    std::erase_if (retiredSfz, [now] (const auto& retired) { return now > retired.second; });
+    // (0.82.1) Not while a note still reads it: a looped note can be held for ever (it crashed the audio thread on Windows).
+    std::erase_if (retiredSfz, [this, now] (const auto& retired) { return now > retired.second && ! engine.isSfzInUse (*retired.first); });
     std::erase_if (retiredMatrices, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredReferences, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
 }

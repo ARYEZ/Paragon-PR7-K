@@ -880,6 +880,58 @@ TEST_CASE ("SFZ in the plugin: an oscillator loads it in the background and play
     CHECK (processor->captureRig().sfz.empty());
 }
 
+TEST_CASE ("SFZ in the plugin: a held looped note keeps its samples after the preset changes (0.82.1)", "[sfz][plugin]")
+{
+    // Windows crashed on Sanctuary Organ, whose choir loops: a preset change retired the old instrument and freed it
+    // 2 s after its longest sample, while a held looped note still read it. Now it's kept until nothing reads it.
+    Folder f;
+    const auto presets = f.dir.getChildFile ("presets");
+    presets.createDirectory();
+    const auto library = f.dir.getChildFile ("Loops");
+    writeSine (library.getChildFile ("tone.wav"), 480.0, 0.25);
+    const auto looped = writeSfz (library, "<region> sample=tone.wav lokey=36 hikey=84 pitch_keycenter=60 loop_mode=loop_continuous\n", "looped.sfz");
+    const auto other = writeSfz (library, "<region> sample=tone.wav lokey=36 hikey=84 pitch_keycenter=72\n", "other.sfz");
+
+    auto processor = makeSfzProcessor (presets);
+    processor->loadSfz (0, looped);
+    REQUIRE (processor->waitForSfz());
+    juce::AudioBuffer<float> buffer (2, blockSize);
+    const auto run = [&] (double seconds, juce::MidiBuffer first)
+    {
+        double power = 0.0;
+        int count = 0;
+        for (int start = 0; start < (int) (seconds * sampleRate); start += blockSize)
+        {
+            buffer.clear();
+            processor->processBlock (buffer, first);
+            first.clear();
+            for (int i = 0; i < blockSize; ++i, ++count)
+                power += (double) buffer.getSample (0, i) * buffer.getSample (0, i);
+        }
+        return std::sqrt (power / juce::jmax (1, count));
+    };
+    juce::MidiBuffer on;
+    on.addEvent (juce::MidiMessage::noteOn (1, 60, 1.0f), 0);
+    CHECK (run (0.5, on) > 0.05);   // looping past its 0.25 s recording
+
+    // Another instrument on the oscillator while the note is held: the old one is retired, not freed.
+    processor->loadSfz (0, other);
+    REQUIRE (processor->waitForSfz());
+    CHECK (processor->getRetiredSfzCountForTest() == 1);
+    juce::Thread::sleep (2600);   // past the old rule's 0.25 s + 2 s
+    run (0.1, {});
+    processor->runTimerForTest();
+    CHECK (processor->getRetiredSfzCountForTest() == 1);   // still read by the held note
+    CHECK (run (0.5, {}) > 0.05);                          // ...which still plays its loop
+
+    // Let go: once the note has ended and a block has seen nothing reading it, it's freed.
+    juce::MidiBuffer off;
+    off.addEvent (juce::MidiMessage::noteOff (1, 60), 0);
+    run (3.0, off);
+    processor->runTimerForTest();
+    CHECK (processor->getRetiredSfzCountForTest() == 0);
+}
+
 TEST_CASE ("SFZ in the plugin: a moved library is found by its folder's name; a missing one says so", "[sfz][plugin]")
 {
     Folder f;

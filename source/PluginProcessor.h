@@ -201,6 +201,8 @@ public:
     void cancelLibraryDownload() { libraryDownload.cancel(); }
     const libraries::Download& getLibraryDownload() const noexcept { return libraryDownload; }
     libraries::Download& getLibraryDownloadForTest() noexcept { return libraryDownload; }
+    int getRetiredSfzCountForTest() const noexcept { return (int) retiredSfz.size(); }   // (0.82.1) instruments kept for notes still reading them
+    void runTimerForTest() { timerCallback(); }   // (0.82.1) the message thread's tick, where retired instruments are freed
     bool isLibraryInstalled (const libraries::Library& library) const
     {
         return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()

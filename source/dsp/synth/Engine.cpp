@@ -1106,6 +1106,40 @@ namespace synth
             releaseAnswers (voice);   // SIROCCO: its answers let go with it
     }
 
+    void Engine::markSfzInUse() noexcept
+    {
+        // (0.82.1) Each instrument a note is reading gets this check's number. A preset change retires the old
+        // instrument; the processor frees it only once a check has found nothing reading it, so a held looped note,
+        // a long release or a waiting release tail never reads freed memory (Windows reported a crash on Sanctuary
+        // Organ, whose choir loops).
+        const auto check = sfzChecks.load (std::memory_order_relaxed);
+        const auto mark = [check] (const sfz::Instrument* instrument)
+        {
+            if (instrument != nullptr)
+                instrument->lastUsedCheck.store (check, std::memory_order_release);
+        };
+        for (const auto& voice : voices)
+            for (const auto& osc : voice.oscillators)
+            {
+                mark (osc.instrument);
+                for (const auto& player : osc.players)
+                    if (player.region != nullptr)
+                        mark (player.instrument);
+            }
+        for (int t = 0; t < numPendingTails; ++t)
+        {
+            const auto& tail = pendingTails[(size_t) t];
+            for (size_t i = 0; i < tail.instruments.size(); ++i)
+            {
+                mark (tail.instruments[i]);
+                for (const auto& player : tail.handed[i])
+                    if (player.region != nullptr)
+                        mark (player.instrument);
+            }
+        }
+        sfzChecks.store (check + 1, std::memory_order_release);
+    }
+
     void Engine::releaseGlobalEnvelopesIfNoneHeld() noexcept
     {
         // The FIRST NOTE / LAST NOTE envelopes let go when no key (or pedal) holds a note.
@@ -2905,6 +2939,7 @@ namespace synth
                 break;
             const auto& sample = *inst->samples[(size_t) region.sample];
             player->region = &region;
+            player->instrument = inst;
             player->sample = &sample;
             player->position = (double) region.offset;
             player->fade = 1.0f;

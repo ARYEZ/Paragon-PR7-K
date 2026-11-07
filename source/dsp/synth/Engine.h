@@ -97,6 +97,14 @@ namespace synth
         };
         static constexpr int maxTouches = 32;
         int takeTouches (Touch* out, int capacity) noexcept;
+        // (0.82.1) Marks every SFZ instrument a note is reading (playing, ringing on, or waiting to ring as a release
+        // tail) with this check's number, then moves the count on. Called after each block; a retired instrument
+        // whose mark is older than the last check is read by nothing and may be freed (`isSfzInUse`).
+        void markSfzInUse() noexcept;
+        bool isSfzInUse (const sfz::Instrument& instrument) const noexcept
+        {
+            return instrument.lastUsedCheck.load (std::memory_order_acquire) + 1 >= sfzChecks.load (std::memory_order_acquire);
+        }
         std::int64_t getSampleClock() const noexcept { return sampleClock; }
 
         // Oscillators running now, every unison and chord copy counted (as Avenger's
@@ -136,6 +144,7 @@ namespace synth
         struct SfzPlayer
         {
             const sfz::Region* region = nullptr;   // null: free
+            const sfz::Instrument* instrument = nullptr;   // (0.82.1) whose region: kept in memory while this plays
             const sfz::Sample* sample = nullptr;
             double position = 0.0;                 // frames into the file
             float gain = 0.0f;                     // the region's level, velocity and RT_DECAY, panned
@@ -148,6 +157,16 @@ namespace synth
             float filterA[2] {}, filterB[2] {};    // (0.75.0) its FILTER's state, each side
         };
         static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
+        struct CheckCount   // (0.82.1) markSfzInUse's count, the next check's number: an atomic the engine can be moved with
+        {
+            std::atomic<std::uint64_t> value { 1 };
+            CheckCount() = default;
+            CheckCount (const CheckCount& other) noexcept : value (other.value.load()) {}
+            CheckCount& operator= (const CheckCount& other) noexcept { value.store (other.value.load()); return *this; }
+            std::uint64_t load (std::memory_order order = std::memory_order_seq_cst) const noexcept { return value.load (order); }
+            void store (std::uint64_t v, std::memory_order order = std::memory_order_seq_cst) noexcept { value.store (v, order); }
+        };
+        CheckCount sfzChecks;
 
         struct OscState
         {
