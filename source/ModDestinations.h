@@ -79,7 +79,9 @@ namespace ModDestinations
                                                  // 0.80.0: SUBMERGE: how deep, the bubbles, the pressure's bend
                                                  "submergeDepth", "submergeBubbles", "submergeCurrent",
                                                  // 0.81.0: LOCKSTEP: how drilled, how flat, the boots
-                                                 "lockstepAmount", "lockstepSqueeze", "lockstepStamp" };
+                                                 "lockstepAmount", "lockstepSqueeze", "lockstepStamp",
+                                                 // 0.82.0: COLOSSUS: how big, the octave under, the hall
+                                                 "colossusSize", "colossusDepth", "colossusHall" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

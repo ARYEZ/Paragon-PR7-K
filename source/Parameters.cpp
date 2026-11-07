@@ -578,5 +578,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addAftermathParameters (layout);       // AFTERMATH (0.79.0): RackParameters.cpp
     addSubmergeParameters (layout);        // SUBMERGE (0.80.0): RackParameters.cpp
     addLockstepParameters (layout);        // LOCKSTEP (0.81.0): RackParameters.cpp
+    addColossusParameters (layout);        // COLOSSUS (0.82.0): RackParameters.cpp
     return layout;
 }

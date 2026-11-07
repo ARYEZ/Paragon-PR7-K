@@ -55,6 +55,11 @@ namespace libraries
     // Sam's Sonor (0.81.0; Sam Greene, mapped by kinwie, CC BY-SA 4.0): a Sonor Force 3001 kit, its snare with a left
     // and a right hand for rolls, at a fixed commit of the SFZ Instruments edition.
     const Library& samsSonor();
+    // Karoryfer Samples' Big Rusty Drums (an oversized kit), Gogodze Phu Vol I (Ghanaian bobobo drums and a cajon) and
+    // Squidpipes (bagpipes) (0.82.0, CC0), each at a fixed commit.
+    const Library& bigRustyDrums();
+    const Library& gogodzePhu();
+    const Library& squidpipes();
 
     // Every library PR7-K can download.
     std::vector<const Library*> all();

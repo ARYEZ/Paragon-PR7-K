@@ -70,9 +70,60 @@ namespace libraries
         return library;
     }
 
+    // Karoryfer Samples' free libraries (0.82.0, for SANDSEA; CC0: public domain), each at a fixed commit of its
+    // GitHub repository.
+    const Library& bigRustyDrums()
+    {
+        static const Library library {
+            "Big Rusty Drums",
+            "https://github.com/sfzinstruments/karoryfer.big-rusty-drums/archive/f07ce00df34a46b6b08375be56fe116cf15782bc.tar.gz",
+            730000000,
+            "karoryfer.big-rusty-drums-f07ce00df34a46b6b08375be56fe116cf15782bc",
+            "Programs/01-full.sfz",
+            "Big Rusty Drums by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.big-rusty-drums",
+            "BIG DRUMS",
+            false,
+            710
+        };
+        return library;
+    }
+
+    const Library& gogodzePhu()
+    {
+        static const Library library {
+            "Gogodze Phu Vol I",
+            "https://github.com/sfzinstruments/karoryfer.gogodze-phu-vol-i/archive/7452f62060cd3a468c78bc361d96a4dfb30879c9.tar.gz",
+            85000000,
+            "karoryfer.gogodze-phu-vol-i-7452f62060cd3a468c78bc361d96a4dfb30879c9",
+            "Programs/Bobobo.sfz",
+            "Gogodze Phu Vol I by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.gogodze-phu-vol-i",
+            "HAND DRUMS",
+            false,
+            90
+        };
+        return library;
+    }
+
+    const Library& squidpipes()
+    {
+        static const Library library {
+            "Squidpipes",
+            "https://github.com/sfzinstruments/karoryfer.squidpipes/archive/b258528c8f49d6389ec2b4ec04a8b10013169dd9.tar.gz",
+            50000000,
+            "karoryfer.squidpipes-b258528c8f49d6389ec2b4ec04a8b10013169dd9",
+            "Programs/01-squidpipes.sfz",
+            "Squidpipes by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.squidpipes",
+            "BAGPIPES",
+            false,
+            53
+        };
+        return library;
+    }
+
     std::vector<const Library*> all()
     {
-        return { &salamanderGrand(), &sonatinaOrchestra(), &versilianCollection(), &samsSonor() };
+        return { &salamanderGrand(), &sonatinaOrchestra(), &versilianCollection(), &samsSonor(),
+                 &bigRustyDrums(), &gogodzePhu(), &squidpipes() };
     }
 
     juce::String refFor (const Library& library)

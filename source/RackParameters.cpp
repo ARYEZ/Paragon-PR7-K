@@ -31,6 +31,7 @@
 #include "dsp/effects/Aftermath.h"
 #include "dsp/effects/Submerge.h"
 #include "dsp/effects/Lockstep.h"
+#include "dsp/effects/Colossus.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -896,4 +897,26 @@ void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::lockstepAccent, "Lockstep Accent", { 0.0f, 1.0f, 0.01f }, d.accent, v, asAccent));
     layout.add (makeFloat (ParamIDs::lockstepSqueeze, "Lockstep Squeeze", { 0.0f, 1.0f, 0.01f }, d.squeeze, v, asPercent));
     layout.add (makeFloat (ParamIDs::lockstepStamp, "Lockstep Stamp", { 0.0f, 1.0f, 0.01f }, d.stamp, v, asPercent));
+}
+
+void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // COLOSSUS (0.82.0, our own design): off and at SIZE 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 50;
+    using C = effects::Colossus;
+    const C::Settings d;
+    const ToText asSize = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("As It Is") : value >= 0.999f ? juce::String ("Colossal")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% size";
+    };
+    const ToText asHall = [] (float value, int) { return juce::String (C::hallSeconds (value), 1) + " s"; };
+    layout.add (makeSwitch (ParamIDs::colossusOn, "Colossus On", v, false));
+    layout.add (makeFloat (ParamIDs::colossusSize, "Colossus Size", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asSize));
+    layout.add (makeFloat (ParamIDs::colossusDepth, "Colossus Depth", { 0.0f, 1.0f, 0.01f }, d.depth, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusWeight, "Colossus Weight", { 0.0f, 1.0f, 0.01f }, d.weight, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusHall, "Colossus Hall", { 0.0f, 1.0f, 0.01f }, d.hall, v, asHall));
+    layout.add (makeFloat (ParamIDs::colossusBoom, "Colossus Boom", { 0.0f, 1.0f, 0.01f }, d.boom, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusTone, "Colossus Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusWidth, "Colossus Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

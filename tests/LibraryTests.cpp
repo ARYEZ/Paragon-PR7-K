@@ -159,6 +159,20 @@ TEST_CASE ("Libraries: a .tar.gz unpacks, long names too, and nothing lands outs
     CHECK (error.isNotEmpty());
 }
 
+TEST_CASE ("Libraries: Karoryfer's three, each pinned to one commit and found by its own reference (0.82.0)", "[library]")
+{
+    for (const auto* library : { &libraries::bigRustyDrums(), &libraries::gogodzePhu(), &libraries::squidpipes() })
+    {
+        INFO (library->name);
+        CHECK (libraries::libraryFor (libraries::refFor (*library)) == library);
+        CHECK (library->url.contains (library->folder.fromLastOccurrenceOf ("-", false, false)));   // the commit
+        CHECK (library->url.startsWith ("https://github.com/sfzinstruments/"));
+        CHECK (library->keeps (library->sfz));
+        CHECK (library->credit.contains ("Karoryfer"));
+        CHECK (library->credit.contains ("CC0"));
+    }
+}
+
 TEST_CASE ("Libraries: the Versilian collection and Sam's Sonor; what a library skips isn't unpacked", "[library]")
 {
     // 0.81.0: VCSL is about 6 GB, most of it pianos and harpsichords PR7-K has already: they're left in the archive.
@@ -267,7 +281,7 @@ TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets
     CHECK (libraries::libraryFor (libraries::refFor (sso, horns)) == &sso);
     CHECK (libraries::libraryFor (libraries::refFor (piano)) == &piano);
     CHECK (libraries::libraryFor ("{sfz:some other folder}/x.sfz") == nullptr);
-    CHECK (libraries::all().size() == 4);   // 0.81.0: the Versilian collection and Sam's Sonor too
+    CHECK (libraries::all().size() == 7);   // 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three
 
     TempFolder t;
     const auto presets = t.dir.getChildFile ("presets");

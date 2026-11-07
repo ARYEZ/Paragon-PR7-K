@@ -323,6 +323,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->aftermath.prepare (sampleRate, preparedBlockSize);
     rack->submerge.prepare (sampleRate, preparedBlockSize);
     rack->lockstep.prepare (sampleRate, preparedBlockSize);
+    rack->colossus.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1350,6 +1351,20 @@ effects::Lockstep::Settings ParagonX1AudioProcessor::getLockstepSettings() const
     return s;
 }
 
+effects::Colossus::Settings ParagonX1AudioProcessor::getColossusSettings() const noexcept
+{
+    effects::Colossus::Settings s;
+    s.on = isOn (ParamIDs::colossusOn);
+    s.size = effectParam (ModDestinations::effect ("colossusSize"), ParamIDs::colossusSize);
+    s.depth = effectParam (ModDestinations::effect ("colossusDepth"), ParamIDs::colossusDepth);
+    s.weight = param (ParamIDs::colossusWeight);
+    s.hall = effectParam (ModDestinations::effect ("colossusHall"), ParamIDs::colossusHall);
+    s.boom = param (ParamIDs::colossusBoom);
+    s.tone = param (ParamIDs::colossusTone);
+    s.width = param (ParamIDs::colossusWidth);
+    return s;
+}
+
 effects::Bloom::Settings ParagonX1AudioProcessor::getBloomSettings() const noexcept
 {
     effects::Bloom::Settings s;
@@ -1591,8 +1606,12 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         std::array<synth::Engine::Touch, synth::Engine::maxTouches> touches;
         const auto count = engine.takeTouches (touches.data(), (int) touches.size());
         for (int k = 0; k < count; ++k)
-            rack->proximity.addTouch ((int) juce::jlimit<std::int64_t> (0, numSamples - 1, touches[(size_t) k].clock - chunkClock),
-                                      touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
+        {
+            const auto offset = (int) juce::jlimit<std::int64_t> (0, numSamples - 1, touches[(size_t) k].clock - chunkClock);
+            rack->proximity.addTouch (offset, touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
+            if (touches[(size_t) k].kind == synth::Engine::Touch::Kind::press)   // COLOSSUS (0.82.0): a boom under each note
+                rack->colossus.addNote (offset, touches[(size_t) k].velocity);
+        }
     }
     if (sendsReady)
     {
@@ -1682,6 +1701,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->aftermath.process (block, getAftermathSettings());   // 0.79.0: from under the sky into the bunker
         rack->submerge.process (block, getSubmergeSettings());     // 0.80.0: under the water
         rack->lockstep.process (block, getLockstepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.81.0: in step
+        rack->colossus.process (block, getColossusSettings());   // 0.82.0: enormous
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

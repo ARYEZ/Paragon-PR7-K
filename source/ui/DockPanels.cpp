@@ -219,7 +219,9 @@ void SettingsPage::paint (juce::Graphics& g)
                    "Organs, bells and percussion from the Versilian Community Sample Library by Versilian Studios (CC0; its pipe "
                    "organ sampled by Simon Dalzell of Ivy Audio), "
                    "downloaded from github.com/sgossner/VCSL. The drum kit is Sam's Sonor by Sam Greene, SFZ mapping by "
-                   "kinwie (CC BY-SA 4.0), downloaded from github.com/sfzinstruments/SamsSonor.");
+                   "kinwie (CC BY-SA 4.0), downloaded from github.com/sfzinstruments/SamsSonor. "
+                   "The big drums, hand drums and bagpipes are Big Rusty Drums, Gogodze Phu Vol I and Squidpipes by "
+                   "Karoryfer Samples (CC0), downloaded from github.com/sfzinstruments.");
 }
 
 void SettingsPage::resized()

@@ -268,6 +268,34 @@ TEST_CASE ("SFZ: SFZ KEY plays one key's samples, at their own pitch, from every
     }
 }
 
+TEST_CASE ("SFZ: other controllers stay at their starting values: a mixer's channels, tuning and level (0.82.0)", "[sfz]")
+{
+    // A drum library's mixer: the close mic on CC30 (set to 127), the room on CC31 (not set: 0, so off), CC33 tunes up
+    // a fifth at its start (63.5 of 127 x 1400 cents = 700), CC34 halves the close mic's level (AMPLITUDE_CC34 100 at 63.5).
+    Folder f;
+    writeSine (f.dir.getChildFile ("close.wav"), hzOf (60), 1.0);
+    writeSine (f.dir.getChildFile ("room.wav"), hzOf (72), 1.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<control> set_cc30=127 set_cc33=127 set_cc34=127\n"
+        "<region> sample=close.wav key=60 pitch_keycenter=60 locc30=1 amplitude_cc30=100 tune_cc33=700\n"
+        "<region> sample=room.wav key=60 pitch_keycenter=60 locc31=1 amplitude_cc31=100\n"
+        "<region> sample=close.wav key=62 pitch_keycenter=62 amplitude_cc34=50\n"));
+    REQUIRE (inst != nullptr);
+    CHECK (inst->regions.size() == 2);   // the room's channel is off at its start: left out
+    {
+        SfzPlayer p (inst.get());
+        p.on (60);
+        const auto out = p.render (0.2);
+        CHECK_THAT (frequency (out[0], 960, out[0].size()), WithinAbs (hzOf (67), hzOf (67) * 0.001));   // up a fifth
+    }
+    // AMPLITUDE_CC34 50 at 127: half the level of the same sample without it.
+    SfzPlayer full (inst.get()), half (inst.get());
+    full.on (60);
+    half.on (62);
+    const auto a = full.render (0.2), b = half.render (0.2);
+    CHECK_THAT (rms (b[0], 960, b[0].size()) / rms (a[0], 960, a[0].size()), WithinAbs (0.5, 0.02));
+}
+
 TEST_CASE ("SFZ: samples at another rate play at their pitch; stereo samples keep their sides; PAN", "[sfz]")
 {
     Folder f;

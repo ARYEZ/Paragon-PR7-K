@@ -30,6 +30,7 @@
 #include "dsp/effects/Aftermath.h"
 #include "dsp/effects/Submerge.h"
 #include "dsp/effects/Lockstep.h"
+#include "dsp/effects/Colossus.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -122,6 +123,7 @@ struct Rack
     effects::Aftermath aftermath;     // 0.79.0
     effects::Submerge submerge;       // 0.80.0
     effects::Lockstep lockstep;       // 0.81.0
+    effects::Colossus colossus;       // 0.82.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

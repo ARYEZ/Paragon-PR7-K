@@ -259,6 +259,13 @@ namespace synth::sfz
         const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath, &control);
         if (const auto it = control.find ("set_cc1"); it != control.end())
             inst->setCc1 = juce::jlimit (0, 127, it->second.getIntValue());
+        // Every other controller's starting value (0.82.0): SET_CCn, 0 where not given. Only the mod wheel and the pedal
+        // move live; the rest stay where the file sets them, and the regions are chosen and levelled by those values.
+        std::array<int, 128> ccStart {};
+        for (const auto& [name, value] : control)
+            if (name.startsWith ("set_cc"))
+                if (const auto cc = name.fromFirstOccurrenceOf ("set_cc", false, false).getIntValue(); cc >= 0 && cc < 128)
+                    ccStart[(size_t) cc] = juce::jlimit (0, 127, value.getIntValue());
         const auto folder = sfzFile.getParentDirectory();
 
         juce::AudioFormatManager formats;
@@ -276,6 +283,25 @@ namespace synth::sfz
             const auto samplePath = get (op, "sample");
             if (samplePath.isEmpty() || samplePath.startsWithChar ('*'))   // "*sine" and the like: generated, not read
                 continue;
+            // LOCCn / HICCn for controllers other than the wheel and the pedal (0.82.0): a region outside the range at
+            // the controller's starting value never plays (a mixer's channel turned off, another articulation): left out
+            // before its sample is read.
+            {
+                auto outOfRange = false;
+                for (const auto& [name, value] : op)
+                {
+                    const auto low = name.startsWith ("locc"), high = name.startsWith ("hicc");
+                    if (! low && ! high)
+                        continue;
+                    const auto cc = name.substring (4).getIntValue();
+                    if (cc == 1 || cc == 64 || cc < 0 || cc > 127 || ! name.substring (4).containsOnly ("0123456789"))
+                        continue;
+                    const auto limit = value.getIntValue();
+                    outOfRange = outOfRange || (low ? ccStart[(size_t) cc] < limit : ccStart[(size_t) cc] > limit);
+                }
+                if (outOfRange)
+                    continue;
+            }
             for (const auto* name : leftOut)
                 if (has (op, name) && leftOutSeen.insert (name).second)
                     inst->problems.add ("not played: " + juce::String (name));
@@ -424,7 +450,30 @@ namespace synth::sfz
             const auto volumeDb = number (op, "volume", 0.0f) + number (op, "group_volume", 0.0f) + number (op, "master_volume", 0.0f)
                                 + number (op, "global_volume", 0.0f);
             r.gain = juce::Decibels::decibelsToGain (volumeDb) * number (op, "amplitude", 100.0f) / 100.0f;
-            r.pan = juce::jlimit (-1.0f, 1.0f, number (op, "pan", 0.0f) / 100.0f);
+            // Other controllers at their starting values (0.82.0): AMPLITUDE_CCn / _ONCCn (% at 127, multiplying),
+            // GAIN / VOLUME_ONCCn (dB at 127), TUNE_CCn (cents at 127), PAN_CCn (% at 127). Curves are taken as straight.
+            auto panPercent = number (op, "pan", 0.0f);
+            for (const auto& [name, value] : op)
+            {
+                const auto ccOf = [&name] (const char* prefix) -> int
+                {
+                    if (! name.startsWith (prefix))
+                        return -1;
+                    const auto digits = name.fromFirstOccurrenceOf (prefix, false, false);
+                    return digits.isNotEmpty() && digits.containsOnly ("0123456789") ? digits.getIntValue() : -1;
+                };
+                const auto amount = value.getFloatValue();
+                auto cc = -1;
+                if ((cc = juce::jmax (ccOf ("amplitude_cc"), ccOf ("amplitude_oncc"))) > 1 && cc < 128 && cc != 64)
+                    r.gain *= amount / 100.0f * (float) ccStart[(size_t) cc] / 127.0f;
+                else if ((cc = juce::jmax (juce::jmax (ccOf ("gain_cc"), ccOf ("gain_oncc")), ccOf ("volume_oncc"))) > 1 && cc < 128 && cc != 64)
+                    r.gain *= juce::Decibels::decibelsToGain (amount * (float) ccStart[(size_t) cc] / 127.0f);
+                else if ((cc = juce::jmax (ccOf ("tune_cc"), ccOf ("tune_oncc"))) > 1 && cc < 128 && cc != 64)
+                    r.tuneSemitones += amount * (float) ccStart[(size_t) cc] / 127.0f / 100.0f;
+                else if ((cc = juce::jmax (ccOf ("pan_cc"), ccOf ("pan_oncc"))) > 1 && cc < 128 && cc != 64)
+                    panPercent += amount * (float) ccStart[(size_t) cc] / 127.0f;
+            }
+            r.pan = juce::jlimit (-1.0f, 1.0f, panPercent / 100.0f);
             const auto& sample = *inst->samples[(size_t) index];
             r.offset = (int) juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, sample.length - 1),
                                                          get (op, "offset", "0").getLargeIntValue());
@@ -485,9 +534,9 @@ namespace synth::sfz
         // Other controllers' crossfades and gains aren't played.
         for (const auto& op : opcodes)
             for (const auto& [name, value] : op)
-                if ((name.startsWith ("xfin_locc") || name.startsWith ("gain_cc") || name.startsWith ("cutoff_cc"))
+                if ((name.startsWith ("xfin_locc") || name.startsWith ("xfout_locc") || name.startsWith ("cutoff_cc"))
                     && ! name.endsWith ("cc1") && leftOutSeen.insert ("othercc").second)
-                    inst->problems.add ("not played: controllers other than the mod wheel and the pedal");
+                    inst->problems.add ("held at their starting values: controllers other than the mod wheel and the pedal");
         if (progress)
             progress (1.0f);
         // (a sample first read as a head and then kept whole for a loop no longer streams)
