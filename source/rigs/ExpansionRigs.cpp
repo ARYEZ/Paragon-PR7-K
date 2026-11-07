@@ -171,9 +171,9 @@ namespace
             { "Bike Spokes", -8.1f },
             { "Bloom Formant", -3.7f },
             { "Bubble Pluck", -6.8f },
-            { "Drill Snare", -6.0f },
-            { "Handbell Choir", -6.0f },
-            { "Thread Pluck", -6.0f },
+            { "Drill Snare", 1.2f },
+            { "Handbell Choir", -6.5f },
+            { "Thread Pluck", -2.0f },
             { "Cassette Harp", -9.7f },
             { "Cave Drip", -4.6f },
             { "Chain Snap", -5.4f },
@@ -15786,7 +15786,7 @@ namespace
         macros (cantor, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (cantor, RT::cathedral, 0.75f, 0.3f, 50.0f, 4.0f);
         space (cantor);
-        cantor.set (ParamIDs::patchLevel, -6.0f);
+        cantor.set (ParamIDs::patchLevel, -4.7f);
         lockstep (cantor, { 1, 0.55f, 0.5f, 0.35f, 0.3f });
         x.add (cantor);
 
@@ -15813,7 +15813,7 @@ namespace
         lockstep (command, { 1, 0.6f, 0.45f, 0.5f, 0.55f });
         orchestra (command, { { { 0, "Brass - Notation/Trumpets Marcato (looped).sfz", 0.8f, 0.1f },
                                 { 1, "Brass - Notation/Trombones Marcato (looped).sfz", 0.8f, -0.1f } },
-                              { 0, 1 }, 0.0f,
+                              { 0, 1 }, 7.2f,
                               "Orders given in brass: the orchestra's trumpets and trombones, hit hard. Short, dotted, "
                               "commanding figures; chords too.",
                               5.0f, 300.0f, 0.85f, 250.0f, -1.0f,
@@ -15841,7 +15841,7 @@ namespace
         macros (hymn, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (hymn, RT::room, 0.45f, 0.2f, 10.0f, 4.5f);
         space (hymn);
-        hymn.set (ParamIDs::patchLevel, -4.0f);
+        hymn.set (ParamIDs::patchLevel, -6.2f);
         lockstep (hymn, { 0, 0.7f, 0.4f, 0.3f, 0.2f });
         x.add (hymn);
 
@@ -15866,11 +15866,11 @@ namespace
         macros (sanctuary, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (sanctuary, RT::cathedral, 0.85f, 0.32f, 40.0f, 4.0f);
         space (sanctuary);
-        sanctuary.set (ParamIDs::patchLevel, -9.0f);
+        sanctuary.set (ParamIDs::patchLevel, -12.9f);
         lockstep (sanctuary, { 1, 0.75f, 0.4f, 0.3f, 0.3f });
         orchestra (sanctuary, { { { 0, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz", 1.0f, 0.0f, false, &vcsl },
                                   { 5, "Chorus - Notation/Large Chrous.sfz", 0.35f, 0.0f } },
-                                { 0, 1, 2, 3, 4, 5 }, 0.0f,
+                                { 0, 1, 2, 3, 4, 5 }, -3.2f,
                                 "The great organ filling the sanctuary: a real pipe organ, its full chorus, with the "
                                 "orchestra's large choir under it, a vast stone room. Hold chords.",
                                 10.0f, 500.0f, 1.0f, 900.0f, -1.0f,
@@ -15899,7 +15899,7 @@ namespace
         lockstep (anthem, { 1, 0.65f, 0.5f, 0.4f, 0.45f });
         orchestra (anthem, { { { 3, "Strings - Notation/All Strings Sustain.sfz", 0.9f, 0.0f },
                                { 4, "Brass - Notation/Horns Sustain.sfz", 0.6f, 0.0f } },
-                             { 2 }, -6.0f,
+                             { 2 }, -7.4f,
                              "The anthem played at every rally: the orchestra's full strings and horns over PR7-K's own "
                              "strings (the orchestra's section sustains aren't looped and fade after a few seconds). Hold "
                              "big chords.",
@@ -15927,14 +15927,8 @@ namespace
         macros (glass, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (glass, RT::hall, 0.7f, 0.3f, 30.0f, 3.5f);
         space (glass);
-        glass.set (ParamIDs::patchLevel, -7.0f);
+        glass.set (ParamIDs::patchLevel, -10.1f);
         lockstep (glass, { 0, 0.8f, 0.35f, 0.2f, 0.15f, 0.9f });
-        orchestra (glass, { { { 0, "Idiophones/Friction Idiophones/Wine Glasses - Slow.sfz", 1.0f, 0.0f, false, &vcsl } },
-                            { 0, 1, 2, 3 }, 0.0f,
-                            "A prayer said on real wine glasses, rubbed slowly, in a dark, quiet room. Hold high, open "
-                            "chords (the glasses sound from about D5 up).",
-                            400.0f, 1500.0f, 1.0f, 1600.0f, -1.0f,
-                            [hall] (Builder& s) { hall (s); } });
         x.add (glass);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -15952,10 +15946,10 @@ namespace
         macros (bourdon, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (bourdon, RT::cathedral, 0.7f, 0.16f, 40.0f, 3.5f);
         space (bourdon);
-        bourdon.set (ParamIDs::patchLevel, -2.0f);
+        bourdon.set (ParamIDs::patchLevel, -3.2f);
         lockstep (bourdon, { 0, 0.6f, 0.4f, 0.35f, 0.5f });
         orchestra (bourdon, { { { 0, "Aerophones/Edge-blown Aerophones/Pipe Organ - Quiet Pedal.sfz", 1.0f, 0.0f, false, &vcsl } },
-                              { 0, 1, 2, 3, 4 }, 0.0f,
+                              { 0, 1, 2, 3, 4 }, -2.9f,
                               "The organ's pedals: a real pipe organ's quiet pedal stops, under the floor of the church. "
                               "Hold slow bass notes.",
                               10.0f, 300.0f, 1.0f, 400.0f, -1.0f,
@@ -15988,11 +15982,11 @@ namespace
         macros (boots, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (boots, RT::hall, 0.55f, 0.12f, 20.0f, 4.0f);
         space (boots);
-        boots.set (ParamIDs::patchLevel, -3.0f);
+        boots.set (ParamIDs::patchLevel, -0.1f);
         lockstep (boots, { 1, 0.55f, 0.55f, 0.45f, 0.7f });
         orchestra (boots, { { { 0, "Strings - Notation/Celli Staccato.sfz", 0.9f, -0.15f },
                               { 1, "Strings - Notation/Basses Staccato.sfz", 0.9f, 0.15f } },
-                            { 0, 1 }, 6.0f,
+                            { 0, 1 }, 3.4f,
                             "The army on the march: the orchestra's cellos and basses driving a held note in hard "
                             "eighths, the synth's low sine under them.",
                             1.0f, 300.0f, 0.0f, 150.0f, -1.0f,
@@ -16019,7 +16013,7 @@ namespace
         macros (undertone, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (undertone, RT::room, 0.4f, 0.08f);
         space (undertone);
-        undertone.set (ParamIDs::patchLevel, 0.0f);
+        undertone.set (ParamIDs::patchLevel, -3.9f);
         lockstep (undertone, { 1, 0.5f, 0.45f, 0.4f, 0.45f });
         x.add (undertone);
 
@@ -16043,10 +16037,10 @@ namespace
         macros (chapel, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (chapel, RT::cathedral, 0.7f, 0.25f, 30.0f, 4.0f);
         space (chapel);
-        chapel.set (ParamIDs::patchLevel, -4.0f);
+        chapel.set (ParamIDs::patchLevel, -2.7f);
         lockstep (chapel, { 1, 0.6f, 0.5f, 0.3f, 0.35f });
         orchestra (chapel, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
-                             { 0, 1, 2, 3 }, 0.0f,
+                             { 0, 1, 2, 3 }, 12.0f,
                              "The chapel's tubular bells: real ones, struck, the stone room holding them. Play slow single "
                              "notes and fifths (from middle C up).",
                              1.0f, 6000.0f, 0.0f, 2000.0f, -1.0f,
@@ -16073,10 +16067,10 @@ namespace
         macros (toll, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (toll, RT::cathedral, 0.8f, 0.28f, 40.0f, 3.5f);
         space (toll);
-        toll.set (ParamIDs::patchLevel, -4.0f);
+        toll.set (ParamIDs::patchLevel, -2.5f);
         lockstep (toll, { 0, 0.55f, 0.5f, 0.3f, 0.5f });
         orchestra (toll, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 2.sfz", 1.0f, 0.0f, false, &vcsl } },
-                           { 0, 2, 3 }, 0.0f,
+                           { 0, 2, 3 }, -1.4f,
                            "The bell rung for a sentence carried out: a real tubular bell over the synth's low hum and gong "
                            "wash. One note at a time, slowly (from middle C up).",
                            1.0f, 8000.0f, 0.0f, 2500.0f, -1.0f,
@@ -16092,9 +16086,9 @@ namespace
         macros (contraband, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (contraband, RT::room, 0.4f, 0.16f, 10.0f, 4.0f);
         space (contraband);
-        contraband.set (ParamIDs::patchLevel, -4.0f);
+        contraband.set (ParamIDs::patchLevel, -7.5f);
         lockstep (contraband, { 1, 0.6f, 0.5f, 0.3f, 0.25f });
-        grand (contraband, { 4, 1800.0f, 0.4f, 0.5f, 8.0f, 1.0f, 0.0f, 300.0f, 1.0f, 600.0f,
+        grand (contraband, { 4, 1800.0f, 0.4f, 0.5f, 9.4f, 1.0f, 0.0f, 300.0f, 1.0f, 600.0f,
             "A piano played behind a locked door, softly so no one hears: the Salamander Grand, muffled, the lid down, a "
             "small room. Gentle chords and a melody over them.", {} });
         x.add (contraband);
@@ -16115,10 +16109,10 @@ namespace
         macros (psalm, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (psalm, RT::cathedral, 0.6f, 0.24f, 30.0f, 4.5f);
         space (psalm);
-        psalm.set (ParamIDs::patchLevel, -4.0f);
+        psalm.set (ParamIDs::patchLevel, -2.3f);
         lockstep (psalm, { 1, 0.6f, 0.5f, 0.3f, 0.3f });
         orchestra (psalm, { { { 0, "Idiophones/Struck Idiophones/Hand Chimes.sfz", 1.0f, 0.0f, false, &vcsl } },
-                            { 0, 1 }, 0.0f,
+                            { 0, 1 }, -0.9f,
                             "Hand chimes ringing a psalm: real ones, turning a held chord over in eighths, the stone room "
                             "ringing. Hold chords from middle C up.",
                             1.0f, 2000.0f, 0.0f, 800.0f, -1.0f,
@@ -16158,10 +16152,10 @@ namespace
         macros (roll, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (roll, RT::hall, 0.55f, 0.14f, 15.0f, 4.0f);
         space (roll);
-        roll.set (ParamIDs::patchLevel, -6.0f);
+        roll.set (ParamIDs::patchLevel, 7.2f);
         lockstep (roll, { 2, 0.55f, 0.6f, 0.4f, 0.3f, 0.8f });
         orchestra (roll, { { { 0, "SamsSonor.sfz", 1.0f, 0.0f, false, &sonor } },
-                           { 0, 1 }, 0.0f,
+                           { 0, 1 }, 10.0f,
                            "A field drum before the parade: a real snare (Sam's Sonor, left hand, its own strokes in turn), "
                            "in sixteenths with rolls building through the bar. The key you hold doesn't change it.",
                            0.5f, 400.0f, 0.0f, 200.0f, -1.0f,
@@ -16194,7 +16188,7 @@ namespace
         delay (letters, "1/8 dotted", 0.35f, 0.16f, true, 3.5f);
         reverb (letters, RT::room, 0.5f, 0.18f, 10.0f, 4.0f);
         space (letters);
-        letters.set (ParamIDs::patchLevel, -2.0f);
+        letters.set (ParamIDs::patchLevel, 5.2f);
         lockstep (letters, { 2, 0.55f, 0.45f, 0.3f, 0.2f, 0.85f });
         x.add (letters);
 
@@ -16218,7 +16212,7 @@ namespace
         space (handbell);
         lockstep (handbell, { 1, 0.6f, 0.5f, 0.3f, 0.3f });
         orchestra (handbell, { { { 0, "Idiophones/Struck Idiophones/Glockenspiel.sfz", 1.0f, 0.0f, false, &vcsl } },
-                               { 0, 1 }, 0.0f,
+                               { 0, 1 }, 9.0f,
                                "Bells after the service: a real glockenspiel, struck, ringing in a hall. Play chords and "
                                "simple tunes.",
                                1.0f, 1800.0f, 0.0f, 600.0f, -1.0f,
@@ -16242,7 +16236,7 @@ namespace
         space (drill);
         lockstep (drill, { 2, 0.5f, 0.6f, 0.4f, 0.3f, 0.8f });
         orchestra (drill, { { { 0, "Membranophones/Struck Membranophones/Snare Drum, Rope Tension.sfz", 1.0f, 0.0f, false, &vcsl } },
-                            { 0, 1 }, 0.0f,
+                            { 0, 1 }, 4.0f,
                             "A drill sergeant's snare: a real rope-tension field drum, struck on whatever key you play. "
                             "Play it in rhythm.",
                             0.3f, 600.0f, 0.0f, 200.0f, -1.0f,
@@ -16266,7 +16260,7 @@ namespace
         space (thread);
         lockstep (thread, { 1, 0.6f, 0.45f, 0.3f, 0.2f });
         orchestra (thread, { { { 0, "Concert Harp.sfz", 1.0f, 0.0f } },
-                             { 0, 1 }, 0.0f,
+                             { 0, 1 }, 2.8f,
                              "A single thread pulled and let go: the orchestra's concert harp, quiet and close. Play little "
                              "broken chords.",
                              1.0f, 1500.0f, 0.0f, 600.0f, -1.0f,

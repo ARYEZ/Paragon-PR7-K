@@ -176,7 +176,7 @@ namespace expansions
           "sanctuary organ, pedal bourdon, chapel bells, psalm chimes, handbells), the regime (command brass, a state "
           "anthem, iron boots marching, a tolling bell, a snare roll, a drill snare) and the women who keep their own "
           "voice (a lone hymn, glass prayer, an undertone, a hidden piano, hidden letters, a thread of harp). Built round "
-          "LOCKSTEP (0.81.0) and MACRO 3, LOCKSTEP: the sound drilled into a march. Its organ, bells, chimes, glasses and "
+          "LOCKSTEP (0.81.0) and MACRO 3, LOCKSTEP: the sound drilled into a march. Its organ, bells, chimes, glockenspiel and "
           "snare play the Versilian Community Sample Library, its snare roll Sam's Sonor, its brass, choir, strings and "
           "harp the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
           "sounds." },

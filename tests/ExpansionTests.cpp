@@ -825,7 +825,7 @@ TEST_CASE ("NEW EDEN: MACRO 3 is LOCKSTEP on every preset, resting at its left; 
                                 [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
     }
     CHECK (count == 18);
-    CHECK (sampled == 14);
+    CHECK (sampled == 13);   // (Glass Prayer has none: VCSL's glasses start at D5, under it a chord found nothing)
     CHECK (used.size() == 4);   // VCSL, Sam's Sonor, the orchestra and the Salamander
 }
 
