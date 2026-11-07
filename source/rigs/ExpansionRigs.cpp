@@ -16037,7 +16037,7 @@ namespace
         macros (chapel, "BRIGHT", "SPACE", "LOCKSTEP");
         reverb (chapel, RT::cathedral, 0.7f, 0.25f, 30.0f, 4.0f);
         space (chapel);
-        chapel.set (ParamIDs::patchLevel, -2.7f);
+        chapel.set (ParamIDs::patchLevel, -6.0f);   // (a chord of in-phase bells stacks: -2.7 peaked +2.3 dBFS)
         lockstep (chapel, { 1, 0.6f, 0.5f, 0.3f, 0.35f });
         orchestra (chapel, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
                              { 0, 1, 2, 3 }, 12.0f,

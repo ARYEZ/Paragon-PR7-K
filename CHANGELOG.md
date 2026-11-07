@@ -2,6 +2,33 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.81.0
+
+**NEW EDEN, an expansion of a theocracy that took power by force, built round LOCKSTEP; two new free sample libraries.**
+
+- **NEW EDEN** (NE01-NE18): a near-future theocracy, its church, its regime and the women who keep their own voice. Every category has three sides. Our own sounds and phrases.
+  - The church: Cantor, Sanctuary Organ, Pedal Bourdon, Chapel Bells, Psalm Chimes, Handbell Choir.
+  - The regime: Command Brass, State Anthem, Iron Boots, Toll, Drum Roll, Drill Snare.
+  - The women: Lone Hymn, Glass Prayer, Undertone Bass, Contraband Piano, Hidden Letters, Thread Pluck.
+  - **MACRO 3 is LOCKSTEP on every preset.** At its left the sound plays as built; turned up, it's drilled into a march. MACRO 2 is SPACE as always.
+  - **The libraries (13 presets):** the organ and pedal stops, tubular bells, hand chimes, glockenspiel and rope-tension snare play the Versilian Community Sample Library; the snare roll plays Sam's Sonor; the brass, choir, strings and horns, low-string ostinato and harp play the orchestra; Contraband Piano plays the Salamander Grand. Sanctuary Organ uses two (the organ with the orchestra's choir under it) and switches once both are in.
+  - Glass Prayer stays on PR7-K's own glasses: the library's wine glasses only go down to D5, too high for its chords.
+  - Until the libraries are downloaded, every preset plays PR7-K's own synthesized version.
+  - Levelled by measurement to sit with the other banks, both versions.
+- **LOCKSTEP**, a new signature effect (FX page, SIGNATURE slot): one knob, AMOUNT, forces your sound into lockstep.
+  - It's cut into steps in time with the song (STEP: 1/4, 1/8, 1/16 or eighth-note triplets), each open for GATE of the step, the steps off the beat lower by ACCENT. The level lost to the cut is made up from the pattern itself, so it doesn't pump.
+  - SQUEEZE flattens it, every note the same, its level kept.
+  - STAMP puts a boot on stone on every step (a crack and a low thud), only while you play, so silence stays silent.
+  - At AMOUNT 0 your sound passes through untouched.
+  - Its page shows a parade ground: the steps of two bars, the one now lit, ranks of figures lining up as AMOUNT rises. Our own design.
+- **Two more free libraries to download in the plugin:**
+  - **The Versilian Community Sample Library** (public domain; about 2.5 GB once unpacked): pipe organ, bells, chimes, mallets, percussion, harps and more. Its pianos, harpsichord, electric instruments and reeds are skipped (the Salamander and the orchestra already cover them).
+  - **Sam's Sonor** (CC BY-SA; about 36 MB): a real drum kit.
+  - Credited in ABOUT.
+- **SFZ:** AMP_VELCURVE_N is played now (a sample's level by velocity, point by point), so the libraries' soft notes are as quiet as their makers set them.
+- **SFZ KEY** (new, per oscillator): play one key's samples from every key, at their recorded pitch. Drum libraries put each drum on one key; with this, a snare plays from any key. PLAYED (the default) is as before.
+- A preset's library version can now use more than one library; it plays once all of them are downloaded.
+
 ## 0.80.0
 
 **DROWNED DECO, an expansion of a city under the sea falling into madness, built round SUBMERGE.**
