@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.82.0
+
+**COLOSSUS, a new signature effect: the sound made enormous; three more free sample libraries.**
+
+- **COLOSSUS** (FX page, SIGNATURE slot): one knob, SIZE, takes your sound from as it is to colossal. It's the centrepiece of the rebuilt SANDSEA expansion, which comes in a later release.
+  - An octave under the sound (DEPTH), darkened by TONE.
+  - The sound and its octave driven heavier (WEIGHT).
+  - A vast hall behind it, ringing 2 to 10 seconds (HALL), as wide as WIDTH.
+  - A deep boom under each new note you play (BOOM): one per chord, and only from notes played, so a held pad never sets one off.
+  - The level is kept as SIZE rises: bigger, not just louder. At SIZE 0 your sound passes through untouched.
+  - Its page shows dunes at dusk, a vast shape rising over the horizon as SIZE grows, the hall's rings spreading behind it and the ground jumping with each boom. Our own design.
+- **Three more free libraries to download in the plugin** (all by Karoryfer Samples, public domain):
+  - **Big Rusty Drums** (about 710 MB): an oversized drum kit, recorded huge.
+  - **Gogodze Phu Vol I** (about 90 MB): Ghanaian bobobo hand drums and a cajon.
+  - **Squidpipes** (about 53 MB): bagpipes.
+  - Credited in ABOUT.
+- **SFZ:** a library's own controller settings are used now. Drum libraries mix their microphones (close, overhead, room) on MIDI controllers with starting values set in the file; PR7-K ignored them, so every microphone layer would have played at once. Controllers other than the mod wheel and the sustain pedal now sit at the library's starting values, which choose the layers and set their level, tuning and pan.
+
 ## 0.81.0
 
 **NEW EDEN, an expansion of a theocracy that took power by force, built round LOCKSTEP; two new free sample libraries.**
