@@ -439,6 +439,8 @@ public:
     const effects::Submerge& getSubmerge() const noexcept { return rack->submerge; }
     effects::Lockstep::Settings getLockstepSettings() const noexcept;            // LOCKSTEP (0.81.0)
     effects::Colossus::Settings getColossusSettings() const noexcept;            // COLOSSUS (0.82.0)
+    effects::Canyon::Settings getCanyonSettings() const noexcept;                // CANYON (0.84.0)
+    const effects::Canyon& getCanyon() const noexcept { return rack->canyon; }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
     const effects::Colossus& getColossus() const noexcept { return rack->colossus; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).

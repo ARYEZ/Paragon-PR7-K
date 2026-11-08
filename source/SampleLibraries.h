@@ -60,6 +60,15 @@ namespace libraries
     const Library& bigRustyDrums();
     const Library& gogodzePhu();
     const Library& squidpipes();
+    // (0.84.0, for the western bank) Karoryfer Samples' Black And Green Guitars (a Gretsch Anniversary and a Hofner
+    // Club, with twang programs), Shinyguitar (an archtop, acoustic and electric) and Meatbass (a 1958 double bass),
+    // CC0; itsclipping's ganjo (a 6-string banjo, CC0); FlameStudios' Kay 5-String Banjo (GPL-3.0-or-later, SFZ by
+    // S. Christian Collins). Each at a fixed commit of its SFZ Instruments repository.
+    const Library& blackAndGreenGuitars();
+    const Library& shinyguitar();
+    const Library& meatbass();
+    const Library& ganjo();
+    const Library& kayBanjo();
 
     // Every library PR7-K can download.
     std::vector<const Library*> all();

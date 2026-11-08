@@ -1,3 +1,4 @@
+#include <cstring>
 #include "dsp/synth/Sfz.h"
 
 #include <algorithm>
@@ -249,7 +250,7 @@ namespace synth::sfz
                 continue;
             if (r.crossfade (velocity127) <= 0.0f)   // faded out at this velocity (0.73.0)
                 continue;
-            if (r.switchKey >= 0 && r.switchKey != switchKey)   // another key switch's (0.75.0)
+            if (r.switchKey >= 0 && (switchKey < r.switchKey || switchKey > r.switchKeyHi))   // another key switch's (0.75.0; a range 0.84.0)
                 continue;
             if (r.seqLength > 1 && (seqCount % r.seqLength) + 1 != r.seqPosition)
                 continue;
@@ -277,6 +278,25 @@ namespace synth::sfz
         inst->name = sfzFile.getFileNameWithoutExtension();
 
         std::map<juce::String, juce::String> defines;
+        // (0.84.0) A Sforzando bank file (*.bank.xml) beside the program or a folder up can define names the program
+        // uses ("<Define name="$sample_dir" value="../Samples"/>": Karoryfer's Shinyguitar names its samples so).
+        for (const auto& folder : { sfzFile.getParentDirectory(), sfzFile.getParentDirectory().getParentDirectory() })
+            for (const auto& bank : folder.findChildFiles (juce::File::findFiles, false, "*.bank.xml"))
+            {
+                // Read as text: these files hold two top-level elements (a signature key and the bank), not one.
+                auto text = bank.loadFileAsString();
+                for (auto at = text.indexOfIgnoreCase ("<Define"); at >= 0; at = text.indexOfIgnoreCase (at + 1, "<Define"))
+                {
+                    const auto tag = text.substring (at, text.indexOfChar (at, '>') + 1);
+                    const auto attribute = [&tag] (const char* key)
+                    {
+                        const auto from = tag.indexOf (juce::String (key) + "=\"");
+                        return from < 0 ? juce::String() : tag.substring (from + (int) std::strlen (key) + 2).upToFirstOccurrenceOf ("\"", false, false);
+                    };
+                    if (const auto name = attribute ("name"); name.startsWithChar ('$') && ! defines.count (name))
+                        defines[name] = attribute ("value");
+                }
+            }
         juce::String defaultPath;
         Opcodes control;
         Curves curves;
@@ -488,9 +508,16 @@ namespace synth::sfz
                 r.filterQ = 0.70710678f * std::pow (10.0f, number (op, "resonance", 0.0f) / 20.0f);
             }
             // KEY SWITCHES (0.75.0).
-            if (has (op, "sw_last"))
+            // SW_LOLAST / SW_HILAST (0.84.0): the region plays while the last switch pressed is in that range.
+            if (has (op, "sw_last") || has (op, "sw_lolast") || has (op, "sw_hilast"))
             {
-                r.switchKey = noteNumber (get (op, "sw_last"));
+                if (has (op, "sw_last"))
+                    r.switchKey = r.switchKeyHi = noteNumber (get (op, "sw_last"));
+                else
+                {
+                    r.switchKey = noteNumber (get (op, "sw_lolast", get (op, "sw_hilast")));
+                    r.switchKeyHi = noteNumber (get (op, "sw_hilast", get (op, "sw_lolast")));
+                }
                 if (r.switchKey >= 0)
                 {
                     const auto lo = has (op, "sw_lokey") ? noteNumber (get (op, "sw_lokey")) : r.switchKey;

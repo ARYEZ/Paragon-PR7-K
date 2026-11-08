@@ -91,7 +91,8 @@ namespace ModDestinations
                 { "FX Aftermath", "Seal" }, { "FX Aftermath", "Ring" }, { "FX Aftermath", "Hum" },
                 { "FX Submerge", "Depth" }, { "FX Submerge", "Bubbles" }, { "FX Submerge", "Current" },
                 { "FX Lockstep", "Amount" }, { "FX Lockstep", "Squeeze" }, { "FX Lockstep", "Stamp" },
-                { "FX Colossus", "Size" }, { "FX Colossus", "Depth" }, { "FX Colossus", "Hall" } };
+                { "FX Colossus", "Size" }, { "FX Colossus", "Depth" }, { "FX Colossus", "Hall" },
+                { "FX Canyon", "Amount" }, { "FX Canyon", "Size" }, { "FX Canyon", "Repeats" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

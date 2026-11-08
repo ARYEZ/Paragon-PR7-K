@@ -103,6 +103,7 @@ namespace synth::sfz
         float cutoffCcCents = 0.0f, filterKeytrack = 0.0f, filterKeyCenter = 60.0f, filterVeltrack = 0.0f;
         float filterQ = 0.70710678f;            // from RESONANCE (dB)
         int switchKey = -1;                     // SW_LAST (-1: plays whatever switch is down)
+        int switchKeyHi = -1;                   // (0.84.0) SW_HILAST: with SW_LOLAST a range of switches (switchKey is its bottom)
 
         bool loops() const noexcept { return loop != Loop::none && loopEnd > loopStart; }
         // A crossfade's level for a value: 1 outside both fades, 0 below the fade in or above the fade out.

@@ -572,6 +572,15 @@ namespace ParamIDs
     inline constexpr auto colossusTone   = "colossusTone";     // 0 to 1: dark to bright
     inline constexpr auto colossusWidth  = "colossusWidth";    // 0 to 1: the hall's width
 
+    // CANYON (0.84.0, version hint 52, effects::Canyon): the western bank's signature.
+    inline constexpr auto canyonOn      = "canyonOn";
+    inline constexpr auto canyonAmount  = "canyonAmount";    // 0 to 1: how much goes into the canyon (the macro's)
+    inline constexpr auto canyonSize    = "canyonSize";      // 0 to 1: the near walls, 45 to 200 ms
+    inline constexpr auto canyonFar     = "canyonFar";       // effects::Canyon::farNames: the far wall, in time with the song
+    inline constexpr auto canyonRepeats = "canyonRepeats";   // 0 to 1: how many replies come back
+    inline constexpr auto canyonTone    = "canyonTone";      // 0 to 1: dark to bright
+    inline constexpr auto canyonWidth   = "canyonWidth";     // 0 to 1: how far to the sides the walls are
+
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
     inline constexpr int numInsertBuses = 4;
@@ -668,4 +677,5 @@ void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.80.0)
 void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.81.0)
 void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.82.0)
+void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.84.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

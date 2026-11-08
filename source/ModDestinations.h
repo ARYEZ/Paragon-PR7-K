@@ -81,7 +81,9 @@ namespace ModDestinations
                                                  // 0.81.0: LOCKSTEP: how drilled, how flat, the boots
                                                  "lockstepAmount", "lockstepSqueeze", "lockstepStamp",
                                                  // 0.82.0: COLOSSUS: how big, the octave under, the hall
-                                                 "colossusSize", "colossusDepth", "colossusHall" };
+                                                 "colossusSize", "colossusDepth", "colossusHall",
+                                                 // 0.84.0: CANYON: how much goes in, the near walls, the far wall's replies
+                                                 "canyonAmount", "canyonSize", "canyonRepeats" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

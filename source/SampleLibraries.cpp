@@ -120,10 +120,93 @@ namespace libraries
         return library;
     }
 
+    // The western bank's guitars, bass and banjos (0.84.0), each at a fixed commit of its GitHub repository.
+    const Library& blackAndGreenGuitars()
+    {
+        static const Library library {
+            "Black And Green Guitars",
+            "https://github.com/sfzinstruments/karoryfer.black-and-green-guitars/archive/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c.tar.gz",
+            560000000,
+            "karoryfer.black-and-green-guitars-b3b3249d37dc977a1a297bd2dc053e6d9b6b805c",
+            "Programs/04-green_twang.sfz",
+            "Black And Green Guitars by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.black-and-green-guitars",
+            "TWANG GUITARS",
+            false,
+            600
+        };
+        return library;
+    }
+
+    const Library& shinyguitar()
+    {
+        static const Library library {
+            "Shinyguitar",
+            "https://github.com/sfzinstruments/karoryfer.shinyguitar/archive/57243cca85277dbcc120ce17c6178032f93c80f3.tar.gz",
+            440000000,
+            "karoryfer.shinyguitar-57243cca85277dbcc120ce17c6178032f93c80f3",
+            "Programs/main.sfz",
+            "Shinyguitar by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.shinyguitar",
+            "ARCHTOP GUITAR",
+            false,
+            480
+        };
+        return library;
+    }
+
+    const Library& meatbass()
+    {
+        static const Library library {
+            "Meatbass",
+            "https://github.com/sfzinstruments/karoryfer.meatbass/archive/ac9e859564bda286ab5ec672d00ff1aa2fef2895.tar.gz",
+            280000000,
+            "karoryfer.meatbass-ac9e859564bda286ab5ec672d00ff1aa2fef2895",
+            "Programs/04_pizz.sfz",
+            "Meatbass by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.meatbass",
+            "UPRIGHT BASS",
+            false,
+            310
+        };
+        return library;
+    }
+
+    const Library& ganjo()
+    {
+        static const Library library {
+            "ganjo",
+            "https://github.com/sfzinstruments/ganjo/archive/ccff5cd5cd3b513873a48994c07724d9d3c39e1c.tar.gz",
+            25000000,
+            "ganjo-ccff5cd5cd3b513873a48994c07724d9d3c39e1c",
+            "ganjo.sfz",
+            "ganjo by itsclipping (CC0), github.com/sfzinstruments/ganjo",
+            "GUITAR BANJO",
+            false,
+            27
+        };
+        return library;
+    }
+
+    const Library& kayBanjo()
+    {
+        static const Library library {
+            "Kay 5-String Banjo",
+            "https://github.com/sfzinstruments/FlameStudios.Kay5StringBanjo/archive/a773f1625db53a8a4d1bc10098d867561e21fd09.tar.gz",
+            400000000,
+            "FlameStudios.Kay5StringBanjo-a773f1625db53a8a4d1bc10098d867561e21fd09",
+            "FS KayBanjo (release mw1).sfz",
+            "Kay 5-String Banjo by FlameStudios, SFZ by S. Christian Collins (GPL-3.0-or-later), github.com/sfzinstruments/FlameStudios.Kay5StringBanjo",
+            "BANJO",
+            false,
+            21,
+            { "work/" }   // the author's editing stages (386 MB); the samples played are in samples/ (20 MB)
+        };
+        return library;
+    }
+
     std::vector<const Library*> all()
     {
         return { &salamanderGrand(), &sonatinaOrchestra(), &versilianCollection(), &samsSonor(),
-                 &bigRustyDrums(), &gogodzePhu(), &squidpipes() };
+                 &bigRustyDrums(), &gogodzePhu(), &squidpipes(),
+                 &blackAndGreenGuitars(), &shinyguitar(), &meatbass(), &ganjo(), &kayBanjo() };
     }
 
     juce::String refFor (const Library& library)

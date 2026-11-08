@@ -324,6 +324,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->submerge.prepare (sampleRate, preparedBlockSize);
     rack->lockstep.prepare (sampleRate, preparedBlockSize);
     rack->colossus.prepare (sampleRate, preparedBlockSize);
+    rack->canyon.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1353,6 +1354,19 @@ effects::Lockstep::Settings ParagonX1AudioProcessor::getLockstepSettings() const
     return s;
 }
 
+effects::Canyon::Settings ParagonX1AudioProcessor::getCanyonSettings() const noexcept
+{
+    effects::Canyon::Settings s;
+    s.on = isOn (ParamIDs::canyonOn);
+    s.amount = effectParam (ModDestinations::effect ("canyonAmount"), ParamIDs::canyonAmount);
+    s.size = effectParam (ModDestinations::effect ("canyonSize"), ParamIDs::canyonSize);
+    s.far = juce::jlimit (0, effects::Canyon::farNames.size() - 1, juce::roundToInt (param (ParamIDs::canyonFar)));
+    s.repeats = effectParam (ModDestinations::effect ("canyonRepeats"), ParamIDs::canyonRepeats);
+    s.tone = param (ParamIDs::canyonTone);
+    s.width = param (ParamIDs::canyonWidth);
+    return s;
+}
+
 effects::Colossus::Settings ParagonX1AudioProcessor::getColossusSettings() const noexcept
 {
     effects::Colossus::Settings s;
@@ -1704,6 +1718,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->submerge.process (block, getSubmergeSettings());     // 0.80.0: under the water
         rack->lockstep.process (block, getLockstepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.81.0: in step
         rack->colossus.process (block, getColossusSettings());   // 0.82.0: enormous
+        rack->canyon.process (block, getCanyonSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.84.0: the walls answer
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

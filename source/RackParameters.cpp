@@ -32,6 +32,7 @@
 #include "dsp/effects/Submerge.h"
 #include "dsp/effects/Lockstep.h"
 #include "dsp/effects/Colossus.h"
+#include "dsp/effects/Canyon.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -919,4 +920,30 @@ void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::colossusBoom, "Colossus Boom", { 0.0f, 1.0f, 0.01f }, d.boom, v, asPercent));
     layout.add (makeFloat (ParamIDs::colossusTone, "Colossus Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
     layout.add (makeFloat (ParamIDs::colossusWidth, "Colossus Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // CANYON (0.84.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 52;
+    using C = effects::Canyon;
+    const C::Settings d;
+    const ToText asAmount = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Open Plain") : juce::String (juce::roundToInt (100.0f * value)) + "% in";
+    };
+    const ToText asSize = [] (float value, int) { return juce::String (juce::roundToInt (1000.0f * C::nearSeconds (value))) + " ms"; };
+    const ToText asRepeats = [] (float value, int) { return juce::String (juce::roundToInt (100.0f * C::feedbackFor (value))) + "% back"; };
+    const ToText asTone = [] (float value, int)
+    {
+        const auto hz = C::toneHz (value);
+        return hz >= 1000.0f ? juce::String (hz / 1000.0f, 1) + " kHz" : juce::String (juce::roundToInt (hz)) + " Hz";
+    };
+    layout.add (makeSwitch (ParamIDs::canyonOn, "Canyon On", v, false));
+    layout.add (makeFloat (ParamIDs::canyonAmount, "Canyon Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeFloat (ParamIDs::canyonSize, "Canyon Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeChoice (ParamIDs::canyonFar, "Canyon Far Wall", v, C::farNames, d.far));
+    layout.add (makeFloat (ParamIDs::canyonRepeats, "Canyon Repeats", { 0.0f, 1.0f, 0.01f }, d.repeats, v, asRepeats));
+    layout.add (makeFloat (ParamIDs::canyonTone, "Canyon Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::canyonWidth, "Canyon Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }

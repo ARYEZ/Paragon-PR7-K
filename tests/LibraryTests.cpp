@@ -1,5 +1,6 @@
 // GET THE PIANO (0.71.0): downloading a sample library and unpacking it, tested on archives made here (a stand-in
 // library with the Salamander's folder and file names and a sine for a piano), fetched from a file:// URL.
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -173,6 +174,27 @@ TEST_CASE ("Libraries: Karoryfer's three, each pinned to one commit and found by
     }
 }
 
+TEST_CASE ("Libraries: the western bank's five, each pinned to one commit and credited (0.84.0)", "[library]")
+{
+    const std::vector<const libraries::Library*> west { &libraries::blackAndGreenGuitars(), &libraries::shinyguitar(),
+                                                        &libraries::meatbass(), &libraries::ganjo(), &libraries::kayBanjo() };
+    for (const auto* library : west)
+    {
+        INFO (library->name);
+        CHECK (libraries::libraryFor (libraries::refFor (*library)) == library);
+        CHECK (library->url.contains (library->folder.fromLastOccurrenceOf ("-", false, false)));   // the commit
+        CHECK (library->url.startsWith ("https://github.com/sfzinstruments/"));
+        CHECK (library->keeps (library->sfz));
+        CHECK (library->credit.isNotEmpty());
+        const auto all = libraries::all();
+        CHECK (std::find (all.begin(), all.end(), library) != all.end());
+    }
+    CHECK (libraries::kayBanjo().credit.contains ("GPL"));
+    CHECK_FALSE (libraries::kayBanjo().keeps ("work/00 - original/1f38.wav"));   // the editing stages stay in the archive
+    CHECK (libraries::kayBanjo().keeps ("samples/1f38.wav"));
+    CHECK (libraries::ganjo().credit.contains ("CC0"));
+}
+
 TEST_CASE ("Libraries: the Versilian collection and Sam's Sonor; what a library skips isn't unpacked", "[library]")
 {
     // 0.81.0: VCSL is about 6 GB, most of it pianos and harpsichords PR7-K has already: they're left in the archive.
@@ -281,7 +303,7 @@ TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets
     CHECK (libraries::libraryFor (libraries::refFor (sso, horns)) == &sso);
     CHECK (libraries::libraryFor (libraries::refFor (piano)) == &piano);
     CHECK (libraries::libraryFor ("{sfz:some other folder}/x.sfz") == nullptr);
-    CHECK (libraries::all().size() == 7);   // 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three
+    CHECK (libraries::all().size() == 12);   // 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three; 0.84.0: the western five
 
     TempFolder t;
     const auto presets = t.dir.getChildFile ("presets");

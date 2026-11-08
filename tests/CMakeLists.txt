@@ -89,6 +89,8 @@ add_executable(ParagonX1Tests
     LockstepPluginTests.cpp
     ColossusTests.cpp
     ColossusPluginTests.cpp
+    CanyonTests.cpp
+    CanyonPluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

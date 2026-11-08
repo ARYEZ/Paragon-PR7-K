@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 26> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 27> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 26> specs;
+    std::array<RackUnit::Spec, 27> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1654,6 +1654,54 @@ std::array<RackUnit::Spec, 26> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (25); };
+    }
+    // CANYON (0.84.0): how far in, in big digits, and its settings; the keys set AMOUNT: MESA, CANYON and GORGE; the
+    // ladder the echoes coming back.
+    {
+        auto& s = specs[26];
+        s.name = "CANYON";
+        s.kind = "NEAR  FAR  REPEATS";
+        s.onParameterIds = { ParamIDs::canyonOn };
+        s.powerTooltip = "CANYON on or off: the sound's echoes off rock walls. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "MESA", 0.3f, "Mesa: a slap off the rocks close by" },
+                                            { "CANYON", 0.6f, "Canyon: the walls answer and the far wall replies in time" },
+                                            { "GORGE", 1.0f, "Gorge: deep in, every wall answering" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::canyonAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::canyonAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::canyonAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::canyonRepeats, "REPEATS" } };
+        s.ladderTitle = "ECHO";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "MAX", "", "1/2", "", "NONE" };
+        s.ladderReading = [&p]
+        {
+            if (! p.getCanyonSettings().on)
+                return 0.0f;
+            const auto& c = p.getCanyon();
+            auto level = 0.0f;
+            for (int k = 0; k <= effects::Canyon::numNear; ++k)
+                level = juce::jmax (level, c.getWallLevel (k));
+            return level;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto amount = p.getCanyonSettings().on ? p.getCanyon().getAmount() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * amount)), left.getTopLeft(), h);
+            line (g, amount < 0.001f ? "OPEN" : amount < 0.45f ? "MESA" : amount < 0.8f ? "CANYON" : "GORGE",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::canyonAmount), "NEAR " + textOf (p, ParamIDs::canyonSize),
+                                  "FAR " + textOf (p, ParamIDs::canyonFar), "BACK " + textOf (p, ParamIDs::canyonRepeats) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (26); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
