@@ -291,6 +291,7 @@ public:
         rack->aftermath.seedRandom ((std::uint32_t) seed);
         rack->submerge.seedRandom ((std::uint32_t) seed);
         rack->lockstep.seedRandom ((std::uint32_t) seed);
+        rack->jackIn.seedRandom ((std::uint32_t) seed);
         rack->colossus.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
@@ -441,6 +442,8 @@ public:
     effects::Colossus::Settings getColossusSettings() const noexcept;            // COLOSSUS (0.82.0)
     effects::Canyon::Settings getCanyonSettings() const noexcept;                // CANYON (0.84.0)
     const effects::Canyon& getCanyon() const noexcept { return rack->canyon; }
+    effects::JackIn::Settings getJackInSettings() const noexcept;                // JACK-IN (0.85.0)
+    const effects::JackIn& getJackIn() const noexcept { return rack->jackIn; }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
     const effects::Colossus& getColossus() const noexcept { return rack->colossus; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).

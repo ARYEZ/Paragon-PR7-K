@@ -27,6 +27,7 @@
 #include "ui/LockstepPage.h"
 #include "ui/ColossusPage.h"
 #include "ui/CanyonPage.h"
+#include "ui/JackInPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -66,7 +67,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, lightSpeed, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, lightSpeed, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -102,6 +103,7 @@ public:
     LockstepPage& getLockstepPage() noexcept { return lockstepPage; }
     ColossusPage& getColossusPage() noexcept { return colossusPage; }
     CanyonPage& getCanyonPage() noexcept { return canyonPage; }
+    JackInPage& getJackInPage() noexcept { return jackInPage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -127,7 +129,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 27> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 28> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -163,6 +165,7 @@ private:
     LockstepPage lockstepPage;       // 0.81.0
     ColossusPage colossusPage;       // 0.82.0
     CanyonPage canyonPage;           // 0.84.0
+    JackInPage jackInPage;           // 0.85.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

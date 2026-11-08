@@ -33,6 +33,7 @@
 #include "dsp/effects/Lockstep.h"
 #include "dsp/effects/Colossus.h"
 #include "dsp/effects/Canyon.h"
+#include "dsp/effects/JackIn.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -946,4 +947,23 @@ void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
     layout.add (makeFloat (ParamIDs::canyonRepeats, "Canyon Repeats", { 0.0f, 1.0f, 0.01f }, d.repeats, v, asRepeats));
     layout.add (makeFloat (ParamIDs::canyonTone, "Canyon Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::canyonWidth, "Canyon Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // JACK-IN (0.85.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 53;
+    using J = effects::JackIn;
+    const J::Settings d;
+    const ToText asAmount = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Untouched") : juce::String (juce::roundToInt (100.0f * J::takeChance (value))) + "% taken";
+    };
+    layout.add (makeSwitch (ParamIDs::jackinOn, "Jack-In On", v, false));
+    layout.add (makeFloat (ParamIDs::jackinAmount, "Jack-In Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeChoice (ParamIDs::jackinSlice, "Jack-In Slice", v, J::sliceNames, d.slice));
+    layout.add (makeChoice (ParamIDs::jackinReach, "Jack-In Reach", v, J::reachNames, d.reach));
+    layout.add (makeFloat (ParamIDs::jackinChaos, "Jack-In Chaos", { 0.0f, 1.0f, 0.01f }, d.chaos, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jackinCrush, "Jack-In Crush", { 0.0f, 1.0f, 0.01f }, d.crush, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jackinDrops, "Jack-In Drops", { 0.0f, 1.0f, 0.01f }, d.drops, v, asPercent));
 }

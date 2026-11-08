@@ -583,5 +583,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addLockstepParameters (layout);        // LOCKSTEP (0.81.0): RackParameters.cpp
     addColossusParameters (layout);        // COLOSSUS (0.82.0): RackParameters.cpp
     addCanyonParameters (layout);          // CANYON (0.84.0, version hint 52): RackParameters.cpp
+    addJackInParameters (layout);          // JACK-IN (0.85.0, version hint 53): RackParameters.cpp
     return layout;
 }

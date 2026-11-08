@@ -91,6 +91,8 @@ add_executable(ParagonX1Tests
     ColossusPluginTests.cpp
     CanyonTests.cpp
     CanyonPluginTests.cpp
+    JackInTests.cpp
+    JackInPluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

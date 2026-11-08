@@ -83,7 +83,9 @@ namespace ModDestinations
                                                  // 0.82.0: COLOSSUS: how big, the octave under, the hall
                                                  "colossusSize", "colossusDepth", "colossusHall",
                                                  // 0.84.0: CANYON: how much goes in, the near walls, the far wall's replies
-                                                 "canyonAmount", "canyonSize", "canyonRepeats" };
+                                                 "canyonAmount", "canyonSize", "canyonRepeats",
+                                                 // 0.85.0: JACK-IN: how much is taken, how wild, how crushed
+                                                 "jackinAmount", "jackinChaos", "jackinCrush" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

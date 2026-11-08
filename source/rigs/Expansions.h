@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 33> list
+    inline constexpr std::array<Expansion, 34> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -190,5 +190,13 @@ namespace expansions
           "and ganjo, its harmonica, bells and woodblocks the Versilian Community Sample Library, its trumpet, strings "
           "and choir the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our "
           "own sounds and phrases." },
+        { "MACHINE SUPREMACY", "MS",
+          "Inspired by the sound of a neon megacity's future: a street lead's sneer, a cold corporate sync lead, a signal "
+          "breaking up in the wires; smog, penthouse glass and a corrupted choir; a pumping club bass, a smooth reese and "
+          "an FM growl; a punk guitar, glass-elevator keys and dead-pixel keys; a street beat, a boardroom sequence and a "
+          "packet storm. Three columns: the street, the towers and the net. Built round JACK-IN (0.85.0) and MACRO 3, "
+          "JACK-IN: something breaks into the sound and takes the phrase over, slice by slice in time with the song. Its "
+          "guitar plays Black And Green Guitars, its beat Big Rusty Drums and its choir the Sonatina Symphonic "
+          "Orchestra, once downloaded (free). Our own sounds and phrases." },
     }};
 }

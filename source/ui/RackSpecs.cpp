@@ -618,19 +618,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN" };   // never reorder
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 27> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 28> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 27> specs;
+    std::array<RackUnit::Spec, 28> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1702,6 +1702,58 @@ std::array<RackUnit::Spec, 27> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (26); };
+    }
+    // JACK-IN (0.85.0): how much is taken, in big digits, and its settings; the keys set AMOUNT: PROBE, BREACH and
+    // TAKEOVER; the ladder the share of the last bar's slices taken.
+    {
+        auto& s = specs[27];
+        s.name = "JACK-IN";
+        s.kind = "SLICE  REACH  CHAOS";
+        s.onParameterIds = { ParamIDs::jackinOn };
+        s.powerTooltip = "JACK-IN on or off: something breaks into the sound and takes the phrase over. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "PROBE", 0.3f, "Probe: now and then a slice is taken" },
+                                            { "BREACH", 0.65f, "Breach: most of the phrase is cut up and replayed" },
+                                            { "TAKEOVER", 1.0f, "Takeover: nearly every slice is someone else's" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::jackinAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::jackinAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::jackinAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::jackinChaos, "CHAOS" } };
+        s.ladderTitle = "TAKEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "1/2", "", "NONE" };
+        s.ladderReading = [&p]
+        {
+            if (! p.getJackInSettings().on)
+                return 0.0f;
+            const auto& j = p.getJackIn();
+            const auto count = j.getSliceCount();
+            const auto span = juce::jmin (count, juce::jmin (effects::JackIn::maxHistoryKept, j.getSlicesPerBar()));
+            if (span <= 0)
+                return 0.0f;
+            int taken = 0;
+            for (int k = count - span; k < count; ++k)
+                taken += j.getMove (k) != effects::JackIn::Move::dry ? 1 : 0;
+            return (float) taken / (float) span;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto amount = p.getJackInSettings().on ? p.getJackIn().getAmount() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * amount)), left.getTopLeft(), h);
+            line (g, amount < 0.001f ? "CLEAN" : amount < 0.45f ? "PROBE" : amount < 0.8f ? "BREACH" : "TAKEOVER",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::jackinAmount), "SLICE " + textOf (p, ParamIDs::jackinSlice),
+                                  "REACH " + textOf (p, ParamIDs::jackinReach), "CHAOS " + textOf (p, ParamIDs::jackinChaos) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (27); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

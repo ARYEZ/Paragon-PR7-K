@@ -325,6 +325,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->lockstep.prepare (sampleRate, preparedBlockSize);
     rack->colossus.prepare (sampleRate, preparedBlockSize);
     rack->canyon.prepare (sampleRate, preparedBlockSize);
+    rack->jackIn.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1367,6 +1368,19 @@ effects::Canyon::Settings ParagonX1AudioProcessor::getCanyonSettings() const noe
     return s;
 }
 
+effects::JackIn::Settings ParagonX1AudioProcessor::getJackInSettings() const noexcept
+{
+    effects::JackIn::Settings s;
+    s.on = isOn (ParamIDs::jackinOn);
+    s.amount = effectParam (ModDestinations::effect ("jackinAmount"), ParamIDs::jackinAmount);
+    s.slice = juce::jlimit (0, effects::JackIn::sliceNames.size() - 1, juce::roundToInt (param (ParamIDs::jackinSlice)));
+    s.reach = juce::jlimit (0, effects::JackIn::reachNames.size() - 1, juce::roundToInt (param (ParamIDs::jackinReach)));
+    s.chaos = effectParam (ModDestinations::effect ("jackinChaos"), ParamIDs::jackinChaos);
+    s.crush = effectParam (ModDestinations::effect ("jackinCrush"), ParamIDs::jackinCrush);
+    s.drops = param (ParamIDs::jackinDrops);
+    return s;
+}
+
 effects::Colossus::Settings ParagonX1AudioProcessor::getColossusSettings() const noexcept
 {
     effects::Colossus::Settings s;
@@ -1719,6 +1733,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->lockstep.process (block, getLockstepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.81.0: in step
         rack->colossus.process (block, getColossusSettings());   // 0.82.0: enormous
         rack->canyon.process (block, getCanyonSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.84.0: the walls answer
+        rack->jackIn.process (block, getJackInSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.85.0: broken into
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

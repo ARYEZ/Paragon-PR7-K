@@ -581,6 +581,15 @@ namespace ParamIDs
     inline constexpr auto canyonTone    = "canyonTone";      // 0 to 1: dark to bright
     inline constexpr auto canyonWidth   = "canyonWidth";     // 0 to 1: how far to the sides the walls are
 
+    // JACK-IN (0.85.0, version hint 53, effects::JackIn): MACHINE SUPREMACY's signature.
+    inline constexpr auto jackinOn     = "jackinOn";
+    inline constexpr auto jackinAmount = "jackinAmount";   // 0 to 1: how much is taken over (the macro's)
+    inline constexpr auto jackinSlice  = "jackinSlice";    // effects::JackIn::sliceNames: the slices, in time with the song
+    inline constexpr auto jackinReach  = "jackinReach";    // effects::JackIn::reachNames: how far back the taken slices come from
+    inline constexpr auto jackinChaos  = "jackinChaos";    // 0 to 1: replays and stutters to reverses and octaves
+    inline constexpr auto jackinCrush  = "jackinCrush";    // 0 to 1: how often and how hard taken slices are crushed
+    inline constexpr auto jackinDrops  = "jackinDrops";    // 0 to 1: how often a beat ends in a tape stop
+
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
     inline constexpr int numInsertBuses = 4;
@@ -678,4 +687,5 @@ void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
 void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.81.0)
 void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.82.0)
 void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.84.0)
+void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.85.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)
