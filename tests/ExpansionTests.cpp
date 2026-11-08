@@ -1146,6 +1146,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             e.push_back ({ at (up), juce::MidiMessage::controllerEvent (1, 64, 0) });
         };
         const auto style = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {});
+        bool firstHalf = true;
         if (type == "Keys" && style == "velocities")
         {
             // A keys preset's range: A1, A2, A3, A4, A5 and A6, each soft, medium and hard, two beats apart.
@@ -1923,6 +1924,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 length = 24.0 * beat;
             }
         }
+        else
+            firstHalf = false;
+        if (firstHalf) {}   // MSVC allows only ~128 chained else-ifs: the chain is split in two here
         else if (sev && type == "Lead")
         {
             // A cheerful phrase in F major, then the same shape turned to D minor, ending on a held note.
