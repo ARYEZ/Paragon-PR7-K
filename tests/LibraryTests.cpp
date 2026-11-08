@@ -387,7 +387,8 @@ TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback un
             || rig.bank == Rig::numBanks + 26    // (0.74.0: GRAND CINEMA's, layered, are checked in ExpansionTests)
             || rig.bank == Rig::numBanks + 29    // (0.79.0: STOLEN SKY's, through GRAND CINEMA's grand(), too)
             || rig.bank == Rig::numBanks + 30    // (0.80.0: DROWNED DECO's, the same)
-            || rig.bank == Rig::numBanks + 31)   // (0.81.0: NEW EDEN's, the same)
+            || rig.bank == Rig::numBanks + 31    // (0.81.0: NEW EDEN's, the same)
+            || rig.bank == Rig::numBanks + 32)   // (0.84.0: GUNSLINGER's honky-tonk, two Salamanders through grand())
             continue;
         withPiano.add (rig.name);
         INFO (rig.name);

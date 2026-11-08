@@ -2,6 +2,34 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.84.0
+
+**GUNSLINGER, a new expansion: the spaghetti-western sound, built round a new signature effect, CANYON; five more free libraries to download in the plugin.**
+
+- **GUNSLINGER** (GS01-GS18), our own sounds and phrases. **MACRO 3 CANYON** on every preset: the sound sent into a canyon, its walls answering.
+  - Leads: Lonesome Whistle, Duel Trumpet, Harmonica Wind.
+  - Pads: Prairie Dusk, Men's Chant, Heat Shimmer.
+  - Basses: Dusty Upright, Baritone Twang, Gallop Bass.
+  - Keys: Saloon Piano (a honky-tonk: two strings to every note pulled apart), Mission Bells, Jaw Harp.
+  - Arps: Hoofbeats, Banjo Roll, Twang Picking.
+  - Plucks: Twang Pluck, Archtop Strum, Spur Jangle.
+- **14 have a version on the free libraries**, played once the library is downloaded; until then the synthesized version plays. A Gretsch Anniversary and a Hofner Club (twang), an archtop guitar, a 1958 double bass, a 5-string banjo and a 6-string banjo; VCSL's harmonica, tubular bells, woodblock and claves; the orchestra's trumpet, strings and choir; the Salamander (twice, for the honky-tonk). Lonesome Whistle, Heat Shimmer, Gallop Bass and Jaw Harp are synthesized only (no free whistling or jaw harp could be found).
+- **CANYON** (FX page, SIGNATURE slot), our own design: AMOUNT sends the sound into a canyon.
+  - Three near walls slap it back (SIZE: the first 45 to 200 ms after the sound), each from its own side and darker the further it is.
+  - The far wall replies in time with the song (FAR: a quarter note to two bars), bouncing from side to side, darker each time (REPEATS: how many come back).
+  - TONE (how much top the rock gives back) and WIDTH.
+  - Turned down, the echoes already out there still come back; at 0, once they've died, your sound passes untouched.
+  - AMOUNT, SIZE and REPEATS can be moved from the mod matrix (FX Canyon). Its page shows a canyon at sundown, each wall lighting up as its echo returns.
+- **Five more free libraries to download in the plugin**, credited in ABOUT:
+  - **Black And Green Guitars** (Karoryfer Samples, CC0, about 560 MB): a Gretsch Anniversary and a Hofner Club.
+  - **Shinyguitar** (Karoryfer Samples, CC0, about 440 MB): an archtop guitar.
+  - **Meatbass** (Karoryfer Samples, CC0, about 280 MB): a 1958 double bass.
+  - **ganjo** (itsclipping, CC0, 25 MB): a 6-string banjo.
+  - **Kay 5-String Banjo** (FlameStudios, SFZ by S. Christian Collins, GPL-3.0, about 400 MB to download; the author's editing files in it are skipped, so it takes 20 MB on disk).
+- **SFZ reading:**
+  - Key switches given as a range (`sw_lolast` / `sw_hilast`, used by the Kay banjo) work now.
+  - A library's Sforzando bank file can name its sample folder (Shinyguitar does); PR7-K reads it now. Without it, Shinyguitar found none of its samples.
+
 ## 0.83.0
 
 **SANDSEA rebuilt: 18 new presets round COLOSSUS, 15 of them with versions on the free sample libraries.**

@@ -16758,7 +16758,7 @@ namespace
                             { 0, 1, 2, 3, 4 }, 9.0f,
                             "The mission's bells across the plaza: real tubular bells (VCSL's). Slow tolls and tunes.",
                             1.0f, 300.0f, 1.0f, 3000.0f, -1.0f,
-                            {} });
+                            [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.25f); s.rig.modulation.macroNames[0] = "HALL"; } });
         x.add (bells);
 
         auto jaw = x.make ("Jaw Harp", 12, { "Keys", "Twang", "Boing" },
@@ -16941,7 +16941,12 @@ namespace
                              { 0, 1, 2 }, 2.7f,
                              "Strings that jangle: a real 6-string banjo (ganjo), bright and short.",
                              1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
-                             [] (Builder& s) { s.set (ParamIDs::fltOn, 0.0f); } });
+                             [] (Builder& s)
+                             {
+                                 s.set (ParamIDs::fltOn, 0.0f);
+                                 route (s, "macro1", ParamIDs::reverbSize, 0.25f);
+                                 s.rig.modulation.macroNames[0] = "HALL";
+                             } });
         pkAdd (x, jangle);
     }
 

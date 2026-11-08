@@ -871,6 +871,72 @@ TEST_CASE ("NEW EDEN: MACRO 3 is LOCKSTEP on every preset, resting at its left; 
     CHECK (used.size() == 4);   // VCSL, Sam's Sonor, the orchestra and the Salamander
 }
 
+TEST_CASE ("GUNSLINGER: MACRO 3 is CANYON on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][canyon]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 32)   // GUNSLINGER: the thirty-third expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "CANYON");
+            CHECK (version->notes.contains ("CANYON"));
+            CHECK (version->parameters.at (ParamIDs::canyonOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::canyonAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::canyonAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 14);   // (the whistle, the heat shimmer, the gallop and the jaw harp are synthesized only)
+    CHECK (used.size() == 8);   // the guitars, the archtop, the bass, both banjos, VCSL, the orchestra and the Salamander
+}
+
 TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left; every preset has a real piano version", "[rigs][expansions][bloom]")
 {
     ParagonX1AudioProcessor processor;
