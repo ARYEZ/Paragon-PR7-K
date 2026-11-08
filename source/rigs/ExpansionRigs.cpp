@@ -167,7 +167,7 @@ namespace
     {
         static const std::map<juce::String, float> levels {
             { "Twang Pluck", 1.7f }, { "Archtop Strum", -3.1f }, { "Spur Jangle", -2.1f },
-            { "Street Stab", -4.0f }, { "Tower Ping", -4.0f }, { "Bitrot Pluck", -4.0f },
+            { "Street Stab", 0.8f }, { "Tower Ping", -4.5f }, { "Bitrot Pluck", -4.6f },
             { "Ancient Harp", -5.8f },
             { "Battle Pizzicato", -8.5f },
             { "Bike Spokes", -8.1f },
@@ -17043,7 +17043,7 @@ namespace
         delay (snarl, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
         reverb (snarl, RT::room, 0.45f, 0.12f, 10.0f, 4.5f);
         space (snarl);
-        snarl.set (ParamIDs::patchLevel, -6.0f);
+        snarl.set (ParamIDs::patchLevel, -0.7f);
         jackIn (snarl, { 1, 2, 0.3f, 0.3f, 0.35f, 1.0f });
         x.add (snarl);
 
@@ -17065,7 +17065,7 @@ namespace
         delay (exec, "1/8", 0.35f, 0.18f, true, 6.0f);
         reverb (exec, RT::plate, 0.6f, 0.18f, 20.0f, 6.0f);
         space (exec);
-        exec.set (ParamIDs::patchLevel, -6.0f);
+        exec.set (ParamIDs::patchLevel, -1.9f);
         jackIn (exec, { 1, 2, 0.2f, 0.15f, 0.25f, 1.0f });
         x.add (exec);
 
@@ -17089,7 +17089,7 @@ namespace
         delay (ghost, "1/4 dotted", 0.45f, 0.18f, true, 3.0f);
         reverb (ghost, RT::hall, 0.6f, 0.15f, 30.0f, 4.0f);
         space (ghost);
-        ghost.set (ParamIDs::patchLevel, -6.0f);
+        ghost.set (ParamIDs::patchLevel, -8.6f);
         jackIn (ghost, { 2, 2, 0.75f, 0.5f, 0.3f, 1.0f });
         x.add (ghost);
 
@@ -17113,7 +17113,7 @@ namespace
         macros (smog, "BRIGHT", "SPACE", "JACK-IN");
         reverb (smog, RT::hall, 0.8f, 0.3f, 30.0f, 3.5f);
         space (smog);
-        smog.set (ParamIDs::patchLevel, -12.0f);
+        smog.set (ParamIDs::patchLevel, -7.6f);
         jackIn (smog, { 0, 3, 0.4f, 0.2f, 0.4f, 0.85f });
         x.add (smog);
 
@@ -17135,7 +17135,7 @@ namespace
         macros (glass, "BRIGHT", "SPACE", "JACK-IN");
         reverb (glass, RT::hall, 0.9f, 0.32f, 50.0f, 6.0f);
         space (glass);
-        glass.set (ParamIDs::patchLevel, -10.0f);
+        glass.set (ParamIDs::patchLevel, -10.2f);
         jackIn (glass, { 0, 3, 0.25f, 0.1f, 0.3f, 0.85f });
         x.add (glass);
 
@@ -17159,10 +17159,10 @@ namespace
         macros (choir, "BRIGHT", "SPACE", "JACK-IN");
         reverb (choir, RT::cathedral, 0.7f, 0.28f, 30.0f, 4.0f);
         space (choir);
-        choir.set (ParamIDs::patchLevel, -8.0f);
+        choir.set (ParamIDs::patchLevel, -10.3f);
         jackIn (choir, { 1, 3, 0.7f, 0.45f, 0.35f, 0.9f });
         orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
-                            { 0, 1 }, 2.0f,
+                            { 0, 1 }, -0.4f,
                             "A choir caught in the wires: the orchestra's large choir, its signal crushed (LO-FI's "
                             "bitcrusher).",
                             300.0f, 600.0f, 1.0f, 1300.0f, -1.0f,
@@ -17193,7 +17193,7 @@ namespace
         macros (club, "BRIGHT", "SPACE", "JACK-IN");
         reverb (club, RT::room, 0.3f, 0.05f, 5.0f, 4.0f);
         space (club);
-        club.set (ParamIDs::patchLevel, -3.0f);
+        club.set (ParamIDs::patchLevel, 3.0f);
         jackIn (club, { 1, 2, 0.2f, 0.2f, 0.4f, 0.9f });
         x.add (club);
 
@@ -17212,7 +17212,7 @@ namespace
         macros (reese, "BRIGHT", "SPACE", "JACK-IN");
         reverb (reese, RT::room, 0.3f, 0.06f, 5.0f, 4.0f);
         space (reese);
-        reese.set (ParamIDs::patchLevel, -5.0f);
+        reese.set (ParamIDs::patchLevel, -4.4f);
         jackIn (reese, { 1, 2, 0.3f, 0.1f, 0.3f, 0.9f });
         x.add (reese);
 
@@ -17237,7 +17237,7 @@ namespace
         macros (growl, "BRIGHT", "SPACE", "JACK-IN");
         reverb (growl, RT::room, 0.3f, 0.05f, 5.0f, 4.0f);
         space (growl);
-        growl.set (ParamIDs::patchLevel, -5.0f);
+        growl.set (ParamIDs::patchLevel, -10.6f);
         jackIn (growl, { 1, 2, 0.6f, 0.4f, 0.4f, 0.9f });
         x.add (growl);
 
@@ -17261,10 +17261,10 @@ namespace
         macros (punk, "BRIGHT", "SPACE", "JACK-IN");
         reverb (punk, RT::room, 0.4f, 0.1f, 8.0f, 4.0f);
         space (punk);
-        punk.set (ParamIDs::patchLevel, -10.0f);
+        punk.set (ParamIDs::patchLevel, 4.0f);
         jackIn (punk, { 1, 2, 0.35f, 0.25f, 0.4f, 1.0f });
         orchestra (punk, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &twang } },
-                           { 0, 1, 2 }, -6.0f,
+                           { 0, 1, 2 }, 3.6f,
                            "A guitar from a street band: a real Gretsch Anniversary (Black And Green Guitars) through "
                            "a loud, hot amp. Play power chords.",
                            1.0f, 1500.0f, 0.6f, 150.0f, -1.0f,
@@ -17293,7 +17293,7 @@ namespace
         macros (elevator, "BARK", "SPACE", "JACK-IN");
         reverb (elevator, RT::plate, 0.5f, 0.2f, 15.0f, 5.5f);
         space (elevator);
-        elevator.set (ParamIDs::patchLevel, -4.0f);
+        elevator.set (ParamIDs::patchLevel, -13.5f);
         jackIn (elevator, { 1, 2, 0.3f, 0.15f, 0.25f, 1.0f });
         x.add (elevator);
 
@@ -17315,7 +17315,7 @@ namespace
         delay (pixel, "1/16 dotted", 0.3f, 0.15f, true, 4.0f);
         reverb (pixel, RT::room, 0.4f, 0.12f, 10.0f, 4.5f);
         space (pixel);
-        pixel.set (ParamIDs::patchLevel, -4.0f);
+        pixel.set (ParamIDs::patchLevel, -10.2f);
         jackIn (pixel, { 2, 2, 0.8f, 0.6f, 0.35f, 1.0f });
         x.add (pixel);
 
@@ -17345,12 +17345,12 @@ namespace
         macros (gang, "BRIGHT", "SPACE", "JACK-IN");
         reverb (gang, RT::room, 0.35f, 0.1f, 5.0f, 4.0f);
         space (gang);
-        gang.set (ParamIDs::patchLevel, 0.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        gang.set (ParamIDs::patchLevel, 2.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         jackIn (gang, { 1, 2, 0.45f, 0.35f, 0.5f, 1.0f });
         orchestra (gang, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
                              { 1, "Programs/01-full.sfz", 0.85f, 0.0f, false, &rusty },
                              { 2, "Programs/01-full.sfz", 0.5f, 0.0f, false, &rusty } },
-                           { 0, 1, 2, 3 }, 6.0f,
+                           { 0, 1, 2, 3 }, 8.0f,
                            "A beat from the street: a real kick, snare and closed hats (Big Rusty Drums') in a heavy "
                            "street groove. The key you hold doesn't change it.",
                            0.5f, 900.0f, 0.0f, 400.0f, -1.0f,
@@ -17387,7 +17387,7 @@ namespace
         delay (board, "1/8 dotted", 0.35f, 0.18f, true, 5.0f);
         reverb (board, RT::plate, 0.5f, 0.15f, 10.0f, 5.0f);
         space (board);
-        board.set (ParamIDs::patchLevel, -4.0f);
+        board.set (ParamIDs::patchLevel, -3.1f);
         jackIn (board, { 1, 2, 0.35f, 0.2f, 0.3f, 1.0f });
         x.add (board);
 
@@ -17419,7 +17419,7 @@ namespace
         delay (packets, "1/16 triplet", 0.3f, 0.12f, true, 4.0f);
         reverb (packets, RT::room, 0.4f, 0.12f, 10.0f, 4.5f);
         space (packets);
-        packets.set (ParamIDs::patchLevel, -4.0f);
+        packets.set (ParamIDs::patchLevel, -1.4f);
         jackIn (packets, { 2, 1, 0.8f, 0.5f, 0.3f, 1.0f });
         x.add (packets);
 
