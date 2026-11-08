@@ -1039,8 +1039,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto stolen = rig.bank == Rig::numBanks + 29;    // STOLEN SKY: 72 BPM in B minor, Bm G D A
         const auto drowned = rig.bank == Rig::numBanks + 30;   // DROWNED DECO: 92 BPM in F minor, Fm7 Dbmaj7 Bbm7 C7
         const auto eden = rig.bank == Rig::numBanks + 31;      // NEW EDEN: 108 BPM in D minor, Dm Bb Gm A (a march)
+        const auto gun = rig.bank == Rig::numBanks + 32;       // GUNSLINGER: 96 BPM in A minor, Am G F E
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -1100,8 +1101,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 31, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 32, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 ? major : minor;
             const auto degree = [&] (int d)
             {
@@ -1273,6 +1274,82 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 chord (e, at (4), at (7.9), { 46, 58, 62, 65 }, 100);
                 chord (e, at (8), at (11.9), { 53, 57, 60, 65 }, 100);
                 chord (e, at (12), at (15.9), { 48, 55, 60, 64 }, 100);
+                length = 19.0 * beat;
+            }
+        }
+        else if (gun)
+        {
+            // Our own phrases (none from any film): A minor, the chords A minor, G, F and E (the falling cadence of the
+            // southwest), a lonely line with long notes and gaps for CANYON's walls to answer.
+            const std::vector<std::vector<int>> chords { { 33, 45, 52, 57, 60 }, { 31, 43, 50, 55, 59 },
+                                                         { 29, 41, 48, 53, 57 }, { 28, 40, 47, 52, 56 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 69 }, { 1.5, 0.5, 71 }, { 2, 2, 72 }, { 4, 1, 76 }, { 5, 1, 74 }, { 6, 2, 72 },
+                        { 8, 1.5, 71 }, { 9.5, 0.5, 72 }, { 10, 2, 69 }, { 12, 1, 68 }, { 13, 1, 71 }, { 14, 2, 69 } }, 100);
+                wheel (12.0, 16.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 85);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // The walk: A C E G, G B D B, F A C A, E G# B D (quarter notes); the twang a riff on root and fifth an
+                // octave up; the gallop holds each bar's root (its arp rides).
+                const int walk[4][4] { { 33, 36, 40, 43 }, { 31, 35, 38, 35 }, { 29, 33, 36, 33 }, { 28, 32, 35, 38 } };
+                for (int c = 0; c < 4; ++c)
+                    if (rig.tags.contains ("Ostinato"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { chords[(size_t) c][0] + 12 }, 105);
+                    else if (rig.tags.contains ("Twang"))
+                    {
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.4), { chords[(size_t) c][0] + 12 }, 110);
+                        chord (e, at (c * 4.0 + 1.5), at (c * 4.0 + 1.9), { chords[(size_t) c][0] + 12 }, 85);
+                        chord (e, at (c * 4.0 + 2), at (c * 4.0 + 3.8), { chords[(size_t) c][0] + 19 }, 100);
+                    }
+                    else
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { walk[c][k] }, k == 0 ? 110 : 90);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                const int tune[] { 76, 74, 72, 71 };
+                for (int c = 0; c < 4; ++c)
+                {
+                    if (rig.tags.contains ("Piano"))
+                    {
+                        // A rag's left hand (bass on 1 and 3, the chord on 2 and 4) and a tune over it.
+                        for (int k = 0; k < 4; ++k)
+                            if (k % 2 == 0)
+                                chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.8), { chords[(size_t) c][1] }, 90);
+                            else
+                                chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.6), std::vector<int> (chords[(size_t) c].begin() + 2, chords[(size_t) c].end()), 75);
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.8), std::vector<int> { tune[c] }, 90);
+                        chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> { tune[c] - 3 }, 80);
+                    }
+                    else if (rig.tags.contains ("Bells"))   // tolls, slowly
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.0), std::vector<int> { chords[(size_t) c][1] + 24 }, 100);
+                    else   // the jaw harp: a low note plucked on the beat
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.9), { 45 }, k == 0 ? 110 : 90);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
                 length = 19.0 * beat;
             }
         }

@@ -166,6 +166,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
+            { "Twang Pluck", 1.7f }, { "Archtop Strum", -3.1f }, { "Spur Jangle", -2.1f },
             { "Ancient Harp", -5.8f },
             { "Battle Pizzicato", -8.5f },
             { "Bike Spokes", -8.1f },
@@ -16402,6 +16403,548 @@ namespace
     }
 }
 
+    // GUNSLINGER (0.84.0, the owner's theme and name: the spaghetti-western sound, our own sounds and phrases; no film,
+    // composer, actor or tune named or quoted). Built round CANYON: MACRO 3, CANYON, sends the sound into a canyon,
+    // the near walls slapping back and the far wall replying in time with the song.
+    struct Walls
+    {
+        float size = 0.5f;     // CANYON SIZE: the near walls
+        int far = 1;           // CANYON FAR: 1/4, 1/2, 1 BAR, 2 BARS
+        float repeats = 0.4f, tone = 0.5f, width = 0.8f;
+        float top = 1.0f;      // the macro's AMOUNT at full
+    };
+
+    void canyon (Builder& b, Walls w)
+    {
+        b.set (ParamIDs::canyonOn, 1.0f).set (ParamIDs::canyonAmount, 0.0f).set (ParamIDs::canyonSize, w.size)
+         .set (ParamIDs::canyonFar, (float) w.far).set (ParamIDs::canyonRepeats, w.repeats)
+         .set (ParamIDs::canyonTone, w.tone).set (ParamIDs::canyonWidth, w.width);
+        route (b, "macro3", ParamIDs::canyonAmount, w.top);
+    }
+
+    void gunslinger (Expansion x)
+    {
+        using SP3 = synth::mod::ShapePoint;
+        using DM = effects::Drive::Model;
+        const auto& vcsl = libraries::versilianCollection();
+        const auto& twang = libraries::blackAndGreenGuitars();
+        const auto& archtop = libraries::shinyguitar();
+        const auto& upright = libraries::meatbass();
+        const auto& sixString = libraries::ganjo();
+        const auto& banjo = libraries::kayBanjo();
+
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        // One recording on every key, at its own pitch (SFZ KEY): a woodblock, a clave.
+        const auto pinned = [] (Builder& s, int o, int key)
+        {
+            s.osc (o, "SfzKey", (float) (key + 1)).osc (o, "SfzKeyTrack", 0.0f).osc (o, "PitchEnv", 0.0f);
+        };
+        // An arp playing sixteenths on the held notes: steps `hits` on (velocity by `accents`), the rest off.
+        const auto rhythm = [] (Builder& b, int arp, std::initializer_list<int> hits, std::initializer_list<int> accents,
+                                bool fixedNote, synth::arp::Mode mode = synth::arp::Mode::up, float octaves = 1.0f)
+        {
+            b.set (ParamIDs::arp (arp, "On"), 1.0f).set (ParamIDs::arp (arp, "Mode"), (float) mode)
+             .set (ParamIDs::arp (arp, "Division"), division ("1/16")).set (ParamIDs::arp (arp, "Octaves"), octaves)
+             .set (ParamIDs::arp (arp, "Gate"), 0.8f);
+            if (fixedNote)
+                b.set (ParamIDs::arp (arp, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
+            auto& p = b.rig.modulation.arps[(size_t) arp].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                const auto on = std::find (hits.begin(), hits.end(), k) != hits.end();
+                const auto accent = std::find (accents.begin(), accents.end(), k) != accents.end();
+                p.blocks[(size_t) k].on = on;
+                p.blocks[(size_t) k].velocity = accent ? 1.0f : 0.7f;
+            }
+        };
+        // The twang: a plucked string through a bright filter snapping shut, a light amp (SKYLINE on bus A), a spring
+        // and a tremolo. Oscillators 0 and 1.
+        const auto twangString = [&] (Builder& b, float decayMs, float cutoff)
+        {
+            b.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.35f)
+             .osc (1, "Insert", 1.0f)
+             .filter (FilterType::lp12, cutoff, 0.15f, 0.45f).filterEnvelope (0.0f, decayMs * 0.35f, 0.2f, 200.0f)
+             .set (ParamIDs::fltKey, 0.6f)
+             .ampEnvelope (1.0f, decayMs, 0.0f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+            pkStrike (b, 2, 0, 0.18f, 6.0f, 0.1f);
+            pkBend (b, 0.25f, 0.04f, -0.5f);   // a string struck a hair sharp
+            pkVelocity (b, 0.5f, 0.3f, 0.5f);
+            drive (b, 0, DM::skyline, 2.5f, 6.0f, 0.0f, 0.0f, 0.4f);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto whistle = x.make ("Lonesome Whistle", 1, { "Lead", "Whistle", "Mono", "Breath" },
+            "A man whistling across an empty plain: a pure tone with breath round it, each note scooping a little up "
+            "into its pitch and gliding into the next, a slow vibrato coming in late. Long, lonely lines. MOD WHEEL: a "
+            "wider vibrato. MACROS: BREATH, SPACE, CANYON.");
+        whistle.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.04f).osc (1, "PhaseRand", 0.0f)
+               .filter (FilterType::lp12, 2800.0f, 0.0f, 0.0f).set (ParamIDs::fltKey, 1.0f)
+               .ampEnvelope (45.0f, 300.0f, 0.9f, 220.0f)
+               .mono (70.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::always).set (ParamIDs::glideCurve, 0.3f);
+        noiseOsc (whistle, 2, 0.035f, 0.05f);
+        vibrato (whistle, 0, 16.0f, 5.2f, 450.0f);
+        vibrato (whistle, 1, 16.0f, 5.2f, 450.0f);
+        pkBend (whistle, -0.5f, 0.09f, -0.4f);
+        route (whistle, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.3f);
+        route (whistle, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.3f);
+        route (whistle, "macro1", ParamIDs::osc (2, "Volume"), 0.08f);
+        macros (whistle, "BREATH", "SPACE", "CANYON");
+        reverb (whistle, RT::hall, 0.7f, 0.22f, 40.0f, 4.0f);
+        space (whistle);
+        whistle.set (ParamIDs::patchLevel, -4.2f);
+        canyon (whistle, { 0.7f, 2, 0.45f, 0.45f, 0.9f, 0.9f });
+        x.add (whistle);
+
+        auto trumpet = x.make ("Duel Trumpet", 2, { "Lead", "Brass", "Mono", "Mariachi" },
+            "A trumpet at high noon: two saws through a filter that swells as the note does, the bell's \"ah\" from the "
+            "VOICE filter, a lip into every note and a quick vibrato after. Proud, ringing phrases. MOD WHEEL: the "
+            "vibrato. MACROS: BRIGHT, SPACE, CANYON.");
+        trumpet.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 5.0f).osc (1, "Volume", 0.45f)
+               .filter (FilterType::lp24, 1100.0f, 0.15f, 0.55f).filterEnvelope (35.0f, 500.0f, 0.55f, 300.0f)
+               .set (ParamIDs::fltKey, 0.6f).set (ParamIDs::fltEnvVel, 0.5f)
+               .ampEnvelope (20.0f, 300.0f, 0.85f, 260.0f)
+               .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.55f)
+               .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.45f)
+               .mono (35.0f);
+        vibrato (trumpet, 0, 14.0f, 5.8f, 350.0f);
+        vibrato (trumpet, 1, 14.0f, 5.8f, 350.0f);
+        pkBend (trumpet, -0.7f, 0.07f, -0.5f);
+        route (trumpet, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.3f);
+        route (trumpet, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.3f);
+        route (trumpet, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (trumpet, "BRIGHT", "SPACE", "CANYON");
+        reverb (trumpet, RT::hall, 0.75f, 0.25f, 30.0f, 4.5f);
+        space (trumpet);
+        trumpet.set (ParamIDs::patchLevel, 0.3f);
+        canyon (trumpet, { 0.8f, 2, 0.5f, 0.55f, 0.9f, 0.9f });
+        orchestra (trumpet, { { { 0, "Brass - Notation/Trumpet Solo Sustain (looped).sfz", 1.0f, 0.0f } },
+                              { 0, 1 }, 4.1f,
+                              "A trumpet at high noon: the orchestra's solo trumpet, a quick vibrato after each note "
+                              "(the MOD WHEEL). Proud, ringing phrases.",
+                              15.0f, 300.0f, 1.0f, 400.0f, 0.0f,
+                              [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); } });
+        x.add (trumpet);
+
+        auto harmonica = x.make ("Harmonica Wind", 3, { "Lead", "Harmonica", "Reed" },
+            "A harmonica by the campfire: a reedy pulse sung through the VOICE filter, the hands cupped round it (the "
+            "MOD WHEEL opens them, \"oo\" to \"ah\"), each note bent up into its pitch, breath and a slow tremolo. "
+            "Plaintive phrases and chords. MACROS: BRIGHT, SPACE, CANYON.");
+        harmonica.osc (0, "Wave", pulse).osc (0, "Width", 0.38f).osc (0, "Volume", 0.5f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.25f)
+                 .filter (FilterType::lp12, 3200.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.5f)
+                 .ampEnvelope (30.0f, 300.0f, 0.85f, 180.0f)
+                 .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.15f).set (ParamIDs::voiceSize, 0.75f)
+                 .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 1.0f);
+        noiseOsc (harmonica, 2, 0.05f, 0.1f);
+        harmonica.osc (2, "Voice", 1.0f);
+        pkBend (harmonica, -1.0f, 0.12f, -0.4f);
+        route (harmonica, "modWheel", ParamIDs::voiceVowel, 0.45f);
+        route (harmonica, "macro1", ParamIDs::fltCutoff, 0.2f);
+        chorus (harmonica, ParamIDs::modIds, MT::tremolo, 0.25f, 0.25f, 1.0f);
+        harmonica.set (ParamIDs::modRate, 5.0f);
+        macros (harmonica, "BRIGHT", "SPACE", "CANYON");
+        reverb (harmonica, RT::room, 0.5f, 0.2f, 15.0f, 4.0f);
+        space (harmonica);
+        harmonica.set (ParamIDs::patchLevel, -3.5f);
+        canyon (harmonica, { 0.45f, 1, 0.35f, 0.5f, 0.8f, 0.85f });
+        orchestra (harmonica, { { { 0, "Aerophones/Free Aerophones/Harmonica-Hohner-Super64 - Vib.sfz", 1.0f, 0.0f, false, &vcsl } },
+                                { 0, 1, 2 }, 7.2f,
+                                "A harmonica by the campfire: a real chromatic harmonica (VCSL's) with its own vibrato. "
+                                "Plaintive phrases.",
+                                20.0f, 300.0f, 1.0f, 250.0f, -1.0f,
+                                [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f).set (ParamIDs::modOn, 0.0f); } });
+        x.add (harmonica);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto dusk = x.make ("Prairie Dusk", 4, { "Pad", "Strings", "Sunset" },
+            "The plain at sundown: a string section (unison saws, every player their own vibrato) swelling in slowly "
+            "through a warm filter, a quiet octave under it. Wide, slow chords. MOD WHEEL: brighter and fuller. MACROS: "
+            "BRIGHT, SPACE, CANYON.");
+        dusk.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp24, 2200.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (900.0f, 1000.0f, 0.9f, 1600.0f);
+        pkSection (dusk, 0, 7, 0.18f, 10.0f, 5.0f, 600.0f);
+        route (dusk, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (dusk, "modWheel", ParamIDs::osc (0, "Volume"), 0.15f);
+        route (dusk, "macro1", ParamIDs::fltCutoff, 0.25f);
+        macros (dusk, "BRIGHT", "SPACE", "CANYON");
+        reverb (dusk, RT::hall, 0.85f, 0.3f, 40.0f, 4.0f);
+        space (dusk);
+        dusk.set (ParamIDs::patchLevel, -13.3f);
+        canyon (dusk, { 0.9f, 2, 0.3f, 0.4f, 1.0f, 0.7f });
+        orchestra (dusk, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f } },
+                           {}, -13.3f,
+                           "The plain at sundown: the orchestra's strings over PR7-K's own section (the recordings fade "
+                           "after a few seconds; the synth holds). Wide, slow chords.",
+                           -1.0f, 300.0f, 1.0f, 600.0f, -1.0f,
+                           [] (Builder& s) { s.osc (0, "Volume", 0.3f).osc (1, "Volume", 0.2f); } });
+        x.add (dusk);
+
+        auto chant = x.make ("Men's Chant", 5, { "Pad", "Choir", "Men" },
+            "Men singing low round a fire: buzzing saws sung through the VOICE filter as basses, the vowel opening from "
+            "\"oo\" to \"ah\" as each chord is held, every singer his own vibrato. MOD WHEEL: \"oh\" to \"ah\". MACROS: "
+            "BRIGHT, SPACE, CANYON.");
+        chant.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Fine", -6.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp12, 2600.0f, 0.0f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (500.0f, 800.0f, 0.9f, 1200.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.0f).set (ParamIDs::voiceSize, 0.1f)
+             .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 1.0f);
+        pkSection (chant, 0, 5, 0.12f, 12.0f, 5.3f, 500.0f);
+        pkShot (chant, 0, { SP3 { 0.0f, 0.0f, -0.3f }, SP3 { 1.4f, 1.0f, 0.0f } });   // the vowel opening
+        route (chant, "env1", ParamIDs::voiceVowel, 0.4f);
+        route (chant, "modWheel", ParamIDs::voiceVowel, 0.25f);
+        route (chant, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (chant, "BRIGHT", "SPACE", "CANYON");
+        reverb (chant, RT::cathedral, 0.7f, 0.25f, 30.0f, 3.5f);
+        space (chant);
+        chant.set (ParamIDs::patchLevel, -7.6f);
+        canyon (chant, { 0.85f, 2, 0.35f, 0.4f, 0.9f, 0.75f });
+        orchestra (chant, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
+                            { 0, 1 }, 2.0f,
+                            "Voices round a fire: the orchestra's large choir, sung low. Wide, slow chords.",
+                            300.0f, 600.0f, 1.0f, 1200.0f, -1.0f,
+                            [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); } });
+        x.add (chant);
+
+        auto heat = x.make ("Heat Shimmer", 6, { "Pad", "Haze", "Glass" },
+            "Heat rising off the sand: glassy triangles a hair apart and a quiet fifth above, the pitch wavering as air "
+            "does over a hot road, a slow phaser. MOD WHEEL: more waver. MACROS: BRIGHT, SPACE, CANYON.");
+        heat.osc (0, "Wave", triangle).osc (0, "Volume", 0.55f).osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.7f)
+            .osc (0, "UniDetune", 0.15f).osc (0, "UniSpread", 0.9f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 19.0f).osc (1, "Volume", 0.12f)
+            .filter (FilterType::lp12, 4200.0f, 0.1f, 0.0f)
+            .ampEnvelope (1400.0f, 1000.0f, 0.9f, 2000.0f)
+            .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.7f)
+            .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (heat, "lfo1", ParamIDs::osc (0, "Fine"), 0.05f);
+        route (heat, "lfo1", ParamIDs::osc (1, "Fine"), 0.08f);
+        route (heat, "modWheel", ParamIDs::osc (0, "UniDetune"), 0.2f);
+        route (heat, "macro1", ParamIDs::fltCutoff, 0.25f);
+        chorus (heat, ParamIDs::modIds, MT::phaser, 0.1f, 0.5f, 0.4f);
+        macros (heat, "BRIGHT", "SPACE", "CANYON");
+        reverb (heat, RT::hall, 0.9f, 0.35f, 60.0f, 4.0f);
+        space (heat);
+        heat.set (ParamIDs::patchLevel, -8.1f);
+        canyon (heat, { 1.0f, 3, 0.3f, 0.35f, 1.0f, 0.7f });
+        x.add (heat);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto walking = x.make ("Dusty Upright", 7, { "Bass", "Upright", "Plucked" },
+            "An upright bass walking through a saloon: a round sine and a soft triangle, plucked (the filter snapping "
+            "shut, a thump of the finger), the note dying as a gut string does. Walking lines. MOD WHEEL: brighter. "
+            "MACROS: BRIGHT, SPACE, CANYON.");
+        walking.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Volume", 0.35f).osc (1, "PhaseRand", 0.0f)
+               .filter (FilterType::lp24, 700.0f, 0.1f, 0.35f).filterEnvelope (0.0f, 180.0f, 0.1f, 150.0f)
+               .ampEnvelope (2.0f, 900.0f, 0.0f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (walking, 2, 0, 0.1f, 15.0f, 0.6f);
+        pkVelocity (walking, 0.4f, 0.2f, 0.5f);
+        route (walking, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (walking, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (walking, "BRIGHT", "SPACE", "CANYON");
+        reverb (walking, RT::room, 0.4f, 0.12f, 10.0f, 4.0f);
+        space (walking);
+        walking.set (ParamIDs::patchLevel, -1.0f);
+        canyon (walking, { 0.35f, 1, 0.2f, 0.35f, 0.5f, 0.6f });
+        orchestra (walking, { { { 0, "Programs/04_pizz.sfz", 1.0f, 0.0f, false, &upright } },
+                              { 0, 1, 2 }, 3.7f,
+                              "An upright bass walking through a saloon: a real 1958 double bass, plucked (Meatbass).",
+                              1.0f, 300.0f, 1.0f, 250.0f, -1.0f,
+                              {} });
+        x.add (walking);
+
+        auto baritone = x.make ("Baritone Twang", 8, { "Bass", "Guitar", "Twang" },
+            "A baritone guitar's low twang: a bright plucked string through a small amp, a spring and a slow tremolo, the "
+            "low strings ringing. Big, slow riffs an octave under a guitar. MOD WHEEL: a faster tremolo. MACROS: BRIGHT, "
+            "SPACE, CANYON.");
+        twangString (baritone, 1600.0f, 1600.0f);
+        chorus (baritone, ParamIDs::modIds, MT::tremolo, 0.2f, 0.35f, 1.0f);
+        baritone.set (ParamIDs::modRate, 4.0f);
+        route (baritone, "modWheel", ParamIDs::modRate, 0.3f);
+        route (baritone, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (baritone, "BRIGHT", "SPACE", "CANYON");
+        reverb (baritone, RT::spring, 0.5f, 0.25f, 0.0f, 5.0f);
+        space (baritone);
+        baritone.set (ParamIDs::patchLevel, 6.4f);
+        canyon (baritone, { 0.55f, 1, 0.4f, 0.5f, 0.85f, 0.85f });
+        orchestra (baritone, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &twang } },
+                               { 0, 1, 2 }, 3.3f,
+                               "A low twang: a real Gretsch Anniversary (Black And Green Guitars) played low, through "
+                               "a spring and a slow tremolo. Big, slow riffs.",
+                               1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                               [] (Builder& s) { s.set (ParamIDs::fltCutoff, 6000.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        x.add (baritone);
+
+        auto gallop = x.make ("Gallop Bass", 9, { "Bass", "Ostinato", "Gallop" },
+            "A horse at a gallop: a sine and a saw an octave under, plucked short on ARP 1 in a galloping rhythm (one "
+            "long, two short) on the note held. Hold a note; it rides. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, CANYON.");
+        gallop.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+              .filter (FilterType::lp24, 600.0f, 0.15f, 0.4f).filterEnvelope (0.0f, 120.0f, 0.1f, 100.0f)
+              .ampEnvelope (1.0f, 180.0f, 0.1f, 90.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        rhythm (gallop, 0, { 0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15 }, { 0, 4, 8, 12 }, false);
+        route (gallop, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (gallop, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (gallop, "BRIGHT", "SPACE", "CANYON");
+        reverb (gallop, RT::room, 0.4f, 0.1f, 10.0f, 4.0f);
+        space (gallop);
+        gallop.set (ParamIDs::patchLevel, 3.7f);
+        canyon (gallop, { 0.4f, 1, 0.25f, 0.4f, 0.7f, 0.6f });
+        x.add (gallop);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto saloon = x.make ("Saloon Piano", 10, { "Keys", "Piano", "Honky-Tonk" },
+            "The piano in the corner of the saloon: two strings to every note pulled apart (a honky-tonk), struck "
+            "bright, the room's wood round it. Rags and ballads. MOD WHEEL: the keys' noise. MACROS: BRIGHT, SPACE, CANYON.");
+        feltPiano (saloon);
+        dropMacro3 (saloon);
+        saloon.osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Fine", 15.0f).osc (4, "Volume", 0.55f).osc (4, "PhaseRand", 0.0f)
+              .osc (4, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (4, "FmAmount", 0.06f)
+              .set (ParamIDs::fltCutoff, 1500.0f);
+        route (saloon, "env1", ParamIDs::osc (4, "FmAmount"), 0.25f);
+        macros (saloon, "BRIGHT", "SPACE", "CANYON");
+        reverb (saloon, RT::room, 0.45f, 0.18f, 10.0f, 4.5f);
+        space (saloon);
+        saloon.set (ParamIDs::patchLevel, -7.5f);
+        canyon (saloon, { 0.4f, 1, 0.3f, 0.5f, 0.8f, 0.7f });
+        grand (saloon, { 4, 4500.0f, 0.4f, 0.3f, 6.5f, 1.0f, 0.0f, 300.0f, 1.0f, 400.0f,
+                         "The piano in the corner of the saloon: the Salamander Grand on two strings pulled apart (a "
+                         "second Salamander 15 cents sharp), bright. Rags and ballads.",
+                         [] (Builder& s)
+                         {
+                             s.osc (4, "Wave", (float) synth::OscWave::sfz).osc (4, "Fine", 15.0f).osc (4, "Volume", 0.7f)
+                              .osc (4, "FmAmount", 0.0f);
+                             s.rig.sfz[4] = libraries::refFor (libraries::salamanderGrand());
+                         } });
+        x.add (saloon);
+
+        auto bells = x.make ("Mission Bells", 11, { "Keys", "Bells", "Church" },
+            "The mission's bells across the plaza: a bell's partials (the hum an octave under, the strike, a minor third "
+            "a little sharp, the fifth, the octave), each dying at its own pace, the hum longest. Slow tolls and tunes. "
+            "MOD WHEEL: the strike brighter. MACROS: BRIGHT, SPACE, CANYON.");
+        bells.osc (0, "Wave", sine).osc (0, "Transpose", -12.0f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 3.0f).osc (2, "Fine", 15.0f).osc (2, "PhaseRand", 0.0f)
+             .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 7.0f).osc (3, "PhaseRand", 0.0f)
+             .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", 12.0f).osc (4, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 9000.0f, 0.0f, 3000.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (bells, 0, 0, 0.6f, 7.0f);
+        pkPartial (bells, 1, 1, 0.5f, 4.0f);
+        pkPartial (bells, 2, 2, 0.35f, 2.5f);
+        pkPartial (bells, 3, 3, 0.25f, 1.6f);
+        pkPartial (bells, 4, 4, 0.3f, 1.2f);
+        route (bells, "modWheel", ParamIDs::osc (4, "Volume"), 0.2f);
+        route (bells, "macro1", ParamIDs::osc (3, "Volume"), 0.15f);
+        macros (bells, "BRIGHT", "SPACE", "CANYON");
+        reverb (bells, RT::cathedral, 0.8f, 0.25f, 30.0f, 4.0f);
+        space (bells);
+        bells.set (ParamIDs::patchLevel, -6.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);   // a held chord lines the partials up
+        canyon (bells, { 1.0f, 2, 0.5f, 0.4f, 1.0f, 0.8f });
+        orchestra (bells, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
+                            { 0, 1, 2, 3, 4 }, 9.0f,
+                            "The mission's bells across the plaza: real tubular bells (VCSL's). Slow tolls and tunes.",
+                            1.0f, 300.0f, 1.0f, 3000.0f, -1.0f,
+                            {} });
+        x.add (bells);
+
+        auto jaw = x.make ("Jaw Harp", 12, { "Keys", "Twang", "Boing" },
+            "A jaw harp's twang: a buzzing reed (a narrow pulse) shaped by the mouth (the VOICE filter), the mouth moving "
+            "\"oo\" to \"ee\" and back in time with the song. Boinging rhythms on a low note. MOD WHEEL: the mouth opens. "
+            "MACROS: TWANG (the mouth moves more), SPACE, CANYON.");
+        jaw.osc (0, "Wave", pulse).osc (0, "Width", 0.08f).osc (0, "Volume", 0.6f)
+           .filter (FilterType::lp12, 5000.0f, 0.0f, 0.0f)
+           .ampEnvelope (1.0f, 1400.0f, 0.15f, 300.0f).set (ParamIDs::ampDecayCurve, -0.4f)
+           .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.2f).set (ParamIDs::voiceSize, 0.4f)
+           .set (ParamIDs::voiceSharp, 0.9f).set (ParamIDs::voiceMix, 1.0f)
+           .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::triangle)
+           .set (ParamIDs::lfo (0, "Sync"), (float) synth::mod::LfoSync::straight)
+           .set (ParamIDs::lfo (0, "Division"), division ("1/8"))
+           .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::voice);
+        route (jaw, "lfo1", ParamIDs::voiceVowel, 0.3f);
+        route (jaw, "macro1", ParamIDs::voiceVowel, 0.25f);
+        route (jaw, "modWheel", ParamIDs::voiceVowel, 0.4f);
+        macros (jaw, "TWANG", "SPACE", "CANYON");
+        reverb (jaw, RT::room, 0.4f, 0.12f, 10.0f, 4.0f);
+        space (jaw);
+        jaw.set (ParamIDs::patchLevel, -1.6f);
+        canyon (jaw, { 0.5f, 1, 0.35f, 0.5f, 0.8f, 0.8f });
+        x.add (jaw);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto hooves = x.make ("Hoofbeats", 13, { "Arp", "Percussion", "Gallop" },
+            "Horses coming over the ridge: two wooden clops (a high and a low knock, each a sine struck with a click) "
+            "galloping on ARP 1 and ARP 2, one long and two short. Hold any keys; they ride. MOD WHEEL: harder hooves. "
+            "MACROS: BRIGHT, SPACE, CANYON.");
+        hooves.osc (0, "Wave", sine).osc (0, "Transpose", 12.0f).osc (0, "Volume", 2.0f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 2.0f).osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 2.0f)
+              .filter (FilterType::bp12, 1600.0f, 0.3f, 0.0f).set (ParamIDs::fltKey, 0.0f)
+              .ampEnvelope (0.5f, 140.0f, 0.0f, 60.0f).set (ParamIDs::ampDecayCurve, -0.6f)
+              .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchKeytrack, 0.0f).set (ParamIDs::pitchEnvRange, 7.0f)
+              .set (ParamIDs::arpsTogether, 1.0f);
+        hooves.rig.modulation.pitchEnvelope = { { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.03f, 0.5f, 0.0f } }, -1, -1, -1 };
+        noiseOsc (hooves, 2, 0.0f, 0.3f);
+        hooves.osc (2, "Arp", 1.0f);
+        pkShot (hooves, 0, { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.006f, 0.0f, 0.0f } });
+        route (hooves, "env1", ParamIDs::osc (2, "Volume"), 0.3f);
+        rhythm (hooves, 0, { 0, 4, 8, 12 }, { 0, 8 }, true);
+        rhythm (hooves, 1, { 2, 3, 6, 7, 10, 11, 14, 15 }, {}, true);
+        route (hooves, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (hooves, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (hooves, "BRIGHT", "SPACE", "CANYON");
+        reverb (hooves, RT::room, 0.35f, 0.1f, 10.0f, 4.0f);
+        space (hooves);
+        hooves.set (ParamIDs::patchLevel, 12.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        canyon (hooves, { 0.6f, 1, 0.35f, 0.5f, 0.9f, 0.8f });
+        orchestra (hooves, { { { 0, "Idiophones/Struck Idiophones/Woodblock.sfz", 1.6f, -0.2f, false, &vcsl },
+                               { 1, "Idiophones/Struck Idiophones/Claves.sfz", 1.3f, 0.2f, false, &vcsl } },
+                             { 0, 1, 2 }, 12.0f,
+                             "Horses coming over the ridge: a real woodblock and claves (VCSL's) galloping on ARP 1 and "
+                             "ARP 2. Hold any keys; they ride.",
+                             0.5f, 300.0f, 1.0f, 200.0f, -1.0f,
+                             [pinned] (Builder& s)
+                             {
+                                 s.osc (0, "Arp", 1.0f).osc (1, "Arp", 2.0f);
+                                 pinned (s, 0, 60);
+                                 pinned (s, 1, 61);
+                             } });
+        x.add (hooves);
+
+        auto roll = x.make ("Banjo Roll", 14, { "Arp", "Banjo", "Roll" },
+            "A banjo rolling on the porch: a bright, quick-dying pluck (a saw and a pulse through a filter snapping "
+            "shut, the head's ring) rolling up and down the chord held in sixteenths on ARP 1. Hold a chord; it rolls. "
+            "MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, CANYON.");
+        roll.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Arp", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+            .filter (FilterType::lp12, 2000.0f, 0.2f, 0.5f).filterEnvelope (0.0f, 120.0f, 0.1f, 100.0f)
+            .set (ParamIDs::fltKey, 0.6f)
+            .ampEnvelope (1.0f, 500.0f, 0.0f, 200.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkStrike (roll, 2, 0, 0.12f, 5.0f, 0.1f);
+        roll.osc (2, "Arp", 1.0f);
+        rhythm (roll, 0, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, { 0, 3, 6, 8, 11, 14 }, false,
+                synth::arp::Mode::upDown, 2.0f);
+        route (roll, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (roll, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (roll, "BRIGHT", "SPACE", "CANYON");
+        reverb (roll, RT::room, 0.4f, 0.12f, 10.0f, 4.5f);
+        space (roll);
+        roll.set (ParamIDs::patchLevel, 4.4f);
+        canyon (roll, { 0.5f, 1, 0.3f, 0.5f, 0.85f, 0.75f });
+        orchestra (roll, { { { 0, "FS KayBanjo (release mw1).sfz", 1.0f, 0.0f, false, &banjo } },
+                           { 0, 1, 2 }, -8.0f,
+                           "A banjo rolling on the porch: a real Kay 5-string banjo rolling up and down the chord held "
+                           "on ARP 1. Hold a chord; it rolls.",
+                           1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                           {} });
+        x.add (roll);
+
+        auto picking = x.make ("Twang Picking", 15, { "Arp", "Guitar", "Twang" },
+            "A twangy guitar picking out the chord: the plucked string through a small amp and a spring, picking up the "
+            "chord held in eighths and sixteenths on ARP 1. Hold a chord. MOD WHEEL: a tremolo. MACROS: BRIGHT, SPACE, "
+            "CANYON.");
+        twangString (picking, 700.0f, 2200.0f);
+        picking.osc (0, "Arp", 1.0f).osc (1, "Arp", 1.0f).osc (2, "Arp", 1.0f);
+        rhythm (picking, 0, { 0, 2, 3, 4, 6, 8, 10, 11, 12, 14 }, { 0, 4, 8, 12 }, false, synth::arp::Mode::up, 1.0f);
+        chorus (picking, ParamIDs::modIds, MT::tremolo, 0.0f, 0.4f, 1.0f);
+        picking.set (ParamIDs::modRate, 6.0f);
+        route (picking, "modWheel", ParamIDs::modDepth, 0.5f);
+        route (picking, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (picking, "BRIGHT", "SPACE", "CANYON");
+        reverb (picking, RT::spring, 0.5f, 0.22f, 0.0f, 5.0f);
+        space (picking);
+        picking.set (ParamIDs::patchLevel, 5.2f);
+        canyon (picking, { 0.5f, 1, 0.4f, 0.55f, 0.9f, 0.8f });
+        orchestra (picking, { { { 0, "Programs/05-green_staccato.sfz", 1.0f, 0.0f, true, &twang } },
+                              { 0, 1, 2 }, 4.7f,
+                              "A twangy guitar picking out the chord: a real Gretsch Anniversary, picked short "
+                              "(Black And Green Guitars), on ARP 1. Hold a chord.",
+                              1.0f, 300.0f, 1.0f, 200.0f, -1.0f,
+                              [] (Builder& s) { s.set (ParamIDs::fltCutoff, 6000.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        x.add (picking);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto twangPluck = x.make ("Twang Pluck", 16, { "Pluck", "Guitar", "Twang" },
+            "The lone gunslinger's guitar: a bright plucked string through a small amp and a spring, struck a hair "
+            "sharp. Riffs with room between. MACROS: BRIGHT, SPACE, CANYON.");
+        twangString (twangPluck, 1100.0f, 2600.0f);
+        route (twangPluck, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (twangPluck, "BRIGHT", "SPACE", "CANYON");
+        reverb (twangPluck, RT::spring, 0.5f, 0.25f, 0.0f, 5.0f);
+        space (twangPluck);
+        canyon (twangPluck, { 0.55f, 1, 0.45f, 0.55f, 0.9f, 0.85f });
+        orchestra (twangPluck, { { { 0, "Programs/07-black_twang.sfz", 1.0f, 0.0f, true, &twang } },
+                                 { 0, 1, 2 }, -0.6f,
+                                 "The lone gunslinger's guitar: a real Hofner Club (Black And Green Guitars), through a "
+                                 "spring. Riffs with room between.",
+                                 1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                                 [] (Builder& s) { s.set (ParamIDs::fltCutoff, 6000.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        pkAdd (x, twangPluck);
+
+        auto strum = x.make ("Archtop Strum", 17, { "Pluck", "Guitar", "Archtop" },
+            "A hollow-body guitar on the porch: a warm pluck (a triangle and a saw through a soft filter snapping shut, "
+            "the body's ring), each chord's notes struck a moment apart as a pick crosses the strings. MACROS: BRIGHT, "
+            "SPACE, CANYON.");
+        strum.osc (0, "Wave", triangle).osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", -4.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp12, 1800.0f, 0.1f, 0.4f).filterEnvelope (0.0f, 300.0f, 0.15f, 200.0f)
+             .set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (1.0f, 1400.0f, 0.0f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (strum, 2, 0, 0.1f, 8.0f, 0.3f);
+        pkVelocity (strum, 0.5f, 0.3f, 0.5f);
+        eqBand (strum, 0, eq::Shape::bell, 220.0f, 2.5f, 1.2f);   // the hollow body
+        route (strum, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (strum, "BRIGHT", "SPACE", "CANYON");
+        reverb (strum, RT::room, 0.45f, 0.18f, 10.0f, 4.5f);
+        space (strum);
+        canyon (strum, { 0.45f, 1, 0.35f, 0.5f, 0.85f, 0.8f });
+        orchestra (strum, { { { 0, "Programs/main.sfz", 1.0f, 0.0f, false, &archtop } },
+                            { 0, 1, 2 }, 5.9f,
+                            "A hollow-body guitar on the porch: a real archtop guitar (Shinyguitar).",
+                            1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                            {} });
+        pkAdd (x, strum);
+
+        auto jangle = x.make ("Spur Jangle", 18, { "Pluck", "Metal", "Banjo" },
+            "Spurs and strings: a bright metallic pluck (a sine struck by another three and a half times its pitch, the "
+            "strike dying at once) with a jingle of noise, short and glittering. MACROS: BRIGHT, SPACE, CANYON.");
+        jangle.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+              .osc (0, "FmSource", (float) synth::fmFirstOscillator + 1).osc (0, "FmAmount", 0.05f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 21.0f).osc (1, "Fine", 70.0f)
+              .osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+              .set (ParamIDs::fltOn, 0.0f)
+              .ampEnvelope (1.0f, 700.0f, 0.0f, 250.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkShot (jangle, 0, { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.25f, 0.0f, 0.0f } });
+        route (jangle, "env1", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        noiseOsc (jangle, 2, 0.0f, 0.0f);
+        pkShot (jangle, 1, { SP3 { 0.0f, 1.0f, -0.5f }, SP3 { 0.08f, 0.0f, 0.0f } });
+        route (jangle, "env2", ParamIDs::osc (2, "Volume"), 0.08f);
+        pkVelocity (jangle, 0.0f, 0.0f, 0.5f);
+        route (jangle, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        macros (jangle, "BRIGHT", "SPACE", "CANYON");
+        reverb (jangle, RT::room, 0.45f, 0.15f, 10.0f, 5.0f);
+        space (jangle);
+        canyon (jangle, { 0.5f, 0, 0.4f, 0.6f, 0.9f, 0.8f });
+        orchestra (jangle, { { { 0, "ganjo.sfz", 1.0f, 0.0f, false, &sixString } },
+                             { 0, 1, 2 }, 2.7f,
+                             "Strings that jangle: a real 6-string banjo (ganjo), bright and short.",
+                             1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                             [] (Builder& s) { s.set (ParamIDs::fltOn, 0.0f); } });
+        pkAdd (x, jangle);
+    }
+
 std::vector<Rig> makeExpansionRigs()
 {
     std::vector<Rig> rigs;
@@ -16437,5 +16980,6 @@ std::vector<Rig> makeExpansionRigs()
     stolenSky ({ Rig::numBanks + 29, rigs });
     drownedDeco ({ Rig::numBanks + 30, rigs });
     newEden ({ Rig::numBanks + 31, rigs });
+    gunslinger ({ Rig::numBanks + 32, rigs });
     return rigs;
 }

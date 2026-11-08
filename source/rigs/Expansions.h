@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 32> list
+    inline constexpr std::array<Expansion, 33> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -181,5 +181,14 @@ namespace expansions
           "snare play the Versilian Community Sample Library, its snare roll Sam's Sonor, its brass, choir, strings and "
           "harp the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
           "sounds." },
+        { "GUNSLINGER", "GS",
+          "Inspired by the spaghetti-western sound: a lonesome whistle, a high-noon trumpet, a harmonica, the plain at "
+          "dusk, men chanting, heat shimmer, an upright bass, a baritone twang, a galloping bass, a saloon piano, mission "
+          "bells, a jaw harp, hoofbeats, a banjo roll, twang guitars, an archtop and spurs. Built round CANYON (0.84.0) "
+          "and MACRO 3, CANYON: the sound's echoes off rock walls, the far wall replying in time with the song. Its "
+          "guitars play Black And Green Guitars and Shinyguitar, its bass Meatbass, its banjos the Kay 5-String Banjo "
+          "and ganjo, its harmonica, bells and woodblocks the Versilian Community Sample Library, its trumpet, strings "
+          "and choir the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our "
+          "own sounds and phrases." },
     }};
 }
