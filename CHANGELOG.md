@@ -2,6 +2,23 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.86.0
+
+**HYPERDRIVE gets two new signature effects, HYPERJUMP and NAVICOMPUTER, in place of LIGHTSPEED, which is gone.**
+
+- **LIGHTSPEED is removed** (your call: it didn't add anything musical). Projects that had it switched on load without it.
+- **HYPERJUMP** (FX page, SIGNATURE slot), our own design: a build and a drop in time with the song, always landing on the bar line.
+  - Through the build (LENGTH: 1, 2 or 4 bars) the sound climbs a step each beat up to RISE (up to +12 semitones), is chopped faster and faster (quarters, eighths, sixteenths, thirty-seconds: CHOP sets how deep), thins out and narrows to the middle.
+  - On the bar line it snaps back, full and wide, with a HIT: a deep boom and a burst of space. The boom follows the music, so silence stays silent.
+  - MODE: LOOP builds in the second half of every 2 x LENGTH bars and drops on the next; ONCE builds once from the next bar line after you turn it up, then stays landed.
+  - AMOUNT, RISE and CHOP can be moved from the mod matrix (FX Hyperjump). Its page shows the build as a warp tunnel closing in, the beats counting to the drop, and a flash as it lands.
+- **NAVICOMPUTER** (FX page, SIGNATURE slot), our own design: every note you play moves through a 16-step pattern, in time with the song and in your KEY and SCALE. A held chord becomes a riff; a held note becomes a computer's line.
+  - Each note moves by its own steps of the scale, so a chord stays in key (in C major, B's fifth is F, not F#).
+  - Eight PATTERNS (ASCEND, DESCEND, FIFTHS, OCTAVES, TRILL, GALLOP, COMPUTER, SIGNAL); DIVISION 1/16, 1/8, 1/16 T or 1/4.
+  - AMOUNT brings the steps in a few at a time (the pickups first, the downbeats last): a little, an occasional jump; all the way, the whole pattern. CHAOS gives steps other moves, a new choice each bar; GLIDE slides between moves.
+  - It moves the synth's notes themselves, not the audio, so nothing smears. AMOUNT, CHAOS and GLIDE can be moved from the mod matrix (FX Navicomputer).
+- **HYPERDRIVE's MACRO 3** is now NAVICOMPUTER on the held sounds (the leads, pads and keys: G minor) and HYPERJUMP on the rhythmic ones (the basses, arps and plucks). At the macro's left every preset sounds as before. Hero's Fanfare, Starbound Choir, Galaxy Strings and Elder Hum carry the LIMITER at -1 dBFS as a ceiling (moving their notes onto their brightest pitches jumped up to 9 dB).
+
 ## 0.85.0
 
 **MACHINE SUPREMACY, a new expansion: a neon megacity's street, towers and net, built round a new signature effect, JACK-IN.**
