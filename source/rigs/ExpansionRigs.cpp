@@ -17052,7 +17052,7 @@ namespace
             "speaks, a clean sine under it, glassy and exact, a wide chorus and a ping-pong echo. MOD WHEEL: more sync. "
             "MACROS: BRIGHT, SPACE, JACK-IN.");
         exec.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "SyncAmount", 0.25f).osc (0, "SyncEnv", 0.45f)
-            .osc (0, "SyncEnvTime", 0.35f).osc (0, "SyncEnvCurve", -0.4f)
+            .osc (0, "SyncEnvTime", 50.0f).osc (0, "SyncEnvCurve", -0.4f)
             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.4f).osc (1, "PhaseRand", 0.0f).osc (1, "Filter", 0.0f)
             .filter (FilterType::lp12, 5200.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.5f)
             .ampEnvelope (6.0f, 400.0f, 0.8f, 260.0f)
@@ -17465,7 +17465,7 @@ namespace
             "A pluck rotting in memory: a hard-synced saw sweeping down fast from a bright zap, the samples held "
             "coarse and stepped, a square an octave down. MACROS: BRIGHT, SPACE, JACK-IN.");
         bitrot.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "SyncAmount", 0.05f).osc (0, "SyncEnv", 0.6f)
-              .osc (0, "SyncEnvTime", 0.15f).osc (0, "SyncEnvCurve", -0.5f).osc (0, "CrushMode", 0.0f).osc (0, "Crush", 0.3f)
+              .osc (0, "SyncEnvTime", 50.0f).osc (0, "SyncEnvCurve", -0.5f).osc (0, "CrushMode", 0.0f).osc (0, "Crush", 0.3f)
               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
               .filter (FilterType::lp12, 5000.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.4f)
               .ampEnvelope (1.0f, 300.0f, 0.0f, 150.0f);

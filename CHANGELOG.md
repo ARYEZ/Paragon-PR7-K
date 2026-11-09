@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.85.0
+
+**MACHINE SUPREMACY, a new expansion: a neon megacity's street, towers and net, built round a new signature effect, JACK-IN.**
+
+- **MACHINE SUPREMACY** (MS01-MS18), our own sounds and phrases. Three in every category: the street, the towers, the net. **MACRO 3 JACK-IN** on every preset: something breaks into the sound and takes the phrase over.
+  - Leads: Gutter Snarl, Chrome Executive, Ghost Signal.
+  - Pads: Smog Cloud, Penthouse Glass, Corrupted Choir.
+  - Basses: Club Pump (pumping in time with the song), Corporate Reese, Flatline Growl.
+  - Keys: Punk Riff (play power chords), Elevator Bells, Dead Pixel Keys.
+  - Arps: Gang Drums, Boardroom Sequence, Packet Storm.
+  - Plucks: Street Stab, Tower Ping, Bitrot Pluck.
+- **3 have a version on the free libraries**, played once the library is downloaded: Corrupted Choir (the orchestra's choir, crushed), Punk Riff (a Gretsch, Black And Green Guitars) and Gang Drums (Big Rusty Drums).
+- **JACK-IN** (FX page, SIGNATURE slot), our own design: it keeps listening and, in time with the song, takes slices of what you play over.
+  - SLICE: eighths, sixteenths, thirty-seconds or sixteenth triplets. AMOUNT: how many are taken (at full nearly all).
+  - A taken slice comes back from the last beat to two bars (REACH): replayed, reversed, stuttered, an octave up or down; CRUSH grinds some of them; DROPS ends a beat now and then in a tape stop.
+  - CHAOS: low keeps to replays and stutters from whole beats back (the rhythm holds); high brings reverses and octaves from anywhere.
+  - Every change crossfades, so nothing clicks; at AMOUNT 0 your sound passes untouched.
+  - AMOUNT, CHAOS and CRUSH can be moved from the mod matrix (FX Jack-In). Its page shows the phrase as a grid of slices, each lit by what it became.
+
 ## 0.84.0
 
 **GUNSLINGER, a new expansion: the spaghetti-western sound, built round a new signature effect, CANYON; five more free libraries to download in the plugin.**
