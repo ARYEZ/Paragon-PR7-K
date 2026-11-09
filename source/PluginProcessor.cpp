@@ -316,7 +316,6 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->spectre.prepare (sampleRate, preparedBlockSize);
     rack->leviathan.prepare (sampleRate, preparedBlockSize);
     rack->nuclearSpring.prepare (sampleRate, preparedBlockSize);
-    rack->lightSpeed.prepare (sampleRate, preparedBlockSize);
     rack->bloom.prepare (sampleRate, preparedBlockSize);
     rack->legion.prepare (sampleRate, preparedBlockSize);
     rack->overcharge.prepare (sampleRate, preparedBlockSize);
@@ -326,6 +325,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->colossus.prepare (sampleRate, preparedBlockSize);
     rack->canyon.prepare (sampleRate, preparedBlockSize);
     rack->jackIn.prepare (sampleRate, preparedBlockSize);
+    rack->hyperJump.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1062,6 +1062,8 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         h.level = effectParam (ModDestinations::effect ("siroccoLevel"), ParamIDs::siroccoLevel);
         h.detuneCents = effectParam (ModDestinations::effect ("siroccoDetune"), ParamIDs::siroccoDetune);
         h.spread = effectParam (ModDestinations::effect ("siroccoSpread"), ParamIDs::siroccoSpread);
+        // NAVICOMPUTER (0.86.0): AMOUNT, CHAOS and GLIDE as the matrix moves them.
+        s.navi = getNaviSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1278,19 +1280,6 @@ effects::NuclearSpring::Settings ParagonX1AudioProcessor::getNuclearSpringSettin
     return s;
 }
 
-effects::LightSpeed::Settings ParagonX1AudioProcessor::getLightSpeedSettings() const noexcept
-{
-    effects::LightSpeed::Settings s;
-    s.on = isOn (ParamIDs::jumpOn);
-    s.jump = effectParam (ModDestinations::effect ("jumpAmount"), ParamIDs::jumpAmount);
-    s.rise = effectParam (ModDestinations::effect ("jumpRise"), ParamIDs::jumpRise);
-    s.streak = param (ParamIDs::jumpStreak);
-    s.whoosh = effectParam (ModDestinations::effect ("jumpWhoosh"), ParamIDs::jumpWhoosh);
-    s.width = param (ParamIDs::jumpWidth);
-    s.tone = param (ParamIDs::jumpTone);
-    return s;
-}
-
 effects::Legion::Settings ParagonX1AudioProcessor::getLegionSettings() const noexcept
 {
     effects::Legion::Settings s;
@@ -1379,6 +1368,33 @@ effects::JackIn::Settings ParagonX1AudioProcessor::getJackInSettings() const noe
     s.crush = effectParam (ModDestinations::effect ("jackinCrush"), ParamIDs::jackinCrush);
     s.drops = param (ParamIDs::jackinDrops);
     return s;
+}
+
+effects::HyperJump::Settings ParagonX1AudioProcessor::getHyperJumpSettings() const noexcept
+{
+    effects::HyperJump::Settings s;
+    s.on = isOn (ParamIDs::hyperjumpOn);
+    s.amount = effectParam (ModDestinations::effect ("hyperjumpAmount"), ParamIDs::hyperjumpAmount);
+    s.length = juce::jlimit (0, effects::HyperJump::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::hyperjumpLength)));
+    s.mode = juce::jlimit (0, effects::HyperJump::modeNames.size() - 1, juce::roundToInt (param (ParamIDs::hyperjumpMode)));
+    s.rise = effectParam (ModDestinations::effect ("hyperjumpRise"), ParamIDs::hyperjumpRise);
+    s.chop = effectParam (ModDestinations::effect ("hyperjumpChop"), ParamIDs::hyperjumpChop);
+    s.hit = param (ParamIDs::hyperjumpHit);
+    return s;
+}
+
+synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
+{
+    synth::navi::Settings n;
+    n.on = isOn (ParamIDs::naviOn);
+    n.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviAmount"), ParamIDs::naviAmount));
+    n.pattern = juce::jlimit (0, synth::navi::patternNames.size() - 1, juce::roundToInt (param (ParamIDs::naviPattern)));
+    n.division = juce::jlimit (0, synth::navi::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::naviDivision)));
+    n.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::naviKey)));
+    n.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::naviScale)));
+    n.chaos = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviChaos"), ParamIDs::naviChaos));
+    n.glide = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviGlide"), ParamIDs::naviGlide));
+    return n;
 }
 
 effects::Colossus::Settings ParagonX1AudioProcessor::getColossusSettings() const noexcept
@@ -1712,7 +1728,6 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->leviathan.process (block, deep);
         }
         rack->nuclearSpring.process (block, getNuclearSpringSettings());   // 0.69.0: the spring tank
-        rack->lightSpeed.process (block, getLightSpeedSettings());         // 0.73.0: the jump to lightspeed
         // 0.74.0: the strings ringing along and the hall opening (the notes only worked out while it's on or settling).
         if (const auto bloom = getBloomSettings(); (bloom.on && bloom.amount >= 0.001f) || ! rack->bloom.isResting())
         {
@@ -1734,6 +1749,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->colossus.process (block, getColossusSettings());   // 0.82.0: enormous
         rack->canyon.process (block, getCanyonSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.84.0: the walls answer
         rack->jackIn.process (block, getJackInSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.85.0: broken into
+        rack->hyperJump.process (block, getHyperJumpSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.86.0: the build and the drop
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

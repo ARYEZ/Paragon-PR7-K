@@ -18,7 +18,6 @@
 #include "ui/SpectrePage.h"
 #include "ui/LeviathanPage.h"
 #include "ui/NuclearSpringPage.h"
-#include "ui/LightSpeedPage.h"
 #include "ui/BloomPage.h"
 #include "ui/LegionPage.h"
 #include "ui/OverchargePage.h"
@@ -28,6 +27,8 @@
 #include "ui/ColossusPage.h"
 #include "ui/CanyonPage.h"
 #include "ui/JackInPage.h"
+#include "ui/HyperJumpPage.h"
+#include "ui/NaviComputerPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -67,7 +68,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, lightSpeed, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -94,7 +95,8 @@ public:
     SpectrePage& getSpectrePage() noexcept { return spectrePage; }
     LeviathanPage& getLeviathanPage() noexcept { return leviathanPage; }
     NuclearSpringPage& getNuclearSpringPage() noexcept { return nuclearSpringPage; }
-    LightSpeedPage& getLightSpeedPage() noexcept { return lightSpeedPage; }
+    HyperJumpPage& getHyperJumpPage() noexcept { return hyperJumpPage; }
+    NaviComputerPage& getNaviComputerPage() noexcept { return naviComputerPage; }
     BloomPage& getBloomPage() noexcept { return bloomPage; }
     LegionPage& getLegionPage() noexcept { return legionPage; }
     OverchargePage& getOverchargePage() noexcept { return overchargePage; }
@@ -129,7 +131,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 28> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 29> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -156,7 +158,7 @@ private:
     SpectrePage spectrePage;
     LeviathanPage leviathanPage;
     NuclearSpringPage nuclearSpringPage;
-    LightSpeedPage lightSpeedPage;
+    HyperJumpPage hyperJumpPage;     // 0.86.0 (LIGHTSPEED's place)
     BloomPage bloomPage;
     LegionPage legionPage;   // 0.76.0
     OverchargePage overchargePage;   // 0.77.0
@@ -166,6 +168,7 @@ private:
     ColossusPage colossusPage;       // 0.82.0
     CanyonPage canyonPage;           // 0.84.0
     JackInPage jackInPage;           // 0.85.0
+    NaviComputerPage naviComputerPage;   // 0.86.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

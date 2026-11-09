@@ -24,7 +24,6 @@
 #include "dsp/effects/Spectre.h"
 #include "dsp/effects/Leviathan.h"
 #include "dsp/effects/NuclearSpring.h"
-#include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
 #include "dsp/effects/Legion.h"
 #include "dsp/effects/Overcharge.h"
@@ -34,6 +33,7 @@
 #include "dsp/effects/Colossus.h"
 #include "dsp/effects/Canyon.h"
 #include "dsp/effects/JackIn.h"
+#include "dsp/effects/HyperJump.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -745,23 +745,6 @@ void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLa
     layout.add (makeFloat (ParamIDs::springWidth, "Nuclearspring Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }
 
-void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
-{
-    // LIGHTSPEED (0.73.0, our own design): off and at JUMP 0 by default, so projects and presets from before are unchanged.
-    constexpr int v = 42;
-    using L = effects::LightSpeed;
-    const L::Settings d;
-    const ToText asRise = [] (float value, int) { return "+" + juce::String (L::riseSemitones (value), 1) + " st"; };
-    const ToText asTone = [] (float value, int) { return juce::String (L::toneHz (value) / 1000.0f, 1) + " kHz"; };
-    layout.add (makeSwitch (ParamIDs::jumpOn, "Lightspeed On", v, false));
-    layout.add (makeFloat (ParamIDs::jumpAmount, "Lightspeed Jump", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpRise, "Lightspeed Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
-    layout.add (makeFloat (ParamIDs::jumpStreak, "Lightspeed Streaks", { 0.0f, 1.0f, 0.01f }, d.streak, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpWhoosh, "Lightspeed Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpWidth, "Lightspeed Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpTone, "Lightspeed Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
-}
-
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
 {
     // BLOOM (0.74.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
@@ -966,4 +949,20 @@ void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
     layout.add (makeFloat (ParamIDs::jackinChaos, "Jack-In Chaos", { 0.0f, 1.0f, 0.01f }, d.chaos, v, asPercent));
     layout.add (makeFloat (ParamIDs::jackinCrush, "Jack-In Crush", { 0.0f, 1.0f, 0.01f }, d.crush, v, asPercent));
     layout.add (makeFloat (ParamIDs::jackinDrops, "Jack-In Drops", { 0.0f, 1.0f, 0.01f }, d.drops, v, asPercent));
+}
+
+void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // HYPERJUMP (0.86.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 54;
+    using H = effects::HyperJump;
+    const H::Settings d;
+    const ToText asRise = [] (float value, int) { return "+" + juce::String (juce::roundToInt (H::maxRiseSemitones * value)) + " st"; };
+    layout.add (makeSwitch (ParamIDs::hyperjumpOn, "Hyperjump On", v, false));
+    layout.add (makeFloat (ParamIDs::hyperjumpAmount, "Hyperjump Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::hyperjumpLength, "Hyperjump Length", v, H::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::hyperjumpMode, "Hyperjump Mode", v, H::modeNames, d.mode));
+    layout.add (makeFloat (ParamIDs::hyperjumpRise, "Hyperjump Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
+    layout.add (makeFloat (ParamIDs::hyperjumpChop, "Hyperjump Chop", { 0.0f, 1.0f, 0.01f }, d.chop, v, asPercent));
+    layout.add (makeFloat (ParamIDs::hyperjumpHit, "Hyperjump Hit", { 0.0f, 1.0f, 0.01f }, d.hit, v, asPercent));
 }

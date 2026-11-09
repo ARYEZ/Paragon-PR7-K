@@ -8,6 +8,7 @@
 #include "WtTravel.h"
 #include "Arpeggiator.h"
 #include "Sirocco.h"
+#include "NaviComputer.h"
 
 #include <array>
 
@@ -300,6 +301,7 @@ namespace synth
         std::array<bool, numSends> sendOn {};
         bool arpsTogether = false;   // 0.16.0: the first key starts every arp's clock, so arps joining later are in step
         sirocco::Settings sirocco;   // 0.58.0: SIROCCO, the answering harmony
+        navi::Settings navi;         // 0.86.0: NAVICOMPUTER, every note moved by a pattern in key, in time
         // 0.60.0, AFTERGLOW's voice half: each note its own analog character, as an old polysynth's voice cards.
         // AGE: each note's fixed offsets (tuning, filter, envelope times); DRIFT: each note's slow wander. At 0, nothing.
         struct Afterglow

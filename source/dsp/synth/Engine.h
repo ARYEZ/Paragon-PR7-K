@@ -257,6 +257,8 @@ namespace synth
             float pitchEnvelopeValue = 0.0f, pitchSemitones = 0.0f;          // ...-1 to 1, and as semitones on the oscillators
             double seqPosition = 0.0, seqAge = 0.0;                          // the STEP SEQUENCER (stage 4d): steps since the note started (VOICE), and seconds
             float seqValue = 0.0f;                                           // ...as the matrix source, this interval
+            float naviSemis = 0.0f;                                          // NAVICOMPUTER (0.86.0): this note moved, semitones (glided)
+            bool naviFresh = true;                                           // ...a new note takes its move at once
             float panLeft = 1.0f, panRight = 1.0f;      // the AMP's PAN, KEYTRACK and SPREAD for this note
             float notePan = 0.0f;                       // ...as a position, -1 to 1 (modulation moves it from here)
 
@@ -500,10 +502,19 @@ namespace synth
             void store (int v) noexcept { value.store (v); }
         };
         std::array<SharedInt, numOscillators> switchShown {};
+        // NAVICOMPUTER (0.86.0): each interval's move (steps of a seven-note scale) in this piece, its own clock while
+        // the song is stopped (beats, started by the first key), whether it moves anything, and the step for the page.
+        std::array<int, maxIntervals> naviMoves {};
+        double naviClock = 0.0;
+        bool naviMoving = false;
+        float naviGlideCoef = 1.0f;
+        SharedInt naviStepShown {};
         int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
     public:
         // The oscillator's key switch now (-1: none), for the panel.
         int getSfzSwitch (int oscillator) const noexcept { return switchShown[(size_t) juce::jlimit (0, numOscillators - 1, oscillator)].load(); }
+        // NAVICOMPUTER's step now (0-15; -1: not moving), for its page.
+        int getNaviStep() const noexcept { return naviStepShown.load(); }
     private:
         sfz::Streamer* streamer = nullptr;
         bool waitForDisk = false;

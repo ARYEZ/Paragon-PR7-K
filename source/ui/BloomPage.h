@@ -3,9 +3,6 @@
 #include "PluginProcessor.h"
 #include "ui/SynthControls.h"
 
-// LIGHTSPEED's page (0.73.0): a starfield seen from the cockpit, the stars stretching into streaks from the centre as
-// the jump spools up (how far, from the effect itself) and the whoosh's glow; the pitch the streaks have reached and
-// the whoosh's level across the top. Under it ON, JUMP, RISE, STREAKS, WHOOSH, WIDTH and TONE.
 class BloomDisplay final : public juce::Component,
                                 public juce::SettableTooltipClient,
                                 private juce::Timer

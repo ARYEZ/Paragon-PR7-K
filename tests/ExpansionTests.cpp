@@ -483,26 +483,43 @@ TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in b
     CHECK (count == 18);
 }
 
-TEST_CASE ("HYPERDRIVE: MACRO 3 is LIGHTSPEED on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][lightspeed]")
+TEST_CASE ("HYPERDRIVE: MACRO 3 is NAVICOMPUTER or HYPERJUMP on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][hyperjump][navicomputer]")
 {
     ParagonX1AudioProcessor processor;
-    int count = 0, sampled = 0;
+    int count = 0, sampled = 0, navigated = 0, jumped = 0;
     for (const auto& rig : makeExpansionRigs())
     {
         if (rig.bank != Rig::numBanks + 25)   // HYPERDRIVE: the twenty-sixth expansion
             continue;
         ++count;
         INFO (rig.name);
+        const auto navi = rig.parameters.count (ParamIDs::naviOn) > 0 && rig.parameters.at (ParamIDs::naviOn) == 1.0f;
+        const auto jump = rig.parameters.count (ParamIDs::hyperjumpOn) > 0 && rig.parameters.at (ParamIDs::hyperjumpOn) == 1.0f;
+        CHECK (navi != jump);   // one or the other
+        navigated += navi ? 1 : 0;
+        jumped += jump ? 1 : 0;
+        // The held sounds navigate, the rhythmic ones jump.
+        const auto held = rig.tags[0] == "Lead" || rig.tags[0] == "Pad" || rig.tags[0] == "Keys";
+        CHECK (navi == held);
         for (const auto* version : { &rig, rig.sampled.get() })
         {
             if (version == nullptr)
                 continue;
-            CHECK (version->modulation.macroNames[2] == "LIGHTSPEED");
-            CHECK (version->notes.contains ("LIGHTSPEED"));
-            CHECK (version->parameters.at (ParamIDs::jumpOn) == 1.0f);
-            CHECK (version->parameters.at (ParamIDs::jumpAmount) == 0.0f);
-            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
-                                { return r.source == "macro3" && r.destination == ParamIDs::jumpAmount && r.amount >= 0.5f; }));
+            const auto* name = navi ? "NAVICOMPUTER" : "HYPERJUMP";
+            const auto* on = navi ? ParamIDs::naviOn : ParamIDs::hyperjumpOn;
+            const auto* amount = navi ? ParamIDs::naviAmount : ParamIDs::hyperjumpAmount;
+            CHECK (version->modulation.macroNames[2] == name);
+            CHECK (version->notes.contains (name));
+            CHECK (! version->notes.contains ("LIGHTSPEED"));
+            CHECK (version->parameters.at (on) == 1.0f);
+            CHECK (version->parameters.at (amount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [amount] (const auto& r)
+                                { return r.source == "macro3" && r.destination == amount && r.amount >= 0.5f; }));
+            if (navi)
+            {
+                CHECK (version->parameters.at (ParamIDs::naviKey) == 7.0f);     // G
+                CHECK (version->parameters.at (ParamIDs::naviScale) == 2.0f);   // minor
+            }
         }
         if (rig.sampled == nullptr)
             continue;
@@ -544,6 +561,8 @@ TEST_CASE ("HYPERDRIVE: MACRO 3 is LIGHTSPEED on every preset, resting at its le
     }
     CHECK (count == 18);
     CHECK (sampled == 12);
+    CHECK (navigated == 9);
+    CHECK (jumped == 9);
 }
 
 TEST_CASE ("MAESTRO: MACRO 3 is LEGION on every preset, resting at its left; every preset has a real orchestra version", "[rigs][expansions][legion]")
@@ -1878,7 +1897,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         else if (hyper)
         {
             // Our own phrases (none from the films): a fanfare of fourths and fifths in dotted rhythms, a marching
-            // eighth-note ostinato, minor chords moving by thirds, short notes and gaps where LIGHTSPEED can be heard.
+            // eighth-note ostinato, minor chords moving by thirds, short notes and gaps where MACRO 3 can be heard.
             if (type == "Lead")
             {
                 line ({ { 0, 0.75, 62 }, { 0.75, 0.25, 62 }, { 1, 1, 67 }, { 2, 1.5, 74 }, { 3.5, 0.5, 72 }, { 4, 0.75, 70 },

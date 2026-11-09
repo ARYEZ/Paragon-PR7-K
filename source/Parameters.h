@@ -504,14 +504,8 @@ namespace ParamIDs
     inline constexpr auto springSize  = "springSize";    // 0 to 1: the springs x 0.7 to x 1.4
     inline constexpr auto springBoing = "springBoing";   // 0 to 1
     inline constexpr auto springWidth = "springWidth";   // 0 to 1
-    // LIGHTSPEED (0.73.0, version hint 42, effects::LightSpeed): HYPERDRIVE's signature.
-    inline constexpr auto jumpOn     = "jumpOn";
-    inline constexpr auto jumpAmount = "jumpAmount";   // 0 to 1: JUMP
-    inline constexpr auto jumpRise   = "jumpRise";     // 0 to 1: the top streak 0 to +24 semitones at full JUMP
-    inline constexpr auto jumpStreak = "jumpStreak";   // 0 to 1
-    inline constexpr auto jumpWhoosh = "jumpWhoosh";   // 0 to 1
-    inline constexpr auto jumpWidth  = "jumpWidth";    // 0 to 1
-    inline constexpr auto jumpTone   = "jumpTone";     // 0 to 1: 2 to 16 kHz
+    // LIGHTSPEED (0.73.0-0.85.0, version hint 42) was removed in 0.86.0 at the owner's word: never reuse its IDs
+    // (jumpOn jumpAmount jumpRise jumpStreak jumpWhoosh jumpWidth jumpTone) or version hint 42.
     // BLOOM (0.74.0, version hint 43, effects::Bloom): GRAND CINEMA's signature.
     inline constexpr auto bloomOn        = "bloomOn";
     inline constexpr auto bloomAmount    = "bloomAmount";      // 0 to 1: how much (the macro's)
@@ -589,6 +583,23 @@ namespace ParamIDs
     inline constexpr auto jackinChaos  = "jackinChaos";    // 0 to 1: replays and stutters to reverses and octaves
     inline constexpr auto jackinCrush  = "jackinCrush";    // 0 to 1: how often and how hard taken slices are crushed
     inline constexpr auto jackinDrops  = "jackinDrops";    // 0 to 1: how often a beat ends in a tape stop
+    // HYPERJUMP (0.86.0, version hint 54, effects::HyperJump): HYPERDRIVE's build and drop.
+    inline constexpr auto hyperjumpOn     = "hyperjumpOn";
+    inline constexpr auto hyperjumpAmount = "hyperjumpAmount";   // 0 to 1: how big (the macro's)
+    inline constexpr auto hyperjumpLength = "hyperjumpLength";   // effects::HyperJump::lengthNames
+    inline constexpr auto hyperjumpMode   = "hyperjumpMode";     // effects::HyperJump::modeNames
+    inline constexpr auto hyperjumpRise   = "hyperjumpRise";     // 0 to 1: the climb's top, 0 to +12 semitones
+    inline constexpr auto hyperjumpChop   = "hyperjumpChop";     // 0 to 1
+    inline constexpr auto hyperjumpHit    = "hyperjumpHit";      // 0 to 1: the drop's boom and space
+    // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
+    inline constexpr auto naviOn       = "naviOn";
+    inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
+    inline constexpr auto naviPattern  = "naviPattern";    // synth::navi::patternNames
+    inline constexpr auto naviDivision = "naviDivision";   // synth::navi::divisionNames
+    inline constexpr auto naviKey      = "naviKey";        // synth::sirocco::keyNames
+    inline constexpr auto naviScale    = "naviScale";      // synth::arp::scaleNames
+    inline constexpr auto naviChaos    = "naviChaos";      // 0 to 1
+    inline constexpr auto naviGlide    = "naviGlide";      // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -678,7 +689,6 @@ void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  
 void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.67.0)
 void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.68.0)
 void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.69.0)
-void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.73.0)
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
 void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.76.0)
 void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.77.0)
@@ -688,4 +698,5 @@ void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
 void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.82.0)
 void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.84.0)
 void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.85.0)
+void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.86.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

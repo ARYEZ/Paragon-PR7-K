@@ -1,5 +1,7 @@
 #include "RackSpecs.h"
 
+#include "dsp/synth/NaviComputer.h"
+
 #include "ui/DownpourPage.h"
 
 #include "dsp/effects/Wah.h"
@@ -618,19 +620,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 28> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 29> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 28> specs;
+    std::array<RackUnit::Spec, 29> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1339,41 +1341,43 @@ std::array<RackUnit::Spec, 28> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
         s.onEdit = [openPage] { openPage (17); };
     }
 
-    // LIGHTSPEED (0.73.0): how far into the jump in big digits (%), the streaks' pitch, the whoosh; the keys set JUMP:
-    // CRUISE (a hint of it), JUMP (half way), PLAID (all the way); the ladder the whoosh's level.
+    // HYPERJUMP (0.86.0, LIGHTSPEED's place): how far into the build in big digits (%), its settings; the keys set
+    // AMOUNT: LIFT (a small build), SURGE (most of the way), HYPERJUMP (all of it); the ladder the build's progress.
     {
         auto& s = specs[18];
-        s.name = "LIGHTSPEED";
-        s.kind = "THE JUMP  STREAKS  WHOOSH";
-        s.onParameterIds = { ParamIDs::jumpOn };
-        s.powerTooltip = "LIGHTSPEED on or off: the jump to lightspeed, streaks and rushing air. Click POWER (the word) or EDIT for its page";
-        struct Stage { const char* name; float jump; const char* tip; };
-        static constexpr Stage stages[] = { { "CRUISE", 0.2f, "A hint of the jump: the streaks just starting" },
-                                            { "JUMP", 0.55f, "Half way into the jump" },
-                                            { "PLAID", 1.0f, "All the way: lightspeed" } };
+        s.name = "HYPERJUMP";
+        s.kind = "BUILD  CLIMB  DROP";
+        s.onParameterIds = { ParamIDs::hyperjumpOn };
+        s.powerTooltip = "HYPERJUMP on or off: a build and a drop in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "LIFT", 0.35f, "A small build: a little climb and chop, a soft landing" },
+                                            { "SURGE", 0.7f, "Most of the way: a real riser into the drop" },
+                                            { "HYPERJUMP", 1.0f, "All of it: the full climb, the fastest chop, the biggest hit" } };
         for (int k = 0; k < 3; ++k)
         {
             const auto& t = stages[k];
             s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
-                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::jumpAmount) - t.jump) < 0.01f; },
-                                                 [&p, t] { setValue (p, ParamIDs::jumpAmount, t.jump); } };
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::hyperjumpAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::hyperjumpAmount, t.amount); } };
         }
-        s.knobs = { RackUnit::Knob { ParamIDs::jumpAmount, "JUMP" }, RackUnit::Knob { ParamIDs::jumpRise, "RISE" } };
-        s.ladderTitle = "RUSH";
-        s.ladderMarks = { -6.0f, -12.0f, -24.0f, -36.0f, -48.0f };
-        s.ladderLabels = { "-6", "-12", "-24", "-36", "-48" };
-        s.ladderReading = [&p] { return p.getLightSpeedSettings().on ? p.getLightSpeed().getWhooshDb() : -100.0f; };
+        s.knobs = { RackUnit::Knob { ParamIDs::hyperjumpAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::hyperjumpRise, "RISE" } };
+        s.ladderTitle = "BUILD";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "DROP", "", "1/2", "", "0" };
+        s.ladderReading = [&p] { return p.getHyperJumpSettings().on ? juce::jmax (0.0f, p.getHyperJump().getProgress()) : 0.0f; };
         s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
         {
             auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
             auto left = content.removeFromLeft (content.getWidth() * 0.5f);
             const auto h = left.getHeight() * 0.56f;
-            const auto on = p.getLightSpeedSettings().on;
-            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * (on ? p.getLightSpeed().getSpool() : 0.0f))), left.getTopLeft(), h);
+            const auto& fx = p.getHyperJump();
+            const auto on = p.getHyperJumpSettings().on;
+            const auto progress = on ? fx.getProgress() : -1.0f;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * juce::jmax (0.0f, progress))), left.getTopLeft(), h);
             line (g, "%", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
-            line (g, "INTO THE JUMP", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
-            column (g, content, { "JUMP " + textOf (p, ParamIDs::jumpAmount), "RISE " + textOf (p, ParamIDs::jumpRise),
-                                  "STREAKS " + textOf (p, ParamIDs::jumpStreak), "WHOOSH " + textOf (p, ParamIDs::jumpWhoosh) },
+            line (g, ! on ? "OFF" : progress >= 0.0f ? "BUILDING" : "LANDED", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::hyperjumpAmount), "LENGTH " + textOf (p, ParamIDs::hyperjumpLength),
+                                  "MODE " + textOf (p, ParamIDs::hyperjumpMode), "RISE " + textOf (p, ParamIDs::hyperjumpRise) },
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (18); };
@@ -1754,6 +1758,51 @@ std::array<RackUnit::Spec, 28> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (27); };
+    }
+
+    // NAVICOMPUTER (0.86.0): how many steps move in big digits, the pattern; the keys set AMOUNT: COURSE (four steps),
+    // PLOTTED (half), FULL ROUTE (all sixteen); the ladder the share of steps moving.
+    {
+        auto& s = specs[28];
+        s.name = "NAVICOMPUTER";
+        s.kind = "PATTERN  KEY  STEPS";
+        s.onParameterIds = { ParamIDs::naviOn };
+        s.powerTooltip = "NAVICOMPUTER on or off: every note moved by a pattern in key, in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "COURSE", 0.25f, "Four of the sixteen steps move: an occasional jump" },
+                                            { "PLOTTED", 0.5f, "Half the steps move" },
+                                            { "FULL ROUTE", 1.0f, "Every step moves: the whole pattern" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::naviAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::naviAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::naviAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::naviChaos, "CHAOS" } };
+        s.ladderTitle = "STEPS";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "16", "", "8", "", "0" };
+        s.ladderReading = [&p]
+        {
+            const auto n = p.getNaviSettings();
+            return n.on ? juce::jlimit (0.0f, 1.0f, std::floor (n.amount * synth::navi::numSteps + 1.0e-4f) / (float) synth::navi::numSteps) : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto n = p.getNaviSettings();
+            const auto steps = n.on ? juce::jlimit (0, synth::navi::numSteps, (int) std::floor (n.amount * synth::navi::numSteps + 1.0e-4f)) : 0;
+            const auto end = drawNumber (g, juce::String (steps), left.getTopLeft(), h);
+            line (g, "/16", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "STEPS MOVING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "PATTERN " + textOf (p, ParamIDs::naviPattern), "KEY " + textOf (p, ParamIDs::naviKey) + " " + textOf (p, ParamIDs::naviScale),
+                                  "DIVISION " + textOf (p, ParamIDs::naviDivision), "CHAOS " + textOf (p, ParamIDs::naviChaos) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (28); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

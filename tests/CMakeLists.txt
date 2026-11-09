@@ -73,8 +73,6 @@ add_executable(ParagonX1Tests
     LeviathanPluginTests.cpp
     NuclearSpringTests.cpp
     NuclearSpringPluginTests.cpp
-    LightSpeedTests.cpp
-    LightSpeedPluginTests.cpp
     BloomTests.cpp
     BloomPluginTests.cpp
     LegionTests.cpp
@@ -93,6 +91,8 @@ add_executable(ParagonX1Tests
     CanyonPluginTests.cpp
     JackInTests.cpp
     JackInPluginTests.cpp
+    HyperJumpTests.cpp
+    NaviComputerTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

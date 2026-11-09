@@ -521,6 +521,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         add (layout, siroccoSpread, "Sirocco Spread", { 0.0f, 1.0f }, d.spread, asPercent, stageSirocco);
     }
 
+    // NAVICOMPUTER (0.86.0): every note moved by a pattern in key, in presets. Off and at AMOUNT 0 by default.
+    {
+        constexpr int stageNavi = 54;
+        const synth::navi::Settings d;
+        addSwitch (layout, naviOn, "Navicomputer On", d.on, stageNavi);
+        add (layout, naviAmount, "Navicomputer Amount", { 0.0f, 1.0f }, 0.0f,
+             [] (float v, int) { return juce::String (juce::jlimit (0, synth::navi::numSteps, (int) std::floor (v * synth::navi::numSteps + 1.0e-4f))) + " of 16 steps"; },
+             stageNavi);
+        addChoice (layout, naviPattern, "Navicomputer Pattern", synth::navi::patternNames, d.pattern, stageNavi);
+        addChoice (layout, naviDivision, "Navicomputer Division", synth::navi::divisionNames, d.division, stageNavi);
+        addChoice (layout, naviKey, "Navicomputer Key", synth::sirocco::keyNames, d.key, stageNavi);
+        addChoice (layout, naviScale, "Navicomputer Scale", synth::arp::scaleNames, d.scale, stageNavi);
+        add (layout, naviChaos, "Navicomputer Chaos", { 0.0f, 1.0f }, d.chaos, asPercent, stageNavi);
+        add (layout, naviGlide, "Navicomputer Glide", { 0.0f, 1.0f }, d.glide, asPercent, stageNavi);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);
@@ -574,7 +590,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addSpectreParameters (layout);    // SPECTRE (0.67.0): RackParameters.cpp
     addLeviathanParameters (layout);  // LEVIATHAN (0.68.0): RackParameters.cpp
     addNuclearSpringParameters (layout);   // NUCLEARSPRING (0.69.0): RackParameters.cpp
-    addLightSpeedParameters (layout);      // LIGHTSPEED (0.73.0): RackParameters.cpp
     addBloomParameters (layout);           // BLOOM (0.74.0): RackParameters.cpp
     addLegionParameters (layout);          // LEGION (0.76.0): RackParameters.cpp
     addOverchargeParameters (layout);      // OVERCHARGE (0.77.0): RackParameters.cpp
@@ -584,5 +599,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addColossusParameters (layout);        // COLOSSUS (0.82.0): RackParameters.cpp
     addCanyonParameters (layout);          // CANYON (0.84.0, version hint 52): RackParameters.cpp
     addJackInParameters (layout);          // JACK-IN (0.85.0, version hint 53): RackParameters.cpp
+    addHyperJumpParameters (layout);       // HYPERJUMP (0.86.0, version hint 54): RackParameters.cpp
     return layout;
 }

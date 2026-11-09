@@ -85,7 +85,6 @@ target_sources(ParagonX1
         source/dsp/effects/Spectre.cpp
         source/dsp/effects/Leviathan.cpp
         source/dsp/effects/NuclearSpring.cpp
-        source/dsp/effects/LightSpeed.cpp
         source/dsp/effects/Bloom.cpp
         source/dsp/effects/Legion.cpp
         source/dsp/effects/Overcharge.cpp
@@ -95,6 +94,7 @@ target_sources(ParagonX1
         source/dsp/effects/Colossus.cpp
         source/dsp/effects/Canyon.cpp
         source/dsp/effects/JackIn.cpp
+        source/dsp/effects/HyperJump.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -140,7 +140,6 @@ target_sources(ParagonX1
         source/ui/SpectrePage.cpp
         source/ui/LeviathanPage.cpp
         source/ui/NuclearSpringPage.cpp
-        source/ui/LightSpeedPage.cpp
         source/ui/BloomPage.cpp
         source/ui/LegionPage.cpp
         source/ui/OverchargePage.cpp
@@ -150,6 +149,8 @@ target_sources(ParagonX1
         source/ui/ColossusPage.cpp
         source/ui/CanyonPage.cpp
         source/ui/JackInPage.cpp
+        source/ui/HyperJumpPage.cpp
+        source/ui/NaviComputerPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

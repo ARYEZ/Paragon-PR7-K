@@ -66,8 +66,8 @@ namespace ModDestinations
                                                  "leviathanMix", "leviathanGrowl", "leviathanDrift",
                                                  // 0.69.0: NUCLEARSPRING: how much tank, how drippy, how hard a hit kicks it
                                                  "springMix", "springDrip", "springBoing",
-                                                 // 0.73.0: LIGHTSPEED: how far into the jump, how high the streaks, the rushing air
-                                                 "jumpAmount", "jumpRise", "jumpWhoosh",
+                                                 // 0.86.0: HYPERJUMP (LIGHTSPEED's place): how big, how high the climb, how deep the chop
+                                                 "hyperjumpAmount", "hyperjumpRise", "hyperjumpChop",
                                                  // 0.74.0: BLOOM: how much, the strings' share, the hall's size
                                                  "bloomAmount", "bloomResonance", "bloomSize",
                                                  // 0.76.0: LEGION: how many players, how wide, how far out of tune
@@ -85,7 +85,9 @@ namespace ModDestinations
                                                  // 0.84.0: CANYON: how much goes in, the near walls, the far wall's replies
                                                  "canyonAmount", "canyonSize", "canyonRepeats",
                                                  // 0.85.0: JACK-IN: how much is taken, how wild, how crushed
-                                                 "jackinAmount", "jackinChaos", "jackinCrush" };
+                                                 "jackinAmount", "jackinChaos", "jackinCrush",
+                                                 // 0.86.0: NAVICOMPUTER: how many steps move, how wild, how smooth
+                                                 "naviAmount", "naviChaos", "naviGlide" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

@@ -366,6 +366,7 @@ namespace synth
         modWheelHeard = false;
         smoothedBend = 0.0f;
         seqClock = 0.0;
+        naviClock = 0.0;
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
@@ -585,6 +586,9 @@ namespace synth
         const auto seqTrigger = settings.stepSeq.trigger;
         if (seqTrigger == seq::Trigger::lastNote || ((seqTrigger == seq::Trigger::firstNote || seqTrigger == seq::Trigger::song) && ! anyHeld))
             seqClock = 0.0;
+        // NAVICOMPUTER's own clock (the song stopped) starts with the first key down.
+        if (! anyHeld)
+            naviClock = 0.0;
         // ...and each oscillator's TRAVEL set to FIRST NOTE or LAST NOTE.
         for (size_t i = 0; i < travelClock.size(); ++i)
         {
@@ -872,6 +876,8 @@ namespace synth
         voice.velocity = velocity;
         voice.age = ++noteCounter;
         voice.pitch = fromPitch;
+        voice.naviSemis = 0.0f;   // NAVICOMPUTER: a new note takes its move at once
+        voice.naviFresh = true;
         // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
         voice.glowTune = nextGlow();
         voice.glowCutoff = nextGlow();
@@ -1262,6 +1268,34 @@ namespace synth
                 if (! followSong)
                     seqClock = std::fmod (seqClock + length * seqStepsPerSample, (double) seqPrepared.getLength() * 1024.0);
             }
+            // NAVICOMPUTER (0.86.0): the move for each interval, in time with the song (or its own count).
+            naviMoving = settings.navi.moving();
+            {
+                const auto& nv = settings.navi;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (naviMoving)
+                {
+                    const auto beatsPerStep = nv.beatsPerStep();
+                    std::int64_t songStep = 0;
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto beats = followSong ? modulation.ppq + (samplesIntoBlock + start + at) * beatsPerSample : naviClock + at * beatsPerSample;
+                        songStep = (std::int64_t) std::floor (beats / beatsPerStep + 1.0e-9);
+                        naviMoves[(size_t) i] = navi::moveAt (nv, songStep);
+                    }
+                    naviStepShown.store ((int) (((songStep % navi::numSteps) + navi::numSteps) % navi::numSteps));
+                    // GLIDE: a slide over up to 40% of a step (a time constant a tenth of that share).
+                    const auto tau = 0.1 * juce::jlimit (0.0f, 1.0f, nv.glide) * beatsPerStep * 60.0 / juce::jmax (1.0, modulation.bpm);
+                    naviGlideCoef = tau <= 0.0 ? 1.0f : (float) (1.0 - std::exp (-(double) controlInterval / (tau * sampleRate)));
+                }
+                else
+                {
+                    naviStepShown.store (-1);
+                    naviGlideCoef = 1.0f;
+                }
+                naviClock += length * beatsPerSample;
+            }
             for (auto& voice : voices)
             {
                 if (! voice.playing)
@@ -1453,6 +1487,21 @@ namespace synth
         const auto& settings = modulated ? modulate (voice, n, unmodulated, interval) : unmodulated;
         // The PITCH envelope in semitones (RANGE can be moved by the matrix).
         voice.pitchSemitones = pitchModule.envelopeOn && pitchModule.shape != nullptr ? voice.pitchEnvelopeValue * settings.pitch.rangeSemitones : 0.0f;
+        // NAVICOMPUTER: this note's move now (in its own steps of the scale), glided; nothing at all while it's off.
+        if (naviMoving || voice.naviSemis != 0.0f)
+        {
+            const auto target = naviMoving ? (float) navi::semitonesFor (voice.note, naviMoves[(size_t) juce::jlimit (0, maxIntervals - 1, interval)], unmodulated.navi)
+                                           : 0.0f;
+            if (voice.naviFresh || naviGlideCoef >= 1.0f)
+                voice.naviSemis = target;
+            else
+            {
+                voice.naviSemis += (target - voice.naviSemis) * naviGlideCoef;
+                if (std::abs (target - voice.naviSemis) < 1.0e-4f)
+                    voice.naviSemis = target;
+            }
+        }
+        voice.naviFresh = false;
         if (modulated)
             balance (voice.notePan + settings.amp.pan - unmodulated.amp.pan, voice.panLeft, voice.panRight);
 
@@ -2603,7 +2652,7 @@ namespace synth
             // KEYTRACK (from middle C; at 100% the note as played) and the PITCH envelope, if it follows it.
             const auto keyPitch = juce::exactlyEqual (settings.pitch.keytrack, 1.0f) ? voice.pitch : 60.0f + (voice.pitch - 60.0f) * settings.pitch.keytrack;
             const auto basePitch = keyPitch + (s.pitchEnvelope ? voice.pitchSemitones : 0.0f) + bendSemitones + s.transpose + s.fineCents * 0.01f + osc.randomOffset
-                                 + settings.play.tuneCents * 0.01f;
+                                 + settings.play.tuneCents * 0.01f + voice.naviSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
             const auto independent = vibratoDepth > 0.0f && s.vibratoMode == VibratoMode::independent;
             const auto ownVibrato = independent ? vibratoValue (s.vibratoWave, osc.copies[0].vibratoPhase, osc.copies[0].vibratoHeld,
                                                                 vibratoAdvance * osc.copies[0].vibratoRate) * vibratoDepth

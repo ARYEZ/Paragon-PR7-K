@@ -84,7 +84,7 @@ namespace ModDestinations
                 { "FX Spectre", "Mix" }, { "FX Spectre", "Linger" }, { "FX Spectre", "Shift" },
                 { "FX Leviathan", "Mix" }, { "FX Leviathan", "Growl" }, { "FX Leviathan", "Drift" },
                 { "FX Nuclearspring", "Mix" }, { "FX Nuclearspring", "Drip" }, { "FX Nuclearspring", "Boing" },
-                { "FX Lightspeed", "Jump" }, { "FX Lightspeed", "Rise" }, { "FX Lightspeed", "Whoosh" },
+                { "FX Hyperjump", "Amount" }, { "FX Hyperjump", "Rise" }, { "FX Hyperjump", "Chop" },
                 { "FX Bloom", "Amount" }, { "FX Bloom", "Resonance" }, { "FX Bloom", "Size" },
                 { "FX Legion", "Size" }, { "FX Legion", "Spread" }, { "FX Legion", "Detune" },
                 { "FX Overcharge", "Charge" }, { "FX Overcharge", "Glow" }, { "FX Overcharge", "Chaos" },
@@ -93,7 +93,8 @@ namespace ModDestinations
                 { "FX Lockstep", "Amount" }, { "FX Lockstep", "Squeeze" }, { "FX Lockstep", "Stamp" },
                 { "FX Colossus", "Size" }, { "FX Colossus", "Depth" }, { "FX Colossus", "Hall" },
                 { "FX Canyon", "Amount" }, { "FX Canyon", "Size" }, { "FX Canyon", "Repeats" },
-                { "FX Jack-In", "Amount" }, { "FX Jack-In", "Chaos" }, { "FX Jack-In", "Crush" } };
+                { "FX Jack-In", "Amount" }, { "FX Jack-In", "Chaos" }, { "FX Jack-In", "Crush" },
+                { "FX Navicomputer", "Amount" }, { "FX Navicomputer", "Chaos" }, { "FX Navicomputer", "Glide" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

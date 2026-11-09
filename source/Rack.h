@@ -23,7 +23,6 @@
 #include "dsp/effects/Spectre.h"
 #include "dsp/effects/Leviathan.h"
 #include "dsp/effects/NuclearSpring.h"
-#include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
 #include "dsp/effects/Legion.h"
 #include "dsp/effects/Overcharge.h"
@@ -33,6 +32,7 @@
 #include "dsp/effects/Colossus.h"
 #include "dsp/effects/Canyon.h"
 #include "dsp/effects/JackIn.h"
+#include "dsp/effects/HyperJump.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -118,7 +118,6 @@ struct Rack
     effects::Leviathan leviathan;
     // NUCLEARSPRING (0.69.0): the spring tank, after LEVIATHAN.
     effects::NuclearSpring nuclearSpring;
-    effects::LightSpeed lightSpeed;   // 0.73.0
     effects::Bloom bloom;             // 0.74.0
     effects::Legion legion;           // 0.76.0
     effects::Overcharge overcharge;   // 0.77.0
@@ -128,6 +127,7 @@ struct Rack
     effects::Colossus colossus;       // 0.82.0
     effects::Canyon canyon;           // 0.84.0
     effects::JackIn jackIn;           // 0.85.0
+    effects::HyperJump hyperJump;     // 0.86.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

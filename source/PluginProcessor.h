@@ -300,7 +300,7 @@ public:
         rack->haze.seedRandom ((std::uint32_t) seed);
         rack->spectre.seedRandom ((std::uint32_t) seed);
         rack->leviathan.seedRandom ((std::uint32_t) seed);
-        rack->lightSpeed.seedRandom ((std::uint32_t) seed);
+        rack->hyperJump.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -426,8 +426,6 @@ public:
     // NUCLEARSPRING (0.69.0): its settings (MIX, DRIP, BOING as the matrix moves them).
     effects::NuclearSpring::Settings getNuclearSpringSettings() const noexcept;
     const effects::NuclearSpring& getNuclearSpring() const noexcept { return rack->nuclearSpring; }
-    effects::LightSpeed::Settings getLightSpeedSettings() const noexcept;
-    const effects::LightSpeed& getLightSpeed() const noexcept { return rack->lightSpeed; }
     effects::Bloom::Settings getBloomSettings() const noexcept;
     const effects::Bloom& getBloom() const noexcept { return rack->bloom; }
     effects::Legion::Settings getLegionSettings() const noexcept;                // LEGION (0.76.0)
@@ -444,6 +442,11 @@ public:
     const effects::Canyon& getCanyon() const noexcept { return rack->canyon; }
     effects::JackIn::Settings getJackInSettings() const noexcept;                // JACK-IN (0.85.0)
     const effects::JackIn& getJackIn() const noexcept { return rack->jackIn; }
+    effects::HyperJump::Settings getHyperJumpSettings() const noexcept;          // HYPERJUMP (0.86.0)
+    const effects::HyperJump& getHyperJump() const noexcept { return rack->hyperJump; }
+    // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
+    synth::navi::Settings getNaviSettings() const noexcept;
+    int getNaviStep() const noexcept { return engine.getNaviStep(); }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
     const effects::Colossus& getColossus() const noexcept { return rack->colossus; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).

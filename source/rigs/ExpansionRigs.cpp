@@ -11938,20 +11938,40 @@ namespace
     // original trilogy): heroic brass fanfares, a lonely horn over a desert horizon, a men's choir, shimmering strings,
     // a marching low-brass ostinato, a smoky spaceport dance band, harps, racing strings and beeping computers. No
     // titles, characters, places, ships, terms or music from the films: our own sounds and phrases.
-    // MACRO 3 on every preset is LIGHTSPEED (the bank's own effect, 0.73.0): at its left the effect rests, untouched,
-    // and turning it up makes the jump (streaks pitched up, a whoosh, the sound rushing past).
+    // MACRO 3 (0.86.0, the owner's choice: LIGHTSPEED, the bank's first effect, was removed) is one of the bank's two
+    // signatures, each at rest at the macro's left (the approved sound, untouched):
+    //  - the held sounds (leads, pads, organ, celesta, stabs) NAVICOMPUTER: turning it up moves the notes by a pattern in
+    //    G minor, in time with the song, so a held chord becomes a riff (`navicomputer`);
+    //  - the rhythmic ones (basses, arps, plucks) HYPERJUMP: a build and a drop in time with the song (`hyperjump`).
     struct Jump
     {
-        float rise = 0.6f, streak = 0.6f, whoosh = 0.4f, width = 0.8f, tone = 0.6f;
-        float top = 1.0f;   // the macro's JUMP at full
+        int length = 1;   // HyperJump::lengthNames: 2 BARS
+        float rise = 0.5f, chop = 0.6f, hit = 0.6f;
+        float top = 1.0f;   // the macro's AMOUNT at full
     };
 
-    void lightspeed (Builder& b, Jump j)
+    void hyperjump (Builder& b, Jump j)
     {
-        b.set (ParamIDs::jumpOn, 1.0f).set (ParamIDs::jumpAmount, 0.0f).set (ParamIDs::jumpRise, j.rise)
-         .set (ParamIDs::jumpStreak, j.streak).set (ParamIDs::jumpWhoosh, j.whoosh).set (ParamIDs::jumpWidth, j.width)
-         .set (ParamIDs::jumpTone, j.tone);
-        route (b, "macro3", ParamIDs::jumpAmount, j.top);
+        b.set (ParamIDs::hyperjumpOn, 1.0f).set (ParamIDs::hyperjumpAmount, 0.0f).set (ParamIDs::hyperjumpLength, (float) j.length)
+         .set (ParamIDs::hyperjumpMode, 0.0f).set (ParamIDs::hyperjumpRise, j.rise).set (ParamIDs::hyperjumpChop, j.chop)
+         .set (ParamIDs::hyperjumpHit, j.hit);
+        route (b, "macro3", ParamIDs::hyperjumpAmount, j.top);
+    }
+
+    struct Course
+    {
+        int pattern = 0;    // synth::navi::patternNames
+        int division = 0;   // synth::navi::divisionNames: 1/16
+        float chaos = 0.0f, glide = 0.0f;
+        float top = 1.0f;   // the macro's AMOUNT at full
+    };
+
+    void navicomputer (Builder& b, Course c)
+    {
+        b.set (ParamIDs::naviOn, 1.0f).set (ParamIDs::naviAmount, 0.0f).set (ParamIDs::naviPattern, (float) c.pattern)
+         .set (ParamIDs::naviDivision, (float) c.division).set (ParamIDs::naviKey, 7.0f).set (ParamIDs::naviScale, 2.0f)   // G minor
+         .set (ParamIDs::naviChaos, c.chaos).set (ParamIDs::naviGlide, c.glide);
+        route (b, "macro3", ParamIDs::naviAmount, c.top);
     }
 
     // HYPERDRIVE's orchestra (0.73.0): an orchestral preset's version on the Sonatina Symphonic Orchestra, played
@@ -12073,7 +12093,7 @@ namespace
             "in) over horns an octave down and a pulse for the brassy edge, sung through the VOICE filter on an open "
             "\"ah\" (brass speaks in formants much as a voice does), every note lipped up into from a semitone below, the "
             "tone biting harder the harder you play, a big hall. Play it as chords too: it's a section. MACROS: BRIGHT, "
-            "SPACE, LIGHTSPEED. MOD WHEEL: more vibrato.");
+            "SPACE, NAVICOMPUTER. MOD WHEEL: more vibrato.");
         fanfare.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
                .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.3f).osc (2, "Fine", 4.0f).osc (2, "Volume", 0.18f)
@@ -12088,11 +12108,11 @@ namespace
         route (fanfare, "macro1", ParamIDs::fltCutoff, 0.25f);
         route (fanfare, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
         route (fanfare, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
-        macros (fanfare, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (fanfare, "BRIGHT", "SPACE", "NAVICOMPUTER");
         reverb (fanfare, RT::hall, 0.75f, 0.22f, 25.0f);
         space (fanfare);
         fanfare.set (ParamIDs::patchLevel, -3.3f);
-        lightspeed (fanfare, { 0.6f, 0.55f, 0.4f, 0.8f, 0.6f });
+        navicomputer (fanfare, { 2, 1, 0.0f, 0.2f });
         orchestra (fanfare, { { { 0, "Brass - Notation/Trumpets Sustain (looped).sfz", 0.8f, 0.1f },
                                 { 1, "Brass - Notation/Horns Sustain.sfz", 0.6f, -0.2f } },
                               { 0, 1, 2 }, 2.9f,
@@ -12107,7 +12127,7 @@ namespace
             "A lonely solo horn at sunset over a desert horizon: a soft saw and a triangle, dark and round, sung through "
             "the VOICE filter on \"oh\" (a horn's covered tone), a breath of air, each note eased into from just below, a "
             "slow, warm vibrato arriving late, a glide between notes and a long hall with soft dotted echoes. MACROS: "
-            "BRIGHT, SPACE, LIGHTSPEED. MOD WHEEL: more vibrato.");
+            "BRIGHT, SPACE, NAVICOMPUTER. MOD WHEEL: more vibrato.");
         horn.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Fine", -3.0f).osc (1, "Volume", 0.4f)
             .filter (FilterType::lp12, 850.0f, 0.05f, 0.25f).set (ParamIDs::fltKey, 0.6f).set (ParamIDs::fltVel, 0.4f)
@@ -12123,12 +12143,12 @@ namespace
         route (horn, "macro1", ParamIDs::fltCutoff, 0.3f);
         route (horn, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
         route (horn, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
-        macros (horn, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (horn, "BRIGHT", "SPACE", "NAVICOMPUTER");
         delay (horn, "1/4 dotted", 0.25f, 0.12f, false, 4.0f);
         reverb (horn, RT::hall, 0.85f, 0.3f, 30.0f);
         space (horn);
         horn.set (ParamIDs::patchLevel, -4.1f);
-        lightspeed (horn, { 0.5f, 0.5f, 0.35f, 0.9f, 0.5f });
+        navicomputer (horn, { 7, 1, 0.0f, 0.5f });
         orchestra (horn, { { { 0, "Brass - Notation/Horn Solo Sustain (looped).sfz", 1.0f } }, { 0, 1, 2 }, 0.4f,
                            "A lonely solo horn at sunset over a desert horizon, on the orchestra's recording: a long hall "
                            "with soft dotted echoes.",
@@ -12140,7 +12160,7 @@ namespace
         auto chirp = x.make ("Cockpit Chirp", 3, { "Lead", "Chirp", "Robot", "Mono" },
             "A little robot whistling and chattering in the cockpit: a pure sine with a faint square an octave up, every "
             "note chirped up into from a fifth below in forty milliseconds, a fast, nervous warble, quick slides between "
-            "notes, ping-pong echoes. MACROS: BRIGHT (more of the square), SPACE, LIGHTSPEED. MOD WHEEL: it gets excited "
+            "notes, ping-pong echoes. MACROS: BRIGHT (more of the square), SPACE, NAVICOMPUTER. MOD WHEEL: it gets excited "
             "(a wider, faster warble).");
         chirp.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.05f)
@@ -12155,12 +12175,12 @@ namespace
         route (chirp, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.4f);
         route (chirp, "modWheel", ParamIDs::osc (0, "VibRate"), 0.2f);
         route (chirp, "modWheel", ParamIDs::osc (1, "VibRate"), 0.2f);
-        macros (chirp, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (chirp, "BRIGHT", "SPACE", "NAVICOMPUTER");
         delay (chirp, "1/8", 0.3f, 0.18f, true, 5.0f);
         reverb (chirp, RT::room, 0.5f, 0.15f);
         space (chirp);
         chirp.set (ParamIDs::patchLevel, -3.1f);
-        lightspeed (chirp, { 0.7f, 0.6f, 0.45f, 0.8f, 0.7f });
+        navicomputer (chirp, { 6, 0, 0.3f, 0.0f });
         x.add (chirp);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -12168,7 +12188,7 @@ namespace
             "A men's choir in a vast hall, built as a choir sings: two sections (saw voices and narrow pulses), each "
             "singer with their own vibrato, sung through the VOICE filter at a man's size, every chord hummed and opening "
             "from \"oo\" into \"oh\", a breath through it, a cathedral. Low chords sound best. MACROS: VOWEL (towards "
-            "\"ah\"), SPACE, LIGHTSPEED. MOD WHEEL: more vibrato.");
+            "\"ah\"), SPACE, NAVICOMPUTER. MOD WHEEL: more vibrato.");
         choir.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.22f).osc (1, "Volume", 0.3f)
              .filter (FilterType::lp12, 4000.0f, 0.05f, 0.0f)
@@ -12183,12 +12203,12 @@ namespace
         route (choir, "macro1", ParamIDs::voiceVowel, 0.3f);
         route (choir, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
         route (choir, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
-        macros (choir, "VOWEL", "SPACE", "LIGHTSPEED");
+        macros (choir, "VOWEL", "SPACE", "NAVICOMPUTER");
         reverb (choir, RT::cathedral, 0.85f, 0.3f, 30.0f);
         eqBand (choir, 0, eq::Shape::lowCut, 70.0f, 0.0f);
         space (choir);
         choir.set (ParamIDs::patchLevel, -8.7f);
-        lightspeed (choir, { 0.5f, 0.55f, 0.35f, 0.9f, 0.5f });
+        navicomputer (choir, { 7, 3, 0.0f, 0.6f });
         orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2 }, 0.9f,
                             "A large choir in a vast hall, on the orchestra's recordings (looped, so chords hold): low chords "
                             "for the men, a cathedral.",
@@ -12203,7 +12223,7 @@ namespace
             "Shimmering strings for the stars going by, built as an orchestra plays: violins (six saw players, each with "
             "their own vibrato easing in), cellos an octave down and a faint shimmer of harmonics an octave up, the bows' "
             "rosin as a breath of noise, each chord bowed in with the tone opening as the bow bites, a big hall. MACROS: "
-            "BRIGHT, SPACE, LIGHTSPEED. MOD WHEEL: opens the tone.");
+            "BRIGHT, SPACE, NAVICOMPUTER. MOD WHEEL: opens the tone.");
         strings.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.28f)
                .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.07f)
@@ -12216,12 +12236,12 @@ namespace
         noiseOsc (strings, 3, 0.015f, 0.1f);
         route (strings, "macro1", ParamIDs::fltCutoff, 0.2f);
         route (strings, "modWheel", ParamIDs::fltCutoff, 0.2f);
-        macros (strings, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (strings, "BRIGHT", "SPACE", "NAVICOMPUTER");
         reverb (strings, RT::hall, 0.85f, 0.3f, 25.0f);
         eqBand (strings, 0, eq::Shape::lowCut, 60.0f, 0.0f);
         space (strings);
         strings.set (ParamIDs::patchLevel, -10.4f);
-        lightspeed (strings, { 0.6f, 0.6f, 0.4f, 0.9f, 0.6f });
+        navicomputer (strings, { 0, 0, 0.0f, 0.1f });
         orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 1.42f, 0.0f, true } }, {}, -10.0f,   // 0.75.0: 1.42 (0.8 + 5 dB: the library's MASTER_VOLUME -5 now plays)
                               "Shimmering strings for the stars going by: the orchestra's whole string section, with PR7-K's "
                               "own strings underneath, quieter. The recordings aren't looped and stop after about four "
@@ -12233,7 +12253,7 @@ namespace
         auto hum = x.make ("Elder Hum", 6, { "Pad", "Drone", "Mystic", "Voice" },
             "An old, mystical hum: a deep sine under a hummed \"mm\" (a quiet saw through the VOICE filter, mouth almost "
             "closed), a faint fifth above, slow air through it, the whole thing breathing slowly in and out, a cathedral. "
-            "MACROS: VOWEL (the hum opening towards \"ah\"), SPACE, LIGHTSPEED. MOD WHEEL: brighter air.");
+            "MACROS: VOWEL (the hum opening towards \"ah\"), SPACE, NAVICOMPUTER. MOD WHEEL: brighter air.");
         hum.osc (0, "Wave", sine).osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.5f).osc (0, "Voice", 0.0f).osc (0, "Filter", 0.0f)
            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.35f)
            .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 7.0f).osc (2, "Volume", 0.06f).osc (2, "Voice", 0.0f)
@@ -12248,11 +12268,11 @@ namespace
         route (hum, "lfo1", ParamIDs::fltCutoff, 0.06f);
         route (hum, "macro1", ParamIDs::voiceVowel, 0.45f);
         route (hum, "modWheel", ParamIDs::fltCutoff, 0.25f);
-        macros (hum, "VOWEL", "SPACE", "LIGHTSPEED");
+        macros (hum, "VOWEL", "SPACE", "NAVICOMPUTER");
         reverb (hum, RT::cathedral, 0.9f, 0.35f, 40.0f);
         space (hum);
         hum.set (ParamIDs::patchLevel, -10.2f);
-        lightspeed (hum, { 0.7f, 0.5f, 0.3f, 1.0f, 0.4f });
+        navicomputer (hum, { 3, 1, 0.0f, 0.3f });
         x.add (hum);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -12260,7 +12280,7 @@ namespace
             "The low brass of a marching menace: trombones and a tuba built as saws and a pulse through the VOICE filter "
             "at its biggest, each note hit hard (marcato) and held back, the tone biting with how hard you play, a clean "
             "sine under it an octave down kept off the filter, a hard room. Play a low ostinato. MACROS: BRIGHT, SPACE, "
-            "LIGHTSPEED.");
+            "HYPERJUMP.");
         march.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Volume", 0.3f).osc (1, "Fine", -4.0f)
              .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f).osc (2, "Filter", 0.0f)
@@ -12272,11 +12292,11 @@ namespace
              .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.5f);
         pkSection (march, 0, 2, 0.04f, 0.0f, 5.0f, 0.0f);
         route (march, "macro1", ParamIDs::fltCutoff, 0.25f);
-        macros (march, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (march, "BRIGHT", "SPACE", "HYPERJUMP");
         reverb (march, RT::room, 0.55f, 0.14f);
         space (march);
         march.set (ParamIDs::patchLevel, -1.6f);
-        lightspeed (march, { 0.8f, 0.55f, 0.45f, 0.8f, 0.6f });
+        hyperjump (march, { 1, 0.5f, 0.6f, 0.7f });
         orchestra (march, { { { 0, "Brass - Notation/Trombones Marcato (looped).sfz", 0.8f, 0.15f },
                               { 1, "Brass - Notation/Tuba Marcato (looped).sfz", 0.8f, -0.15f } },
                             { 0, 1, 2 }, 3.9f,
@@ -12290,7 +12310,7 @@ namespace
         auto engine = x.make ("Sublight Drone", 8, { "Bass", "Drone", "Engine", "Mono" },
             "A starfighter's engines idling: three detuned saws and a pulse an octave down, their width warbling at five "
             "and a half times a second (the engine's beat), a dark rumble of noise, the filter wobbling with it, a glide "
-            "between notes. MACROS: WHINE (the turbines' whistle two octaves up), SPACE, LIGHTSPEED. MOD WHEEL: a harder "
+            "between notes. MACROS: WHINE (the turbines' whistle two octaves up), SPACE, HYPERJUMP. MOD WHEEL: a harder "
             "warble.");
         engine.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.8f)
               .osc (0, "UniDetune", 0.09f).osc (0, "UniSpread", 0.5f)
@@ -12307,17 +12327,17 @@ namespace
         route (engine, "modWheel", ParamIDs::osc (1, "Width"), 0.15f);
         route (engine, "modWheel", ParamIDs::fltCutoff, 0.1f);
         route (engine, "macro1", ParamIDs::osc (3, "Volume"), 0.08f);
-        macros (engine, "WHINE", "SPACE", "LIGHTSPEED");
+        macros (engine, "WHINE", "SPACE", "HYPERJUMP");
         reverb (engine, RT::hall, 0.5f, 0.1f);
         space (engine);
         engine.set (ParamIDs::patchLevel, -2.7f);
-        lightspeed (engine, { 0.9f, 0.55f, 0.5f, 0.9f, 0.6f });
+        hyperjump (engine, { 1, 0.7f, 0.5f, 0.8f });
         x.add (engine);
 
         auto upright = x.make ("Dive Bar Bass", 9, { "Bass", "Pluck", "Upright", "Band" },
             "The plucked bass of a smoky spaceport dance band: a triangle and a clean sine an octave down, a fingertip's "
             "thump, the pluck a quick filter snap, each note dying away like a real string, a small room. MACROS: BRIGHT "
-            "(more pluck), SPACE, LIGHTSPEED.");
+            "(more pluck), SPACE, HYPERJUMP.");
         upright.osc (0, "Wave", triangle).osc (0, "Volume", 0.7f)
                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f).osc (1, "Filter", 0.0f)
                .filter (FilterType::lp12, 650.0f, 0.15f, 0.35f).filterEnvelope (1.0f, 160.0f, 0.1f, 140.0f)
@@ -12325,11 +12345,11 @@ namespace
         pkStrike (upright, 2, 0, 0.06f, 3.0f, 0.4f);
         pkVelocity (upright, 0.4f, 0.2f, 0.4f);
         route (upright, "macro1", ParamIDs::fltEnv, 0.2f);
-        macros (upright, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (upright, "BRIGHT", "SPACE", "HYPERJUMP");
         reverb (upright, RT::room, 0.4f, 0.12f);
         space (upright);
         upright.set (ParamIDs::patchLevel, -3.6f);
-        lightspeed (upright, { 0.9f, 0.65f, 0.4f, 0.8f, 0.6f });
+        hyperjump (upright, { 0, 0.4f, 0.5f, 0.5f });
         orchestra (upright, { { { 0, "Strings - Notation/Bass Solo Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 6.9f,   // 0.75.0: 6.9 (its GROUP_VOLUME +2 now plays)
                               "The plucked bass of a smoky spaceport dance band, on the orchestra's solo double bass, a small room.",
                               1.0f, 300.0f, 1.0f, 200.0f, -1.0f,
@@ -12340,7 +12360,7 @@ namespace
         auto organ = x.make ("Spaceport Organ", 10, { "Keys", "Organ", "Rotary", "Band" },
             "The dance band's combo organ in a smoky spaceport bar: four drawbars of sines (16', 8', 4' and the fifth "
             "above), a click of percussion on each chord, a small amp's warmth, a spinning speaker. MACROS: DRAWBAR (more "
-            "of the top), SPACE, LIGHTSPEED. MOD WHEEL: the speaker spins faster.");
+            "of the top), SPACE, NAVICOMPUTER. MOD WHEEL: the speaker spins faster.");
         organ.osc (0, "Wave", sine).osc (0, "Volume", 0.45f).osc (0, "PhaseRand", 0.0f)
              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f).osc (1, "PhaseRand", 0.0f)
              .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.25f).osc (2, "PhaseRand", 0.0f)
@@ -12353,17 +12373,17 @@ namespace
         chorus (organ, ParamIDs::modIds, MT::rotary, 0.35f, 0.5f, 1.0f);
         route (organ, "macro1", ParamIDs::osc (3, "Volume"), 0.2f);
         route (organ, "modWheel", ParamIDs::modRate, 0.5f);
-        macros (organ, "DRAWBAR", "SPACE", "LIGHTSPEED");
+        macros (organ, "DRAWBAR", "SPACE", "NAVICOMPUTER");
         reverb (organ, RT::room, 0.45f, 0.12f);
         space (organ);
         organ.set (ParamIDs::patchLevel, -8.5f);
-        lightspeed (organ, { 0.6f, 0.6f, 0.4f, 0.8f, 0.6f });
+        navicomputer (organ, { 5, 0, 0.0f, 0.0f });
         x.add (organ);
 
         auto celesta = x.make ("Starfield Celesta", 11, { "Keys", "Celesta", "Bell", "Shimmer" },
             "A celesta twinkling like a field of stars: a sine struck with a small hammer, a bar's first overtone (about "
             "2.76 times up, fading fast) and a glint two octaves up, a tiny tap, ringing on through quick ping-pong "
-            "sixteenths and a hall. MACROS: SPARKLE (more glint), SPACE, LIGHTSPEED.");
+            "sixteenths and a hall. MACROS: SPARKLE (more glint), SPACE, NAVICOMPUTER.");
         celesta.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 18.0f).osc (1, "Fine", -42.0f).osc (1, "PhaseRand", 0.0f)
                .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 24.0f).osc (2, "PhaseRand", 0.0f)
@@ -12373,12 +12393,12 @@ namespace
         pkPartial (celesta, 2, 1, 0.1f, 0.15f);
         pkStrike (celesta, 3, 2, 0.05f, 3.0f, 0.1f);
         route (celesta, "macro1", ParamIDs::osc (2, "Volume"), 0.15f);
-        macros (celesta, "SPARKLE", "SPACE", "LIGHTSPEED");
+        macros (celesta, "SPARKLE", "SPACE", "NAVICOMPUTER");
         delay (celesta, "1/16", 0.35f, 0.15f, true, 5.0f);
         reverb (celesta, RT::hall, 0.7f, 0.25f);
         space (celesta);
         celesta.set (ParamIDs::patchLevel, -6.3f);
-        lightspeed (celesta, { 0.5f, 0.6f, 0.35f, 0.9f, 0.7f });
+        navicomputer (celesta, { 0, 2, 0.2f, 0.0f });
         orchestra (celesta, { { { 0, "Percussion/Celeste.sfz", 1.0f } }, { 0, 1, 2, 3 }, 1.6f,   // 0.75.0: 1.6 (its GROUP_VOLUME now plays)
                               "A celesta twinkling like a field of stars, on the orchestra's recording, ringing on through "
                               "quick ping-pong sixteenths and a hall.",
@@ -12389,7 +12409,7 @@ namespace
         auto stab = x.make ("Ominous Piano", 12, { "Keys", "Piano", "Dark", "Stab" },
             "A dark low piano stabbing out a warning: a struck saw and a sine an octave below it, the hammer's thump, the "
             "tone closing fast after each strike (harder hits open it more), a long fall, a big dark hall. Play low "
-            "octaves. MACROS: BRIGHT, SPACE, LIGHTSPEED.");
+            "octaves. MACROS: BRIGHT, SPACE, NAVICOMPUTER.");
         stab.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.45f)
             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Fine", 3.0f).osc (2, "Volume", 0.08f)
@@ -12398,11 +12418,11 @@ namespace
             .ampEnvelope (1.0f, 3500.0f, 0.0f, 600.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.6f);
         pkStrike (stab, 3, 0, 0.15f, 40.0f, 0.6f);
         route (stab, "macro1", ParamIDs::fltCutoff, 0.25f);
-        macros (stab, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (stab, "BRIGHT", "SPACE", "NAVICOMPUTER");
         reverb (stab, RT::hall, 0.85f, 0.3f, 20.0f, 3.0f);
         space (stab);
         stab.set (ParamIDs::patchLevel, -5.8f);
-        lightspeed (stab, { 0.8f, 0.6f, 0.45f, 0.9f, 0.4f });
+        navicomputer (stab, { 3, 1, 0.0f, 0.0f });
         realPiano (stab, { 700.0f, 0.5f, 0.6f, 7.0f,
                            "A dark low piano stabbing out a warning, on the Salamander Grand: the felt closed down (harder "
                            "hits open it), a big dark hall. Play low octaves." });
@@ -12412,7 +12432,7 @@ namespace
         auto racing = x.make ("Racing Strings", 13, { "Arp", "Strings", "Spiccato", "Up/Down" },
             "Strings racing through an asteroid field: hold a chord and ARP 1 runs it up and down over two octaves in "
             "sixteenths, a section of four saw players bouncing the bow (each note bitten off short), cellos an octave "
-            "down, a hall, in time with your song. MACROS: BRIGHT, SPACE, LIGHTSPEED.");
+            "down, a hall, in time with your song. MACROS: BRIGHT, SPACE, HYPERJUMP.");
         racing.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
               .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.22f).osc (1, "Arp", 1.0f)
               .filter (FilterType::lp24, 2400.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 120.0f, 0.3f, 80.0f)
@@ -12427,11 +12447,11 @@ namespace
                 p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.7f;
         }
         route (racing, "macro1", ParamIDs::fltCutoff, 0.25f);
-        macros (racing, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (racing, "BRIGHT", "SPACE", "HYPERJUMP");
         reverb (racing, RT::hall, 0.6f, 0.18f);
         space (racing);
         racing.set (ParamIDs::patchLevel, 1.2f);
-        lightspeed (racing, { 0.6f, 0.45f, 0.45f, 0.9f, 0.6f });
+        hyperjump (racing, { 1, 0.6f, 0.7f, 0.6f });
         orchestra (racing, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 0.9f } }, { 0, 1 }, 11.4f,   // 0.75.0: 11.4 (MASTER_VOLUME -5 now plays)
                              "Strings racing through an asteroid field, on the orchestra's whole string section playing "
                              "staccato: hold a chord and ARP 1 runs it up and down over two octaves in sixteenths, a hall.",
@@ -12442,7 +12462,7 @@ namespace
         auto beeps = x.make ("Navigation Beeps", 14, { "Arp", "Computer", "Randomizer", "Bleeps" },
             "A ship's computer plotting a course: ARP 1's randomizer picks bright little sine and square beeps from the "
             "minor scale over three octaves in sixteenths, with rests, a new course every pass, quick ping-pong echoes. "
-            "Hold a chord. MACROS: BRIGHT, SPACE, LIGHTSPEED.");
+            "Hold a chord. MACROS: BRIGHT, SPACE, HYPERJUMP.");
         beeps.osc (0, "Wave", sine).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.08f)
              .osc (1, "Arp", 1.0f)
@@ -12463,18 +12483,18 @@ namespace
             pattern = synth::arp::roll (r, 16, synth::arp::Patterns::makeDefault().patterns[0], r.seed);
         }
         route (beeps, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
-        macros (beeps, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (beeps, "BRIGHT", "SPACE", "HYPERJUMP");
         delay (beeps, "1/8", 0.3f, 0.2f, true, 5.0f);
         reverb (beeps, RT::room, 0.4f, 0.12f);
         space (beeps);
         beeps.set (ParamIDs::patchLevel, 7.1f);
-        lightspeed (beeps, { 0.7f, 0.6f, 0.45f, 0.9f, 0.7f });
+        hyperjump (beeps, { 0, 1.0f, 0.6f, 0.5f });
         x.add (beeps);
 
         auto band = x.make ("Seven Step Band", 15, { "Arp", "Clarinet", "Band", "Odd Meter" },
             "The spaceport dance band's riff in seven: hold a chord and ARP 1 plays a riff on its root in eighths, seven "
             "to the bar (counted 2 + 2 + 3, the accents on each), on a reedy clarinet (a hollow square, mostly odd "
-            "harmonics, with a little vibrato), a small room, in time with your song. MACROS: BRIGHT, SPACE, LIGHTSPEED.");
+            "harmonics, with a little vibrato), a small room, in time with your song. MACROS: BRIGHT, SPACE, HYPERJUMP.");
         band.osc (0, "Wave", pulse).osc (0, "Width", 0.45f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Volume", 0.2f).osc (1, "Arp", 1.0f)
             .filter (FilterType::lp12, 2000.0f, 0.1f, 0.25f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (5.0f, 200.0f, 0.5f, 100.0f)
@@ -12497,11 +12517,11 @@ namespace
             }
         }
         route (band, "macro1", ParamIDs::fltCutoff, 0.25f);
-        macros (band, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (band, "BRIGHT", "SPACE", "HYPERJUMP");
         reverb (band, RT::room, 0.45f, 0.14f);
         space (band);
         band.set (ParamIDs::patchLevel, -0.8f);
-        lightspeed (band, { 0.6f, 0.6f, 0.4f, 0.8f, 0.6f });
+        hyperjump (band, { 1, 0.4f, 0.5f, 0.5f });
         orchestra (band, { { { 0, "Woodwinds - Notation/Clarinet Solo Sustain (looped).sfz", 1.0f } }, { 0, 1 }, 9.7f,
                            "The spaceport dance band's riff in seven, on the orchestra's solo clarinet (its held notes, cut "
                            "short by the AMP): hold a chord and ARP 1 plays a riff on its root in eighths, seven to the bar, "
@@ -12514,7 +12534,7 @@ namespace
         auto harp = x.make ("Royal Harp", 16, { "Pluck", "Harp", "Concert", "Shimmer" },
             "A concert harp at a royal ceremony: a triangle and a sine an octave up, each string plucked with a fingertip "
             "(a quick, soft tap), bright for a moment and mellowing as it rings, the upper partial dying first, a long "
-            "hall. MACROS: BRIGHT, SPACE, LIGHTSPEED.");
+            "hall. MACROS: BRIGHT, SPACE, HYPERJUMP.");
         harp.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f)
             .filter (FilterType::lp12, 2400.0f, 0.1f, 0.3f).set (ParamIDs::fltKey, 0.6f)
@@ -12524,10 +12544,10 @@ namespace
         pkStrike (harp, 2, 1, 0.05f, 4.0f, 0.3f);
         pkVelocity (harp, 0.4f, 0.3f, 0.5f);
         route (harp, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (harp, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (harp, "BRIGHT", "SPACE", "HYPERJUMP");
         reverb (harp, RT::hall, 0.7f, 0.25f);
         space (harp);
-        lightspeed (harp, { 0.5f, 0.6f, 0.4f, 0.9f, 0.7f });
+        hyperjump (harp, { 1, 0.6f, 0.4f, 0.5f });
         orchestra (harp, { { { 0, "Concert Harp.sfz", 1.0f } }, { 0, 1, 2 }, 1.5f,
                            "A concert harp at a royal ceremony, on the orchestra's recording, a long hall.",
                            0.0f, 300.0f, 1.0f, 1500.0f, -1.0f,
@@ -12537,7 +12557,7 @@ namespace
         auto pizz = x.make ("Battle Pizzicato", 17, { "Pluck", "Strings", "Pizzicato", "Section" },
             "A string section plucking hard as the battle starts: four saw players, each plucked string a quick filter "
             "snap and gone, the snap of the fingers off the string, cellos an octave down, harder playing brighter and a "
-            "little longer, a hall. MACROS: BRIGHT, SPACE, LIGHTSPEED.");
+            "little longer, a hall. MACROS: BRIGHT, SPACE, HYPERJUMP.");
         pizz.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
             .filter (FilterType::lp12, 1800.0f, 0.1f, 0.5f).set (ParamIDs::fltKey, 0.5f).filterEnvelope (0.0f, 90.0f, 0.0f, 80.0f)
@@ -12546,10 +12566,10 @@ namespace
         pkStrike (pizz, 2, 0, 0.06f, 3.0f, 0.2f);
         pkVelocity (pizz, 0.5f, 0.3f, 0.5f);
         route (pizz, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (pizz, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (pizz, "BRIGHT", "SPACE", "HYPERJUMP");
         reverb (pizz, RT::hall, 0.6f, 0.2f);
         space (pizz);
-        lightspeed (pizz, { 0.6f, 0.65f, 0.45f, 0.9f, 0.6f });
+        hyperjump (pizz, { 0, 0.5f, 0.6f, 0.6f });
         orchestra (pizz, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f } }, { 0, 1, 2 }, 3.5f,   // 0.75.0: 3.5 (MASTER_VOLUME -5 now plays)
                            "A string section plucking hard as the battle starts, on the orchestra's whole string section "
                            "playing pizzicato, a hall.",
@@ -12561,7 +12581,7 @@ namespace
             "An odd instrument from a far market: metal tines plucked with a thumbnail, each a sine with two overtones "
             "that don't sit in any scale (out of tune with each other, as a struck tine's are), dying faster the higher "
             "they are, a metallic tick, dotted echoes and a plate. MACROS: BRIGHT (more of the overtones), SPACE, "
-            "LIGHTSPEED.");
+            "HYPERJUMP.");
         tines.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 27.0f).osc (1, "Fine", 30.0f).osc (1, "PhaseRand", 0.0f)
              .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 34.0f).osc (2, "Fine", -20.0f).osc (2, "PhaseRand", 0.0f)
@@ -12572,11 +12592,11 @@ namespace
         pkStrike (tines, 3, 2, 0.08f, 2.0f, 0.0f);
         route (tines, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
         route (tines, "macro1", ParamIDs::osc (2, "Volume"), 0.1f);
-        macros (tines, "BRIGHT", "SPACE", "LIGHTSPEED");
+        macros (tines, "BRIGHT", "SPACE", "HYPERJUMP");
         delay (tines, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
         reverb (tines, RT::plate, 0.6f, 0.2f);
         space (tines);
-        lightspeed (tines, { 0.6f, 0.6f, 0.4f, 0.9f, 0.7f });
+        hyperjump (tines, { 1, 0.6f, 0.5f, 0.5f });
         pkAdd (x, tines);
     }
 

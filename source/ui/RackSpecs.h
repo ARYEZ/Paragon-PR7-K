@@ -22,7 +22,7 @@ std::array<RackUnit::Spec, 2> makeSendSpecs (ParagonX1AudioProcessor&, std::func
 // MOD, MOD 2 and LO-FI's rack units (stage 7c). `openPage` 0 opens MOD's page, 1 MOD 2's, 2 LO-FI's.
 // MOD, MOD 2, LO-FI, then the SIGNATURE slot's effects (0.58.0: ECHOES, CRACKLE, DOWNPOUR, SIROCCO; 0.59.0 INFERNAL: one shown at a time
 // in the fourth place, picked on the small screen under EDIT, which calls `chooseSignature`).
-std::array<RackUnit::Spec, 28> makeModFxSpecs (ParagonX1AudioProcessor&, std::function<void (int unit)> openPage, std::function<void()> chooseSignature);
+std::array<RackUnit::Spec, 29> makeModFxSpecs (ParagonX1AudioProcessor&, std::function<void (int unit)> openPage, std::function<void()> chooseSignature);
 // The SIGNATURE slot's effects, in its order (never reorder: the page's choice follows it), and whether each is on.
 const juce::StringArray& signatureNames();
 bool signatureOn (ParagonX1AudioProcessor&, int signature);

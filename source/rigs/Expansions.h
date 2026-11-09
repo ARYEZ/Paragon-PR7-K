@@ -134,8 +134,9 @@ namespace expansions
         { "HYPERDRIVE", "HD",
           "Inspired by the late-'70s and early-'80s space-opera film scores: heroic brass fanfares, a lonely horn over a "
           "desert horizon, a men's choir, shimmering strings, a marching low-brass ostinato, a smoky spaceport dance band, "
-          "harps, racing strings and beeping computers. Built round LIGHTSPEED (0.73.0) and MACRO 3, LIGHTSPEED: the jump "
-          "from rest to streaking stars. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
+          "harps, racing strings and beeping computers. MACRO 3 (0.86.0) is NAVICOMPUTER on the held sounds (the notes "
+          "moved by a pattern in key, in time: a held chord becomes a riff) and HYPERJUMP on the rhythmic ones (a build "
+          "and a drop in time with the song). Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
           "(free), and PR7-K's own synthesized orchestra until then. Our own sounds." },
         { "GRAND CINEMA", "GC",
           "The modern film and trailer piano: intimate felt pianos heard up close, vast halls where the notes bloom into "
