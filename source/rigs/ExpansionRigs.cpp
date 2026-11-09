@@ -168,6 +168,7 @@ namespace
         static const std::map<juce::String, float> levels {
             { "Twang Pluck", 1.7f }, { "Archtop Strum", -3.1f }, { "Spur Jangle", -2.1f },
             { "Street Stab", 0.8f }, { "Tower Ping", -4.5f }, { "Bitrot Pluck", -4.6f },
+            { "Glass Pluck", -5.0f }, { "Tracer Ping", -4.5f }, { "Ruin Harp", -4.5f },
             { "Ancient Harp", -5.8f },
             { "Battle Pizzicato", -8.5f },
             { "Bike Spokes", -8.1f },
@@ -17569,7 +17570,7 @@ namespace
         tape (glide, "1/8 dotted", 0.35f, 0.18f);
         reverb (glide, RT::hall, 0.5f, 0.18f, 25.0f, 5.0f);
         space (glide);
-        glide.set (ParamIDs::patchLevel, -7.0f);
+        glide.set (ParamIDs::patchLevel, -6.9f);   // measured
         sweep (glide, { 2, 2, 0, 0.45f, 0.55f, 0.65f, 0.45f, 1.0f });
         x.add (glide);
 
@@ -17591,7 +17592,7 @@ namespace
         delay (pursuit, "1/8", 0.3f, 0.15f, true, 5.0f);
         reverb (pursuit, RT::room, 0.45f, 0.12f, 10.0f, 5.0f);
         space (pursuit);
-        pursuit.set (ParamIDs::patchLevel, -6.0f);
+        pursuit.set (ParamIDs::patchLevel, -3.8f);   // measured
         sweep (pursuit, { 1, 0, 0, 0.55f, 0.5f, 0.55f, 0.2f, 1.0f });
         x.add (pursuit);
 
@@ -17616,7 +17617,7 @@ namespace
         delay (theremin, "1/4", 0.3f, 0.15f, true, 4.0f);
         reverb (theremin, RT::hall, 0.65f, 0.28f, 30.0f, 4.5f);
         space (theremin);
-        theremin.set (ParamIDs::patchLevel, -8.0f);
+        theremin.set (ParamIDs::patchLevel, -7.0f);   // measured
         sweep (theremin, { 3, 2, 1, 0.55f, 0.5f, 0.5f, 0.6f, 1.0f });
         x.add (theremin);
 
@@ -17636,10 +17637,10 @@ namespace
         macros (strings, "BRIGHT", "SPACE", "SWEEP");
         reverb (strings, RT::hall, 0.7f, 0.3f, 30.0f, 5.0f);
         space (strings);
-        strings.set (ParamIDs::patchLevel, -9.0f);
+        strings.set (ParamIDs::patchLevel, -6.9f);   // measured
         sweep (strings, { 3, 2, 0, 0.5f, 0.55f, 0.5f, 0.5f, 1.0f });
         orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f, true } },
-                              {}, -9.0f,
+                              {}, -6.8f,
                               "The city's strings: the orchestra's whole section over PR7-K's string machine (the recordings "
                               "fade after a few seconds; the machine holds).",
                               -1.0f, 300.0f, 1.0f, 1200.0f, -1.0f,
@@ -17665,10 +17666,10 @@ namespace
         macros (choir, "BRIGHT", "SPACE", "SWEEP");
         reverb (choir, RT::hall, 0.65f, 0.25f, 30.0f, 5.0f);
         space (choir);
-        choir.set (ParamIDs::patchLevel, -4.0f);
+        choir.set (ParamIDs::patchLevel, -5.1f);   // measured
         sweep (choir, { 2, 2, 0, 0.55f, 0.45f, 0.45f, 0.35f, 1.0f });
         orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
-                            { 0, 1 }, -4.0f,
+                            { 0, 1 }, 3.1f,
                             "The choir on tape: the orchestra's large choir, worn by a cassette's wobble (LO-FI).",
                             300.0f, 600.0f, 1.0f, 1200.0f, -1.0f,
                             [] (Builder& s)
@@ -17694,7 +17695,7 @@ namespace
         macros (sunrise, "BRIGHT", "SPACE", "SWEEP");
         reverb (sunrise, RT::hall, 0.85f, 0.32f, 40.0f, 4.5f);
         space (sunrise);
-        sunrise.set (ParamIDs::patchLevel, -7.0f);
+        sunrise.set (ParamIDs::patchLevel, -6.6f);   // measured
         sweep (sunrise, { 4, 0, 0, 0.5f, 0.6f, 0.4f, 0.3f, 1.0f });
         x.add (sunrise);
 
@@ -17715,7 +17716,7 @@ namespace
         tape (pulseBass, "1/8 dotted", 0.25f, 0.1f);
         reverb (pulseBass, RT::room, 0.4f, 0.08f, 10.0f, 5.0f);
         space (pulseBass);
-        pulseBass.set (ParamIDs::patchLevel, -6.0f);
+        pulseBass.set (ParamIDs::patchLevel, -2.6f);   // measured
         sweep (pulseBass, { 1, 2, 0, 0.4f, 0.45f, 0.65f, 0.15f, 1.0f });
         x.add (pulseBass);
 
@@ -17737,7 +17738,7 @@ namespace
         macros (enforcer, "BRIGHT", "SPACE", "SWEEP");
         reverb (enforcer, RT::room, 0.35f, 0.06f, 8.0f, 4.0f);
         space (enforcer);
-        enforcer.set (ParamIDs::patchLevel, -6.0f);
+        enforcer.set (ParamIDs::patchLevel, -6.2f);   // measured
         sweep (enforcer, { 2, 1, 0, 0.35f, 0.5f, 0.7f, 0.1f, 1.0f });
         x.add (enforcer);
 
@@ -17755,7 +17756,7 @@ namespace
         macros (drone, "BRIGHT", "SPACE", "SWEEP");
         reverb (drone, RT::hall, 0.6f, 0.12f, 20.0f, 4.0f);
         space (drone);
-        drone.set (ParamIDs::patchLevel, -8.0f);
+        drone.set (ParamIDs::patchLevel, -6.6f);   // measured
         sweep (drone, { 3, 2, 0, 0.3f, 0.55f, 0.55f, 0.25f, 1.0f });
         x.add (drone);
 
@@ -17780,7 +17781,7 @@ namespace
         macros (piano, "BRIGHT", "SPACE", "SWEEP");
         reverb (piano, RT::plate, 0.5f, 0.18f, 15.0f, 5.0f);
         space (piano);
-        piano.set (ParamIDs::patchLevel, -5.0f);
+        piano.set (ParamIDs::patchLevel, -4.4f);   // measured
         sweep (piano, { 2, 2, 0, 0.6f, 0.5f, 0.5f, 0.5f, 1.0f });
         x.add (piano);
 
@@ -17800,7 +17801,7 @@ namespace
         delay (bells, "1/4 dotted", 0.4f, 0.18f, true, 4.0f);
         reverb (bells, RT::hall, 0.65f, 0.28f, 25.0f, 5.0f);
         space (bells);
-        bells.set (ParamIDs::patchLevel, -6.0f);
+        bells.set (ParamIDs::patchLevel, -2.0f);   // measured
         sweep (bells, { 2, 0, 1, 0.6f, 0.5f, 0.55f, 0.3f, 1.0f });
         x.add (bells);
 
@@ -17820,7 +17821,7 @@ namespace
         macros (organ, "BRIGHT", "SPACE", "SWEEP");
         reverb (organ, RT::room, 0.4f, 0.18f, 10.0f, 5.0f);
         space (organ);
-        organ.set (ParamIDs::patchLevel, -6.0f);
+        organ.set (ParamIDs::patchLevel, -4.5f);   // measured
         sweep (organ, { 1, 2, 0, 0.55f, 0.4f, 0.45f, 0.2f, 1.0f });
         x.add (organ);
 
@@ -17844,7 +17845,7 @@ namespace
         delay (hold, "1/8 dotted", 0.4f, 0.18f, true, 4.0f);
         reverb (hold, RT::plate, 0.5f, 0.15f, 15.0f, 5.0f);
         space (hold);
-        hold.set (ParamIDs::patchLevel, -6.0f);
+        hold.set (ParamIDs::patchLevel, -3.7f);   // measured
         sweep (hold, { 2, 2, 0, 0.5f, 0.5f, 0.5f, 0.3f, 1.0f });
         x.add (hold);
 
@@ -17863,7 +17864,7 @@ namespace
         delay (chatter, "1/16", 0.3f, 0.15f, true, 5.0f);
         reverb (chatter, RT::room, 0.4f, 0.15f, 8.0f, 5.0f);
         space (chatter);
-        chatter.set (ParamIDs::patchLevel, -6.0f);
+        chatter.set (ParamIDs::patchLevel, 5.0f);   // measured
         sweep (chatter, { 1, 0, 1, 0.6f, 0.45f, 0.6f, 0.2f, 1.0f });
         x.add (chatter);
 
@@ -17883,7 +17884,7 @@ namespace
         tape (berlin, "1/8 dotted", 0.4f, 0.2f);
         reverb (berlin, RT::hall, 0.6f, 0.2f, 20.0f, 5.0f);
         space (berlin);
-        berlin.set (ParamIDs::patchLevel, -6.0f);
+        berlin.set (ParamIDs::patchLevel, -5.3f);   // measured
         sweep (berlin, { 3, 2, 0, 0.45f, 0.55f, 0.6f, 0.35f, 1.0f });
         x.add (berlin);
 
@@ -17938,7 +17939,7 @@ namespace
         reverb (harp, RT::hall, 0.7f, 0.28f, 25.0f, 5.0f);
         space (harp);
         sweep (harp, { 2, 2, 0, 0.55f, 0.45f, 0.4f, 0.4f, 1.0f });
-        orchestra (harp, { { { 0, "Concert Harp.sfz", 1.0f } }, { 0, 1, 2 }, 1.5f,
+        orchestra (harp, { { { 0, "Concert Harp.sfz", 1.0f } }, { 0, 1, 2 }, -1.0f,
                            "A harp found in the ruins: the orchestra's concert harp.",
                            1.0f, 300.0f, 1.0f, 900.0f, -1.0f, {} });
         pkAdd (x, harp);
