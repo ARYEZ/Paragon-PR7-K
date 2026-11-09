@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.87.0
+
+**LAST DAY, a new expansion: 1970s dystopian science fiction, built round a new signature effect, SWEEP.**
+
+- **LAST DAY** (LD01-LD18), our own sounds and phrases: huge resonant sweeps, gliding monophonic leads, sync screams, string machines, a choir played back from tape, Berlin-school sequencer basses, ring-modulated bells, sample-and-hold bleeps, phaser and tape echo. Three in every category: the sealed city, the system that runs it, and outside. **MACRO 3 SWEEP** on every preset.
+  - Leads: Golden Glide, Pursuit Sync, Theremin Wind.
+  - Pads: String Machine, Tape Choir, Overgrown Sunrise.
+  - Basses: Pleasure Pulse (hold a note: a sequencer bass runs), Enforcer Bass, Pedal Drone.
+  - Keys: Phaser Piano, Ring Mod Bells, Rusted Organ.
+  - Arps: Sample And Hold, Mainframe Chatter, Berlin Run.
+  - Plucks: Glass Pluck, Tracer Ping, Ruin Harp.
+- **3 have a version on the free orchestra** (the Sonatina Symphonic Orchestra), played once it's downloaded: String Machine (the whole string section over the string machine), Tape Choir (the large choir, worn by tape) and Ruin Harp (the concert harp).
+- **SWEEP** (FX page, SIGNATURE slot), our own design: the 1970s analogue filter sweep as a performance, locked to the song.
+  - SHAPE: UP, DOWN or UP-DOWN, over LENGTH (half a bar to 8 bars). CENTER and RANGE set where it sweeps and how wide (2 to 9 octaves).
+  - RESONANCE rises with the sweep to all of itself at the top: the near-scream at the peak. FILTER: LOW-PASS (24 dB) or BAND-PASS (a narrower, vocal sweep). PHASER: a phaser riding the cutoff.
+  - AMOUNT brings the filter in from fully open; the level is kept, so turning it up sweeps the sound without making it quieter. At AMOUNT 0 your sound passes untouched.
+  - AMOUNT, RESONANCE and CENTER can be moved from the mod matrix (FX Sweep). Its page shows the sweep's path in time with the cutoff now, and the filter's response.
+
 ## 0.86.0
 
 **HYPERDRIVE gets two new signature effects, HYPERJUMP and NAVICOMPUTER, in place of LIGHTSPEED, which is gone.**
