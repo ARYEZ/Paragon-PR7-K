@@ -11964,10 +11964,15 @@ namespace
         int division = 0;   // synth::navi::divisionNames: 1/16
         float chaos = 0.0f, glide = 0.0f;
         float top = 1.0f;   // the macro's AMOUNT at full
+        // The LIMITER at -1 dBFS as a ceiling: a sound much brighter on some notes than others (the brass, the
+        // choir's vowels) jumps up to 9 dB when moved onto them (measured on the clips).
+        bool ceiling = false;
     };
 
     void navicomputer (Builder& b, Course c)
     {
+        if (c.ceiling)
+            b.set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         b.set (ParamIDs::naviOn, 1.0f).set (ParamIDs::naviAmount, 0.0f).set (ParamIDs::naviPattern, (float) c.pattern)
          .set (ParamIDs::naviDivision, (float) c.division).set (ParamIDs::naviKey, 7.0f).set (ParamIDs::naviScale, 2.0f)   // G minor
          .set (ParamIDs::naviChaos, c.chaos).set (ParamIDs::naviGlide, c.glide);
@@ -12112,7 +12117,7 @@ namespace
         reverb (fanfare, RT::hall, 0.75f, 0.22f, 25.0f);
         space (fanfare);
         fanfare.set (ParamIDs::patchLevel, -3.3f);
-        navicomputer (fanfare, { 2, 1, 0.0f, 0.2f });
+        navicomputer (fanfare, { 7, 1, 0.0f, 0.2f, 1.0f, true });
         orchestra (fanfare, { { { 0, "Brass - Notation/Trumpets Sustain (looped).sfz", 0.8f, 0.1f },
                                 { 1, "Brass - Notation/Horns Sustain.sfz", 0.6f, -0.2f } },
                               { 0, 1, 2 }, 2.9f,
@@ -12208,7 +12213,7 @@ namespace
         eqBand (choir, 0, eq::Shape::lowCut, 70.0f, 0.0f);
         space (choir);
         choir.set (ParamIDs::patchLevel, -8.7f);
-        navicomputer (choir, { 7, 3, 0.0f, 0.6f });
+        navicomputer (choir, { 4, 3, 0.0f, 0.6f, 1.0f, true });
         orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f, true } }, { 0, 1, 2 }, 0.9f,
                             "A large choir in a vast hall, on the orchestra's recordings (looped, so chords hold): low chords "
                             "for the men, a cathedral.",
@@ -12241,7 +12246,7 @@ namespace
         eqBand (strings, 0, eq::Shape::lowCut, 60.0f, 0.0f);
         space (strings);
         strings.set (ParamIDs::patchLevel, -10.4f);
-        navicomputer (strings, { 0, 0, 0.0f, 0.1f });
+        navicomputer (strings, { 0, 0, 0.0f, 0.1f, 1.0f, true });
         orchestra (strings, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 1.42f, 0.0f, true } }, {}, -10.0f,   // 0.75.0: 1.42 (0.8 + 5 dB: the library's MASTER_VOLUME -5 now plays)
                               "Shimmering strings for the stars going by: the orchestra's whole string section, with PR7-K's "
                               "own strings underneath, quieter. The recordings aren't looped and stop after about four "
@@ -12272,7 +12277,7 @@ namespace
         reverb (hum, RT::cathedral, 0.9f, 0.35f, 40.0f);
         space (hum);
         hum.set (ParamIDs::patchLevel, -10.2f);
-        navicomputer (hum, { 3, 1, 0.0f, 0.3f });
+        navicomputer (hum, { 3, 1, 0.0f, 0.3f, 1.0f, true });
         x.add (hum);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
