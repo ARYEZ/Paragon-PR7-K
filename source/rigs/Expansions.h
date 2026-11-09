@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 34> list
+    inline constexpr std::array<Expansion, 35> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -199,5 +199,13 @@ namespace expansions
           "JACK-IN: something breaks into the sound and takes the phrase over, slice by slice in time with the song. Its "
           "guitar plays Black And Green Guitars, its beat Big Rusty Drums and its choir the Sonatina Symphonic "
           "Orchestra, once downloaded (free). Our own sounds and phrases." },
+        { "LAST DAY", "LD",
+          "Inspired by the 1970s science-fiction films of sealed, perfect cities: a golden gliding lead, a hunter's sync "
+          "scream and a theremin's wind; a string machine, a choir played back from tape and a sunrise outside; a pulsing "
+          "sequencer bass, a dark enforcer and a pedal drone; a phaser piano, ring-modulated bells and a rusted organ; "
+          "sample-and-hold bleeps, a mainframe's chatter and a Berlin-school run. Three columns: the sealed city, the "
+          "system that runs it, and outside. Built round SWEEP (0.87.0) and MACRO 3, SWEEP: a huge resonant analogue sweep "
+          "locked to the song. Its strings, choir and harp play the Sonatina Symphonic Orchestra once downloaded (free). "
+          "Our own sounds." },
     }};
 }
