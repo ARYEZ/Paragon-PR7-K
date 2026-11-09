@@ -600,5 +600,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addCanyonParameters (layout);          // CANYON (0.84.0, version hint 52): RackParameters.cpp
     addJackInParameters (layout);          // JACK-IN (0.85.0, version hint 53): RackParameters.cpp
     addHyperJumpParameters (layout);       // HYPERJUMP (0.86.0, version hint 54): RackParameters.cpp
+    addSweepParameters (layout);           // SWEEP (0.87.0, version hint 55): RackParameters.cpp
     return layout;
 }

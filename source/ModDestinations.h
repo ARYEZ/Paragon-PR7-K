@@ -87,7 +87,9 @@ namespace ModDestinations
                                                  // 0.85.0: JACK-IN: how much is taken, how wild, how crushed
                                                  "jackinAmount", "jackinChaos", "jackinCrush",
                                                  // 0.86.0: NAVICOMPUTER: how many steps move, how wild, how smooth
-                                                 "naviAmount", "naviChaos", "naviGlide" };
+                                                 "naviAmount", "naviChaos", "naviGlide",
+                                                 // 0.87.0: SWEEP: how much, how resonant, where it sweeps round
+                                                 "sweepAmount", "sweepResonance", "sweepCenter" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

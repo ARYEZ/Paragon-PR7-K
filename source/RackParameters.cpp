@@ -34,6 +34,7 @@
 #include "dsp/effects/Canyon.h"
 #include "dsp/effects/JackIn.h"
 #include "dsp/effects/HyperJump.h"
+#include "dsp/effects/Sweep.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -965,4 +966,23 @@ void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::hyperjumpRise, "Hyperjump Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
     layout.add (makeFloat (ParamIDs::hyperjumpChop, "Hyperjump Chop", { 0.0f, 1.0f, 0.01f }, d.chop, v, asPercent));
     layout.add (makeFloat (ParamIDs::hyperjumpHit, "Hyperjump Hit", { 0.0f, 1.0f, 0.01f }, d.hit, v, asPercent));
+}
+
+void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SWEEP (0.87.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 55;
+    using W = effects::Sweep;
+    const W::Settings d;
+    const ToText asCenter = [] (float value, int) { return juce::String (juce::roundToInt (W::centerHz (value))) + " Hz"; };
+    const ToText asRange = [] (float value, int) { return juce::String (W::rangeOctaves (value), 1) + " oct"; };
+    layout.add (makeSwitch (ParamIDs::sweepOn, "Sweep On", v, false));
+    layout.add (makeFloat (ParamIDs::sweepAmount, "Sweep Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::sweepLength, "Sweep Length", v, W::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::sweepShape, "Sweep Shape", v, W::shapeNames, d.shape));
+    layout.add (makeChoice (ParamIDs::sweepFilter, "Sweep Filter", v, W::filterNames, d.filter));
+    layout.add (makeFloat (ParamIDs::sweepCenter, "Sweep Center", { 0.0f, 1.0f, 0.01f }, d.center, v, asCenter));
+    layout.add (makeFloat (ParamIDs::sweepRange, "Sweep Range", { 0.0f, 1.0f, 0.01f }, d.range, v, asRange));
+    layout.add (makeFloat (ParamIDs::sweepResonance, "Sweep Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::sweepPhaser, "Sweep Phaser", { 0.0f, 1.0f, 0.01f }, d.phaser, v, asPercent));
 }

@@ -326,6 +326,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->canyon.prepare (sampleRate, preparedBlockSize);
     rack->jackIn.prepare (sampleRate, preparedBlockSize);
     rack->hyperJump.prepare (sampleRate, preparedBlockSize);
+    rack->sweep.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1383,6 +1384,21 @@ effects::HyperJump::Settings ParagonX1AudioProcessor::getHyperJumpSettings() con
     return s;
 }
 
+effects::Sweep::Settings ParagonX1AudioProcessor::getSweepSettings() const noexcept
+{
+    effects::Sweep::Settings s;
+    s.on = isOn (ParamIDs::sweepOn);
+    s.amount = effectParam (ModDestinations::effect ("sweepAmount"), ParamIDs::sweepAmount);
+    s.length = juce::jlimit (0, effects::Sweep::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::sweepLength)));
+    s.shape = juce::jlimit (0, effects::Sweep::shapeNames.size() - 1, juce::roundToInt (param (ParamIDs::sweepShape)));
+    s.filter = juce::jlimit (0, effects::Sweep::filterNames.size() - 1, juce::roundToInt (param (ParamIDs::sweepFilter)));
+    s.center = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sweepCenter"), ParamIDs::sweepCenter));
+    s.range = param (ParamIDs::sweepRange);
+    s.resonance = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sweepResonance"), ParamIDs::sweepResonance));
+    s.phaser = param (ParamIDs::sweepPhaser);
+    return s;
+}
+
 synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
 {
     synth::navi::Settings n;
@@ -1750,6 +1766,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->canyon.process (block, getCanyonSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.84.0: the walls answer
         rack->jackIn.process (block, getJackInSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.85.0: broken into
         rack->hyperJump.process (block, getHyperJumpSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.86.0: the build and the drop
+        rack->sweep.process (block, getSweepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.87.0: the sweep
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

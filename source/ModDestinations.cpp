@@ -94,7 +94,8 @@ namespace ModDestinations
                 { "FX Colossus", "Size" }, { "FX Colossus", "Depth" }, { "FX Colossus", "Hall" },
                 { "FX Canyon", "Amount" }, { "FX Canyon", "Size" }, { "FX Canyon", "Repeats" },
                 { "FX Jack-In", "Amount" }, { "FX Jack-In", "Chaos" }, { "FX Jack-In", "Crush" },
-                { "FX Navicomputer", "Amount" }, { "FX Navicomputer", "Chaos" }, { "FX Navicomputer", "Glide" } };
+                { "FX Navicomputer", "Amount" }, { "FX Navicomputer", "Chaos" }, { "FX Navicomputer", "Glide" },
+                { "FX Sweep", "Amount" }, { "FX Sweep", "Resonance" }, { "FX Sweep", "Center" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

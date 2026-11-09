@@ -591,6 +591,16 @@ namespace ParamIDs
     inline constexpr auto hyperjumpRise   = "hyperjumpRise";     // 0 to 1: the climb's top, 0 to +12 semitones
     inline constexpr auto hyperjumpChop   = "hyperjumpChop";     // 0 to 1
     inline constexpr auto hyperjumpHit    = "hyperjumpHit";      // 0 to 1: the drop's boom and space
+    // SWEEP (0.87.0, version hint 55, effects::Sweep): LAST DAY's song-locked resonant sweep.
+    inline constexpr auto sweepOn        = "sweepOn";
+    inline constexpr auto sweepAmount    = "sweepAmount";      // 0 to 1 (the macro's)
+    inline constexpr auto sweepLength    = "sweepLength";      // effects::Sweep::lengthNames
+    inline constexpr auto sweepShape     = "sweepShape";       // effects::Sweep::shapeNames
+    inline constexpr auto sweepFilter    = "sweepFilter";      // effects::Sweep::filterNames
+    inline constexpr auto sweepCenter    = "sweepCenter";      // 0 to 1: 150 Hz to 4 kHz
+    inline constexpr auto sweepRange     = "sweepRange";       // 0 to 1: 2 to 9 octaves
+    inline constexpr auto sweepResonance = "sweepResonance";   // 0 to 1
+    inline constexpr auto sweepPhaser    = "sweepPhaser";      // 0 to 1
     // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
     inline constexpr auto naviOn       = "naviOn";
     inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
@@ -699,4 +709,5 @@ void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
 void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.84.0)
 void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.85.0)
 void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.86.0)
+void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.87.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

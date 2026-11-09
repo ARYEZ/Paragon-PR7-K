@@ -93,6 +93,7 @@ add_executable(ParagonX1Tests
     JackInPluginTests.cpp
     HyperJumpTests.cpp
     NaviComputerTests.cpp
+    SweepTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

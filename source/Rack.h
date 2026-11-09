@@ -33,6 +33,7 @@
 #include "dsp/effects/Canyon.h"
 #include "dsp/effects/JackIn.h"
 #include "dsp/effects/HyperJump.h"
+#include "dsp/effects/Sweep.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -128,6 +129,7 @@ struct Rack
     effects::Canyon canyon;           // 0.84.0
     effects::JackIn jackIn;           // 0.85.0
     effects::HyperJump hyperJump;     // 0.86.0
+    effects::Sweep sweep;             // 0.87.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

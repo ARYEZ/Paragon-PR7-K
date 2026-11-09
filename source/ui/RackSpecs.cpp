@@ -1,6 +1,7 @@
 #include "RackSpecs.h"
 
 #include "dsp/synth/NaviComputer.h"
+#include "dsp/effects/Sweep.h"
 
 #include "ui/DownpourPage.h"
 
@@ -620,19 +621,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 29> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 30> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 29> specs;
+    std::array<RackUnit::Spec, 30> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1803,6 +1804,52 @@ std::array<RackUnit::Spec, 29> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (28); };
+    }
+
+    // SWEEP (0.87.0): where the sweep is in big digits (%), the cutoff, its settings; the keys set AMOUNT: DRIFT (a
+    // gentle sweep), SWEEP (most of the way), SCREAM (all of it); the ladder where the sweep is now.
+    {
+        auto& s = specs[29];
+        s.name = "SWEEP";
+        s.kind = "FILTER  RESONANCE  PHASER";
+        s.onParameterIds = { ParamIDs::sweepOn };
+        s.powerTooltip = "SWEEP on or off: a resonant analogue sweep locked to the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "DRIFT", 0.3f, "A gentle sweep: the filter breathing with the song" },
+                                            { "SWEEP", 0.65f, "Most of the way: the sweep wide and singing at the top" },
+                                            { "SCREAM", 1.0f, "All of it: the widest sweep, the resonance near-screaming at the peak" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::sweepAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::sweepAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::sweepAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::sweepResonance, "RESONANCE" } };
+        s.ladderTitle = "SWEEP";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "TOP", "", "1/2", "", "LOW" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getSweep();
+            return p.getSweepSettings().on && ! fx.isResting() ? fx.getPosition() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getSweep();
+            const auto live = p.getSweepSettings().on && ! fx.isResting();
+            const auto hz = live ? fx.getCutoffHz() : 20000.0f;
+            const auto end = drawNumber (g, hz >= 1000.0f ? juce::String (hz / 1000.0f, 1) : juce::String (juce::roundToInt (hz)), left.getTopLeft(), h);
+            line (g, hz >= 1000.0f ? "kHz" : "Hz", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, live ? "CUTOFF" : "OPEN", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::sweepAmount), "LENGTH " + textOf (p, ParamIDs::sweepLength),
+                                  "SHAPE " + textOf (p, ParamIDs::sweepShape), "RES " + textOf (p, ParamIDs::sweepResonance) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (29); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
