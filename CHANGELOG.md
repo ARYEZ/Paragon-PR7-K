@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.89.0
+
+**PLAYGROUND, a new expansion: sweet children's tunes with dread underneath, built round a new signature effect, FREEZE TAG.**
+
+- **PLAYGROUND** (PG01-PG18), our own sounds and phrases: a child's recorder, toy instruments, a music box and clapping games beside a cold masked trumpet, a guards' march and a salon waltz, and outside a lonely harmonica, a warm night market and a pawn-shop piano. Three in every category: the playground, the masked staff, the debt outside. **MACRO 3 FREEZE TAG** on every preset.
+  - Leads: Recorder Tune, Masked Trumpet, Empty Pockets.
+  - Pads: Painted Stairs, Dormitory Rows, Night Market.
+  - Basses: Toy Tuba, Guard March, Debt Collector.
+  - Keys: Music Box, Salon Waltz, Pawn Shop Piano.
+  - Arps: Clapping Game, Marching Numbers, Countdown Clock (hold chords; the drums and ticks keep their own rhythm).
+  - Plucks: Marble Drop, Glass Step, Paper Flip.
+- **11 have a version on the free libraries**, played once they're downloaded: a real recorder, harmonica, marimba and claps, snare and xylophone, woodblock and glockenspiel (VCSL); a real trumpet, strings, tuba, plucked basses and harpsichord (the orchestra); the pawn-shop piano on the Salamander Grand.
+- **FREEZE TAG** (FX page, SIGNATURE slot), our own design: the playground freeze game, in time with the song.
+  - Each CYCLE (1, 2 or 4 bars) plays, then freezes for its last HOLD (1, 2 or 4 beats): the live sound stops and a ghost of the moment it froze hangs in the silence (SLICE: how much of that moment it holds).
+  - TREMBLE: the ghost can't keep still. FROST: it darkens. CAUGHT: the chance a freeze gets caught moving, and the ghost sinks an octave and crumbles. LEVEL: how loud the ghost is.
+  - AMOUNT brings it in; while it plays, your sound is untouched, and at AMOUNT 0 it's untouched throughout.
+  - AMOUNT, TREMBLE and CAUGHT can be moved from the mod matrix (FX Freeze Tag). Its page shows the cycle beat by beat and a figure that runs on green and freezes on red.
+- **CHROMEFURY's description** in the preset browser now describes the rebuilt bank (0.88.0 still showed the old one's).
+
 ## 0.88.0
 
 **CHROMEFURY rebuilt from the ground up, round a new signature effect, REDLINE.**
