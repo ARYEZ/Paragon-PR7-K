@@ -166,7 +166,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
-            { "Marble Drop", -6.0f }, { "Glass Step", -4.5f },
+            { "Marble Drop", -6.0f }, { "Glass Step", -4.5f }, { "Paper Flip", 9.0f },
             { "Spark Riff", 1.0f }, { "Chain Pizzicato", -9.5f }, { "Barbed Wire", -9.0f },
             { "Twang Pluck", 1.7f }, { "Archtop Strum", -3.1f }, { "Spur Jangle", -2.1f },
             { "Street Stab", 0.8f }, { "Tower Ping", -4.5f }, { "Bitrot Pluck", -4.6f },
@@ -17690,9 +17690,9 @@ namespace
         space (recorder);
         recorder.set (ParamIDs::patchLevel, -3.4f);
         freezeTag (recorder, { 1, 1, 0.45f, 0.35f, 0.2f, 0.15f, 0.8f, 1.0f });
-        orchestra (recorder, { { { 0, "Aerophones/Edge-blown Aerophones/Baroque Soprano Recorder - Sustain.sfz", 1.0f, 0.0f, false, &vcsl } },
-                               { 0, 1, 2 }, 4.0f,
-                               "A child's recorder in the playground: a real soprano recorder (VCSL), a school-hall room.",
+        orchestra (recorder, { { { 0, "Aerophones/Edge-blown Aerophones/Baroque Tenor Recorder - Sustain.sfz", 2.0f, 0.0f, false, &vcsl } },
+                               { 0, 1, 2 }, 12.0f,
+                               "A child's recorder in the playground: a real tenor recorder (VCSL), a school-hall room.",
                                15.0f, 300.0f, 1.0f, 150.0f, 0.0f,
                                [] (Builder& s) { s.rig.modulation.routes.clear(); route (s, "macro2", ParamIDs::reverbMix, 0.3f);
                                                  route (s, "macro1", ParamIDs::reverbSize, 0.3f); s.rig.modulation.macroNames[0] = "ROOM";
@@ -17720,7 +17720,7 @@ namespace
         trumpet.set (ParamIDs::patchLevel, -3.6f);
         freezeTag (trumpet, { 1, 1, 0.3f, 0.15f, 0.4f, 0.25f, 0.8f, 1.0f });
         orchestra (trumpet, { { { 0, "Brass - Notation/Trumpet Solo Sustain (looped).sfz", 1.0f, 0.0f } },
-                              { 0, 1 }, 4.0f,
+                              { 0, 1 }, 4.6f,
                               "The masked staff's call to the next round: a real solo trumpet (the orchestra), a long cold hall.",
                               10.0f, 300.0f, 0.95f, 250.0f, 0.0f,
                               [hall] (Builder& s) { hall (s); } });
@@ -17755,7 +17755,7 @@ namespace
         harmonica.set (ParamIDs::patchLevel, -4.8f);
         freezeTag (harmonica, { 2, 1, 0.5f, 0.4f, 0.4f, 0.1f, 0.8f, 1.0f });
         orchestra (harmonica, { { { 0, "Aerophones/Free Aerophones/Harmonica-Hohner-Super64 - Normal.sfz", 1.0f, 0.0f, false, &vcsl } },
-                                { 0, 1, 2 }, 4.0f,
+                                { 0, 1, 2 }, 6.4f,
                                 "A lonely harmonica on the walk home with empty pockets: a real chromatic harmonica (VCSL).",
                                 20.0f, 400.0f, 0.95f, 200.0f, 0.0f,
                                 [hall] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hall (s); } });
@@ -17822,7 +17822,7 @@ namespace
         market.set (ParamIDs::patchLevel, -8.0f);
         freezeTag (market, { 2, 2, 0.7f, 0.25f, 0.3f, 0.1f, 0.85f, 0.9f });
         orchestra (market, { { { 2, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f } },
-                             {}, 0.0f,
+                             {}, -5.5f,
                              "The warm night market outside: the orchestra's whole string section over PR7-K's strings.",
                              -1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
                              [] (Builder& s) { s.osc (0, "Volume", 0.25f).osc (1, "Volume", 0.08f); } });
@@ -17846,7 +17846,7 @@ namespace
         tuba.set (ParamIDs::patchLevel, 0.7f);
         freezeTag (tuba, { 1, 1, 0.35f, 0.3f, 0.2f, 0.2f, 0.8f, 1.0f });
         orchestra (tuba, { { { 0, "Brass - Notation/Tuba Sustain (looped).sfz", 1.0f, 0.0f } },
-                           { 0 }, 4.0f,
+                           { 0 }, 5.9f,
                            "An oompah from a toy brass band: a real tuba (the orchestra), played short, a sine under it.",
                            8.0f, 260.0f, 0.3f, 150.0f, 0.0f,
                            [] (Builder& s) { s.set (ParamIDs::playMode, 0.0f); } });
@@ -17869,7 +17869,7 @@ namespace
         march.set (ParamIDs::patchLevel, 1.3f);
         freezeTag (march, { 1, 0, 0.3f, 0.2f, 0.3f, 0.3f, 0.8f, 1.0f });
         orchestra (march, { { { 0, "Strings - Notation/Basses Pizzicato.sfz", 1.0f, 0.0f } },
-                            { 0 }, 6.0f,
+                            { 0 }, 1.7f,
                             "The guards marching in line: the orchestra's basses plucked, a sine under them, a hard room.",
                             0.5f, 600.0f, 0.0f, 250.0f, -1.0f,
                             [] (Builder& s) { s.set (ParamIDs::playMode, 0.0f); } });
@@ -17936,7 +17936,7 @@ namespace
         waltz.set (ParamIDs::patchLevel, -7.5f);
         freezeTag (waltz, { 1, 1, 0.4f, 0.2f, 0.3f, 0.2f, 0.8f, 1.0f });
         orchestra (waltz, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } },
-                            { 0, 1 }, 2.0f,
+                            { 0, 1 }, 6.0f,
                             "A waltz for the rich onlookers in their lounge: a real harpsichord (the orchestra), a gilded room.",
                             0.5f, 1600.0f, 0.0f, 500.0f, -1.0f,
                             [hall] (Builder& s) { hall (s); } });
@@ -17954,7 +17954,7 @@ namespace
         space (pawn);
         pawn.set (ParamIDs::patchLevel, -6.2f);
         freezeTag (pawn, { 2, 1, 0.6f, 0.3f, 0.4f, 0.15f, 0.85f, 1.0f });
-        grand (pawn, { 4, 3500.0f, 0.4f, 0.3f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
+        grand (pawn, { 4, 3500.0f, 0.4f, 0.3f, 6.5f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
                        "The old upright at the back of the pawn shop: the Salamander Grand on two strings pulled out of tune "
                        "(a second Salamander 22 cents sharp), dull and a little sad.",
                        [] (Builder& s)
@@ -17997,7 +17997,7 @@ namespace
         freezeTag (clapping, { 1, 1, 0.3f, 0.35f, 0.2f, 0.2f, 0.8f, 1.0f });
         orchestra (clapping, { { { 0, "Idiophones/Struck Idiophones/Marimba.sfz", 1.0f, 0.0f, false, &vcsl },
                                  { 2, "Idiophones/Struck Idiophones/Claps.sfz", 0.8f, 0.0f, false, &vcsl } },
-                               { 0, 1, 2 }, 4.0f,
+                               { 0, 1, 2 }, 5.0f,
                                "A clapping game in the yard: a real marimba bouncing up and down the held chord, real hand "
                                "claps on two and four (VCSL).",
                                0.5f, 900.0f, 0.0f, 400.0f, -1.0f,
@@ -18053,7 +18053,7 @@ namespace
         freezeTag (numbers, { 1, 0, 0.25f, 0.2f, 0.3f, 0.3f, 0.8f, 1.0f });
         orchestra (numbers, { { { 2, "Membranophones/Struck Membranophones/Snare Drum, Rope Tension.sfz", 0.9f, 0.0f, false, &vcsl },
                                 { 3, "Idiophones/Struck Idiophones/Xylophone - Medium Mallets.sfz", 0.8f, 0.0f, false, &vcsl } },
-                              { 1, 2, 3 }, 3.0f,
+                              { 1, 2, 3 }, 1.5f,
                               "The players lined up by number: a real rope-tension snare marching with rolls, a low drum on "
                               "the downbeats, a real xylophone on the off-beats (VCSL).",
                               0.5f, 700.0f, 0.0f, 300.0f, -1.0f,
