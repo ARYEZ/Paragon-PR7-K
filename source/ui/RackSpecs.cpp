@@ -2,6 +2,7 @@
 
 #include "dsp/synth/NaviComputer.h"
 #include "dsp/effects/Sweep.h"
+#include "dsp/effects/Redline.h"
 
 #include "ui/DownpourPage.h"
 
@@ -621,19 +622,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 30> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 31> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 30> specs;
+    std::array<RackUnit::Spec, 31> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1850,6 +1851,52 @@ std::array<RackUnit::Spec, 30> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (29); };
+    }
+
+    // REDLINE (0.88.0): the revs in big digits (RPM x 1000), the gear and its settings; the keys set THROTTLE: IDLE,
+    // REV, REDLINE; the ladder the revs now.
+    {
+        auto& s = specs[30];
+        s.name = "REDLINE";
+        s.kind = "THROB  SCREAM  WHINE";
+        s.onParameterIds = { ParamIDs::redlineOn };
+        s.powerTooltip = "REDLINE on or off: the sound as a revving engine in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "IDLE", 0.3f, "Idling: the throb under every note, the engine just turning over" },
+                                            { "REV", 0.65f, "Revving: the scream climbing through every gear" },
+                                            { "REDLINE", 1.0f, "Flat out: the throb, the scream and the whine all the way" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::redlineThrottle) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::redlineThrottle, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::redlineThrottle, "THROTTLE" }, RackUnit::Knob { ParamIDs::redlineScream, "SCREAM" } };
+        s.ladderTitle = "RPM";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "RED", "", "1/2", "", "IDLE" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getRedline();
+            return p.getRedlineSettings().on && ! fx.isResting() ? fx.getRevs() * fx.getThrottle() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getRedline();
+            const auto live = p.getRedlineSettings().on && ! fx.isResting();
+            const auto rpm = live ? 0.8f + 7.2f * fx.getRevs() * fx.getThrottle() : 0.0f;
+            const auto end = drawNumber (g, juce::String (rpm, 1), left.getTopLeft(), h);
+            line (g, "x1000", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, live ? "RPM  GEAR " + juce::String (fx.getGear()) : "ENGINE OFF", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "THROTTLE " + textOf (p, ParamIDs::redlineThrottle), "GEAR " + textOf (p, ParamIDs::redlineGear),
+                                  "THROB " + textOf (p, ParamIDs::redlineThrob), "SCREAM " + textOf (p, ParamIDs::redlineScream) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (30); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

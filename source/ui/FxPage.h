@@ -30,6 +30,7 @@
 #include "ui/HyperJumpPage.h"
 #include "ui/NaviComputerPage.h"
 #include "ui/SweepPage.h"
+#include "ui/RedlinePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -69,7 +70,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -99,6 +100,7 @@ public:
     HyperJumpPage& getHyperJumpPage() noexcept { return hyperJumpPage; }
     NaviComputerPage& getNaviComputerPage() noexcept { return naviComputerPage; }
     SweepPage& getSweepPage() noexcept { return sweepPage; }
+    RedlinePage& getRedlinePage() noexcept { return redlinePage; }
     BloomPage& getBloomPage() noexcept { return bloomPage; }
     LegionPage& getLegionPage() noexcept { return legionPage; }
     OverchargePage& getOverchargePage() noexcept { return overchargePage; }
@@ -133,7 +135,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 30> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 31> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -172,6 +174,7 @@ private:
     JackInPage jackInPage;           // 0.85.0
     NaviComputerPage naviComputerPage;   // 0.86.0
     SweepPage sweepPage;                 // 0.87.0
+    RedlinePage redlinePage;             // 0.88.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

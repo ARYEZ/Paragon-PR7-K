@@ -601,6 +601,16 @@ namespace ParamIDs
     inline constexpr auto sweepRange     = "sweepRange";       // 0 to 1: 2 to 9 octaves
     inline constexpr auto sweepResonance = "sweepResonance";   // 0 to 1
     inline constexpr auto sweepPhaser    = "sweepPhaser";      // 0 to 1
+    // REDLINE (0.88.0, version hint 56, effects::Redline): CHROMEFURY's revving engine.
+    inline constexpr auto redlineOn       = "redlineOn";
+    inline constexpr auto redlineThrottle = "redlineThrottle";   // 0 to 1 (the macro's)
+    inline constexpr auto redlineGear     = "redlineGear";       // effects::Redline::gearNames
+    inline constexpr auto redlineThrob    = "redlineThrob";      // 0 to 1
+    inline constexpr auto redlineScream   = "redlineScream";     // 0 to 1
+    inline constexpr auto redlineRise     = "redlineRise";       // 0 to 1: 0 to +12 semitones over a gear
+    inline constexpr auto redlineWhine    = "redlineWhine";      // 0 to 1
+    inline constexpr auto redlineTone     = "redlineTone";       // 0 to 1: 2 to 12 kHz
+    inline constexpr auto redlineShift    = "redlineShift";      // 0 to 1: the gear change's dip
     // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
     inline constexpr auto naviOn       = "naviOn";
     inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
@@ -710,4 +720,5 @@ void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.85.0)
 void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.86.0)
 void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.87.0)
+void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);      // RackParameters.cpp (0.88.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

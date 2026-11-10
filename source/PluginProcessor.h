@@ -446,6 +446,8 @@ public:
     const effects::HyperJump& getHyperJump() const noexcept { return rack->hyperJump; }
     effects::Sweep::Settings getSweepSettings() const noexcept;                  // SWEEP (0.87.0)
     const effects::Sweep& getSweep() const noexcept { return rack->sweep; }
+    effects::Redline::Settings getRedlineSettings() const noexcept;              // REDLINE (0.88.0)
+    const effects::Redline& getRedline() const noexcept { return rack->redline; }
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }

@@ -327,6 +327,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->jackIn.prepare (sampleRate, preparedBlockSize);
     rack->hyperJump.prepare (sampleRate, preparedBlockSize);
     rack->sweep.prepare (sampleRate, preparedBlockSize);
+    rack->redline.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1399,6 +1400,21 @@ effects::Sweep::Settings ParagonX1AudioProcessor::getSweepSettings() const noexc
     return s;
 }
 
+effects::Redline::Settings ParagonX1AudioProcessor::getRedlineSettings() const noexcept
+{
+    effects::Redline::Settings s;
+    s.on = isOn (ParamIDs::redlineOn);
+    s.throttle = effectParam (ModDestinations::effect ("redlineThrottle"), ParamIDs::redlineThrottle);
+    s.gear = juce::jlimit (0, effects::Redline::gearNames.size() - 1, juce::roundToInt (param (ParamIDs::redlineGear)));
+    s.throb = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("redlineThrob"), ParamIDs::redlineThrob));
+    s.scream = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("redlineScream"), ParamIDs::redlineScream));
+    s.rise = param (ParamIDs::redlineRise);
+    s.whine = param (ParamIDs::redlineWhine);
+    s.tone = param (ParamIDs::redlineTone);
+    s.shift = param (ParamIDs::redlineShift);
+    return s;
+}
+
 synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
 {
     synth::navi::Settings n;
@@ -1767,6 +1783,13 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->jackIn.process (block, getJackInSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.85.0: broken into
         rack->hyperJump.process (block, getHyperJumpSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.86.0: the build and the drop
         rack->sweep.process (block, getSweepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.87.0: the sweep
+        // 0.88.0: the engine revving (the notes only worked out while it's on or settling).
+        if (const auto red = getRedlineSettings(); (red.on && red.throttle >= 0.001f) || ! rack->redline.isResting())
+        {
+            std::array<float, effects::Redline::maxNotes> sounding {};
+            rack->redline.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->redline.process (block, red, juce::jmax (20.0, hostBpm.load()), piecePpq);
+        }
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

@@ -181,14 +181,13 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
             CHECK (rigs[i].tags.contains (expansions::list[(size_t) x].name));
             ++perType[typeOf (rigs[i])];
         }
-        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps, 3 plucks (0.70.0, slots 16-18); CHROMEFURY is lead-heavy at the
-        // owner's ask: 6, 3, 3, 1, 2, 3.
-        const auto leadHeavy = juce::String (expansions::list[(size_t) x].name) == "CHROMEFURY";
-        CHECK (perType["Lead"] == (leadHeavy ? 6 : 3));
+        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps, 3 plucks (0.70.0, slots 16-18). (CHROMEFURY was lead-heavy until
+        // its rebuild in 0.88.0.)
+        CHECK (perType["Lead"] == 3);
         CHECK (perType["Pad"] == 3);
         CHECK (perType["Bass"] == 3);
-        CHECK (perType["Keys"] == (leadHeavy ? 1 : 3));
-        CHECK (perType["Arp"] == (leadHeavy ? 2 : 3));
+        CHECK (perType["Keys"] == 3);
+        CHECK (perType["Arp"] == 3);
         CHECK (perType["Pluck"] == 3);
         for (size_t i = 15; i < rigs.size(); ++i)
             CHECK (typeOf (rigs[i]) == "Pluck");
@@ -1086,6 +1085,72 @@ TEST_CASE ("LAST DAY: MACRO 3 is SWEEP on every preset, resting at its left; the
     CHECK (count == 18);
     CHECK (sampled == 3);   // the strings, the choir and the harp
     CHECK (used.size() == 1);   // the orchestra
+}
+
+TEST_CASE ("CHROMEFURY: MACRO 3 is REDLINE on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][redline]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 13)   // CHROMEFURY: the fourteenth expansion (rebuilt in 0.88.0)
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "REDLINE");
+            CHECK (version->notes.contains ("REDLINE"));
+            CHECK (version->parameters.at (ParamIDs::redlineOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::redlineThrottle) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::redlineThrottle && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 11);
+    CHECK (used.size() == 4);   // the guitars, the orchestra, the organ (VCSL), the drums
 }
 
 TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left; every preset has a real piano version", "[rigs][expansions][bloom]")
@@ -2594,6 +2659,13 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             chord (e, at (8), at (15.9), { 58, 62, 65 }, 100);
             length = 21.0 * beat;
         }
+        else if (fury && type == "Lead" && rig.name == "Lone Cello")
+        {
+            // A slow line over the salt flats, each note bowed long.
+            line ({ { 0, 3, 62 }, { 3, 1, 65 }, { 4, 4, 69 }, { 8, 2, 67 }, { 10, 2, 65 }, { 12, 4, 62 } }, 100);
+            wheel (4.0, 8.0, 100);
+            length = 20.0 * beat;
+        }
         else if (fury && type == "Lead")
         {
             // A screaming riff in D minor: a run up through the flat second, a held high note with the wheel,
@@ -2616,7 +2688,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (fury && type == "Bass")
         {
-            if (rig.name == "Piston Drive")
+            if (rig.name == "Sand Engine")
                 line ({ { 0, 8, 26 }, { 8, 4, 27 }, { 12, 4, 24 } }, 110);
             else
                 line ({ { 0, 0.75, 26 }, { 0.75, 0.75, 26 }, { 1.5, 0.5, 27 }, { 2, 1.5, 26 }, { 4, 0.75, 26 }, { 4.75, 0.75, 26 },
@@ -2624,6 +2696,21 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                         { 12, 2, 24 }, { 14, 2, 27 } }, 110);
             wheel (8.0, 15.0, 110);
             length = 19.0 * beat;
+        }
+        else if (fury && type == "Keys" && rig.name == "Speaker Stack")
+        {
+            // Power chords from single notes (the chorder holds the fifth and octave): a driving riff on the roots.
+            const int roots[] = { 38, 38, 39, 38, 41, 38, 39, 36 };
+            for (int k = 0; k < 8; ++k)
+                for (const auto offset : { 0.0, 0.75, 1.5 })
+                    chord (e, at (k * 2 + offset), at (k * 2 + offset + (offset == 1.5 ? 0.45 : 0.3)), { roots[k] + 12 }, offset == 0.0 ? 120 : 100);
+            length = 19.0 * beat;
+        }
+        else if (fury && type == "Keys" && rig.name != "Mirage Bells")
+        {
+            chord (e, at (0), at (7.8), { 50, 57, 62, 65 }, 100);
+            chord (e, at (8), at (15.8), { 46, 53, 58, 62 }, 100);
+            length = 21.0 * beat;
         }
         else if (fury && type == "Keys")
         {
