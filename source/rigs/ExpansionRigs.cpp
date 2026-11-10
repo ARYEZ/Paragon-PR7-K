@@ -17139,7 +17139,7 @@ namespace
         flame.set (ParamIDs::patchLevel, -3.5f);
         redline (flame, { 1, 0.6f, 0.7f, 0.2f, 0.4f, 0.55f, 0.5f, 1.0f });
         orchestra (flame, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
-                            { 0, 1 }, 2.0f,
+                            { 0, 1 }, -0.6f,
                             "The guitarist on the speaker truck: a real Gretsch Anniversary (Black And Green Guitars) "
                             "through two amps at once, a clean sub under it. Bend down for a whammy dive.",
                             1.0f, 2000.0f, 0.8f, 250.0f, 0.0f,
@@ -17170,7 +17170,7 @@ namespace
         redline (brass, { 1, 0.55f, 0.55f, 0.15f, 0.3f, 0.45f, 0.4f, 1.0f });
         orchestra (brass, { { { 0, "Brass - Notation/Trumpets Sustain (looped).sfz", 0.9f, 0.0f },
                               { 1, "Brass - Notation/Trombones Marcato (looped).sfz", 0.7f, 0.0f } },
-                            { 0, 1 }, 3.0f,
+                            { 0, 1 }, 4.8f,
                             "The warlord's call from the fortress: real trumpets with trombones an octave down, a stone hall.",
                             20.0f, 500.0f, 0.95f, 400.0f, 0.0f,
                             [hall] (Builder& s) { s.osc (1, "Transpose", -12.0f); hall (s); } });
@@ -17201,7 +17201,7 @@ namespace
         cello.set (ParamIDs::patchLevel, -7.4f);
         redline (cello, { 2, 0.45f, 0.45f, 0.1f, 0.25f, 0.4f, 0.3f, 0.9f });
         orchestra (cello, { { { 0, "Strings - Notation/Cello Solo Sustain.sfz", 1.0f, 0.0f } },
-                            { 0, 1, 2 }, 6.0f,
+                            { 0, 1, 2 }, 6.8f,
                             "A lone cello over the salt flats: a real solo cello, a long hall and echo.",
                             60.0f, 700.0f, 0.95f, 500.0f, 0.0f,
                             [hall] (Builder& s) { hall (s); } });
@@ -17257,7 +17257,7 @@ namespace
         choir.set (ParamIDs::patchLevel, -12.5f);
         redline (choir, { 3, 0.45f, 0.4f, 0.1f, 0.3f, 0.35f, 0.3f, 0.9f });
         orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
-                            { 0, 1, 2 }, 2.0f,
+                            { 0, 1, 2 }, -0.5f,
                             "The fortress's pale army chanting: the orchestra's large choir, a vast stone hall. Hold chords low.",
                             200.0f, 800.0f, 1.0f, 1200.0f, -1.0f,
                             [hall] (Builder& s) { hall (s); } });
@@ -17281,7 +17281,7 @@ namespace
         flats.set (ParamIDs::patchLevel, -8.7f);
         redline (flats, { 3, 0.4f, 0.35f, 0.1f, 0.35f, 0.35f, 0.25f, 0.85f });
         orchestra (flats, { { { 2, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f } },
-                            {}, 2.0f,
+                            {}, -5.4f,
                             "The open wasteland at dusk: the orchestra's whole string section over PR7-K's strings, a long hall.",
                             -1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
                             [] (Builder& s) { s.osc (0, "Volume", 0.25f).osc (1, "Volume", 0.1f); } });
@@ -17331,7 +17331,7 @@ namespace
         redline (pipes, { 1, 0.7f, 0.3f, 0.1f, 0.25f, 0.3f, 0.45f, 1.0f });
         orchestra (pipes, { { { 0, "Brass - Notation/Tuba Sustain (looped).sfz", 1.0f, 0.0f },
                               { 2, "Brass - Performance/Bass Trombone Solo Sustain (looped).sfz", 0.6f, 0.0f } },
-                            { 0 }, 4.0f,
+                            { 0 }, -0.3f,
                             "The fortress's iron lungs: a real tuba and bass trombone, a sine under them, a stone room.",
                             20.0f, 500.0f, 0.95f, 300.0f, 0.0f,
                             [] (Builder& s) { s.set (ParamIDs::playMode, 0.0f); } });
@@ -17404,7 +17404,7 @@ namespace
         organ.set (ParamIDs::patchLevel, -11.1f);
         redline (organ, { 2, 0.55f, 0.4f, 0.1f, 0.3f, 0.35f, 0.35f, 0.9f });
         orchestra (organ, { { { 0, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz", 1.0f, 0.0f, false, &vcsl } },
-                            { 0, 1, 2, 3, 4, 5 }, -4.0f,
+                            { 0, 1, 2, 3, 4, 5 }, -2.0f,
                             "The fortress's great organ: a real pipe organ, its full chorus, a vast stone hall. Hold chords.",
                             10.0f, 400.0f, 1.0f, 800.0f, -1.0f,
                             [hall] (Builder& s) { hall (s); } });
@@ -17468,7 +17468,7 @@ namespace
                               { 1, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
                               { 2, "Programs/01-full.sfz", 0.8f, 0.0f, false, &rusty },
                               { 3, "Programs/01-full.sfz", 0.6f, 0.0f, false, &rusty } },
-                            { 0, 1, 2, 3 }, 6.0f,
+                            { 0, 1, 2, 3 }, 5.2f,
                             "The war drums on the lead truck: a real kick, floor tom, toms and snare (Big Rusty Drums') "
                             "pounding a driving war rhythm. The key you hold doesn't change it.",
                             0.5f, 1200.0f, 0.0f, 500.0f, -1.0f,
@@ -17507,7 +17507,7 @@ namespace
         spiccato.set (ParamIDs::patchLevel, -5.0f);
         redline (spiccato, { 1, 0.55f, 0.45f, 0.2f, 0.3f, 0.45f, 0.4f, 1.0f });
         orchestra (spiccato, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 1.0f, 0.0f } },
-                               { 0, 1 }, 6.0f,
+                               { 0, 1 }, 10.5f,
                                "The chase's sawing strings: the orchestra's whole string section playing short, up and "
                                "down the held chord in sixteenths. Hold chords.",
                                1.0f, 300.0f, 0.0f, 200.0f, -1.0f,
@@ -17559,7 +17559,7 @@ namespace
         space (spark);
         redline (spark, { 1, 0.6f, 0.45f, 0.2f, 0.3f, 0.45f, 0.5f, 1.0f });
         orchestra (spark, { { { 0, "Programs/05-green_staccato.sfz", 1.0f, 0.0f, true, &guitars } },
-                            { 0, 1 }, 2.0f,
+                            { 0, 1 }, 0.3f,
                             "A palm-muted chug from the speaker truck: a real Gretsch's short notes (Black And Green "
                             "Guitars) through RABID, a clean sub under it.",
                             0.5f, 300.0f, 0.0f, 120.0f, -1.0f,
@@ -17582,7 +17582,7 @@ namespace
         space (chain);
         redline (chain, { 1, 0.55f, 0.4f, 0.2f, 0.3f, 0.45f, 0.4f, 1.0f });
         orchestra (chain, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f, 0.0f } },
-                            { 0 }, 6.0f,
+                            { 0 }, 4.0f,
                             "The fortress's strings plucked: the orchestra's whole string section pizzicato, a stone hall.",
                             0.5f, 600.0f, 0.0f, 300.0f, -1.0f,
                             [hall] (Builder& s) { hall (s); } });

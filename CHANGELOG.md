@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.88.0
+
+**CHROMEFURY rebuilt from the ground up, round a new signature effect, REDLINE.**
+
+- **CHROMEFURY** (CF01-CF18): all 18 presets are new (the old ones are gone), our own sounds and phrases: war drums, sawing string ostinatos, brass blasts, a screaming guitar on a truck of speakers, a war-chant choir, engines, dust and fire. Three in every category: the war convoy, the fortress, the wasteland. **MACRO 3 REDLINE** on every preset. It now has three of each kind like the other banks (it used to be six leads).
+  - Leads: Flame Guitar, Warlord Brass, Lone Cello.
+  - Pads: Dust Wall, Pale Choir, Salt Flats.
+  - Basses: V8 Growl, Iron Pipes, Sand Engine.
+  - Keys: Speaker Stack (every key a power chord), Fortress Organ, Mirage Bells.
+  - Arps: Convoy Drums (hold any key: war drums), Spiccato Chase, Night Crossing.
+  - Plucks: Spark Riff, Chain Pizzicato, Barbed Wire.
+- **11 have a version on the free libraries**, played once they're downloaded: Flame Guitar and Spark Riff on a real Gretsch (Black And Green Guitars), Warlord Brass, Lone Cello, Pale Choir, Salt Flats, Iron Pipes, Spiccato Chase and Chain Pizzicato on the orchestra, Fortress Organ on VCSL's pipe organ, Convoy Drums on Big Rusty Drums.
+- **REDLINE** (FX page, SIGNATURE slot), our own design: the sound becomes a revving engine, in time with the song.
+  - THROB: the cylinders. The sound pulses at half the pitch of the note you play, so every note growls with a throb an octave down.
+  - The revs climb across each GEAR (half a bar to 4 bars) and drop back on its line: the gear change (SHIFT sets how hard it hits).
+  - SCREAM: the sound an octave up through a hard drive, climbing RISE (up to 12 semitones) as it revs. WHINE: a supercharger's whine rising with the revs. TONE: the scream's top.
+  - THROTTLE brings it all in; the level is kept. At THROTTLE 0 your sound passes untouched.
+  - THROTTLE, THROB and SCREAM can be moved from the mod matrix (FX Redline). Its page is a tachometer: the needle climbs through each gear and drops at the change.
+
 ## 0.87.0
 
 **LAST DAY, a new expansion: 1970s dystopian science fiction, built round a new signature effect, SWEEP.**
