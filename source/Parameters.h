@@ -611,6 +611,16 @@ namespace ParamIDs
     inline constexpr auto redlineWhine    = "redlineWhine";      // 0 to 1
     inline constexpr auto redlineTone     = "redlineTone";       // 0 to 1: 2 to 12 kHz
     inline constexpr auto redlineShift    = "redlineShift";      // 0 to 1: the gear change's dip
+    // FREEZE TAG (0.89.0, version hint 57, effects::FreezeTag): PLAYGROUND's freeze game.
+    inline constexpr auto freezeOn      = "freezeOn";
+    inline constexpr auto freezeAmount  = "freezeAmount";    // 0 to 1 (the macro's)
+    inline constexpr auto freezeCycle   = "freezeCycle";     // effects::FreezeTag::cycleNames
+    inline constexpr auto freezeHold    = "freezeHold";      // effects::FreezeTag::holdNames
+    inline constexpr auto freezeSlice   = "freezeSlice";     // 0 to 1: 40 to 250 ms
+    inline constexpr auto freezeTremble = "freezeTremble";   // 0 to 1
+    inline constexpr auto freezeFrost   = "freezeFrost";     // 0 to 1: 16 kHz to 1.5 kHz
+    inline constexpr auto freezeCaught  = "freezeCaught";    // 0 to 1: the chance a freeze is caught
+    inline constexpr auto freezeLevel   = "freezeLevel";     // 0 to 1: the ghost's level
     // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
     inline constexpr auto naviOn       = "naviOn";
     inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
@@ -721,4 +731,5 @@ void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);
 void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.86.0)
 void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.87.0)
 void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);      // RackParameters.cpp (0.88.0)
+void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.89.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

@@ -328,6 +328,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->hyperJump.prepare (sampleRate, preparedBlockSize);
     rack->sweep.prepare (sampleRate, preparedBlockSize);
     rack->redline.prepare (sampleRate, preparedBlockSize);
+    rack->freezeTag.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1415,6 +1416,21 @@ effects::Redline::Settings ParagonX1AudioProcessor::getRedlineSettings() const n
     return s;
 }
 
+effects::FreezeTag::Settings ParagonX1AudioProcessor::getFreezeTagSettings() const noexcept
+{
+    effects::FreezeTag::Settings s;
+    s.on = isOn (ParamIDs::freezeOn);
+    s.amount = effectParam (ModDestinations::effect ("freezeAmount"), ParamIDs::freezeAmount);
+    s.cycle = juce::jlimit (0, effects::FreezeTag::cycleNames.size() - 1, juce::roundToInt (param (ParamIDs::freezeCycle)));
+    s.hold = juce::jlimit (0, effects::FreezeTag::holdNames.size() - 1, juce::roundToInt (param (ParamIDs::freezeHold)));
+    s.slice = param (ParamIDs::freezeSlice);
+    s.tremble = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("freezeTremble"), ParamIDs::freezeTremble));
+    s.frost = param (ParamIDs::freezeFrost);
+    s.caught = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("freezeCaught"), ParamIDs::freezeCaught));
+    s.level = param (ParamIDs::freezeLevel);
+    return s;
+}
+
 synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
 {
     synth::navi::Settings n;
@@ -1790,6 +1806,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->redline.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
             rack->redline.process (block, red, juce::jmax (20.0, hostBpm.load()), piecePpq);
         }
+        rack->freezeTag.process (block, getFreezeTagSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.89.0: freeze!
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

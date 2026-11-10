@@ -35,6 +35,7 @@
 #include "dsp/effects/HyperJump.h"
 #include "dsp/effects/Sweep.h"
 #include "dsp/effects/Redline.h"
+#include "dsp/effects/FreezeTag.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -132,6 +133,7 @@ struct Rack
     effects::HyperJump hyperJump;     // 0.86.0
     effects::Sweep sweep;             // 0.87.0
     effects::Redline redline;         // 0.88.0
+    effects::FreezeTag freezeTag;     // 0.89.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

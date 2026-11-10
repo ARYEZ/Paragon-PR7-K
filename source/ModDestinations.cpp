@@ -96,7 +96,8 @@ namespace ModDestinations
                 { "FX Jack-In", "Amount" }, { "FX Jack-In", "Chaos" }, { "FX Jack-In", "Crush" },
                 { "FX Navicomputer", "Amount" }, { "FX Navicomputer", "Chaos" }, { "FX Navicomputer", "Glide" },
                 { "FX Sweep", "Amount" }, { "FX Sweep", "Resonance" }, { "FX Sweep", "Center" },
-                { "FX Redline", "Throttle" }, { "FX Redline", "Throb" }, { "FX Redline", "Scream" } };
+                { "FX Redline", "Throttle" }, { "FX Redline", "Throb" }, { "FX Redline", "Scream" },
+                { "FX Freeze Tag", "Amount" }, { "FX Freeze Tag", "Tremble" }, { "FX Freeze Tag", "Caught" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

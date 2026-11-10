@@ -91,7 +91,9 @@ namespace ModDestinations
                                                  // 0.87.0: SWEEP: how much, how resonant, where it sweeps round
                                                  "sweepAmount", "sweepResonance", "sweepCenter",
                                                  // 0.88.0: REDLINE: how far the throttle opens, the throb, the scream
-                                                 "redlineThrottle", "redlineThrob", "redlineScream" };
+                                                 "redlineThrottle", "redlineThrob", "redlineScream",
+                                                 // 0.89.0: FREEZE TAG: how frozen, how it trembles, how often caught
+                                                 "freezeAmount", "freezeTremble", "freezeCaught" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

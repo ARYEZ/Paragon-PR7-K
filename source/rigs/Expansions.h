@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 35> list
+    inline constexpr std::array<Expansion, 36> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -77,9 +77,12 @@ namespace expansions
           "in deep space: echoing woodwinds, primitive horns, trembling string harmonics, low brass clusters, the "
           "ship's hum, hiss, chatter and alarms, and dread that never resolves. Our own sounds." },
         { "CHROMEFURY", "CF",
-          "Inspired by the score of a 2015 post-apocalyptic chase film: relentless drive, sawing string ostinatos, "
-          "guitar-like screaming leads stacked with distortion over growling low synths, engines, speed, dust and "
-          "fire. Lead-heavy: 6 leads. Our own sounds." },
+          "Inspired by the score of a 2015 post-apocalyptic chase film: war drums, sawing string ostinatos, brass blasts, "
+          "a screaming guitar on a truck of speakers, a war-chant choir, engines, dust and fire. Three columns: the war "
+          "convoy, the fortress and the wasteland. Rebuilt in 0.88.0 round REDLINE and MACRO 3, REDLINE: the sound as a "
+          "revving engine in time with the song. Its guitar plays Black And Green Guitars, its drums Big Rusty Drums, "
+          "its organ VCSL and its brass, choir and strings the Sonatina Symphonic Orchestra, once downloaded (free). Our "
+          "own sounds." },
         { "ASCENSION", "AS",
           "Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant "
           "growing into a vast, epic choir, heroic strings and brass, mystery and awe. Built on the VOICE "
@@ -207,5 +210,15 @@ namespace expansions
           "system that runs it, and outside. Built round SWEEP (0.87.0) and MACRO 3, SWEEP: a huge resonant analogue sweep "
           "locked to the song. Its strings, choir and harp play the Sonatina Symphonic Orchestra once downloaded (free). "
           "Our own sounds." },
+        { "PLAYGROUND", "PG",
+          "Inspired by a survival drama played as children's games: a child's recorder, a cold masked trumpet and a "
+          "lonely harmonica; a pastel toy organ, sterile dormitory rows and a warm night market; an oompah toy tuba, a "
+          "guards' march and a debt collector's sub; a music box, a salon waltz on harpsichord and a pawn-shop piano; a "
+          "clapping game, marching numbers and a countdown clock. Sweet sing-song tunes with dread underneath. Three "
+          "columns: the playground, the masked staff and the debt outside. Built round FREEZE TAG (0.89.0) and MACRO 3, "
+          "FREEZE TAG: in time with the song the sound plays, then freezes, a trembling ghost of the moment holding the "
+          "silence. Its recorders, glockenspiel, xylophone, claps and harmonica play VCSL, its trumpet, harpsichord and "
+          "strings the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
+          "sounds." },
     }};
 }

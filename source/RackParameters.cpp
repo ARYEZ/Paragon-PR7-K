@@ -36,6 +36,7 @@
 #include "dsp/effects/HyperJump.h"
 #include "dsp/effects/Sweep.h"
 #include "dsp/effects/Redline.h"
+#include "dsp/effects/FreezeTag.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1005,4 +1006,23 @@ void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout& 
     layout.add (makeFloat (ParamIDs::redlineWhine, "Redline Whine", { 0.0f, 1.0f, 0.01f }, d.whine, v, asPercent));
     layout.add (makeFloat (ParamIDs::redlineTone, "Redline Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::redlineShift, "Redline Shift", { 0.0f, 1.0f, 0.01f }, d.shift, v, asPercent));
+}
+
+void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // FREEZE TAG (0.89.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 57;
+    using F = effects::FreezeTag;
+    const F::Settings d;
+    const ToText asSlice = [] (float value, int) { return juce::String (juce::roundToInt (1000.0f * F::sliceSeconds (value))) + " ms"; };
+    const ToText asFrost = [] (float value, int) { return juce::String (F::frostHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::freezeOn, "Freeze Tag On", v, false));
+    layout.add (makeFloat (ParamIDs::freezeAmount, "Freeze Tag Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::freezeCycle, "Freeze Tag Cycle", v, F::cycleNames, d.cycle));
+    layout.add (makeChoice (ParamIDs::freezeHold, "Freeze Tag Hold", v, F::holdNames, d.hold));
+    layout.add (makeFloat (ParamIDs::freezeSlice, "Freeze Tag Slice", { 0.0f, 1.0f, 0.01f }, d.slice, v, asSlice));
+    layout.add (makeFloat (ParamIDs::freezeTremble, "Freeze Tag Tremble", { 0.0f, 1.0f, 0.01f }, d.tremble, v, asPercent));
+    layout.add (makeFloat (ParamIDs::freezeFrost, "Freeze Tag Frost", { 0.0f, 1.0f, 0.01f }, d.frost, v, asFrost));
+    layout.add (makeFloat (ParamIDs::freezeCaught, "Freeze Tag Caught", { 0.0f, 1.0f, 0.01f }, d.caught, v, asPercent));
+    layout.add (makeFloat (ParamIDs::freezeLevel, "Freeze Tag Level", { 0.0f, 1.0f, 0.01f }, d.level, v, asPercent));
 }

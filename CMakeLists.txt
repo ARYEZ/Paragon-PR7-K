@@ -97,6 +97,7 @@ target_sources(ParagonX1
         source/dsp/effects/HyperJump.cpp
         source/dsp/effects/Sweep.cpp
         source/dsp/effects/Redline.cpp
+        source/dsp/effects/FreezeTag.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -155,6 +156,7 @@ target_sources(ParagonX1
         source/ui/NaviComputerPage.cpp
         source/ui/SweepPage.cpp
         source/ui/RedlinePage.cpp
+        source/ui/FreezeTagPage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

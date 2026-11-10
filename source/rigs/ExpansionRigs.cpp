@@ -166,6 +166,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
+            { "Marble Drop", -6.0f }, { "Glass Step", -4.5f },
             { "Spark Riff", 1.0f }, { "Chain Pizzicato", -9.5f }, { "Barbed Wire", -9.0f },
             { "Twang Pluck", 1.7f }, { "Archtop Strum", -3.1f }, { "Spur Jangle", -2.1f },
             { "Street Stab", 0.8f }, { "Tower Ping", -4.5f }, { "Bitrot Pluck", -4.6f },
@@ -17607,6 +17608,559 @@ namespace
         pkAdd (x, wire);
     }
 
+    // PLAYGROUND (0.89.0, the owner's theme (a survival drama played as children's games) and the owner's name; no
+    // title, characters, games' names, masks, places or music from the show on the plugin; our own sounds and phrases).
+    // Sweet sing-song children's tunes in a bright major, the minor creeping in underneath: a child's recorder, toy
+    // instruments, a music box and clapping games beside a cold masked trumpet, a guards' march and a salon waltz for
+    // the rich onlookers, and outside a lonely harmonica, a warm night market and a pawn-shop piano. Three columns: the
+    // playground, the masked staff, the debt outside. Built round FREEZE TAG: MACRO 3 makes each preset play, then freeze
+    // in time with the song, a trembling ghost of the moment holding the silence.
+    struct Statue
+    {
+        int cycle = 1;           // FreezeTag::cycleNames: 1 BAR, 2 BARS, 4 BARS
+        int hold = 1;            // holdNames: 1 BEAT, 2 BEATS, 4 BEATS
+        float slice = 0.4f, tremble = 0.3f, frost = 0.3f, caught = 0.15f, level = 0.8f;
+        float top = 1.0f;        // the macro's AMOUNT at full
+    };
+
+    void freezeTag (Builder& b, Statue f)
+    {
+        b.set (ParamIDs::freezeOn, 1.0f).set (ParamIDs::freezeAmount, 0.0f).set (ParamIDs::freezeCycle, (float) f.cycle)
+         .set (ParamIDs::freezeHold, (float) f.hold).set (ParamIDs::freezeSlice, f.slice).set (ParamIDs::freezeTremble, f.tremble)
+         .set (ParamIDs::freezeFrost, f.frost).set (ParamIDs::freezeCaught, f.caught).set (ParamIDs::freezeLevel, f.level);
+        route (b, "macro3", ParamIDs::freezeAmount, f.top);
+    }
+
+    void playground (Expansion x)
+    {
+        using SP3 = synth::mod::ShapePoint;
+        const auto& vcsl = libraries::versilianCollection();
+
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto pinned = [] (Builder& s, int o, int key)
+        {
+            s.osc (o, "SfzKey", (float) (key + 1)).osc (o, "SfzKeyTrack", 0.0f).osc (o, "PitchEnv", 0.0f);
+        };
+        const auto drumArp = [] (Builder& b, int arp, std::initializer_list<int> hits, std::initializer_list<int> accents = {})
+        {
+            b.set (ParamIDs::arp (arp, "On"), 1.0f).set (ParamIDs::arp (arp, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (arp, "Division"), division ("1/16")).set (ParamIDs::arp (arp, "Octaves"), 1.0f)
+             .set (ParamIDs::arp (arp, "Gate"), 0.9f)
+             .set (ParamIDs::arp (arp, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
+            auto& p = b.rig.modulation.arps[(size_t) arp].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                const auto on = std::find (hits.begin(), hits.end(), k) != hits.end();
+                const auto accent = std::find (accents.begin(), accents.end(), k) != accents.end();
+                p.blocks[(size_t) k].on = on;
+                p.blocks[(size_t) k].velocity = accent ? 1.0f : 0.7f;
+            }
+        };
+        const auto hall = [] (Builder& s, const char* name = "HALL")
+        {
+            route (s, "macro1", ParamIDs::reverbSize, 0.3f);
+            s.rig.modulation.macroNames[0] = name;
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto recorder = x.make ("Recorder Tune", 1, { "Lead", "Playground", "Recorder", "Breath" },
+            "A child's recorder in the playground: a soft triangle, a faint sine an octave up, a breath of air, a small "
+            "wobbly vibrato that comes in late, a school-hall room. Sing-song tunes. MOD WHEEL: more breath. MACROS: "
+            "BRIGHT, SPACE, FREEZE TAG.");
+        recorder.osc (0, "Wave", triangle).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.12f).osc (1, "PhaseRand", 0.0f)
+                .filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.5f)
+                .ampEnvelope (25.0f, 300.0f, 0.9f, 120.0f)
+                .mono (20.0f);
+        noiseOsc (recorder, 2, 0.05f, 0.15f);
+        for (int o = 0; o < 2; ++o)
+            vibrato (recorder, o, 7.0f, 5.5f, 300.0f);
+        route (recorder, "modWheel", ParamIDs::osc (2, "Volume"), 0.08f);
+        route (recorder, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
+        macros (recorder, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (recorder, RT::room, 0.4f, 0.15f, 10.0f, 5.0f);
+        space (recorder);
+        recorder.set (ParamIDs::patchLevel, -3.4f);
+        freezeTag (recorder, { 1, 1, 0.45f, 0.35f, 0.2f, 0.15f, 0.8f, 1.0f });
+        orchestra (recorder, { { { 0, "Aerophones/Edge-blown Aerophones/Baroque Soprano Recorder - Sustain.sfz", 1.0f, 0.0f, false, &vcsl } },
+                               { 0, 1, 2 }, 4.0f,
+                               "A child's recorder in the playground: a real soprano recorder (VCSL), a school-hall room.",
+                               15.0f, 300.0f, 1.0f, 150.0f, 0.0f,
+                               [] (Builder& s) { s.rig.modulation.routes.clear(); route (s, "macro2", ParamIDs::reverbMix, 0.3f);
+                                                 route (s, "macro1", ParamIDs::reverbSize, 0.3f); s.rig.modulation.macroNames[0] = "ROOM";
+                                                 route (s, "macro3", ParamIDs::freezeAmount, 1.0f); } });
+        x.add (recorder);
+
+        auto trumpet = x.make ("Masked Trumpet", 2, { "Lead", "Staff", "Brass", "Cold" },
+            "The masked staff's call to the next round: a bright, narrow trumpet (a saw and a pulse, the filter snapping "
+            "open on each note), no warmth, hardly any vibrato, a long cold hall. Short commanding phrases. MOD WHEEL: "
+            "brassier. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        trumpet.osc (0, "Volume", 0.6f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Volume", 0.35f)
+               .filter (FilterType::lp12, 900.0f, 0.2f, 0.55f).filterEnvelope (15.0f, 400.0f, 0.5f, 200.0f)
+               .set (ParamIDs::fltKey, 0.6f).set (ParamIDs::fltEnvVel, 0.4f)
+               .ampEnvelope (12.0f, 300.0f, 0.9f, 220.0f).set (ParamIDs::ampVel, 0.4f)
+               .mono (25.0f);
+        for (int o = 0; o < 2; ++o)
+            vibrato (trumpet, o, 4.0f, 5.0f, 600.0f);
+        eqBand (trumpet, 0, eq::Shape::bell, 2500.0f, 2.5f, 1.0f);
+        route (trumpet, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (trumpet, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (trumpet, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (trumpet, RT::hall, 0.75f, 0.25f, 30.0f, 4.0f);
+        space (trumpet);
+        trumpet.set (ParamIDs::patchLevel, -3.6f);
+        freezeTag (trumpet, { 1, 1, 0.3f, 0.15f, 0.4f, 0.25f, 0.8f, 1.0f });
+        orchestra (trumpet, { { { 0, "Brass - Notation/Trumpet Solo Sustain (looped).sfz", 1.0f, 0.0f } },
+                              { 0, 1 }, 4.0f,
+                              "The masked staff's call to the next round: a real solo trumpet (the orchestra), a long cold hall.",
+                              10.0f, 300.0f, 0.95f, 250.0f, 0.0f,
+                              [hall] (Builder& s) { hall (s); } });
+        x.add (trumpet);
+
+        auto harmonica = x.make ("Empty Pockets", 3, { "Lead", "Debt", "Harmonica", "Voice" },
+            "A lonely harmonica on the walk home with empty pockets: a narrow reed (a pulse sung through the VOICE filter, "
+            "\"ee\" opening to \"ah\" as you lean in), the breath of it, notes bending up into place, a little hand "
+            "vibrato. MOD WHEEL: hand vibrato. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        harmonica.osc (0, "Wave", pulse).osc (0, "Width", 0.15f).osc (0, "Volume", 0.7f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f)
+                 .filter (FilterType::lp12, 3200.0f, 0.1f, 0.15f).filterEnvelope (30.0f, 500.0f, 0.7f, 200.0f)
+                 .ampEnvelope (30.0f, 400.0f, 0.85f, 150.0f).set (ParamIDs::ampVel, 0.3f)
+                 .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.85f).set (ParamIDs::voiceSize, 0.6f)
+                 .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.8f)
+                 .set (ParamIDs::env (0, "Mode"), (float) synth::mod::EnvelopeMode::oneShot)
+                 .mono (40.0f);
+        harmonica.rig.modulation.envelopes[0] = { { SP3 { 0.0f, 0.0f, 0.3f }, SP3 { 0.35f, 1.0f, 0.0f } }, -1, -1, -1 };
+        route (harmonica, "env1", ParamIDs::voiceVowel, -0.35f);
+        pkBend (harmonica, -1.0f, 0.12f, -0.4f);
+        noiseOsc (harmonica, 2, 0.04f, 0.1f);
+        for (int o = 0; o < 2; ++o)
+        {
+            vibrato (harmonica, o, 0.0f, 5.0f, 0.0f);
+            route (harmonica, "modWheel", ParamIDs::osc (o, "VibAmount"), 0.25f);
+        }
+        route (harmonica, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (harmonica, "BRIGHT", "SPACE", "FREEZE TAG");
+        delay (harmonica, "1/4", 0.3f, 0.12f, true, 4.0f);
+        reverb (harmonica, RT::hall, 0.55f, 0.2f, 20.0f, 4.5f);
+        space (harmonica);
+        harmonica.set (ParamIDs::patchLevel, -4.8f);
+        freezeTag (harmonica, { 2, 1, 0.5f, 0.4f, 0.4f, 0.1f, 0.8f, 1.0f });
+        orchestra (harmonica, { { { 0, "Aerophones/Free Aerophones/Harmonica-Hohner-Super64 - Normal.sfz", 1.0f, 0.0f, false, &vcsl } },
+                                { 0, 1, 2 }, 4.0f,
+                                "A lonely harmonica on the walk home with empty pockets: a real chromatic harmonica (VCSL).",
+                                20.0f, 400.0f, 0.95f, 200.0f, 0.0f,
+                                [hall] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); hall (s); } });
+        x.add (harmonica);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto stairs = x.make ("Painted Stairs", 4, { "Pad", "Playground", "Organ", "Toy" },
+            "Pastel stairs painted like a toy box: a little toy organ (a square and a soft triangle an octave up), a "
+            "gentle chorus, a breath of a tremolo, a school-hall room. Hold chords. MOD WHEEL: the tremolo deeper. "
+            "MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        stairs.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.4f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.35f)
+              .filter (FilterType::lp12, 2400.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+              .ampEnvelope (60.0f, 500.0f, 0.95f, 500.0f)
+              .set (ParamIDs::lfo (0, "Wave"), (float) synth::mod::LfoWave::sine).set (ParamIDs::lfo (0, "Rate"), 5.5f)
+              .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (stairs, "lfo1", ParamIDs::ampVolume, 0.04f);
+        route (stairs, "modWheel", ParamIDs::osc (1, "Volume"), 0.2f);
+        chorus (stairs, ParamIDs::modIds, MT::chorus, 0.6f, 0.4f, 0.5f);
+        route (stairs, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (stairs, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (stairs, RT::room, 0.5f, 0.2f, 12.0f, 5.0f);
+        space (stairs);
+        stairs.set (ParamIDs::patchLevel, -10.1f);
+        freezeTag (stairs, { 1, 1, 0.6f, 0.25f, 0.3f, 0.1f, 0.8f, 1.0f });
+        x.add (stairs);
+
+        auto dorm = x.make ("Dormitory Rows", 5, { "Pad", "Staff", "Choir", "Cold" },
+            "Rows of bunks under a cold light: a breathy, sterile choir (sines and air sung through the VOICE filter on a "
+            "hollow \"oo\"), very still, a low hum under it, a long cold hall. Hold chords. MOD WHEEL: more air. MACROS: "
+            "BRIGHT, SPACE, FREEZE TAG.");
+        dorm.osc (0, "Wave", triangle).osc (0, "Volume", 0.5f).osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.8f)
+            .osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.9f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f).osc (1, "Voice", 0.0f)
+            .filter (FilterType::lp12, 3000.0f, 0.05f, 0.0f)
+            .ampEnvelope (500.0f, 800.0f, 0.95f, 1500.0f)
+            .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.0f).set (ParamIDs::voiceSize, 0.45f)
+            .set (ParamIDs::voiceSharp, 0.4f).set (ParamIDs::voiceMix, 1.0f);
+        noiseOsc (dorm, 2, 0.12f, 0.05f);
+        route (dorm, "modWheel", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (dorm, "macro1", ParamIDs::voiceVowel, 0.3f);
+        macros (dorm, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (dorm, RT::hall, 0.85f, 0.3f, 40.0f, 3.5f);
+        space (dorm);
+        dorm.set (ParamIDs::patchLevel, -6.2f);
+        freezeTag (dorm, { 2, 1, 0.7f, 0.2f, 0.5f, 0.1f, 0.85f, 0.95f });
+        x.add (dorm);
+
+        auto market = x.make ("Night Market", 6, { "Pad", "Debt", "Strings", "Warm" },
+            "The warm night market outside, everything you can't afford: a slow string section (saws, each player its own "
+            "vibrato) and a soft pulse an octave up, warm and a little tired, a wide room. Hold chords. MOD WHEEL: "
+            "brighter. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        market.osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.15f)
+              .filter (FilterType::lp12, 2000.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+              .ampEnvelope (500.0f, 1000.0f, 0.95f, 1400.0f);
+        pkSection (market, 0, 6, 0.16f, 9.0f, 5.0f, 500.0f);
+        route (market, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (market, "macro1", ParamIDs::fltCutoff, 0.2f);
+        chorus (market, ParamIDs::modIds, MT::dimension, 0.3f, 0.5f, 0.4f);
+        macros (market, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (market, RT::hall, 0.65f, 0.25f, 25.0f, 4.5f);
+        space (market);
+        market.set (ParamIDs::patchLevel, -8.0f);
+        freezeTag (market, { 2, 2, 0.7f, 0.25f, 0.3f, 0.1f, 0.85f, 0.9f });
+        orchestra (market, { { { 2, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f } },
+                             {}, 0.0f,
+                             "The warm night market outside: the orchestra's whole string section over PR7-K's strings.",
+                             -1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                             [] (Builder& s) { s.osc (0, "Volume", 0.25f).osc (1, "Volume", 0.08f); } });
+        x.add (market);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto tuba = x.make ("Toy Tuba", 7, { "Bass", "Playground", "Brass", "Oompah" },
+            "An oompah from a toy brass band: a short, round tuba (a saw through a filter that blows open on each note), "
+            "bouncing on the beat, a small room. Root and fifth. MOD WHEEL: brassier. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        tuba.osc (0, "Volume", 0.6f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.35f).osc (1, "PhaseRand", 0.0f).osc (1, "Filter", 0.0f)
+            .filter (FilterType::lp12, 350.0f, 0.15f, 0.55f).filterEnvelope (10.0f, 200.0f, 0.2f, 120.0f)
+            .set (ParamIDs::fltKey, 0.4f).set (ParamIDs::fltEnvVel, 0.4f)
+            .ampEnvelope (8.0f, 260.0f, 0.4f, 120.0f).set (ParamIDs::ampVel, 0.4f)
+            .mono (0.0f);
+        route (tuba, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (tuba, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (tuba, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (tuba, RT::room, 0.35f, 0.1f, 8.0f, 4.0f);
+        space (tuba);
+        tuba.set (ParamIDs::patchLevel, 0.7f);
+        freezeTag (tuba, { 1, 1, 0.35f, 0.3f, 0.2f, 0.2f, 0.8f, 1.0f });
+        orchestra (tuba, { { { 0, "Brass - Notation/Tuba Sustain (looped).sfz", 1.0f, 0.0f } },
+                           { 0 }, 4.0f,
+                           "An oompah from a toy brass band: a real tuba (the orchestra), played short, a sine under it.",
+                           8.0f, 260.0f, 0.3f, 150.0f, 0.0f,
+                           [] (Builder& s) { s.set (ParamIDs::playMode, 0.0f); } });
+        x.add (tuba);
+
+        auto march = x.make ("Guard March", 8, { "Bass", "Staff", "Pizzicato", "March" },
+            "The guards marching in line: low plucked strings (a saw plucked short, a sine under it), stiff and even on "
+            "every beat, a hard room. Root, fifth and octave. MOD WHEEL: longer. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        march.osc (0, "Volume", 0.6f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.4f).osc (1, "PhaseRand", 0.0f).osc (1, "Filter", 0.0f)
+             .filter (FilterType::lp12, 600.0f, 0.1f, 0.5f).filterEnvelope (0.0f, 140.0f, 0.0f, 100.0f)
+             .set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (0.5f, 350.0f, 0.0f, 150.0f);
+        pkVelocity (march, 0.5f, 0.3f, 0.5f);
+        route (march, "modWheel", ParamIDs::fltEnv, 0.15f);
+        route (march, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (march, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (march, RT::room, 0.35f, 0.12f, 6.0f, 4.0f);
+        space (march);
+        march.set (ParamIDs::patchLevel, 1.3f);
+        freezeTag (march, { 1, 0, 0.3f, 0.2f, 0.3f, 0.3f, 0.8f, 1.0f });
+        orchestra (march, { { { 0, "Strings - Notation/Basses Pizzicato.sfz", 1.0f, 0.0f } },
+                            { 0 }, 6.0f,
+                            "The guards marching in line: the orchestra's basses plucked, a sine under them, a hard room.",
+                            0.5f, 600.0f, 0.0f, 250.0f, -1.0f,
+                            [] (Builder& s) { s.set (ParamIDs::playMode, 0.0f); } });
+        x.add (march);
+
+        auto collector = x.make ("Debt Collector", 9, { "Bass", "Debt", "Sub", "Dark" },
+            "The knock at the door: a dark sub (a sine and a square an octave apart through a slow low filter), a slow "
+            "creeping swell, a growl of FM at the start of each note. Long low notes. MOD WHEEL: more growl. MACROS: "
+            "BRIGHT, SPACE, FREEZE TAG.");
+        collector.osc (0, "Wave", sine).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f)
+                 .osc (0, "FmAmount", 0.04f).osc (0, "ModRate", 0.5f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f)
+                 .filter (FilterType::lp24, 300.0f, 0.2f, 0.3f).filterEnvelope (60.0f, 900.0f, 0.3f, 400.0f)
+                 .set (ParamIDs::fltKey, 0.3f)
+                 .ampEnvelope (40.0f, 800.0f, 0.9f, 600.0f)
+                 .mono (60.0f);
+        pkShot (collector, 0, { SP3 { 0.0f, 1.0f, -0.5f }, SP3 { 0.4f, 0.0f, 0.0f } });
+        route (collector, "env1", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (collector, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (collector, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (collector, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (collector, RT::room, 0.45f, 0.12f, 10.0f, 3.5f);
+        space (collector);
+        collector.set (ParamIDs::patchLevel, -4.0f);
+        freezeTag (collector, { 2, 1, 0.6f, 0.4f, 0.4f, 0.3f, 0.85f, 1.0f });
+        x.add (collector);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto musicBox = x.make ("Music Box", 10, { "Keys", "Playground", "Music Box", "Tines" },
+            "A wind-up music box: small steel tines (a sine and its bright overtones, each fading at its own pace), a "
+            "little out of tune with itself, a tiny room. Play a tune up high. MOD WHEEL: the tines brighter. MACROS: "
+            "BRIGHT, SPACE, FREEZE TAG.");
+        musicBox.osc (0, "Wave", sine).osc (0, "PhaseRand", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Fine", 8.0f).osc (1, "PhaseRand", 0.0f)
+                .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 31.0f).osc (2, "Fine", -12.0f).osc (2, "PhaseRand", 0.0f)
+                .set (ParamIDs::fltOn, 0.0f)
+                .ampEnvelope (0.5f, 2500.0f, 0.0f, 1200.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.4f);
+        pkPartial (musicBox, 0, 0, 0.7f, 2.5f);
+        pkPartial (musicBox, 1, 1, 0.25f, 0.6f);
+        pkPartial (musicBox, 2, 2, 0.12f, 0.25f);
+        route (musicBox, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (musicBox, "macro1", ParamIDs::osc (2, "Volume"), 0.1f);
+        macros (musicBox, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (musicBox, RT::room, 0.3f, 0.15f, 5.0f, 5.5f);
+        space (musicBox);
+        musicBox.set (ParamIDs::patchLevel, -6.0f);
+        freezeTag (musicBox, { 1, 1, 0.35f, 0.5f, 0.2f, 0.25f, 0.85f, 1.0f });
+        x.add (musicBox);
+
+        auto waltz = x.make ("Salon Waltz", 11, { "Keys", "Staff", "Harpsichord", "Waltz" },
+            "A waltz for the rich onlookers in their lounge: a bright harpsichord (a thin pulse and a saw plucked hard, "
+            "the second string a hair apart), a gilded room. Waltz chords. MOD WHEEL: the lute stop (darker). MACROS: "
+            "BRIGHT, SPACE, FREEZE TAG.");
+        waltz.osc (0, "Wave", pulse).osc (0, "Width", 0.2f).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Fine", 5.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp12, 2500.0f, 0.1f, 0.6f).filterEnvelope (0.0f, 400.0f, 0.15f, 300.0f)
+             .set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (0.5f, 1600.0f, 0.0f, 400.0f).set (ParamIDs::ampVel, 0.2f);
+        route (waltz, "modWheel", ParamIDs::fltCutoff, -0.25f);
+        route (waltz, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (waltz, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (waltz, RT::hall, 0.5f, 0.2f, 20.0f, 5.0f);
+        space (waltz);
+        waltz.set (ParamIDs::patchLevel, -7.5f);
+        freezeTag (waltz, { 1, 1, 0.4f, 0.2f, 0.3f, 0.2f, 0.8f, 1.0f });
+        orchestra (waltz, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } },
+                            { 0, 1 }, 2.0f,
+                            "A waltz for the rich onlookers in their lounge: a real harpsichord (the orchestra), a gilded room.",
+                            0.5f, 1600.0f, 0.0f, 500.0f, -1.0f,
+                            [hall] (Builder& s) { hall (s); } });
+        x.add (waltz);
+
+        auto pawn = x.make ("Pawn Shop Piano", 12, { "Keys", "Debt", "Piano", "Out Of Tune" },
+            "The old upright at the back of the pawn shop: a felt piano with a second string pulled out of tune, dull and "
+            "a little sad, a small room. Slow chords. MOD WHEEL: the keys' noise. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        feltPiano (pawn);
+        dropMacro3 (pawn);
+        pawn.osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Fine", 22.0f).osc (4, "Volume", 0.45f).osc (4, "PhaseRand", 0.0f)
+            .set (ParamIDs::fltCutoff, 1300.0f);
+        macros (pawn, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (pawn, RT::room, 0.45f, 0.15f, 10.0f, 4.0f);
+        space (pawn);
+        pawn.set (ParamIDs::patchLevel, -6.2f);
+        freezeTag (pawn, { 2, 1, 0.6f, 0.3f, 0.4f, 0.15f, 0.85f, 1.0f });
+        grand (pawn, { 4, 3500.0f, 0.4f, 0.3f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
+                       "The old upright at the back of the pawn shop: the Salamander Grand on two strings pulled out of tune "
+                       "(a second Salamander 22 cents sharp), dull and a little sad.",
+                       [] (Builder& s)
+                       {
+                           s.osc (4, "Wave", (float) synth::OscWave::sfz).osc (4, "Fine", 22.0f).osc (4, "Volume", 0.6f);
+                           s.rig.sfz[4] = libraries::refFor (libraries::salamanderGrand());
+                       } });
+        x.add (pawn);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto clapping = x.make ("Clapping Game", 13, { "Arp", "Playground", "Marimba", "Claps" },
+            "A clapping game in the yard: a toy marimba (a struck sine and its bright overtone) bouncing up and down the "
+            "held chord in a sing-song rhythm, hand claps on two and four with a quick double. Hold chords. MOD WHEEL: "
+            "brighter mallets. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        clapping.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.0f).osc (1, "PhaseRand", 0.0f)
+                .osc (1, "Arp", 1.0f)
+                .set (ParamIDs::fltOn, 0.0f)
+                .ampEnvelope (0.5f, 500.0f, 0.0f, 250.0f).set (ParamIDs::ampVel, 0.5f)
+                .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+                .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+                .set (ParamIDs::arp (0, "Gate"), 0.6f)
+                .set (ParamIDs::arpsTogether, 1.0f);
+        pkPartial (clapping, 1, 0, 0.18f, 0.12f);
+        noiseOsc (clapping, 2, 0.5f, 0.25f);   // the claps
+        clapping.osc (2, "Arp", 2.0f).osc (2, "Filter", 0.0f);
+        drumArp (clapping, 1, { 4, 12, 14 }, { 4, 12 });
+        {
+            auto& p = clapping.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : k % 2 == 0 ? 0.8f : 0.6f;
+        }
+        clapping.set (ParamIDs::arp (1, "Gate"), 0.15f);
+        route (clapping, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (clapping, "macro1", ParamIDs::osc (1, "Volume"), 0.08f);
+        macros (clapping, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (clapping, RT::room, 0.35f, 0.12f, 6.0f, 5.0f);
+        space (clapping);
+        clapping.set (ParamIDs::patchLevel, -0.5f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        freezeTag (clapping, { 1, 1, 0.3f, 0.35f, 0.2f, 0.2f, 0.8f, 1.0f });
+        orchestra (clapping, { { { 0, "Idiophones/Struck Idiophones/Marimba.sfz", 1.0f, 0.0f, false, &vcsl },
+                                 { 2, "Idiophones/Struck Idiophones/Claps.sfz", 0.8f, 0.0f, false, &vcsl } },
+                               { 0, 1, 2 }, 4.0f,
+                               "A clapping game in the yard: a real marimba bouncing up and down the held chord, real hand "
+                               "claps on two and four (VCSL).",
+                               0.5f, 900.0f, 0.0f, 400.0f, -1.0f,
+                               [pinned] (Builder& s)
+                               {
+                                   pinned (s, 2, 60);
+                                   s.osc (0, "Arp", 1.0f).osc (2, "Arp", 2.0f);
+                                   s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                       [] (const auto& r) { return r.source == "modWheel" || r.source == "macro1"; }), s.rig.modulation.routes.end());
+                                   route (s, "macro1", ParamIDs::reverbSize, 0.3f);
+                                   s.rig.modulation.macroNames[0] = "ROOM";
+                               } });
+        x.add (clapping);
+
+        auto numbers = x.make ("Marching Numbers", 14, { "Arp", "Staff", "Snare", "March" },
+            "The players lined up by number: a parade snare (noise cracking over a tight tone) marching with rolls into "
+            "the bar, a low drum on the downbeats, a xylophone picking out the held chord on the off-beats. Hold chords. "
+            "MOD WHEEL: crisper snare. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        numbers.osc (0, "Wave", sine).osc (0, "Transpose", -24.0f).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f)
+               .osc (0, "Arp", 2.0f).osc (0, "Filter", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -5.0f).osc (1, "Volume", 0.25f)
+               .osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 3.0f).osc (1, "Filter", 0.0f).osc (1, "PitchEnv", 0.0f)
+               .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 12.0f).osc (3, "Volume", 0.5f).osc (3, "PhaseRand", 0.0f)
+               .osc (3, "Arp", 1.0f).osc (3, "Filter", 0.0f).osc (3, "PitchEnv", 0.0f)
+               .filter (FilterType::hp12, 2500.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.0f)
+               .ampEnvelope (0.5f, 220.0f, 0.0f, 120.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.6f)
+               .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchKeytrack, 0.0f).set (ParamIDs::pitchEnvRange, 12.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+               .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.3f)
+               .set (ParamIDs::arpsTogether, 1.0f);
+        numbers.rig.modulation.pitchEnvelope = { { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.06f, 0.5f, 0.0f } }, -1, -1, -1 };
+        {
+            auto& p = numbers.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].on = k % 2 == 1;   // the xylophone on the off-beats
+        }
+        drumArp (numbers, 1, { 0, 8 }, { 0 });                                   // the low drum
+        noiseOsc (numbers, 2, 0.4f, 0.15f);                                       // the snare's crack
+        numbers.osc (2, "Arp", 3.0f).osc (2, "PitchEnv", 0.0f);
+        drumArp (numbers, 2, { 4, 12, 13, 14, 15 }, { 4, 12 });
+        {
+            auto& p = numbers.rig.modulation.arps[2].patterns[0];
+            p.blocks[14].ratchet = 2;
+            p.blocks[15].ratchet = 3;
+        }
+        route (numbers, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (numbers, "macro1", ParamIDs::osc (3, "Volume"), 0.15f);
+        macros (numbers, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (numbers, RT::hall, 0.45f, 0.12f, 10.0f, 4.0f);
+        space (numbers);
+        numbers.set (ParamIDs::patchLevel, 4.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        freezeTag (numbers, { 1, 0, 0.25f, 0.2f, 0.3f, 0.3f, 0.8f, 1.0f });
+        orchestra (numbers, { { { 2, "Membranophones/Struck Membranophones/Snare Drum, Rope Tension.sfz", 0.9f, 0.0f, false, &vcsl },
+                                { 3, "Idiophones/Struck Idiophones/Xylophone - Medium Mallets.sfz", 0.8f, 0.0f, false, &vcsl } },
+                              { 1, 2, 3 }, 3.0f,
+                              "The players lined up by number: a real rope-tension snare marching with rolls, a low drum on "
+                              "the downbeats, a real xylophone on the off-beats (VCSL).",
+                              0.5f, 700.0f, 0.0f, 300.0f, -1.0f,
+                              [pinned] (Builder& s)
+                              {
+                                  pinned (s, 2, 62);
+                                  s.osc (2, "Arp", 3.0f).osc (3, "Arp", 1.0f).osc (3, "PitchEnv", 0.0f).osc (3, "Filter", 0.0f);
+                                  route (s, "macro1", ParamIDs::reverbSize, 0.3f);
+                                  s.rig.modulation.macroNames[0] = "ROOM";
+                              } });
+        x.add (numbers);
+
+        auto clock = x.make ("Countdown Clock", 15, { "Arp", "Debt", "Clock", "Tick" },
+            "The clock running down on the debt: a dry tick and tock in eighths (two pitched clicks), a low pulse under "
+            "the held notes on each beat, a high bell at every bar. Hold chords. MOD WHEEL: louder ticks. MACROS: "
+            "BRIGHT, SPACE, FREEZE TAG.");
+        clock.osc (0, "Wave", sine).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 36.0f).osc (1, "Volume", 0.4f)
+             .osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 2.0f).osc (1, "PitchEnv", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 24.0f).osc (2, "Volume", 0.3f)
+             .osc (2, "PhaseRand", 0.0f).osc (2, "Arp", 3.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (0.5f, 160.0f, 0.0f, 80.0f).set (ParamIDs::ampVel, 0.5f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (0, "Division"), division ("1/4")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.4f)
+             .set (ParamIDs::arpsTogether, 1.0f);
+        drumArp (clock, 1, { 0, 2, 4, 6, 8, 10, 12, 14 }, { 0, 4, 8, 12 });   // tick, tock
+        clock.set (ParamIDs::arp (1, "Gate"), 0.1f);
+        drumArp (clock, 2, { 0 }, { 0 });                                      // the bar's bell
+        clock.set (ParamIDs::arp (2, "Gate"), 1.0f);
+        route (clock, "modWheel", ParamIDs::osc (1, "Volume"), 0.2f);
+        route (clock, "macro1", ParamIDs::osc (2, "Volume"), 0.15f);
+        macros (clock, "BRIGHT", "SPACE", "FREEZE TAG");
+        delay (clock, "1/4 dotted", 0.3f, 0.12f, true, 4.0f);
+        reverb (clock, RT::room, 0.4f, 0.12f, 8.0f, 4.5f);
+        space (clock);
+        clock.set (ParamIDs::patchLevel, 0.5f);
+        freezeTag (clock, { 2, 1, 0.3f, 0.4f, 0.3f, 0.2f, 0.8f, 1.0f });
+        orchestra (clock, { { { 1, "Idiophones/Struck Idiophones/Woodblock.sfz", 0.8f, 0.0f, false, &vcsl },
+                              { 2, "Idiophones/Struck Idiophones/Glockenspiel.sfz", 0.6f, 0.0f, false, &vcsl } },
+                            { 1, 2 }, 2.0f,
+                            "The clock running down on the debt: a real woodblock ticking, a low pulse under the held "
+                            "notes, a real glockenspiel at every bar (VCSL).",
+                            0.5f, 400.0f, 0.0f, 300.0f, -1.0f,
+                            [pinned] (Builder& s)
+                            {
+                                pinned (s, 1, 60);
+                                s.osc (1, "Arp", 2.0f).osc (2, "Arp", 3.0f).osc (2, "Transpose", 12.0f);
+                                route (s, "macro1", ParamIDs::reverbSize, 0.3f);
+                                s.rig.modulation.macroNames[0] = "ROOM";
+                            } });
+        x.add (clock);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto marble = x.make ("Marble Drop", 16, { "Pluck", "Playground", "Glass", "Chirp" },
+            "A glass marble dropped on stone: a bright sine struck with a quick chirp down into the note and a ring an "
+            "octave and a fifth up, gone in a moment. Quick tunes. MOD WHEEL: more ring. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        marble.osc (0, "Wave", sine).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 19.0f).osc (1, "PhaseRand", 0.0f)
+              .set (ParamIDs::fltOn, 0.0f)
+              .ampEnvelope (0.5f, 450.0f, 0.0f, 250.0f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (marble, 1, 0, 0.25f, 0.18f);
+        pkBend (marble, 5.0f, 0.03f, -0.6f);
+        route (marble, "modWheel", ParamIDs::osc (1, "Volume"), 0.15f);
+        route (marble, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        macros (marble, "BRIGHT", "SPACE", "FREEZE TAG");
+        delay (marble, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
+        reverb (marble, RT::room, 0.35f, 0.12f, 6.0f, 5.5f);
+        space (marble);
+        freezeTag (marble, { 1, 1, 0.25f, 0.4f, 0.2f, 0.2f, 0.85f, 1.0f });
+        pkAdd (x, marble);
+
+        auto glass = x.make ("Glass Step", 17, { "Pluck", "Staff", "Glass", "AM" },
+            "A step onto a pane of glass: a pure tone rung like struck glass (ring-modulated at a bell's ratio, 2.76), a "
+            "tick of the crack, a cold hall. Careful single notes. MOD WHEEL: more clang. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        glass.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.683f).osc (0, "AmAmount", 0.35f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "PhaseRand", 0.0f)
+             .ampEnvelope (0.5f, 1100.0f, 0.0f, 600.0f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (glass, 1, 0, 0.2f, 0.3f);
+        pkStrike (glass, 2, 1, 0.12f, 3.0f, 0.0f, false);
+        route (glass, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.3f);
+        route (glass, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        macros (glass, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (glass, RT::hall, 0.65f, 0.25f, 25.0f, 5.0f);
+        space (glass);
+        freezeTag (glass, { 2, 1, 0.3f, 0.3f, 0.5f, 0.35f, 0.85f, 1.0f });
+        pkAdd (x, glass);
+
+        auto paper = x.make ("Paper Flip", 18, { "Pluck", "Debt", "Paper", "Slap" },
+            "A folded paper tile slapped down to flip another: a slap of noise through a band-pass on the note, a short "
+            "wooden body under it, dry. Rhythmic single notes. MOD WHEEL: a sharper slap. MACROS: BRIGHT, SPACE, FREEZE TAG.");
+        paper.osc (0, "Wave", triangle).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f)
+             .filter (FilterType::bp12, 380.0f, 0.3f, 0.3f).filterEnvelope (0.0f, 120.0f, 0.0f, 80.0f)
+             .set (ParamIDs::fltKey, 1.0f)
+             .ampEnvelope (0.5f, 220.0f, 0.0f, 120.0f).set (ParamIDs::ampVel, 0.6f);
+        pkStrike (paper, 1, 0, 0.7f, 25.0f, 0.2f);
+        route (paper, "modWheel", ParamIDs::fltRes, 0.2f);
+        route (paper, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (paper, "BRIGHT", "SPACE", "FREEZE TAG");
+        reverb (paper, RT::room, 0.3f, 0.1f, 5.0f, 4.0f);
+        space (paper);
+        freezeTag (paper, { 1, 1, 0.2f, 0.3f, 0.3f, 0.3f, 0.85f, 1.0f });
+        pkAdd (x, paper);
+    }
+
     // LAST DAY (0.87.0, the owner's theme (a 1970s dystopian science-fiction film of a sealed, pleasure-seeking city
     // whose people may not grow old, and the runners who escape it) and the owner's name for the bank; no film title,
     // characters, places, rituals or music on the plugin, and our own sounds and phrases). The 1970s sci-fi synths: huge
@@ -18085,5 +18639,6 @@ std::vector<Rig> makeExpansionRigs()
     gunslinger ({ Rig::numBanks + 32, rigs });
     machineSupremacy ({ Rig::numBanks + 33, rigs });
     lastDay ({ Rig::numBanks + 34, rigs });
+    playground ({ Rig::numBanks + 35, rigs });
     return rigs;
 }

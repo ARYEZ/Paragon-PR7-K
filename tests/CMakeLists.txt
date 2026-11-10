@@ -95,6 +95,7 @@ add_executable(ParagonX1Tests
     NaviComputerTests.cpp
     SweepTests.cpp
     RedlineTests.cpp
+    FreezeTagTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

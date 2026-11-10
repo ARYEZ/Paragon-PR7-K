@@ -602,5 +602,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addHyperJumpParameters (layout);       // HYPERJUMP (0.86.0, version hint 54): RackParameters.cpp
     addSweepParameters (layout);           // SWEEP (0.87.0, version hint 55): RackParameters.cpp
     addRedlineParameters (layout);         // REDLINE (0.88.0, version hint 56): RackParameters.cpp
+    addFreezeTagParameters (layout);       // FREEZE TAG (0.89.0, version hint 57): RackParameters.cpp
     return layout;
 }
