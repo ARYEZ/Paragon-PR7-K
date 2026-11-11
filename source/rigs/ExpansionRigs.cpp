@@ -166,7 +166,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
-            { "Bolt Driver", 0.0f }, { "Mended Strings", 0.0f }, { "Frost Glass", 0.0f },
+            { "Bolt Driver", -1.5f }, { "Mended Strings", -4.7f }, { "Frost Glass", -8.0f },
             { "Broken Radio", 0.0f }, { "Front-Porch Banjo", -7.5f }, { "Snake Rattle", -5.5f },
             { "Marble Drop", -6.0f }, { "Glass Step", -4.5f }, { "Paper Flip", 9.0f },
             { "Spark Riff", 1.0f }, { "Chain Pizzicato", -9.5f }, { "Barbed Wire", -9.0f },
@@ -19248,7 +19248,7 @@ namespace
         reverb (valve, RT::room, 0.45f, 0.15f, 10.0f, 4.0f);
         delay (valve, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
         space (valve);
-        valve.set (ParamIDs::patchLevel, -4.0f);
+        valve.set (ParamIDs::patchLevel, -4.9f);
         gears (valve, { 0, 0, 0.8f, 0.45f, 0.35f, 0.4f, 0.5f, 1.0f });
         x.add (valve);
 
@@ -19273,7 +19273,7 @@ namespace
         reverb (whistle, RT::hall, 0.8f, 0.28f, 40.0f, 4.5f);
         delay (whistle, "1/4 dotted", 0.42f, 0.2f, false, 4.0f);
         space (whistle);
-        whistle.set (ParamIDs::patchLevel, -3.0f);
+        whistle.set (ParamIDs::patchLevel, -6.2f);
         gears (whistle, { 1, 1, 0.6f, 0.3f, 0.2f, 0.3f, 0.35f, 1.0f });
         x.add (whistle);
 
@@ -19298,7 +19298,7 @@ namespace
         macros (helmet, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (helmet, RT::plate, 0.4f, 0.15f, 15.0f, 4.0f);
         space (helmet);
-        helmet.set (ParamIDs::patchLevel, -3.0f);
+        helmet.set (ParamIDs::patchLevel, 3.5f);
         gears (helmet, { 2, 0, 0.7f, 0.5f, 0.45f, 0.2f, 0.3f, 1.0f });
         x.add (helmet);
 
@@ -19323,7 +19323,7 @@ namespace
         macros (hall, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (hall, RT::hall, 0.75f, 0.3f, 30.0f, 4.0f);
         space (hall);
-        hall.set (ParamIDs::patchLevel, -6.0f);
+        hall.set (ParamIDs::patchLevel, -13.0f);
         gears (hall, { 0, 1, 0.75f, 0.35f, 0.25f, 0.45f, 0.4f, 1.0f });
         x.add (hall);
 
@@ -19345,11 +19345,11 @@ namespace
         macros (levels, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (levels, RT::room, 0.6f, 0.25f, 20.0f, 4.5f);
         space (levels);
-        levels.set (ParamIDs::patchLevel, -9.0f);
+        levels.set (ParamIDs::patchLevel, -10.5f);
         gears (levels, { 1, 1, 0.55f, 0.3f, 0.15f, 0.3f, 0.3f, 1.0f });
         orchestra (levels, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f },
                                { 4, "Strings - Notation/All Strings Sustain.sfz", 0.6f, 0.0f, true } },
-                             { 0 }, -2.0f,
+                             { 0 }, -6.9f,
                              "The people of the hundred levels: the orchestra's large chorus over its strings and PR7-K's "
                              "own (the recordings fade after a few seconds; the synth's strings hold).",
                              400.0f, 800.0f, 1.0f, 1000.0f, -1.0f,
@@ -19376,7 +19376,7 @@ namespace
         macros (ash, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (ash, RT::cathedral, 0.85f, 0.35f, 60.0f, 3.5f);
         space (ash);
-        ash.set (ParamIDs::patchLevel, -3.0f);
+        ash.set (ParamIDs::patchLevel, -5.5f);
         gears (ash, { 3, 1, 0.5f, 0.45f, 0.3f, 0.35f, 0.25f, 1.0f });
         x.add (ash);
 
@@ -19401,7 +19401,7 @@ namespace
         macros (piston, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (piston, RT::room, 0.3f, 0.08f, 6.0f, 4.0f);
         space (piston);
-        piston.set (ParamIDs::patchLevel, -3.0f);
+        piston.set (ParamIDs::patchLevel, -2.4f);
         gears (piston, { 0, 0, 0.75f, 0.35f, 0.35f, 0.3f, 0.5f, 1.0f });
         x.add (piston);
 
@@ -19421,10 +19421,10 @@ namespace
         macros (deep, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (deep, RT::room, 0.4f, 0.12f, 10.0f, 4.0f);
         space (deep);
-        deep.set (ParamIDs::patchLevel, 1.0f);
+        deep.set (ParamIDs::patchLevel, -1.1f);
         gears (deep, { 1, 1, 0.55f, 0.3f, 0.25f, 0.25f, 0.4f, 1.0f });
         orchestra (deep, { { { 0, "Programs/04_pizz.sfz", 1.0f, 0.0f, false, &upright } },
-                           { 0, 1, 2 }, 5.0f,
+                           { 0, 1, 2 }, 2.5f,
                            "A bass walking down the levels: a real 1958 double bass, plucked (Meatbass).",
                            1.0f, 300.0f, 1.0f, 300.0f, -1.0f, {} });
         x.add (deep);
@@ -19448,7 +19448,7 @@ namespace
         macros (seal, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (seal, RT::room, 0.4f, 0.12f, 10.0f, 4.0f);
         space (seal);
-        seal.set (ParamIDs::patchLevel, -4.0f);
+        seal.set (ParamIDs::patchLevel, -6.0f);
         gears (seal, { 2, 1, 0.6f, 0.3f, 0.3f, 0.5f, 0.3f, 1.0f });
         x.add (seal);
 
@@ -19473,10 +19473,10 @@ namespace
         macros (foundry, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (foundry, RT::hall, 0.7f, 0.25f, 25.0f, 4.0f);
         space (foundry);
-        foundry.set (ParamIDs::patchLevel, -5.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        foundry.set (ParamIDs::patchLevel, -12.8f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         gears (foundry, { 0, 1, 0.5f, 0.3f, 0.2f, 0.25f, 0.45f, 1.0f });
         orchestra (foundry, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
-                              { 0, 1, 2, 3 }, 9.0f,
+                              { 0, 1, 2, 3 }, 8.6f,
                               "Struck metal in the foundry: real tubular bells (VCSL's), ringing in the furnace room.",
                               1.0f, 300.0f, 1.0f, 3000.0f, -1.0f,
                               [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.25f); s.rig.modulation.macroNames[0] = "HALL"; } });
@@ -19497,9 +19497,9 @@ namespace
         macros (ration, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (ration, RT::room, 0.5f, 0.2f, 12.0f, 4.0f);
         space (ration);
-        ration.set (ParamIDs::patchLevel, -7.0f);
+        ration.set (ParamIDs::patchLevel, -10.5f);
         gears (ration, { 1, 1, 0.45f, 0.25f, 0.15f, 0.2f, 0.35f, 1.0f });
-        grand (ration, { 4, 3500.0f, 0.4f, 0.3f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
+        grand (ration, { 4, 3500.0f, 0.4f, 0.3f, -1.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
                          "The old piano on a landing: the Salamander Grand on two strings pulled apart (a second "
                          "Salamander 12 cents sharp), darkened, worn.",
                          [] (Builder& s)
@@ -19528,7 +19528,7 @@ namespace
         macros (screen, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (screen, RT::digital, 0.6f, 0.25f, 25.0f, 4.0f);
         space (screen);
-        screen.set (ParamIDs::patchLevel, -6.0f);
+        screen.set (ParamIDs::patchLevel, -5.4f);
         gears (screen, { 3, 0, 0.5f, 0.5f, 0.35f, 0.15f, 0.3f, 1.0f });
         x.add (screen);
 
@@ -19557,7 +19557,7 @@ namespace
         macros (line, "BRIGHT", "SPACE", "GEARWORKS");
         reverb (line, RT::room, 0.4f, 0.12f, 8.0f, 4.0f);
         space (line);
-        line.set (ParamIDs::patchLevel, -2.0f);
+        line.set (ParamIDs::patchLevel, -3.6f);
         gears (line, { 0, 0, 0.7f, 0.4f, 0.3f, 0.3f, 0.45f, 1.0f });
         x.add (line);
 
@@ -19579,7 +19579,7 @@ namespace
         reverb (steps, RT::hall, 0.6f, 0.22f, 25.0f, 4.0f);
         delay (steps, "1/8 dotted", 0.35f, 0.2f, true, 4.0f);
         space (steps);
-        steps.set (ParamIDs::patchLevel, -2.0f);
+        steps.set (ParamIDs::patchLevel, -2.2f);
         gears (steps, { 1, 0, 0.6f, 0.3f, 0.2f, 0.25f, 0.4f, 1.0f });
         x.add (steps);
 
@@ -19606,7 +19606,7 @@ namespace
         reverb (telemetry, RT::plate, 0.45f, 0.15f, 10.0f, 4.0f);
         delay (telemetry, "1/8", 0.3f, 0.12f, true, 4.0f);
         space (telemetry);
-        telemetry.set (ParamIDs::patchLevel, -6.0f);
+        telemetry.set (ParamIDs::patchLevel, 3.0f);
         gears (telemetry, { 2, 2, 0.5f, 0.4f, 0.4f, 0.15f, 0.3f, 1.0f });
         x.add (telemetry);
 
@@ -19650,8 +19650,8 @@ namespace
         reverb (mended, RT::room, 0.45f, 0.15f, 10.0f, 4.0f);
         space (mended);
         gears (mended, { 1, 0, 0.5f, 0.3f, 0.2f, 0.2f, 0.35f, 1.0f });
-        orchestra (mended, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
-                             { 0, 1 }, 0.0f,
+        orchestra (mended, { { { 0, "Programs/04-green_twang.sfz", 1.25f, 0.0f, true, &guitars } },
+                             { 0, 1 }, 8.0f,
                              "A patched-up string instrument: a real guitar (the Gretsch of Black And Green Guitars), worn.",
                              1.0f, 300.0f, 1.0f, 400.0f, -1.0f,
                              [] (Builder& s) { s.set (ParamIDs::fltCutoff, 3500.0f).set (ParamIDs::fltEnv, 0.0f); } });
