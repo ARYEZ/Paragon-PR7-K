@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.89.1
+
+**Black And Green Guitars now downloads exactly as recorded.**
+
+- **What was wrong:** GitHub builds the library's download with git, and that library's settings tell git to treat every file as text and change its line endings. Git did that to the audio files too, putting an extra byte into each sample wherever one particular byte value appeared. The samples PR7-K downloaded were damaged, so the guitar versions of six presets (Baritone Twang, Twang Picking and Twang Pluck in GUNSLINGER, Punk Riff in MACHINE SUPREMACY, Flame Guitar and Spark Riff in CHROMEFURY) played a damaged copy. The other libraries weren't affected: git leaves their audio alone.
+- **What changed:** after unpacking, PR7-K fetches each of the guitars' samples again from GitHub's original files, checks it against the download (git's change applied to it must give exactly the downloaded copy), and only then puts it in place.
+- **If you already downloaded the guitars:** the plugin now counts that copy as unfinished. Those six presets play their synthesized version and offer the library again. Say yes and it fetches only the samples (about 480 MB, roughly ten minutes), not the whole download.
+- The four GUNSLINGER and MACHINE SUPREMACY guitar versions were re-levelled on the repaired samples (the damage had made them sound louder than they are): Baritone Twang +6.6 dB, Twang Picking +4.4 dB, Twang Pluck +0.8 dB, Punk Riff +1.9 dB. CHROMEFURY's two measured within their targets on the repaired samples and were left as they were.
+
 ## 0.89.0
 
 **PLAYGROUND, a new expansion: sweet children's tunes with dread underneath, built round a new signature effect, FREEZE TAG.**

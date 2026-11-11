@@ -16235,7 +16235,7 @@ namespace
         baritone.set (ParamIDs::patchLevel, 6.4f);
         canyon (baritone, { 0.55f, 1, 0.4f, 0.5f, 0.85f, 0.85f });
         orchestra (baritone, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &twang } },
-                               { 0, 1, 2 }, 3.3f,
+                               { 0, 1, 2 }, 9.9f,   // (0.89.1: re-levelled on the samples as stored)
                                "A low twang: a real Gretsch Anniversary (Black And Green Guitars) played low, through "
                                "a spring and a slow tremolo. Big, slow riffs.",
                                1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
@@ -16422,7 +16422,7 @@ namespace
         picking.set (ParamIDs::patchLevel, 5.2f);
         canyon (picking, { 0.5f, 1, 0.4f, 0.55f, 0.9f, 0.8f });
         orchestra (picking, { { { 0, "Programs/05-green_staccato.sfz", 1.0f, 0.0f, true, &twang } },
-                              { 0, 1, 2 }, 4.7f,
+                              { 0, 1, 2 }, 9.1f,   // (0.89.1)
                               "A twangy guitar picking out the chord: a real Gretsch Anniversary, picked short "
                               "(Black And Green Guitars), on ARP 1. Hold a chord.",
                               1.0f, 300.0f, 1.0f, 200.0f, -1.0f,
@@ -16440,7 +16440,7 @@ namespace
         space (twangPluck);
         canyon (twangPluck, { 0.55f, 1, 0.45f, 0.55f, 0.9f, 0.85f });
         orchestra (twangPluck, { { { 0, "Programs/07-black_twang.sfz", 1.0f, 0.0f, true, &twang } },
-                                 { 0, 1, 2 }, -0.6f,
+                                 { 0, 1, 2 }, 0.2f,   // (0.89.1)
                                  "The lone gunslinger's guitar: a real Hofner Club (Black And Green Guitars), through a "
                                  "spring. Riffs with room between.",
                                  1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
@@ -16817,7 +16817,7 @@ namespace
         punk.set (ParamIDs::patchLevel, 4.0f);
         jackIn (punk, { 1, 2, 0.35f, 0.25f, 0.4f, 1.0f });
         orchestra (punk, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &twang } },
-                           { 0, 1, 2 }, 3.6f,
+                           { 0, 1, 2 }, 5.5f,   // (0.89.1)
                            "A guitar from a street band: a real Gretsch Anniversary (Black And Green Guitars) through "
                            "a loud, hot amp. Play power chords.",
                            1.0f, 1500.0f, 0.6f, 150.0f, -1.0f,
