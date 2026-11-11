@@ -831,6 +831,7 @@ TEST_CASE ("SFZ: CPU, 16 held notes streaming", "[sfz][cpu]")
 // In the plugin: loading, presets, projects, undo, the library moving.
 #include "Parameters.h"
 #include "PluginProcessor.h"
+#include "SampleLibraries.h"
 
 namespace
 {
@@ -1595,5 +1596,34 @@ TEST_CASE ("SFZ: the Versilian collection's and Sam's Sonor's instruments load a
                  << juce::String (db (rms (out[0], (size_t) (1.8 * sampleRate), out[0].size())), 1) << " dB";
         }
         WARN (line);
+    }
+}
+
+// (0.89.2) How long each library instrument the expansions use takes to load (not run by default): PARAGON_LIBRARIES.
+TEST_CASE ("SFZ: load times of the libraries' instruments", "[.loadtimes]")
+{
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    const std::vector<std::pair<const libraries::Library*, const char*>> wanted {
+        { &libraries::meatbass(), "Programs/04_pizz.sfz" },
+        { &libraries::salamanderGrand(), libraries::salamanderGrand().sfz.toRawUTF8() },
+        { &libraries::versilianCollection(), "Idiophones/Struck Idiophones/Tubular Bells 1.sfz" },
+        { &libraries::versilianCollection(), "Idiophones/Struck Idiophones/Woodblock.sfz" },
+        { &libraries::versilianCollection(), "Idiophones/Struck Idiophones/Claves.sfz" },
+        { &libraries::versilianCollection(), "Aerophones/Free Aerophones/Harmonica-Hohner-Super64 - Vib.sfz" },
+        { &libraries::blackAndGreenGuitars(), "Programs/04-green_twang.sfz" },
+        { &libraries::shinyguitar(), "Programs/main.sfz" },
+        { &libraries::kayBanjo(), "FS KayBanjo (release mw1).sfz" },
+        { &libraries::ganjo(), "ganjo.sfz" },
+    };
+    for (const auto& [library, path] : wanted)
+    {
+        const auto file = folder.getChildFile (library->folder).getChildFile (path);
+        if (! file.existsAsFile())
+            continue;
+        const auto start = juce::Time::getMillisecondCounterHiRes();
+        const auto instrument = synth::sfz::load (file, {}, nullptr);
+        WARN (library->name << " / " << path << ": " << (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 << " s, "
+              << (instrument != nullptr ? (int) instrument->regions.size() : -1) << " regions, "
+              << (instrument != nullptr ? instrument->unreadable : -1) << " unreadable");
     }
 }

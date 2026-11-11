@@ -195,6 +195,56 @@ TEST_CASE ("Libraries: the western bank's five, each pinned to one commit and cr
     CHECK (libraries::ganjo().credit.contains ("CC0"));
 }
 
+TEST_CASE ("Libraries: a library missing samples counts as not installed, is offered again and unpacks whole (0.89.2)", "[library][plugin]")
+{
+    // A download that stopped part way left the instrument file but not all its samples: the presets on it played
+    // silence (the owner's GUNSLINGER report). Now such a library isn't installed, the oscillator fails (the library is
+    // offered again), and a new download unpacks into a folder of its own before moving into place.
+    MainView::offerLibrary = false;
+    TempFolder t;
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.createDirectory();
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets);
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    processor.prepareToPlay (48000.0, 256);
+    processor.setNonRealtime (true);
+    const auto& library = libraries::salamanderGrand();
+    const auto folder = processor.getLibrariesFolder().getChildFile (library.folder);
+    folder.getChildFile ("samples").createDirectory();
+    folder.getChildFile (library.sfz).replaceWithText ("<region> sample=samples/C4v8.wav lokey=0 hikey=127 pitch_keycenter=60\n");
+    CHECK (processor.isLibraryInstalled (library));   // the instrument file is there...
+
+    Rig rig;
+    rig.name = "Piano Test";
+    rig.parameters[ParamIDs::osc (0, "Wave")] = (float) synth::OscWave::sfz;
+    rig.sfz[0] = libraries::refFor (library);
+    RigLibrary::Entry entry;
+    entry.rig = rig;
+    processor.loadRig (entry);
+    processor.waitForSfz();
+    // ...but its sample isn't: not installed, failed, offered again.
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::failed);
+    CHECK (processor.getSfzProblem (0).contains ("incomplete"));
+    CHECK_FALSE (processor.isLibraryInstalled (library));
+    CHECK (processor.missingLibrary (0) == &library);
+
+    // Fetched again: whole, installed, playing; nothing left of the unpacking.
+    const auto archive = t.dir.getChildFile ("server/piano.tar.gz");
+    archive.getParentDirectory().createDirectory();
+    writeStandIn (archive);
+    processor.startLibraryDownload (juce::URL (archive).toString (false));
+    REQUIRE (const_cast<libraries::Download&> (processor.getLibraryDownload()).waitUntilFinished (30000));
+    REQUIRE (processor.getLibraryDownload().getState() == libraries::Download::State::done);
+    processor.waitForSfz();
+    processor.waitForSfz();
+    CHECK (processor.isLibraryInstalled (library));
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
+    CHECK (folder.getChildFile ("samples/C4v8.wav").existsAsFile());
+    for (const auto& f : processor.getLibrariesFolder().findChildFiles (juce::File::findFilesAndDirectories, false))
+        CHECK_FALSE (f.getFileName().startsWith (".unpacking"));
+}
+
 TEST_CASE ("Libraries: Black And Green Guitars' audio, altered by GitHub's archive, is fetched again as stored (0.89.1)", "[library][plugin]")
 {
     // GitHub makes the archive with `git archive`, which applies the repository's `* text eol=crlf`: a CR goes in

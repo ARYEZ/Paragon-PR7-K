@@ -540,13 +540,17 @@ namespace libraries
             }
         }
 
-        // 2. Unpacked (a folder left from an earlier try is cleared first), then the archive goes.
+        // 2. Unpacked into a folder of its own, then moved into place whole (0.89.2: unpacked straight into place, a
+        // stop part way (the host closed, two copies of the plugin at once, a full disk) left a folder holding its
+        // instrument but not all its samples, which counted as installed and played silence). Then the archive goes.
         state = State::unpacking;
         progress = 0.0f;
-        destination.getChildFile (library.folder).deleteRecursively();
+        const auto unpacking = destination.getChildFile (".unpacking-" + library.folder + "-"
+                                                         + juce::String::toHexString (juce::Random::getSystemRandom().nextInt64()));
+        unpacking.deleteRecursively();
         juce::String error;
         const auto& lib = library;
-        const auto ok = extractTarGz (archive, destination, [this] (float p) { progress = p; }, &cancelled, error,
+        const auto ok = extractTarGz (archive, unpacking, [this] (float p) { progress = p; }, &cancelled, error,
                                       [&lib] (const juce::String& path)
                                       {
                                           return ! path.startsWith (lib.folder + "/") || lib.keeps (path.substring (lib.folder.length() + 1));
@@ -554,11 +558,21 @@ namespace libraries
         archive.deleteFile();
         if (! ok)
         {
-            destination.getChildFile (library.folder).deleteRecursively();
+            unpacking.deleteRecursively();
             return fail ("Couldn't unpack it: " + error);
         }
-        if (! destination.getChildFile (library.folder).getChildFile (library.sfz).existsAsFile())
+        if (! unpacking.getChildFile (library.folder).getChildFile (library.sfz).existsAsFile())
+        {
+            unpacking.deleteRecursively();
             return fail ("The download doesn't hold " + library.sfz);
+        }
+        destination.getChildFile (library.folder).deleteRecursively();   // a folder left from an earlier try
+        if (! unpacking.getChildFile (library.folder).moveFileTo (destination.getChildFile (library.folder)))
+        {
+            unpacking.deleteRecursively();
+            return fail ("Couldn't move the library into " + destination.getFullPathName());
+        }
+        unpacking.deleteRecursively();
         // 3. (0.89.1) Audio the archive altered, fetched again as stored.
         if (rawUrl.isNotEmpty())
         {

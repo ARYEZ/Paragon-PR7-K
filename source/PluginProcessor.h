@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
@@ -205,6 +207,9 @@ public:
     void runTimerForTest() { timerCallback(); }   // (0.82.1) the message thread's tick, where retired instruments are freed
     bool isLibraryInstalled (const libraries::Library& library) const
     {
+        // (0.89.2) Found incomplete when an instrument of it loaded (samples missing): not installed until fetched again.
+        if (incompleteLibraries.count (library.folder) > 0)
+            return false;
         // (0.89.1) A library whose archive alters its audio counts only once it's been put back as stored (and only
         // in the Libraries folder, where the download keeps it).
         if (library.rawBase.isNotEmpty())
@@ -501,6 +506,8 @@ public:
     }
 
 private:
+    std::set<juce::String> incompleteLibraries;   // (0.89.2) library folders found missing samples (message thread)
+    bool fellBackForIncomplete = false;
     std::array<std::atomic<std::uint8_t>, 128> soundingNotes {};   // for SIROCCO's page (getSoundingNoteFlags)
     void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples);
     void processModFx (juce::dsp::AudioBlock<float> block);
@@ -614,6 +621,10 @@ private:
     std::vector<SfzLoaded> sfzLoaded;
     std::atomic<int> sfzLoadsRunning { 0 };
     std::shared_ptr<std::atomic<bool>> sfzCancel = std::make_shared<std::atomic<bool>> (false);
+    // (0.89.2) Each oscillator's load under way, told to stop when a newer choice replaces it: loads ran to the end
+    // after a preset change, one at a time, so stepping through presets queued the big libraries and the preset chosen
+    // waited silent behind them (the owner's GUNSLINGER report).
+    std::array<std::shared_ptr<std::atomic<bool>>, ParamIDs::numOscillators> sfzJobCancel {};
     void startSfzLoad (int osc, const juce::String& ref);
     libraries::Download libraryDownload;
     libraries::Download::State libraryStateSeen = libraries::Download::State::idle;

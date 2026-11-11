@@ -42,33 +42,45 @@ namespace synth::sfz
                 problems.add ("missing: " + file.getFullPathName());
                 return {};
             }
-            const auto text = file.loadFileAsString();
-            juce::String out;
-            out.preallocateBytes ((size_t) text.getNumBytesAsUTF8() + 16);
-            for (int i = 0; i < text.length();)
+            // (0.89.2) Comments stripped in one pass over the bytes ('/', '*' and '\n' are single bytes in UTF-8):
+            // indexing a juce::String by position walks it from the start each time, which made this quadratic in
+            // the file's length (Karoryfer's programs, with large mapping files, took over a minute to load).
+            const auto bytes = file.loadFileAsString().toStdString();
+            std::string stripped;
+            stripped.reserve (bytes.size());
+            for (size_t i = 0; i < bytes.size();)
             {
-                if (text[i] == '/' && i + 1 < text.length() && text[i + 1] == '*')
+                if (bytes[i] == '/' && i + 1 < bytes.size() && bytes[i + 1] == '*')
                 {
-                    const auto end = text.indexOf (i + 2, "*/");
-                    i = end < 0 ? text.length() : end + 2;
+                    const auto end = bytes.find ("*/", i + 2);
+                    i = end == std::string::npos ? bytes.size() : end + 2;
                 }
-                else if (text[i] == '/' && i + 1 < text.length() && text[i + 1] == '/')
+                else if (bytes[i] == '/' && i + 1 < bytes.size() && bytes[i + 1] == '/')
                 {
-                    while (i < text.length() && text[i] != '\n')
+                    while (i < bytes.size() && bytes[i] != '\n')
                         ++i;
                 }
                 else
-                    out << text[i++];
+                    stripped += bytes[i++];
             }
-            // The defines put into a line: longest names first, so $KIT2 isn't read as $KIT then 2.
-            const auto expand = [&defines] (juce::String line)
+            const auto out = juce::String::fromUTF8 (stripped.data(), (int) stripped.size());
+            // The defines put into a line: longest names first, so $KIT2 isn't read as $KIT then 2 (sorted again only
+            // when a #define changes them).
+            std::vector<std::pair<juce::String, juce::String>> sorted;
+            auto sortedFor = (size_t) -1;
+            const auto expand = [&defines, &sorted, &sortedFor] (juce::String line)
             {
                 if (defines.empty() || ! line.containsChar ('$'))
                     return line;
-                std::vector<std::pair<juce::String, juce::String>> sorted (defines.begin(), defines.end());
-                std::sort (sorted.begin(), sorted.end(), [] (const auto& a, const auto& b) { return a.first.length() > b.first.length(); });
+                if (sortedFor != defines.size() || sorted.empty())
+                {
+                    sorted.assign (defines.begin(), defines.end());
+                    std::sort (sorted.begin(), sorted.end(), [] (const auto& a, const auto& b) { return a.first.length() > b.first.length(); });
+                    sortedFor = defines.size();
+                }
                 for (const auto& [k, v] : sorted)
-                    line = line.replace (k, v);
+                    if (line.contains (k))
+                        line = line.replace (k, v);
                 return line;
             };
             juce::String result;
@@ -80,6 +92,7 @@ namespace synth::sfz
                     const auto rest = trimmed.substring (7).trim();
                     defines[rest.upToFirstOccurrenceOf (" ", false, false).trim()]
                         = rest.fromFirstOccurrenceOf (" ", false, false).trim();
+                    sorted.clear();
                     continue;
                 }
                 if (trimmed.startsWith ("#include"))
@@ -431,7 +444,10 @@ namespace synth::sfz
                     inst->samples.push_back (std::move (s));
                 }
                 else
+                {
                     inst->problems.add ("couldn't read: " + relative);
+                    ++inst->unreadable;
+                }
                 sampleIndex[path] = index;
             }
             if (index < 0)

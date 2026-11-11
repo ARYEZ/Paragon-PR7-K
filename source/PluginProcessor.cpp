@@ -259,6 +259,9 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
 ParagonX1AudioProcessor::~ParagonX1AudioProcessor()
 {
     sfzCancel->store (true);
+    for (auto& stop : sfzJobCancel)
+        if (stop != nullptr)
+            stop->store (true);
     sfzPool.reset();   // waits for a load under way (it stops at the next sample)
     spectralBuilder.reset();
     for (auto* parameter : AudioProcessor::getParameters())
@@ -2485,6 +2488,9 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     const auto index = (size_t) osc;
     sfzRefs[index] = ref;
     const auto generation = ++sfzGeneration[index];   // an older load still running is dropped when it ends
+    if (sfzJobCancel[index] != nullptr)
+        sfzJobCancel[index]->store (true);            // (0.89.2) ...and told to stop now
+    sfzJobCancel[index] = std::make_shared<std::atomic<bool>> (false);
     sfzProblems[index] = {};
     if (ref.isEmpty())
     {
@@ -2503,12 +2509,14 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     sfzStates[index] = SfzState::loading;
     sfzProgress[index]->store (0.0f);
     ++sfzLoadsRunning;
-    sfzPool->addJob ([this, osc, generation, file, progress = sfzProgress[index], cancel = sfzCancel]
+    sfzPool->addJob ([this, osc, generation, file, progress = sfzProgress[index], cancel = sfzCancel, stop = sfzJobCancel[index]]
     {
-        auto instrument = synth::sfz::load (file, [progress] (float p) { progress->store (p); }, cancel.get());
         if (cancel->load())
             return;
-        SfzLoaded loaded { osc, generation, instrument, {} };
+        auto instrument = stop->load() ? nullptr : synth::sfz::load (file, [progress] (float p) { progress->store (p); }, stop.get());
+        if (cancel->load())
+            return;
+        SfzLoaded loaded { osc, generation, stop->load() ? nullptr : instrument, {} };   // (a stopped one is dropped: an older generation)
         if (instrument == nullptr)
             loaded.problem = "Couldn't read " + file.getFileName() + " (none of the samples it names could be played)";
         const std::scoped_lock lock (sfzLoadedLock);
@@ -2538,6 +2546,8 @@ void ParagonX1AudioProcessor::installSfzLoads()
     {
         libraryStateSeen = state;
         if (state == libraries::Download::State::done)
+            incompleteLibraries.erase (libraryDownload.getLibrary().folder);   // (0.89.2) fetched again: whole
+        if (state == libraries::Download::State::done)
             for (int i = 0; i < ParamIDs::numOscillators; ++i)
                 if (sfzStates[(size_t) i] == SfzState::failed && sfzRefs[(size_t) i].isNotEmpty())
                     startSfzLoad (i, sfzRefs[(size_t) i]);
@@ -2563,6 +2573,20 @@ void ParagonX1AudioProcessor::installSfzLoads()
             continue;   // replaced by a newer choice while it loaded
         sfzStates[index] = loaded.instrument != nullptr ? SfzState::loaded : SfzState::failed;
         sfzProblems[index] = loaded.problem;
+        // (0.89.2) A downloadable library whose instrument is missing samples (its download stopped part way): not
+        // installed. The oscillator fails (so the library is offered again) and a factory preset playing its version on
+        // that library goes back to its synthesized one, rather than playing silence.
+        if (loaded.instrument == nullptr || loaded.instrument->unreadable > 0 || loaded.instrument->regions.empty())
+            if (const auto* library = libraries::libraryFor (sfzRefs[index]))
+            {
+                incompleteLibraries.insert (library->folder);
+                sfzStates[index] = SfzState::failed;
+                sfzProblems[index] = "Its library (" + library->name + ") is incomplete: "
+                                   + (loaded.instrument != nullptr ? juce::String (loaded.instrument->unreadable) + " samples" : juce::String ("its samples"))
+                                   + " couldn't be read. Download it again.";
+                loaded.instrument = nullptr;
+                fellBackForIncomplete = true;
+            }
         if (loaded.instrument != nullptr && loaded.instrument->streamed && sfzStreamer == nullptr)
         {
             sfzStreamer = std::make_unique<synth::sfz::Streamer>();
@@ -2570,6 +2594,12 @@ void ParagonX1AudioProcessor::installSfzLoads()
         }
         setSfzInstrument (loaded.osc, std::move (loaded.instrument));
     }
+    if (std::exchange (fellBackForIncomplete, false) && ! rigModified.load())
+        if (const auto* entry = findCurrentRigEntry(); entry != nullptr && entry->isFactory && entry->rig.sampled != nullptr)
+        {
+            const auto copy = *entry;
+            loadRig (copy);   // its library now counts as missing: the synthesized version, and the offer
+        }
 }
 
 void ParagonX1AudioProcessor::setSfzInstrument (int osc, std::shared_ptr<const synth::sfz::Instrument> instrument)

@@ -176,6 +176,7 @@ namespace synth::sfz
         std::vector<Region> regions;
         std::vector<std::unique_ptr<Sample>> samples;
         juce::StringArray problems;             // files that didn't load, opcodes left out...
+        int unreadable = 0;                     // (0.89.2) sample files named but missing or unreadable (an incomplete library)
         bool streamed = false;                  // some sample plays past its head (needs a Streamer)
         bool hasRelease = false;                // some region is TRIGGER=RELEASE
         bool hasPedalSounds = false;            // some region plays when the pedal moves
