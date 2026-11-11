@@ -1219,6 +1219,72 @@ TEST_CASE ("PLAYGROUND: MACRO 3 is FREEZE TAG on every preset, resting at its le
     CHECK (used.size() == 3);   // VCSL, the orchestra, the Salamander
 }
 
+TEST_CASE ("DARK DESCENT: MACRO 3 is GEARWORKS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][gearworks]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 37)   // DARK DESCENT: the thirty-eighth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "GEARWORKS");
+            CHECK (version->notes.contains ("GEARWORKS"));
+            CHECK (version->parameters.at (ParamIDs::gearOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::gearAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::gearAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 5);
+    CHECK (used.size() == 5);   // the orchestra, Meatbass, VCSL, the Salamander, Black And Green Guitars
+}
+
 TEST_CASE ("FINAL DIVIDE: MACRO 3 is CROSSROADS on every preset, resting at its left, in E minor; the libraries' versions are real", "[rigs][expansions][crossroads]")
 {
     ParagonX1AudioProcessor processor;
@@ -1459,8 +1525,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto lastday = rig.bank == Rig::numBanks + 34;   // LAST DAY: 100 BPM in A minor, Am F C G
         const auto play = rig.bank == Rig::numBanks + 35;      // PLAYGROUND: 108 BPM in C, C Am Fm G (sing-song, dread under)
         const auto divide = rig.bank == Rig::numBanks + 36;    // FINAL DIVIDE: 84 BPM in E minor, Em C Am B (a bar a side)
+        const auto descent = rig.bank == Rig::numBanks + 37;   // DARK DESCENT: 96 BPM in D minor, Dm Bb Gm A
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -2483,6 +2550,66 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         else
             firstHalf = false;
         if (firstHalf) {}   // MSVC allows only ~128 chained else-ifs: the chain is split in two here
+        else if (descent)
+        {
+            // Our own phrases (none from the series): D minor, the chords D minor, B flat, G minor and A; held notes so
+            // the gears' pattern is heard cutting them.
+            const std::vector<std::vector<int>> chords { { 38, 50, 53, 57, 62 }, { 34, 46, 50, 53, 58 },
+                                                         { 31, 43, 46, 50, 55 }, { 33, 45, 49, 52, 57 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 2, 69 }, { 2, 1, 65 }, { 3, 1, 67 }, { 4, 2, 70 }, { 6, 2, 69 }, { 8, 1, 67 }, { 9, 1, 65 },
+                        { 10, 2, 62 }, { 12, 2, 64 }, { 14, 2, 61 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 88);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    if (rig.tags.contains ("Drone"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 105);
+                    else if (rig.tags.contains ("Walking"))   // a walk: root, third, fifth, a step to the next
+                    {
+                        const int walk[] { 0, 3, 7, 10 };
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { r + walk[k] }, k == 0 ? 110 : 95);
+                    }
+                    else   // two half notes, root and fifth, sliding between
+                        for (int k = 0; k < 2; ++k)
+                            chord (e, at (c * 4.0 + 2 * k), at (c * 4.0 + 2 * k + 2.05), { r + (k == 1 ? 7 : 0) }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                    for (const auto t : { 0.0, 2.5 })
+                        chord (e, at (c * 4.0 + t), at (c * 4.0 + t + (t == 0.0 ? 2.3 : 1.4)),
+                               std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), t == 0.0 ? 100 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
         else if (divide)
         {
             // Our own phrases (none from the series): E minor, the chords E minor, C, A minor and B (the dominant's D#

@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 37> list
+    inline constexpr std::array<Expansion, 38> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -229,5 +229,16 @@ namespace expansions
           "(0.90.0) and MACRO 3, CROSSROADS: the sound pulled between light and dark in time with the song, the dark "
           "side pulling every note down the scale, in key. Its guitar, choir, bass, claps and banjo play Shinyguitar, the "
           "Sonatina Symphonic Orchestra, Meatbass, VCSL and the Kay banjo once downloaded (free). Our own sounds." },
+        { "DARK DESCENT", "DK",
+          "Inspired by a story of the last people living in a buried tower a hundred levels deep: a pressure valve's "
+          "screaming sync lead, a whistle up the stairwell and a voice on a suit's helmet radio; the generator hall, the "
+          "people of the levels singing and the grey horizon outside; a piston bass, a bass walking down the levels and "
+          "an airlock sealing; foundry bells, a worn piano on a landing and the great wall screen; an assembly line, "
+          "footsteps down the spiral stairs and a suit's telemetry; a bolt driver, mended strings and frost on the "
+          "glass. Three columns: the machine depths, the stairs and the outside. Built round GEARWORKS (0.91.0) and "
+          "MACRO 3, GEARWORKS: the sound caught in the machinery, two gears in time with the song cutting it, ringing it "
+          "as metal, steam and clanks on every tooth. Its choir, bass, bells, piano and guitar play the Sonatina "
+          "Symphonic Orchestra, Meatbass, VCSL, the Salamander Grand and Black And Green Guitars once downloaded (free). "
+          "Our own sounds." },
     }};
 }

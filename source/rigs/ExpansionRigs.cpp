@@ -166,6 +166,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
+            { "Bolt Driver", 0.0f }, { "Mended Strings", 0.0f }, { "Frost Glass", 0.0f },
             { "Broken Radio", 0.0f }, { "Front-Porch Banjo", -7.5f }, { "Snake Rattle", -5.5f },
             { "Marble Drop", -6.0f }, { "Glass Step", -4.5f }, { "Paper Flip", 9.0f },
             { "Spark Riff", 1.0f }, { "Chain Pizzicato", -9.5f }, { "Barbed Wire", -9.0f },
@@ -19170,6 +19171,515 @@ namespace
         pkAdd (x, snake);
     }
 
+    // ---- DARK DESCENT (0.91.0, the owner's theme (a series about the last people living in a buried tower, a hundred
+    // and more levels deep, the outside forbidden) and name; nothing from the show on the plugin). Three columns in every
+    // category: the machine depths, the stairs and the levels, the outside. Built industrial from the oscillators up;
+    // MACRO 3 GEARWORKS on every preset.
+    struct Gear
+    {
+        int ratio = 0;           // effects::Gearworks::ratioNames: 3 : 4
+        int division = 0;        // divisionNames: 1/16
+        float bite = 0.8f, metal = 0.4f, grind = 0.3f, steam = 0.3f, clank = 0.4f;
+        float top = 1.0f;        // the macro's AMOUNT at full
+    };
+
+    void gears (Builder& b, Gear g)
+    {
+        b.set (ParamIDs::gearOn, 1.0f).set (ParamIDs::gearAmount, 0.0f).set (ParamIDs::gearRatio, (float) g.ratio)
+         .set (ParamIDs::gearDivision, (float) g.division).set (ParamIDs::gearBite, g.bite).set (ParamIDs::gearMetal, g.metal)
+         .set (ParamIDs::gearGrind, g.grind).set (ParamIDs::gearSteam, g.steam).set (ParamIDs::gearClank, g.clank);
+        route (b, "macro3", ParamIDs::gearAmount, g.top);
+    }
+
+    void darkDescent (Expansion x)
+    {
+        using SP5 = synth::mod::ShapePoint;
+        const auto& vcsl = libraries::versilianCollection();
+        const auto& upright = libraries::meatbass();
+        const auto& guitars = libraries::blackAndGreenGuitars();
+
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto lfo = [] (Builder& b, int l, int wave, float hz)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Rate"), hz)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto syncedLfo = [] (Builder& b, int l, int wave, int division)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Sync"), 1.0f)
+             .set (ParamIDs::lfo (l, "Division"), (float) division).set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto lofi = [] (Builder& b, effects::LoFi::Type type, float amount, float mix)
+        {
+            b.set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) type).set (ParamIDs::lofiAmount, amount)
+             .set (ParamIDs::lofiMix, mix).set (ParamIDs::lofiNoise, 0.0f);
+        };
+        const auto metalRing = [] (Builder& b, int o, float amount)   // ring modulation at a struck bar's 2.76
+        {
+            b.osc (o, "AmShape", 0.0f).osc (o, "ModGrid", 0.0f).osc (o, "ModRate", 0.683f).osc (o, "AmAmount", amount);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        // The machine depths: a pressure valve (a hard-synced saw driven through a diode, steam hissing as it bends).
+        auto valve = x.make ("Pressure Valve", 1, { "Lead", "Machine", "Sync", "Mono" },
+            "A valve under pressure deep in the machine levels: a hard-synced saw screaming through a diode drive, a "
+            "pulse under it, and steam hissing round every note as it bends. Mean, mechanical lines. MOD WHEEL: more "
+            "pressure (the sync climbs). MACROS: BRIGHT, SPACE, GEARWORKS.");
+        valve.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "SyncAmount", 0.3f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.35f)
+             .filter (FilterType::lp24, 2600.0f, 0.3f, 0.3f).filterEnvelope (3.0f, 400.0f, 0.5f, 250.0f)
+             .ampEnvelope (3.0f, 400.0f, 0.9f, 220.0f)
+             .mono (40.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato)
+             .shaper (0, synth::ShaperModel::diode, 0.35f);
+        noiseOsc (valve, 2, 0.035f, 0.0f);
+        valve.osc (2, "Filter", 0.0f).osc (2, "Shp1", 0.0f);
+        pkBend (valve, -0.8f, 0.08f, -0.4f);
+        route (valve, "modWheel", ParamIDs::osc (0, "SyncAmount"), 0.35f);
+        route (valve, "macro1", ParamIDs::fltCutoff, 0.18f);
+        macros (valve, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (valve, RT::room, 0.45f, 0.15f, 10.0f, 4.0f);
+        delay (valve, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
+        space (valve);
+        valve.set (ParamIDs::patchLevel, -4.0f);
+        gears (valve, { 0, 0, 0.8f, 0.45f, 0.35f, 0.4f, 0.5f, 1.0f });
+        x.add (valve);
+
+        // The stairs: a whistle echoing up the stairwell (a breathy sine, its echoes climbing the spiral).
+        auto whistle = x.make ("Stairwell Whistle", 2, { "Lead", "Stairs", "Whistle", "Echo" },
+            "Someone whistling on the stairs, the tune echoing up and down the stairwell: a breathy sine with a late, "
+            "wavering vibrato, its echoes coming back off the concrete. Lonely tunes. MOD WHEEL: more breath. MACROS: "
+            "BRIGHT, SPACE, GEARWORKS.");
+        whistle.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.06f).osc (1, "PhaseRand", 0.0f)
+               .filter (FilterType::lp12, 4000.0f, 0.0f, 0.0f).set (ParamIDs::fltKey, 1.0f)
+               .ampEnvelope (30.0f, 300.0f, 0.9f, 250.0f)
+               .mono (55.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        noiseOsc (whistle, 2, 0.04f, 0.03f);
+        whistle.osc (2, "Filter", 1.0f);
+        for (int o = 0; o < 2; ++o)
+            vibrato (whistle, o, 16.0f, 5.4f, 400.0f);
+        pkBend (whistle, -0.6f, 0.07f, -0.4f);
+        route (whistle, "modWheel", ParamIDs::osc (2, "Volume"), 0.06f);
+        route (whistle, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        macros (whistle, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (whistle, RT::hall, 0.8f, 0.28f, 40.0f, 4.5f);
+        delay (whistle, "1/4 dotted", 0.42f, 0.2f, false, 4.0f);
+        space (whistle);
+        whistle.set (ParamIDs::patchLevel, -3.0f);
+        gears (whistle, { 1, 1, 0.6f, 0.3f, 0.2f, 0.3f, 0.35f, 1.0f });
+        x.add (whistle);
+
+        // The outside: a voice in a suit helmet's radio (a pulse sung through an EE, through the TELEPHONE, breath on it).
+        auto helmet = x.make ("Helmet Radio", 3, { "Lead", "Outside", "Radio", "Voice" },
+            "A voice on a suit's helmet radio out on the dead hillside: a narrow pulse sung through an \"ee\", squeezed "
+            "through a tinny radio, breath fogging it, a slow vibrato. MOD WHEEL: a clearer signal. MACROS: BRIGHT, "
+            "SPACE, GEARWORKS.");
+        helmet.osc (0, "Wave", pulse).osc (0, "Width", 0.2f).osc (0, "Volume", 0.6f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", -6.0f).osc (1, "Volume", 0.25f)
+              .filter (FilterType::lp24, 2400.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.5f)
+              .ampEnvelope (25.0f, 400.0f, 0.85f, 300.0f)
+              .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.9f).set (ParamIDs::voiceSize, 0.4f)
+              .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.7f)
+              .mono (35.0f);
+        noiseOsc (helmet, 2, 0.05f, 0.05f);
+        for (int o = 0; o < 2; ++o)
+            vibrato (helmet, o, 12.0f, 4.5f, 500.0f);
+        lofi (helmet, effects::LoFi::Type::telephone, 4.0f, 0.6f);
+        route (helmet, "modWheel", ParamIDs::lofiMix, -0.5f);
+        route (helmet, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (helmet, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (helmet, RT::plate, 0.4f, 0.15f, 15.0f, 4.0f);
+        space (helmet);
+        helmet.set (ParamIDs::patchLevel, -3.0f);
+        gears (helmet, { 2, 0, 0.7f, 0.5f, 0.45f, 0.2f, 0.3f, 1.0f });
+        x.add (helmet);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        // The machine depths: the generator hall (root, fifth and sub, ring-touched, the turbines' pump in half bars, a hum).
+        auto hall = x.make ("Generator Hall", 4, { "Pad", "Machine", "Drone", "Hum" },
+            "The generator hall at the bottom of everything: saws on the root, the fifth and the sub, rung faintly as "
+            "metal, the turbines pumping the filter every half bar, and the mains hum of the whole place under it. Hold "
+            "chords. MOD WHEEL: the turbines run harder. MACROS: BRIGHT, SPACE, GEARWORKS.");
+        hall.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 7.0f).osc (1, "Fine", 5.0f).osc (1, "Volume", 0.3f)
+            .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.4f).osc (2, "PhaseRand", 0.0f)
+            .filter (FilterType::lp24, 900.0f, 0.3f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (700.0f, 800.0f, 1.0f, 1500.0f)
+            .shaper (0, synth::ShaperModel::tube, 0.25f);
+        metalRing (hall, 0, 0.12f);
+        syncedLfo (hall, 0, 0, 2);   // a pump every half bar
+        route (hall, "lfo1", ParamIDs::fltCutoff, 0.12f);
+        route (hall, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (hall, "macro1", ParamIDs::fltCutoff, 0.18f);
+        hall.set (ParamIDs::proximityOn, 1.0f).set (ParamIDs::proximityRoom, 0.4f).set (ParamIDs::proximityHum, 1.0f);
+        macros (hall, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (hall, RT::hall, 0.75f, 0.3f, 30.0f, 4.0f);
+        space (hall);
+        hall.set (ParamIDs::patchLevel, -6.0f);
+        gears (hall, { 0, 1, 0.75f, 0.35f, 0.25f, 0.45f, 0.4f, 1.0f });
+        x.add (hall);
+
+        // The stairs: the hundred levels (a choir and strings, warm but close, every voice its own vibrato).
+        auto levels = x.make ("Hundred Levels", 5, { "Pad", "Stairs", "Choir", "Strings" },
+            "The people of the hundred levels: a choir singing \"ah\" over a string section, warm but close, every voice "
+            "its own vibrato, the room small and full. Hold chords. MOD WHEEL: the choir opens wider. MACROS: BRIGHT, "
+            "SPACE, GEARWORKS.");
+        levels.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.3f).osc (1, "Voice", 0.0f)
+              .filter (FilterType::lp12, 2600.0f, 0.0f, 0.0f)
+              .ampEnvelope (450.0f, 800.0f, 0.9f, 1000.0f)
+              .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.45f)
+              .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 0.85f);
+        pkSection (levels, 0, 5, 0.18f, 16.0f, 5.2f, 300.0f);
+        pkSection (levels, 1, 5, 0.12f, 10.0f, 5.6f, 400.0f);
+        route (levels, "modWheel", ParamIDs::voiceSize, -0.2f);
+        route (levels, "macro1", ParamIDs::fltCutoff, 0.2f);
+        macros (levels, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (levels, RT::room, 0.6f, 0.25f, 20.0f, 4.5f);
+        space (levels);
+        levels.set (ParamIDs::patchLevel, -9.0f);
+        gears (levels, { 1, 1, 0.55f, 0.3f, 0.15f, 0.3f, 0.3f, 1.0f });
+        orchestra (levels, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f },
+                               { 4, "Strings - Notation/All Strings Sustain.sfz", 0.6f, 0.0f, true } },
+                             { 0 }, -2.0f,
+                             "The people of the hundred levels: the orchestra's large chorus over its strings and PR7-K's "
+                             "own (the recordings fade after a few seconds; the synth's strings hold).",
+                             400.0f, 800.0f, 1.0f, 1000.0f, -1.0f,
+                             [] (Builder& s) { s.osc (1, "Volume", 0.18f).set (ParamIDs::voiceOn, 0.0f); } });
+        x.add (levels);
+
+        // The outside: the ash horizon (wind through a high band, cold detuned triangles a ninth apart).
+        auto ash = x.make ("Ash Horizon", 6, { "Pad", "Outside", "Wind", "Cold" },
+            "The grey horizon outside the glass: cold triangles a ninth apart, barely moving, and the wind over the dead "
+            "hills hissing high above them. Bleak, wide chords. MOD WHEEL: the wind rises. MACROS: BRIGHT, SPACE, "
+            "GEARWORKS.");
+        ash.osc (0, "Wave", triangle).osc (0, "Volume", 0.5f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.7f)
+           .osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.9f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 14.0f).osc (1, "Volume", 0.2f)
+           .filter (FilterType::lp24, 3000.0f, 0.0f, 0.0f)
+           .ampEnvelope (1200.0f, 1000.0f, 1.0f, 2500.0f);
+        noiseOsc (ash, 2, 0.12f, 0.02f);
+        ash.osc (2, "Filter", 0.0f);
+        lfo (ash, 0, 6, 0.12f);   // gusts
+        route (ash, "lfo1", ParamIDs::osc (2, "Volume"), 0.08f);
+        route (ash, "modWheel", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (ash, "macro1", ParamIDs::fltCutoff, 0.15f);
+        chorus (ash, ParamIDs::modIds, MT::dimension, 0.15f, 0.5f, 0.3f);
+        macros (ash, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (ash, RT::cathedral, 0.85f, 0.35f, 60.0f, 3.5f);
+        space (ash);
+        ash.set (ParamIDs::patchLevel, -3.0f);
+        gears (ash, { 3, 1, 0.5f, 0.45f, 0.3f, 0.35f, 0.25f, 1.0f });
+        x.add (ash);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        // The machine depths: a piston (a square and its sub, a hard filter snap, a click of metal, a diode drive).
+        auto piston = x.make ("Piston Bass", 7, { "Bass", "Machine", "Piston", "Mono" },
+            "A piston driving in the machine levels: a square and its sub hit hard, the filter slamming shut, a click of "
+            "metal on every stroke, a diode drive on top. Pound out the riff. MOD WHEEL: harder strokes. MACROS: BRIGHT, "
+            "SPACE, GEARWORKS.");
+        piston.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.55f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f).osc (1, "PhaseRand", 0.0f)
+              .osc (1, "Shp1", 0.0f)
+              .filter (FilterType::lp24, 300.0f, 0.3f, 0.55f).filterEnvelope (1.0f, 180.0f, 0.1f, 100.0f)
+              .set (ParamIDs::fltEnvVel, 0.5f)
+              .ampEnvelope (1.0f, 300.0f, 0.6f, 90.0f)
+              .mono (0.0f)
+              .shaper (0, synth::ShaperModel::diode, 0.3f);
+        pkStrike (piston, 2, 0, 0.15f, 12.0f, 0.0f);
+        metalRing (piston, 0, 0.1f);
+        route (piston, "modWheel", ParamIDs::fltEnv, 0.15f);
+        route (piston, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (piston, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (piston, RT::room, 0.3f, 0.08f, 6.0f, 4.0f);
+        space (piston);
+        piston.set (ParamIDs::patchLevel, -3.0f);
+        gears (piston, { 0, 0, 0.75f, 0.35f, 0.35f, 0.3f, 0.5f, 1.0f });
+        x.add (piston);
+
+        // The stairs: down deep (a woody bass walking down the levels, slow and round).
+        auto deep = x.make ("Down Deep", 8, { "Bass", "Stairs", "Upright", "Walking" },
+            "A bass walking down the levels, step by step: a round, woody plucked note (a triangle and a sine under it "
+            "through a filter that closes slowly), the finger's thump, a long dark tail. Walk it down. MOD WHEEL: "
+            "brighter. MACROS: BRIGHT, SPACE, GEARWORKS.");
+        deep.osc (0, "Wave", triangle).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f).osc (1, "PhaseRand", 0.0f)
+            .filter (FilterType::lp12, 420.0f, 0.1f, 0.35f).filterEnvelope (1.0f, 600.0f, 0.2f, 300.0f)
+            .set (ParamIDs::fltEnvVel, 0.4f)
+            .ampEnvelope (1.0f, 1400.0f, 0.4f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (deep, 2, 0, 0.1f, 16.0f, 0.6f);
+        route (deep, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (deep, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (deep, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (deep, RT::room, 0.4f, 0.12f, 10.0f, 4.0f);
+        space (deep);
+        deep.set (ParamIDs::patchLevel, 1.0f);
+        gears (deep, { 1, 1, 0.55f, 0.3f, 0.25f, 0.25f, 0.4f, 1.0f });
+        orchestra (deep, { { { 0, "Programs/04_pizz.sfz", 1.0f, 0.0f, false, &upright } },
+                           { 0, 1, 2 }, 5.0f,
+                           "A bass walking down the levels: a real 1958 double bass, plucked (Meatbass).",
+                           1.0f, 300.0f, 1.0f, 300.0f, -1.0f, {} });
+        x.add (deep);
+
+        // The outside: the airlock sealing (a pressurised sub, a hiss of air that builds while it's held).
+        auto seal = x.make ("Airlock Seal", 9, { "Bass", "Outside", "Drone", "Air" },
+            "The airlock sealing behind you: a deep, pressurised sub (a sine and a low saw through a closed filter) with "
+            "a hiss of air building the longer it's held, as the pressure equalises. Hold the root. MOD WHEEL: more "
+            "pressure. MACROS: BRIGHT, SPACE, GEARWORKS.");
+        seal.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp24, 240.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+            .ampEnvelope (300.0f, 500.0f, 1.0f, 800.0f)
+            .mono (0.0f);
+        noiseOsc (seal, 2, 0.0f, 0.1f);
+        seal.osc (2, "Filter", 0.0f);
+        pkShot (seal, 0, { SP5 { 0.0f, 0.0f, 0.3f }, SP5 { 2.5f, 1.0f, 0.0f } });
+        route (seal, "env1", ParamIDs::osc (2, "Volume"), 0.04f);
+        route (seal, "modWheel", ParamIDs::fltCutoff, 0.12f);
+        route (seal, "macro1", ParamIDs::osc (1, "Volume"), 0.25f);
+        macros (seal, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (seal, RT::room, 0.4f, 0.12f, 10.0f, 4.0f);
+        space (seal);
+        seal.set (ParamIDs::patchLevel, -4.0f);
+        gears (seal, { 2, 1, 0.6f, 0.3f, 0.3f, 0.5f, 0.3f, 1.0f });
+        x.add (seal);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        // The machine depths: foundry bells (a struck bar's partials, 1, 2.76, 5.40, each dying at its own pace).
+        auto foundry = x.make ("Foundry Bells", 10, { "Keys", "Machine", "Bells", "Metal" },
+            "Struck metal in the foundry: each note a bar of steel hit with a hammer (its partials at 1, 2.76 and 5.40, "
+            "the high ones dying first), a clang of the hammer itself, the furnace room ringing. MOD WHEEL: a harder "
+            "hammer. MACROS: BRIGHT, SPACE, GEARWORKS.");
+        foundry.osc (0, "Wave", sine).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 17.0f).osc (1, "Fine", 58.0f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 29.0f).osc (2, "Fine", 20.0f).osc (2, "PhaseRand", 0.0f)
+               .set (ParamIDs::fltOn, 0.0f)
+               .ampEnvelope (1.0f, 2500.0f, 0.0f, 1500.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (foundry, 0, 0, 0.7f, 3.0f);
+        pkPartial (foundry, 1, 1, 0.35f, 1.4f);
+        pkPartial (foundry, 2, 2, 0.2f, 0.6f);
+        pkStrike (foundry, 3, 3, 0.12f, 10.0f, 0.0f, false);
+        pkVelocity (foundry, 0.0f, 0.0f, 0.5f);
+        route (foundry, "modWheel", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (foundry, "macro1", ParamIDs::osc (1, "Volume"), 0.15f);
+        macros (foundry, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (foundry, RT::hall, 0.7f, 0.25f, 25.0f, 4.0f);
+        space (foundry);
+        foundry.set (ParamIDs::patchLevel, -5.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        gears (foundry, { 0, 1, 0.5f, 0.3f, 0.2f, 0.25f, 0.45f, 1.0f });
+        orchestra (foundry, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
+                              { 0, 1, 2, 3 }, 9.0f,
+                              "Struck metal in the foundry: real tubular bells (VCSL's), ringing in the furnace room.",
+                              1.0f, 300.0f, 1.0f, 3000.0f, -1.0f,
+                              [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.25f); s.rig.modulation.macroNames[0] = "HALL"; } });
+        x.add (foundry);
+
+        // The stairs: a rationed piano (a felt piano on a landing, a second string a little out, worn).
+        auto ration = x.make ("Rationed Piano", 11, { "Keys", "Stairs", "Piano", "Worn" },
+            "The old piano on a landing between levels: felt hammers, every note on two strings pulled a little apart, the "
+            "wood dry and the tuning drifting from years with no one to fix it. Slow, tired chords. MOD WHEEL: more drift. "
+            "MACROS: BRIGHT, SPACE, GEARWORKS.");
+        feltPiano (ration);
+        dropMacro3 (ration);
+        ration.osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Fine", 12.0f).osc (4, "Volume", 0.45f).osc (4, "PhaseRand", 0.0f)
+              .set (ParamIDs::fltCutoff, 1300.0f);
+        lfo (ration, 2, 6, 0.3f);
+        route (ration, "lfo3", ParamIDs::osc (4, "Fine"), 0.02f);
+        route (ration, "modWheel", ParamIDs::osc (4, "Fine"), 0.04f);
+        macros (ration, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (ration, RT::room, 0.5f, 0.2f, 12.0f, 4.0f);
+        space (ration);
+        ration.set (ParamIDs::patchLevel, -7.0f);
+        gears (ration, { 1, 1, 0.45f, 0.25f, 0.15f, 0.2f, 0.35f, 1.0f });
+        grand (ration, { 4, 3500.0f, 0.4f, 0.3f, 6.0f, 1.0f, 0.0f, 300.0f, 1.0f, 500.0f,
+                         "The old piano on a landing: the Salamander Grand on two strings pulled apart (a second "
+                         "Salamander 12 cents sharp), darkened, worn.",
+                         [] (Builder& s)
+                         {
+                             s.osc (4, "Wave", (float) synth::OscWave::sfz).osc (4, "Fine", 12.0f).osc (4, "Volume", 0.7f);
+                             s.rig.sfz[4] = libraries::refFor (libraries::salamanderGrand());
+                         } });
+        x.add (ration);
+
+        // The outside: the wall screen (glassy FM keys, cold, the image flickering).
+        auto screen = x.make ("Wall Screen", 12, { "Keys", "Outside", "Glass", "FM" },
+            "The great screen showing the world outside: cold, glassy keys (a sine struck by another two octaves and a "
+            "fourth up, the glass ringing), a shimmer like a flickering image. Sparse chords. MOD WHEEL: more flicker. "
+            "MACROS: BRIGHT, SPACE, GEARWORKS.");
+        screen.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+              .osc (0, "FmSource", (float) synth::fmFirstOscillator + 1).osc (0, "FmAmount", 0.04f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 29.0f).osc (1, "PhaseRand", 0.0f)
+              .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.12f).osc (2, "PhaseRand", 0.0f)
+              .set (ParamIDs::fltOn, 0.0f)
+              .ampEnvelope (2.0f, 2400.0f, 0.25f, 900.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkShot (screen, 0, { SP5 { 0.0f, 1.0f, -0.6f }, SP5 { 0.6f, 0.0f, 0.0f } });
+        route (screen, "env1", ParamIDs::osc (0, "FmAmount"), 0.18f);
+        chorus (screen, ParamIDs::modIds, MT::tremolo, 0.6f, 0.15f, 1.0f);
+        route (screen, "modWheel", ParamIDs::modIds.depth, 0.4f);
+        route (screen, "macro1", ParamIDs::osc (0, "FmAmount"), 0.06f);
+        macros (screen, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (screen, RT::digital, 0.6f, 0.25f, 25.0f, 4.0f);
+        space (screen);
+        screen.set (ParamIDs::patchLevel, -6.0f);
+        gears (screen, { 3, 0, 0.5f, 0.5f, 0.35f, 0.15f, 0.3f, 1.0f });
+        x.add (screen);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        // The machine depths: the assembly line (the held chord in sixteenths, two octaves up, metal on metal).
+        auto line = x.make ("Assembly Line", 13, { "Arp", "Machine", "Sixteenths", "Metal" },
+            "The assembly line that never stops: the held chord hammered out in sixteenths up two octaves, a saw and a "
+            "pulse rung as metal and driven, the accent on every beat. Hold chords. MOD WHEEL: harder metal. MACROS: "
+            "BRIGHT, SPACE, GEARWORKS.");
+        line.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.3f).osc (1, "Arp", 1.0f)
+            .filter (FilterType::lp24, 1800.0f, 0.3f, 0.4f).filterEnvelope (1.0f, 120.0f, 0.1f, 80.0f)
+            .ampEnvelope (1.0f, 140.0f, 0.0f, 60.0f).set (ParamIDs::ampVel, 0.5f)
+            .shaper (0, synth::ShaperModel::hard, 0.3f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+            .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.45f);
+        {
+            auto& p = line.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.65f;
+        }
+        metalRing (line, 0, 0.15f);
+        route (line, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.35f);
+        route (line, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (line, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (line, RT::room, 0.4f, 0.12f, 8.0f, 4.0f);
+        space (line);
+        line.set (ParamIDs::patchLevel, -2.0f);
+        gears (line, { 0, 0, 0.7f, 0.4f, 0.3f, 0.3f, 0.45f, 1.0f });
+        x.add (line);
+
+        // The stairs: spiral steps (the chord walked down three octaves in eighths, footsteps echoing).
+        auto steps = x.make ("Spiral Steps", 14, { "Arp", "Stairs", "Descending", "Echo" },
+            "Footsteps going down the spiral stairs: the held chord walked down and down through three octaves in "
+            "eighths, a soft plucked tone, every step echoing off the stairwell. Hold chords. MOD WHEEL: longer echoes. "
+            "MACROS: BRIGHT, SPACE, GEARWORKS.");
+        steps.osc (0, "Wave", triangle).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.15f).osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 1.0f)
+             .filter (FilterType::lp12, 2400.0f, 0.1f, 0.3f).filterEnvelope (1.0f, 300.0f, 0.2f, 200.0f)
+             .ampEnvelope (1.0f, 500.0f, 0.0f, 250.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::down)
+             .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+             .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        route (steps, "modWheel", ParamIDs::delayFeedback, 0.3f);
+        route (steps, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (steps, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (steps, RT::hall, 0.6f, 0.22f, 25.0f, 4.0f);
+        delay (steps, "1/8 dotted", 0.35f, 0.2f, true, 4.0f);
+        space (steps);
+        steps.set (ParamIDs::patchLevel, -2.0f);
+        gears (steps, { 1, 0, 0.6f, 0.3f, 0.2f, 0.25f, 0.4f, 1.0f });
+        x.add (steps);
+
+        // The outside: suit telemetry (high sine beeps at random, the suit's readouts).
+        auto telemetry = x.make ("Suit Telemetry", 15, { "Arp", "Outside", "Beeps", "Random" },
+            "The readouts of a suit walking out into the dead world: short sine beeps two octaves up, the held chord in "
+            "random order, some steps silent, a quiet tick under them. Hold chords. MOD WHEEL: the beeps ring as metal. "
+            "MACROS: BRIGHT, SPACE, GEARWORKS.");
+        telemetry.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "Transpose", 24.0f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.1f).osc (1, "Arp", 1.0f)
+                 .set (ParamIDs::fltOn, 0.0f)
+                 .ampEnvelope (1.0f, 80.0f, 0.0f, 40.0f)
+                 .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::random)
+                 .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Gate"), 0.3f);
+        {
+            auto& p = telemetry.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].on = k % 3 != 2;
+        }
+        metalRing (telemetry, 0, 0.0f);
+        route (telemetry, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.4f);
+        route (telemetry, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        macros (telemetry, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (telemetry, RT::plate, 0.45f, 0.15f, 10.0f, 4.0f);
+        delay (telemetry, "1/8", 0.3f, 0.12f, true, 4.0f);
+        space (telemetry);
+        telemetry.set (ParamIDs::patchLevel, -6.0f);
+        gears (telemetry, { 2, 2, 0.5f, 0.4f, 0.4f, 0.15f, 0.3f, 1.0f });
+        x.add (telemetry);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        // The machine depths: a bolt driver (an FM strike on a crushed square, a hard metal click).
+        auto bolt = x.make ("Bolt Driver", 16, { "Pluck", "Machine", "Metal", "Strike" },
+            "A bolt driven home in the machine levels: a hard metal strike (FM from a sine 2.76 times higher, gone in an "
+            "instant) on a short crushed tone, the click of the driver on top. Riffs. MOD WHEEL: a harder strike. MACROS: "
+            "BRIGHT, SPACE, GEARWORKS.");
+        bolt.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "Crush", 0.35f).osc (0, "CrushMode", 1.0f)
+            .osc (0, "FmSource", (float) synth::fmFirstOscillator + 1).osc (0, "FmAmount", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 17.0f).osc (1, "Fine", 58.0f).osc (1, "PhaseRand", 0.0f)
+            .filter (FilterType::lp24, 1600.0f, 0.2f, 0.5f).filterEnvelope (1.0f, 160.0f, 0.0f, 100.0f)
+            .ampEnvelope (1.0f, 350.0f, 0.0f, 150.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkShot (bolt, 0, { SP5 { 0.0f, 1.0f, -0.6f }, SP5 { 0.08f, 0.0f, 0.0f } });
+        route (bolt, "env1", ParamIDs::osc (0, "FmAmount"), 0.35f);
+        pkStrike (bolt, 2, 1, 0.2f, 8.0f, 0.0f, false);
+        pkVelocity (bolt, 0.5f, 0.3f, 0.5f);
+        route (bolt, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (bolt, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (bolt, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (bolt, RT::room, 0.35f, 0.1f, 8.0f, 4.0f);
+        space (bolt);
+        gears (bolt, { 0, 0, 0.6f, 0.35f, 0.3f, 0.3f, 0.5f, 1.0f });
+        pkAdd (x, bolt);
+
+        // The stairs: mended strings (a patched-up plucked string, a little out, warm).
+        auto mended = x.make ("Mended Strings", 17, { "Pluck", "Stairs", "Guitar", "Worn" },
+            "A patched-up string instrument passed down the levels: a plucked string (a saw and a pulse snapping through "
+            "the filter) struck a hair sharp, a second string a little out of tune, warm and worn. MOD WHEEL: brighter. "
+            "MACROS: BRIGHT, SPACE, GEARWORKS.");
+        mended.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Fine", 9.0f).osc (1, "Volume", 0.35f)
+              .filter (FilterType::lp24, 1100.0f, 0.15f, 0.5f).filterEnvelope (1.0f, 500.0f, 0.15f, 300.0f)
+              .set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltEnvVel, 0.4f)
+              .ampEnvelope (1.0f, 1300.0f, 0.0f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkBend (mended, 0.3f, 0.06f, -0.4f);
+        route (mended, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (mended, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (mended, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (mended, RT::room, 0.45f, 0.15f, 10.0f, 4.0f);
+        space (mended);
+        gears (mended, { 1, 0, 0.5f, 0.3f, 0.2f, 0.2f, 0.35f, 1.0f });
+        orchestra (mended, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
+                             { 0, 1 }, 0.0f,
+                             "A patched-up string instrument: a real guitar (the Gretsch of Black And Green Guitars), worn.",
+                             1.0f, 300.0f, 1.0f, 400.0f, -1.0f,
+                             [] (Builder& s) { s.set (ParamIDs::fltCutoff, 3500.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        pkAdd (x, mended);
+
+        // The outside: frost glass (a high bar's partials struck and gone at once, a crackle of ice).
+        auto frost = x.make ("Frost Glass", 18, { "Pluck", "Outside", "Glass", "Ice" },
+            "Frost cracking on the outside of the glass: each note a high, glassy ping (partials at 1, 2.76 and 5.40 "
+            "struck and gone at once), a crackle of ice on the strike, cold and bright. MOD WHEEL: more crackle. "
+            "MACROS: BRIGHT, SPACE, GEARWORKS.");
+        frost.osc (0, "Wave", sine).osc (0, "Transpose", 12.0f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 29.0f).osc (1, "Fine", 58.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 41.0f).osc (2, "Fine", 20.0f).osc (2, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 900.0f, 0.0f, 500.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (frost, 0, 0, 0.6f, 1.0f);
+        pkPartial (frost, 1, 1, 0.3f, 0.4f);
+        pkPartial (frost, 2, 2, 0.15f, 0.15f);
+        pkStrike (frost, 3, 3, 0.1f, 15.0f, 0.0f, false);
+        route (frost, "modWheel", ParamIDs::osc (3, "Volume"), 0.1f);
+        route (frost, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        macros (frost, "BRIGHT", "SPACE", "GEARWORKS");
+        reverb (frost, RT::plate, 0.55f, 0.2f, 15.0f, 4.0f);
+        space (frost);
+        gears (frost, { 3, 2, 0.45f, 0.4f, 0.35f, 0.15f, 0.25f, 1.0f });
+        pkAdd (x, frost);
+    }
+
 std::vector<Rig> makeExpansionRigs()
 {
     std::vector<Rig> rigs;
@@ -19210,5 +19720,6 @@ std::vector<Rig> makeExpansionRigs()
     lastDay ({ Rig::numBanks + 34, rigs });
     playground ({ Rig::numBanks + 35, rigs });
     finalDivide ({ Rig::numBanks + 36, rigs });
+    darkDescent ({ Rig::numBanks + 37, rigs });
     return rigs;
 }
