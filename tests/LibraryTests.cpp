@@ -582,3 +582,26 @@ TEST_CASE ("Render the piano presets", "[.pianorender]")
         writer->writeFromAudioSampleBuffer (out, 0, total);
     }
 }
+
+// (0.89.1) Unpacks archives made as GitHub makes them (`git archive`: PARAGON_ARCHIVES, a folder of <folder>.tar.gz)
+// with the download's own rules into PARAGON_UNPACK, for checking what the owner's download really holds (not run
+// by default: GitHub's archive links can't be fetched here).
+TEST_CASE ("Libraries unpack as the download does", "[.unpackcheck]")
+{
+    const juce::File archives (juce::SystemStats::getEnvironmentVariable ("PARAGON_ARCHIVES", {}));
+    const juce::File out (juce::SystemStats::getEnvironmentVariable ("PARAGON_UNPACK", {}));
+    REQUIRE (archives.isDirectory());
+    for (const auto* library : libraries::all())
+    {
+        const auto archive = archives.getChildFile (library->folder + ".tar.gz");
+        if (! archive.existsAsFile())
+            continue;
+        INFO (library->name);
+        juce::String error;
+        const auto& lib = *library;
+        CHECK (libraries::extractTarGz (archive, out, {}, nullptr, error, [&lib] (const juce::String& path)
+                                        { return ! path.startsWith (lib.folder + "/") || lib.keeps (path.substring (lib.folder.length() + 1)); }));
+        CHECK (error.isEmpty());
+        CHECK (out.getChildFile (lib.folder).getChildFile (lib.sfz).existsAsFile());
+    }
+}
