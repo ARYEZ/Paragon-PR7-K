@@ -604,5 +604,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addRedlineParameters (layout);         // REDLINE (0.88.0, version hint 56): RackParameters.cpp
     addFreezeTagParameters (layout);       // FREEZE TAG (0.89.0, version hint 57): RackParameters.cpp
     addCrossroadsParameters (layout);      // CROSSROADS (0.90.0, version hint 58): RackParameters.cpp
+    addGearworksParameters (layout);       // GEARWORKS (0.91.0, version hint 59): RackParameters.cpp
     return layout;
 }

@@ -302,6 +302,7 @@ public:
         rack->lockstep.seedRandom ((std::uint32_t) seed);
         rack->jackIn.seedRandom ((std::uint32_t) seed);
         rack->freezeTag.seedRandom ((std::uint32_t) seed);
+        rack->gearworks.seedRandom ((std::uint32_t) seed);
         rack->colossus.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
@@ -464,6 +465,8 @@ public:
     const effects::FreezeTag& getFreezeTag() const noexcept { return rack->freezeTag; }
     const effects::Crossroads& getCrossroads() const noexcept { return rack->crossroads; }
     int getCrossroadsSide() const noexcept { return engine.getCrossSide(); }   // CROSSROADS: -1 off, 0 light, 1 dark
+    effects::Gearworks::Settings getGearworksSettings() const noexcept;          // GEARWORKS (0.91.0)
+    const effects::Gearworks& getGearworks() const noexcept { return rack->gearworks; }
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }

@@ -333,6 +333,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->redline.prepare (sampleRate, preparedBlockSize);
     rack->freezeTag.prepare (sampleRate, preparedBlockSize);
     rack->crossroads.prepare (sampleRate, preparedBlockSize);
+    rack->gearworks.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1433,6 +1434,21 @@ effects::Crossroads::Settings ParagonX1AudioProcessor::getCrossroadsSettings() c
     return s;
 }
 
+effects::Gearworks::Settings ParagonX1AudioProcessor::getGearworksSettings() const noexcept
+{
+    effects::Gearworks::Settings s;
+    s.on = isOn (ParamIDs::gearOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("gearAmount"), ParamIDs::gearAmount));
+    s.ratio = juce::jlimit (0, effects::Gearworks::ratioNames.size() - 1, juce::roundToInt (param (ParamIDs::gearRatio)));
+    s.division = juce::jlimit (0, effects::Gearworks::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::gearDivision)));
+    s.bite = param (ParamIDs::gearBite);
+    s.metal = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("gearMetal"), ParamIDs::gearMetal));
+    s.grind = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("gearGrind"), ParamIDs::gearGrind));
+    s.steam = param (ParamIDs::gearSteam);
+    s.clank = param (ParamIDs::gearClank);
+    return s;
+}
+
 synth::crossroads::Settings ParagonX1AudioProcessor::getCrossroadsPull() const noexcept
 {
     synth::crossroads::Settings s;
@@ -1838,6 +1854,15 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         }
         rack->freezeTag.process (block, getFreezeTagSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.89.0: freeze!
         rack->crossroads.process (block, getCrossroadsSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.90.0: light and dark
+        // 0.91.0: the machinery (the notes only worked out while it's on or settling).
+        if (const auto gear = getGearworksSettings(); (gear.on && gear.amount >= 0.001f) || ! rack->gearworks.isResting())
+        {
+            std::array<float, effects::Gearworks::maxNotes> sounding {};
+            rack->gearworks.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->gearworks.process (block, gear, juce::jmax (20.0, hostBpm.load()), piecePpq);
+        }
+        else
+            rack->gearworks.process (block, gear, juce::jmax (20.0, hostBpm.load()), piecePpq);   // keeps its own clock
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

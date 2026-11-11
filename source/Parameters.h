@@ -632,6 +632,17 @@ namespace ParamIDs
     inline constexpr auto crossBend   = "crossBend";     // 0 to 1: the slide, 15 to 400 ms
     inline constexpr auto crossLight  = "crossLight";    // 0 to 1
     inline constexpr auto crossDark   = "crossDark";     // 0 to 1
+
+    // GEARWORKS (0.91.0, version hint 59, effects::Gearworks): the Silo bank's machinery.
+    inline constexpr auto gearOn       = "gearOn";
+    inline constexpr auto gearAmount   = "gearAmount";     // 0 to 1 (the macro's)
+    inline constexpr auto gearRatio    = "gearRatio";      // effects::Gearworks::ratioNames
+    inline constexpr auto gearDivision = "gearDivision";   // effects::Gearworks::divisionNames
+    inline constexpr auto gearBite     = "gearBite";       // 0 to 1: how deep a tooth cuts
+    inline constexpr auto gearMetal    = "gearMetal";      // 0 to 1
+    inline constexpr auto gearGrind    = "gearGrind";      // 0 to 1
+    inline constexpr auto gearSteam    = "gearSteam";      // 0 to 1
+    inline constexpr auto gearClank    = "gearClank";      // 0 to 1
     // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
     inline constexpr auto naviOn       = "naviOn";
     inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
@@ -744,4 +755,5 @@ void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&); 
 void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);      // RackParameters.cpp (0.88.0)
 void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.89.0)
 void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.90.0)
+void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.91.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

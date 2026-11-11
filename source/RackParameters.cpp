@@ -38,6 +38,7 @@
 #include "dsp/effects/Redline.h"
 #include "dsp/effects/FreezeTag.h"
 #include "dsp/effects/Crossroads.h"
+#include "dsp/effects/Gearworks.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1050,4 +1051,21 @@ void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayou
     layout.add (makeFloat (ParamIDs::crossBend, "Crossroads Bend", { 0.0f, 1.0f, 0.01f }, d.bend, v, asBend));
     layout.add (makeFloat (ParamIDs::crossLight, "Crossroads Light", { 0.0f, 1.0f, 0.01f }, e.light, v, asPercent));
     layout.add (makeFloat (ParamIDs::crossDark, "Crossroads Dark", { 0.0f, 1.0f, 0.01f }, e.dark, v, asPercent));
+}
+
+void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // GEARWORKS (0.91.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 59;
+    using G = effects::Gearworks;
+    const G::Settings d;
+    layout.add (makeSwitch (ParamIDs::gearOn, "Gearworks On", v, false));
+    layout.add (makeFloat (ParamIDs::gearAmount, "Gearworks Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::gearRatio, "Gearworks Ratio", v, G::ratioNames, d.ratio));
+    layout.add (makeChoice (ParamIDs::gearDivision, "Gearworks Division", v, G::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::gearBite, "Gearworks Bite", { 0.0f, 1.0f, 0.01f }, d.bite, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearMetal, "Gearworks Metal", { 0.0f, 1.0f, 0.01f }, d.metal, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearGrind, "Gearworks Grind", { 0.0f, 1.0f, 0.01f }, d.grind, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearSteam, "Gearworks Steam", { 0.0f, 1.0f, 0.01f }, d.steam, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearClank, "Gearworks Clank", { 0.0f, 1.0f, 0.01f }, d.clank, v, asPercent));
 }

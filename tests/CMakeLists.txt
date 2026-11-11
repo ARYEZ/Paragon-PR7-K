@@ -97,6 +97,7 @@ add_executable(ParagonX1Tests
     RedlineTests.cpp
     FreezeTagTests.cpp
     CrossroadsTests.cpp
+    GearworksTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp
