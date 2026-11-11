@@ -2,6 +2,23 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.90.0
+
+**FINAL DIVIDE, a new expansion built round a new signature effect, CROSSROADS. This release also carries 0.89.2's fixes (GUNSLINGER's sampled presets play again), since 0.89.2 itself was held up by GitHub's Linux build machines.**
+
+- **FINAL DIVIDE** (FD01-FD18), our own sounds and phrases: a story of a plague and the survivors who split into two camps. Three in every category: the plague, the free side, the dark side.
+  - Leads: Dead Air, Porch Slide, Desert Lounge.
+  - Pads: Empty City, Gospel Choir, Neon Mirage.
+  - Basses: Quarantine, Walking Gospel, Velvet Menace.
+  - Keys: Hospital Bells, Revival Organ, Casino Keys.
+  - Arps: Ticking Fever, Hand Clap Revival, Slot Machine (hold chords).
+  - Plucks: Broken Radio, Front-Porch Banjo, Snake Rattle.
+- **MACRO 3 CROSSROADS** on every preset: turned up, the sound is pulled between light and dark in time with the song. On the dark side every note is pulled down the scale but always lands in key (E minor: a bent note never goes flat), with a growl an octave down; the light side shimmers an octave up. At the macro's left the presets play exactly as they are.
+- **5 have a version on the free libraries**, played once they're downloaded: a real archtop guitar for Porch Slide (Shinyguitar), the orchestra's large choir for Gospel Choir, a real upright bass for Walking Gospel (Meatbass), real hand claps for Hand Clap Revival (VCSL) and a real 5-string banjo for Front-Porch Banjo.
+- **CROSSROADS** (FX page, SIGNATURE slot), our own design: AMOUNT (nothing pulled below halfway, then one step up to PULL's STEP / THIRD / FIFTH), LENGTH of each side (1/2 bar to 4 bars), KEY and SCALE, BEND (how fast notes slide), LIGHT and DARK (each side's colour). Its page shows a road forking into the light way and the dark way.
+- Levels measured: about -17 loudness, the bells, claps, plucks and Ticking Fever by their peaks; every preset under -3.5 dBFS at full CROSSROADS (the banjo and archtop recordings touch the -1 dBFS ceiling limiter on hard plucks).
+- **From 0.89.2:** instrument files now load in a fraction of a second (Meatbass took about 70 seconds, the guitars about 77), moving to another preset stops a load still running for the old one, a half-downloaded library plays the synthesized version and offers the download again instead of silence, and downloads unpack beside the library's folder and are renamed into place only when complete (a first try nested them a folder deeper, which passed Windows' 260-character path limit; caught by the Windows tests).
+
 ## 0.89.2
 
 **GUNSLINGER's sampled presets play again: the libraries' instruments load in a fraction of a second, and a slow load no longer leaves the next preset silent.**
