@@ -37,7 +37,20 @@ namespace libraries
                     return false;
             return true;
         }
+        // (0.89.1) Where each file can be fetched as stored ("<base><path in folder>", e.g. GitHub's raw files), for a
+        // library whose archive alters its audio: GitHub makes archives with `git archive`, which applies the
+        // repository's line-ending rules, and Black And Green Guitars' (`* text eol=crlf`) mark every file as text, so
+        // a CR goes in before every lone LF byte of its WAVs. Empty: the archive is as stored.
+        juce::String rawBase;
     };
+
+    // (0.89.1) Written into a library's folder once its audio has been put back as stored (`rawBase`): without it the
+    // library counts as not installed, and the download fetches only the audio again.
+    inline const char* const exactMarker = ".pr7k-exact";
+    // Is the library complete in `folder` (its instrument there, and for a `rawBase` library, put back as stored)?
+    bool isComplete (const Library&, const juce::File& folder);
+    // What git's CRLF conversion does to a file: a CR before every LF not already after one (tests and the check).
+    juce::MemoryBlock withCrlf (const juce::MemoryBlock&);
 
     // The Salamander Grand Piano (Yamaha C5, 16 velocity layers, by Alexander Holm, CC-BY 3.0), the FreePats project's
     // SFZ + FLAC edition (about 740 MB to download, 714 MB unpacked).
@@ -98,7 +111,8 @@ namespace libraries
         ~Download() override;
 
         // Starts (if not already running). `url` overrides the library's (tests: a file:// URL).
-        void start (const Library&, const juce::File& destination, const juce::String& url = {});
+        // `rawUrl` overrides the library's `rawBase` (tests).
+        void start (const Library&, const juce::File& destination, const juce::String& url = {}, const juce::String& rawUrl = {});
         void cancel();
 
         State getState() const noexcept { return state.load(); }
@@ -115,7 +129,8 @@ namespace libraries
         void fail (const juce::String&);
         Library library;
         juce::File destination;
-        juce::String sourceUrl;
+        juce::String sourceUrl, rawUrl;
+        bool fetchExact();   // (0.89.1) the `rawBase` step: false (after `fail`) if it couldn't
         std::atomic<State> state { State::idle };
         std::atomic<float> progress { 0.0f };
         std::atomic<bool> cancelled { false };

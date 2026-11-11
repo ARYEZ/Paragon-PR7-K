@@ -205,6 +205,10 @@ public:
     void runTimerForTest() { timerCallback(); }   // (0.82.1) the message thread's tick, where retired instruments are freed
     bool isLibraryInstalled (const libraries::Library& library) const
     {
+        // (0.89.1) A library whose archive alters its audio counts only once it's been put back as stored (and only
+        // in the Libraries folder, where the download keeps it).
+        if (library.rawBase.isNotEmpty())
+            return libraries::isComplete (library, getLibrariesFolder().getChildFile (library.folder));
         return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()
             || resolveSfz (libraries::refFor (library)).existsAsFile();
     }

@@ -132,7 +132,10 @@ namespace libraries
             "Black And Green Guitars by Karoryfer Samples (CC0), github.com/sfzinstruments/karoryfer.black-and-green-guitars",
             "TWANG GUITARS",
             false,
-            600
+            600,
+            {}, {},
+            // (0.89.1) Its archive alters the WAVs (see `rawBase`): each is fetched again as stored.
+            "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/"
         };
         return library;
     }
@@ -404,13 +407,33 @@ namespace libraries
         stopThread (10000);
     }
 
-    void Download::start (const Library& toFetch, const juce::File& folder, const juce::String& url)
+    bool isComplete (const Library& library, const juce::File& folder)
+    {
+        return folder.getChildFile (library.sfz).existsAsFile()
+            && (library.rawBase.isEmpty() || folder.getChildFile (exactMarker).existsAsFile());
+    }
+
+    juce::MemoryBlock withCrlf (const juce::MemoryBlock& in)
+    {
+        juce::MemoryOutputStream out (in.getSize() + in.getSize() / 64 + 16);
+        const auto* b = static_cast<const char*> (in.getData());
+        for (size_t i = 0; i < in.getSize(); ++i)
+        {
+            if (b[i] == '\n' && (i == 0 || b[i - 1] != '\r'))
+                out.writeByte ('\r');
+            out.writeByte (b[i]);
+        }
+        return out.getMemoryBlock();
+    }
+
+    void Download::start (const Library& toFetch, const juce::File& folder, const juce::String& url, const juce::String& raw)
     {
         if (isRunning() || isThreadRunning())
             return;
         library = toFetch;
         destination = folder;
         sourceUrl = url.isNotEmpty() ? url : toFetch.url;
+        rawUrl = raw.isNotEmpty() ? raw : toFetch.rawBase;
         cancelled = false;
         progress = 0.0f;
         {
@@ -448,6 +471,24 @@ namespace libraries
 
     void Download::run()
     {
+        // (0.89.1) A `rawBase` library already unpacked but not yet put back as stored (an earlier version's
+        // download): only its audio is fetched again.
+        if (rawUrl.isNotEmpty())
+        {
+            const auto folder = destination.getChildFile (library.folder);
+            if (folder.getChildFile (library.sfz).existsAsFile() && ! folder.getChildFile (exactMarker).existsAsFile())
+            {
+                state = State::unpacking;
+                progress = 0.0f;
+                if (fetchExact())
+                {
+                    progress = 1.0f;
+                    state = State::done;
+                }
+                return;
+            }
+        }
+
         destination.createDirectory();
         const auto archive = destination.getChildFile (library.folder + ".tar.gz.download");
         archive.deleteFile();
@@ -518,7 +559,82 @@ namespace libraries
         }
         if (! destination.getChildFile (library.folder).getChildFile (library.sfz).existsAsFile())
             return fail ("The download doesn't hold " + library.sfz);
+        // 3. (0.89.1) Audio the archive altered, fetched again as stored.
+        if (rawUrl.isNotEmpty())
+        {
+            progress = 0.0f;
+            if (! fetchExact())
+                return;
+        }
         progress = 1.0f;
         state = State::done;
+    }
+
+    bool Download::fetchExact()
+    {
+        const auto folder = destination.getChildFile (library.folder);
+        juce::Array<juce::File> audio;
+        for (const auto& entry : juce::RangedDirectoryIterator (folder, true, "*", juce::File::findFiles))
+        {
+            const auto extension = entry.getFile().getFileExtension().toLowerCase();
+            if (extension == ".wav" || extension == ".flac" || extension == ".ogg" || extension == ".aif" || extension == ".aiff")
+                audio.add (entry.getFile());
+        }
+        auto checked = 0;
+        for (const auto& file : audio)
+        {
+            if (cancelled.load() || threadShouldExit())
+            {
+                fail ("Cancelled");
+                return false;
+            }
+            juce::MemoryBlock have;
+            if (! file.loadFileAsData (have))
+            {
+                fail ("Couldn't read " + file.getFullPathName());
+                return false;
+            }
+            // Only a file holding a CR LF pair can have been altered (a CR goes in before each lone LF).
+            const auto* b = static_cast<const char*> (have.getData());
+            auto altered = false;
+            for (size_t i = 1; i < have.getSize() && ! altered; ++i)
+                altered = b[i] == '\n' && b[i - 1] == '\r';
+            if (altered)
+            {
+                const auto relative = file.getRelativePathFrom (folder).replaceCharacter ('\\', '/');
+                juce::StringArray parts;
+                for (const auto& part : juce::StringArray::fromTokens (relative, "/", {}))
+                    parts.add (juce::URL::addEscapeChars (part, false));
+                const auto url = rawUrl + parts.joinIntoString ("/");
+                int status = 0;
+                std::unique_ptr<juce::InputStream> in (juce::URL (url).createInputStream (
+                    juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
+                        .withConnectionTimeoutMs (20000)
+                        .withStatusCode (&status)
+                        .withNumRedirectsToFollow (5)));
+                if (in == nullptr || (status != 0 && status != 200))
+                {
+                    fail ("Couldn't fetch " + relative + " from " + juce::URL (url).getDomain()
+                          + (status != 0 ? " (" + juce::String (status) + ")" : juce::String()) + ". Check the internet connection and try again.");
+                    return false;
+                }
+                juce::MemoryBlock stored;
+                in->readIntoMemoryBlock (stored);
+                // The check: git's change applied to what came back must give exactly the archive's copy.
+                if (withCrlf (stored) != have)
+                {
+                    fail ("A sample didn't match its stored copy (" + relative + "). Try again.");
+                    return false;
+                }
+                if (! file.replaceWithData (stored.getData(), stored.getSize()))
+                {
+                    fail ("Couldn't write " + file.getFullPathName());
+                    return false;
+                }
+            }
+            progress = (float) ++checked / (float) juce::jmax (1, audio.size());
+        }
+        folder.getChildFile (exactMarker).replaceWithText ("The audio here was checked against the stored copies by Paragon PR7-K.\n");
+        return true;
     }
 }

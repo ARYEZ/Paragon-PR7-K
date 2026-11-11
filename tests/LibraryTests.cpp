@@ -195,6 +195,95 @@ TEST_CASE ("Libraries: the western bank's five, each pinned to one commit and cr
     CHECK (libraries::ganjo().credit.contains ("CC0"));
 }
 
+TEST_CASE ("Libraries: Black And Green Guitars' audio, altered by GitHub's archive, is fetched again as stored (0.89.1)", "[library][plugin]")
+{
+    // GitHub makes the archive with `git archive`, which applies the repository's `* text eol=crlf`: a CR goes in
+    // before every lone LF byte of every WAV. Here: an archive altered so, and a folder of the stored files standing
+    // in for GitHub's raw files.
+    const auto& library = libraries::blackAndGreenGuitars();
+    CHECK (library.rawBase.startsWith ("https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/"));
+    CHECK (library.rawBase.contains (library.folder.fromLastOccurrenceOf ("-", false, false)));   // the same commit
+    for (const auto* other : libraries::all())
+        if (other != &library)
+            CHECK (other->rawBase.isEmpty());                // the others' archives are as stored (binary files untouched)
+
+    juce::MemoryBlock stored = sineWav();
+    {
+        // Lone LFs and a CR LF pair already there (git leaves that one alone).
+        auto* b = static_cast<char*> (stored.getData());
+        b[200] = '\n';
+        b[300] = '\r';
+        b[301] = '\n';
+    }
+    const auto altered = libraries::withCrlf (stored);
+    REQUIRE (altered.getSize() > stored.getSize());
+    CHECK (libraries::withCrlf (altered) == altered);         // already converted: unchanged
+    const auto plain = text ("no line breaks here");
+    CHECK (libraries::withCrlf (plain) == plain);
+
+    TempFolder t;
+    const auto sample = juce::String ("Samples/green/fb/fb_micro.wav");
+    const auto archive = t.dir.getChildFile ("server/bg.tar.gz");
+    archive.getParentDirectory().createDirectory();
+    {
+        TarWriter tar;
+        tar.folder (library.folder + "/");
+        tar.file (library.folder + "/" + library.sfz, text ("<region> sample=../" + sample + " lokey=0 hikey=127 pitch_keycenter=60\r\n"), 'x');
+        tar.file (library.folder + "/" + sample, altered, 'x');
+        tar.write (archive);
+    }
+    const auto raw = t.dir.getChildFile ("raw");
+    raw.getChildFile (sample).getParentDirectory().createDirectory();
+    raw.getChildFile (sample).replaceWithData (stored.getData(), stored.getSize());
+    const auto rawUrl = juce::URL (raw).toString (false) + "/";
+
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.createDirectory();
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets);
+    const auto folder = processor.getLibrariesFolder().getChildFile (library.folder);
+    auto& download = processor.getLibraryDownloadForTest();
+
+    // A fresh download: unpacked, then the audio put back as stored, and only then installed.
+    download.start (library, processor.getLibrariesFolder(), juce::URL (archive).toString (false), rawUrl);
+    REQUIRE (download.waitUntilFinished (60000));
+    INFO (download.getMessage());
+    REQUIRE (download.getState() == libraries::Download::State::done);
+    juce::MemoryBlock got;
+    got.reset();   // (loadFileAsData adds to what the block holds)
+    REQUIRE (folder.getChildFile (sample).loadFileAsData (got));
+    CHECK (got == stored);
+    CHECK (folder.getChildFile (libraries::exactMarker).existsAsFile());
+    CHECK (processor.isLibraryInstalled (library));
+
+    // An earlier version's download (altered, no marker): not installed, and fetching it again fetches only the
+    // audio (the archive's link here leads nowhere).
+    folder.getChildFile (libraries::exactMarker).deleteFile();
+    folder.getChildFile (sample).replaceWithData (altered.getData(), altered.getSize());
+    CHECK_FALSE (processor.isLibraryInstalled (library));
+    download.start (library, processor.getLibrariesFolder(), juce::URL (t.dir.getChildFile ("server/missing.tar.gz")).toString (false), rawUrl);
+    REQUIRE (download.waitUntilFinished (60000));
+    REQUIRE (download.getState() == libraries::Download::State::done);
+    got.reset();   // (loadFileAsData adds to what the block holds)
+    REQUIRE (folder.getChildFile (sample).loadFileAsData (got));
+    CHECK (got == stored);
+    CHECK (processor.isLibraryInstalled (library));
+
+    // A stored copy that doesn't match what the archive held: refused, nothing replaced, not installed.
+    folder.getChildFile (libraries::exactMarker).deleteFile();
+    folder.getChildFile (sample).replaceWithData (altered.getData(), altered.getSize());
+    const auto wrong = sineWav();
+    raw.getChildFile (sample).replaceWithData (wrong.getData(), wrong.getSize());
+    download.start (library, processor.getLibrariesFolder(), {}, rawUrl);
+    REQUIRE (download.waitUntilFinished (60000));
+    CHECK (download.getState() == libraries::Download::State::failed);
+    CHECK (download.getMessage().contains ("didn't match"));
+    got.reset();   // (loadFileAsData adds to what the block holds)
+    REQUIRE (folder.getChildFile (sample).loadFileAsData (got));
+    CHECK (got == altered);
+    CHECK_FALSE (processor.isLibraryInstalled (library));
+}
+
 TEST_CASE ("Libraries: the Versilian collection and Sam's Sonor; what a library skips isn't unpacked", "[library]")
 {
     // 0.81.0: VCSL is about 6 GB, most of it pianos and harpsichords PR7-K has already: they're left in the archive.
@@ -604,4 +693,22 @@ TEST_CASE ("Libraries unpack as the download does", "[.unpackcheck]")
         CHECK (error.isEmpty());
         CHECK (out.getChildFile (lib.folder).getChildFile (lib.sfz).existsAsFile());
     }
+}
+
+// (0.89.1) The real repair of Black And Green Guitars from GitHub's raw files (not run by default): PARAGON_LIBRARIES,
+// a folder holding the library unpacked from GitHub's archive (its WAVs altered); they're put back as stored.
+TEST_CASE ("Libraries: the real Black And Green Guitars repair", "[.rawrepair]")
+{
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    const auto& library = libraries::blackAndGreenGuitars();
+    REQUIRE (folder.getChildFile (library.folder).getChildFile (library.sfz).existsAsFile());
+    folder.getChildFile (library.folder).getChildFile (libraries::exactMarker).deleteFile();
+    libraries::Download download;
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    download.start (library, folder);
+    REQUIRE (download.waitUntilFinished (3600000));
+    INFO (download.getMessage());
+    CHECK (download.getState() == libraries::Download::State::done);
+    CHECK (libraries::isComplete (library, folder.getChildFile (library.folder)));
+    WARN ("Repaired in " << (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 << " s");
 }
