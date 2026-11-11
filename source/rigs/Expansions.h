@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 36> list
+    inline constexpr std::array<Expansion, 37> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -220,5 +220,14 @@ namespace expansions
           "silence. Its recorders, glockenspiel, xylophone, claps and harmonica play VCSL, its trumpet, harpsichord and "
           "strings the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
           "sounds." },
+        { "FINAL DIVIDE", "FD",
+          "Inspired by a story of a plague and the survivors who split into two camps: a lonely tone on a dying radio, a "
+          "porch slide guitar and a smoky desert-lounge reed; wind in an empty city, a gospel choir and a neon mirage; a "
+          "respirator's drone, a walking church bass and a velvet menace; hospital intercom bells, a revival organ and "
+          "casino electric piano; a fever's clock, a hand-clap revival and a slot machine; a broken radio, a front-porch "
+          "banjo and a rattlesnake. Three columns: the plague, the free side and the dark side. Built round CROSSROADS "
+          "(0.90.0) and MACRO 3, CROSSROADS: the sound pulled between light and dark in time with the song, the dark "
+          "side pulling every note down the scale, in key. Its guitar, choir, bass, claps and banjo play Shinyguitar, the "
+          "Sonatina Symphonic Orchestra, Meatbass, VCSL and the Kay banjo once downloaded (free). Our own sounds." },
     }};
 }
