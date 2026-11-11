@@ -621,6 +621,17 @@ namespace ParamIDs
     inline constexpr auto freezeFrost   = "freezeFrost";     // 0 to 1: 16 kHz to 1.5 kHz
     inline constexpr auto freezeCaught  = "freezeCaught";    // 0 to 1: the chance a freeze is caught
     inline constexpr auto freezeLevel   = "freezeLevel";     // 0 to 1: the ghost's level
+    // CROSSROADS (0.90.0, version hint 58, synth::crossroads + effects::Crossroads): the sound pulled between light and
+    // dark in time with the song, the notes pulled down the scale (in key) on the dark side.
+    inline constexpr auto crossOn     = "crossOn";
+    inline constexpr auto crossAmount = "crossAmount";   // 0 to 1 (the macro's)
+    inline constexpr auto crossLength = "crossLength";   // synth::crossroads::lengthNames
+    inline constexpr auto crossKey    = "crossKey";      // synth::sirocco::keyNames
+    inline constexpr auto crossScale  = "crossScale";    // synth::arp::scaleNames
+    inline constexpr auto crossPull   = "crossPull";     // synth::crossroads::pullNames
+    inline constexpr auto crossBend   = "crossBend";     // 0 to 1: the slide, 15 to 400 ms
+    inline constexpr auto crossLight  = "crossLight";    // 0 to 1
+    inline constexpr auto crossDark   = "crossDark";     // 0 to 1
     // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
     inline constexpr auto naviOn       = "naviOn";
     inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
@@ -732,4 +743,5 @@ void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.87.0)
 void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);      // RackParameters.cpp (0.88.0)
 void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.89.0)
+void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.90.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

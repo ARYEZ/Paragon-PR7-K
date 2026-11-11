@@ -4,6 +4,7 @@
 #include "dsp/effects/Sweep.h"
 #include "dsp/effects/Redline.h"
 #include "dsp/effects/FreezeTag.h"
+#include "dsp/effects/Crossroads.h"
 
 #include "ui/DownpourPage.h"
 
@@ -623,19 +624,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 32> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 33> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 32> specs;
+    std::array<RackUnit::Spec, 33> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1947,6 +1948,55 @@ std::array<RackUnit::Spec, 32> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (31); };
+    }
+
+    // CROSSROADS (0.90.0): LIGHT or DARK in big letters, the pull in steps, its settings; the keys set AMOUNT: DOUBT,
+    // TORN, CHOSEN; the ladder how dark it is now.
+    {
+        auto& s = specs[32];
+        s.name = "CROSSROADS";
+        s.kind = "LIGHT  DARK  IN KEY";
+        s.onParameterIds = { ParamIDs::crossOn };
+        s.powerTooltip = "CROSSROADS on or off: the sound pulled between light and dark in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "DOUBT", 0.35f, "A light pull: the sides only colour the sound, light then dark" },
+                                            { "TORN", 0.7f, "Hard: the dark side pulls every note down the scale, in key" },
+                                            { "CHOSEN", 1.0f, "All the way: the dark side pulls the notes as far as PULL goes" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::crossAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::crossAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::crossAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::crossDark, "DARK" } };
+        s.ladderTitle = "SIDE";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "DARK", "", "", "", "LIGHT" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getCrossroads();
+            return p.getCrossroadsSettings().on && ! fx.isResting() ? fx.getDarkness() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getCrossroads();
+            const auto pull = p.getCrossroadsPull();
+            const auto live = pull.on && ! fx.isResting();
+            const auto steps = pull.on ? synth::crossroads::stepsFor (pull.amount, pull.pull) : 0;
+            const auto end = drawNumber (g, juce::String (steps), left.getTopLeft(), h);
+            line (g, steps == 1 ? "STEP" : "STEPS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! live ? "STILL OFF" : fx.getDarkness() > 0.5f ? "DARK" : "LIGHT",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::crossAmount), "LENGTH " + textOf (p, ParamIDs::crossLength),
+                                  "KEY " + textOf (p, ParamIDs::crossKey) + " " + textOf (p, ParamIDs::crossScale).toUpperCase(),
+                                  "PULL " + textOf (p, ParamIDs::crossPull) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (32); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

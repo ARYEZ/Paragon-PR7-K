@@ -329,6 +329,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->sweep.prepare (sampleRate, preparedBlockSize);
     rack->redline.prepare (sampleRate, preparedBlockSize);
     rack->freezeTag.prepare (sampleRate, preparedBlockSize);
+    rack->crossroads.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1067,6 +1068,8 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         h.spread = effectParam (ModDestinations::effect ("siroccoSpread"), ParamIDs::siroccoSpread);
         // NAVICOMPUTER (0.86.0): AMOUNT, CHAOS and GLIDE as the matrix moves them.
         s.navi = getNaviSettings();
+        // CROSSROADS (0.90.0): the pull on the dark side, AMOUNT as the matrix moves it.
+        s.cross = getCrossroadsPull();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1413,6 +1416,30 @@ effects::Redline::Settings ParagonX1AudioProcessor::getRedlineSettings() const n
     s.whine = param (ParamIDs::redlineWhine);
     s.tone = param (ParamIDs::redlineTone);
     s.shift = param (ParamIDs::redlineShift);
+    return s;
+}
+
+effects::Crossroads::Settings ParagonX1AudioProcessor::getCrossroadsSettings() const noexcept
+{
+    effects::Crossroads::Settings s;
+    s.on = isOn (ParamIDs::crossOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossAmount"), ParamIDs::crossAmount));
+    s.length = juce::jlimit (0, synth::crossroads::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::crossLength)));
+    s.light = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossLight"), ParamIDs::crossLight));
+    s.dark = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossDark"), ParamIDs::crossDark));
+    return s;
+}
+
+synth::crossroads::Settings ParagonX1AudioProcessor::getCrossroadsPull() const noexcept
+{
+    synth::crossroads::Settings s;
+    s.on = isOn (ParamIDs::crossOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossAmount"), ParamIDs::crossAmount));
+    s.length = juce::jlimit (0, synth::crossroads::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::crossLength)));
+    s.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::crossKey)));
+    s.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::crossScale)));
+    s.pull = juce::jlimit (0, synth::crossroads::pullNames.size() - 1, juce::roundToInt (param (ParamIDs::crossPull)));
+    s.bend = param (ParamIDs::crossBend);
     return s;
 }
 
@@ -1807,6 +1834,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->redline.process (block, red, juce::jmax (20.0, hostBpm.load()), piecePpq);
         }
         rack->freezeTag.process (block, getFreezeTagSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.89.0: freeze!
+        rack->crossroads.process (block, getCrossroadsSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.90.0: light and dark
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

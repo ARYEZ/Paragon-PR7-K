@@ -93,7 +93,9 @@ namespace ModDestinations
                                                  // 0.88.0: REDLINE: how far the throttle opens, the throb, the scream
                                                  "redlineThrottle", "redlineThrob", "redlineScream",
                                                  // 0.89.0: FREEZE TAG: how frozen, how it trembles, how often caught
-                                                 "freezeAmount", "freezeTremble", "freezeCaught" };
+                                                 "freezeAmount", "freezeTremble", "freezeCaught",
+                                                 // 0.90.0: CROSSROADS: how hard each side pulls, how bright, how dark
+                                                 "crossAmount", "crossLight", "crossDark" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

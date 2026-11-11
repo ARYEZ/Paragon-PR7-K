@@ -454,7 +454,11 @@ public:
     effects::Redline::Settings getRedlineSettings() const noexcept;              // REDLINE (0.88.0)
     const effects::Redline& getRedline() const noexcept { return rack->redline; }
     effects::FreezeTag::Settings getFreezeTagSettings() const noexcept;          // FREEZE TAG (0.89.0)
+    effects::Crossroads::Settings getCrossroadsSettings() const noexcept;        // CROSSROADS (0.90.0): the effect half
+    synth::crossroads::Settings getCrossroadsPull() const noexcept;              // ...and the engine half
     const effects::FreezeTag& getFreezeTag() const noexcept { return rack->freezeTag; }
+    const effects::Crossroads& getCrossroads() const noexcept { return rack->crossroads; }
+    int getCrossroadsSide() const noexcept { return engine.getCrossSide(); }   // CROSSROADS: -1 off, 0 light, 1 dark
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }

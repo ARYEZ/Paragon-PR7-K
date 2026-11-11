@@ -37,6 +37,7 @@
 #include "dsp/effects/Sweep.h"
 #include "dsp/effects/Redline.h"
 #include "dsp/effects/FreezeTag.h"
+#include "dsp/effects/Crossroads.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1025,4 +1026,28 @@ void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::freezeFrost, "Freeze Tag Frost", { 0.0f, 1.0f, 0.01f }, d.frost, v, asFrost));
     layout.add (makeFloat (ParamIDs::freezeCaught, "Freeze Tag Caught", { 0.0f, 1.0f, 0.01f }, d.caught, v, asPercent));
     layout.add (makeFloat (ParamIDs::freezeLevel, "Freeze Tag Level", { 0.0f, 1.0f, 0.01f }, d.level, v, asPercent));
+}
+
+void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // CROSSROADS (0.90.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 58;
+    namespace C = synth::crossroads;
+    const C::Settings d;
+    const effects::Crossroads::Settings e;
+    const ToText asAmount = [] (float value, int)
+    {
+        const auto steps = C::stepsFor (value, 2);
+        return juce::String (juce::roundToInt (100.0f * value)) + "%" + (steps > 0 ? " (pulling)" : "");
+    };
+    const ToText asBend = [] (float value, int) { return juce::String (juce::roundToInt (1000.0 * C::bendSeconds (value))) + " ms"; };
+    layout.add (makeSwitch (ParamIDs::crossOn, "Crossroads On", v, false));
+    layout.add (makeFloat (ParamIDs::crossAmount, "Crossroads Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeChoice (ParamIDs::crossLength, "Crossroads Length", v, C::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::crossKey, "Crossroads Key", v, synth::sirocco::keyNames, d.key));
+    layout.add (makeChoice (ParamIDs::crossScale, "Crossroads Scale", v, synth::arp::scaleNames, d.scale));
+    layout.add (makeChoice (ParamIDs::crossPull, "Crossroads Pull", v, C::pullNames, d.pull));
+    layout.add (makeFloat (ParamIDs::crossBend, "Crossroads Bend", { 0.0f, 1.0f, 0.01f }, d.bend, v, asBend));
+    layout.add (makeFloat (ParamIDs::crossLight, "Crossroads Light", { 0.0f, 1.0f, 0.01f }, e.light, v, asPercent));
+    layout.add (makeFloat (ParamIDs::crossDark, "Crossroads Dark", { 0.0f, 1.0f, 0.01f }, e.dark, v, asPercent));
 }

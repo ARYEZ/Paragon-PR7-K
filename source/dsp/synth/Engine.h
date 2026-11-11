@@ -259,6 +259,8 @@ namespace synth
             float seqValue = 0.0f;                                           // ...as the matrix source, this interval
             float naviSemis = 0.0f;                                          // NAVICOMPUTER (0.86.0): this note moved, semitones (glided)
             bool naviFresh = true;                                           // ...a new note takes its move at once
+            float crossSemis = 0.0f;                                         // CROSSROADS (0.90.0): this note pulled, semitones (glided)
+            bool crossFresh = true;                                          // ...a new note takes its pull at once
             float panLeft = 1.0f, panRight = 1.0f;      // the AMP's PAN, KEYTRACK and SPREAD for this note
             float notePan = 0.0f;                       // ...as a position, -1 to 1 (modulation moves it from here)
 
@@ -509,12 +511,19 @@ namespace synth
         bool naviMoving = false;
         float naviGlideCoef = 1.0f;
         SharedInt naviStepShown {};
+        std::array<std::uint8_t, maxIntervals> crossDark {};   // CROSSROADS (0.90.0): the dark side in each interval
+        double crossClock = 0.0;
+        bool crossPulling = false;
+        int crossSteps = 0;
+        float crossGlideCoef = 1.0f;
+        SharedInt crossSideShown {};   // -1 off, 0 light, 1 dark
         int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
     public:
         // The oscillator's key switch now (-1: none), for the panel.
         int getSfzSwitch (int oscillator) const noexcept { return switchShown[(size_t) juce::jlimit (0, numOscillators - 1, oscillator)].load(); }
         // NAVICOMPUTER's step now (0-15; -1: not moving), for its page.
         int getNaviStep() const noexcept { return naviStepShown.load(); }
+        int getCrossSide() const noexcept { return crossSideShown.load(); }   // CROSSROADS: -1 off, 0 light, 1 dark
     private:
         sfz::Streamer* streamer = nullptr;
         bool waitForDisk = false;

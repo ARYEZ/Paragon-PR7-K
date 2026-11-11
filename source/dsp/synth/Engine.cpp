@@ -367,6 +367,7 @@ namespace synth
         smoothedBend = 0.0f;
         seqClock = 0.0;
         naviClock = 0.0;
+        crossClock = 0.0;
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
@@ -589,6 +590,9 @@ namespace synth
         // NAVICOMPUTER's own clock (the song stopped) starts with the first key down.
         if (! anyHeld)
             naviClock = 0.0;
+        // ...and CROSSROADS' (the first stretch is light).
+        if (! anyHeld)
+            crossClock = 0.0;
         // ...and each oscillator's TRAVEL set to FIRST NOTE or LAST NOTE.
         for (size_t i = 0; i < travelClock.size(); ++i)
         {
@@ -878,6 +882,8 @@ namespace synth
         voice.pitch = fromPitch;
         voice.naviSemis = 0.0f;   // NAVICOMPUTER: a new note takes its move at once
         voice.naviFresh = true;
+        voice.crossSemis = 0.0f;  // CROSSROADS: a new note takes its pull at once
+        voice.crossFresh = true;
         // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
         voice.glowTune = nextGlow();
         voice.glowCutoff = nextGlow();
@@ -1296,6 +1302,25 @@ namespace synth
                 }
                 naviClock += length * beatsPerSample;
             }
+            // CROSSROADS (0.90.0): which side each interval is on, in time with the song (or its own count).
+            {
+                const auto& cr = settings.cross;
+                crossSteps = cr.on ? crossroads::stepsFor (cr.amount, cr.pull) : 0;
+                crossPulling = crossSteps > 0;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                auto dark = false;
+                for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                {
+                    const auto beats = followSong ? modulation.ppq + (samplesIntoBlock + start + at) * beatsPerSample : crossClock + at * beatsPerSample;
+                    dark = crossroads::darkAt (beats, cr.length);
+                    crossDark[(size_t) i] = dark ? 1 : 0;
+                }
+                crossSideShown.store (cr.on ? (dark ? 1 : 0) : -1);
+                const auto tau = crossroads::bendSeconds (cr.bend);
+                crossGlideCoef = (float) (1.0 - std::exp (-(double) controlInterval / (tau * sampleRate)));
+                crossClock += length * beatsPerSample;
+            }
             for (auto& voice : voices)
             {
                 if (! voice.playing)
@@ -1502,6 +1527,22 @@ namespace synth
             }
         }
         voice.naviFresh = false;
+        // CROSSROADS: on the dark side this note pulled down the scale (in key), slid into; nothing at all while it's off.
+        if (crossPulling || voice.crossSemis != 0.0f)
+        {
+            const auto& cr = unmodulated.cross;
+            const auto dark = crossPulling && crossDark[(size_t) juce::jlimit (0, maxIntervals - 1, interval)] != 0;
+            const auto target = dark ? (float) crossroads::semitonesFor (voice.note, crossSteps, cr.key, cr.scale) : 0.0f;
+            if (voice.crossFresh)
+                voice.crossSemis = target;
+            else
+            {
+                voice.crossSemis += (target - voice.crossSemis) * crossGlideCoef;
+                if (std::abs (target - voice.crossSemis) < 1.0e-4f)
+                    voice.crossSemis = target;
+            }
+        }
+        voice.crossFresh = false;
         if (modulated)
             balance (voice.notePan + settings.amp.pan - unmodulated.amp.pan, voice.panLeft, voice.panRight);
 
@@ -2652,7 +2693,7 @@ namespace synth
             // KEYTRACK (from middle C; at 100% the note as played) and the PITCH envelope, if it follows it.
             const auto keyPitch = juce::exactlyEqual (settings.pitch.keytrack, 1.0f) ? voice.pitch : 60.0f + (voice.pitch - 60.0f) * settings.pitch.keytrack;
             const auto basePitch = keyPitch + (s.pitchEnvelope ? voice.pitchSemitones : 0.0f) + bendSemitones + s.transpose + s.fineCents * 0.01f + osc.randomOffset
-                                 + settings.play.tuneCents * 0.01f + voice.naviSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
+                                 + settings.play.tuneCents * 0.01f + voice.naviSemis + voice.crossSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
             const auto independent = vibratoDepth > 0.0f && s.vibratoMode == VibratoMode::independent;
             const auto ownVibrato = independent ? vibratoValue (s.vibratoWave, osc.copies[0].vibratoPhase, osc.copies[0].vibratoHeld,
                                                                 vibratoAdvance * osc.copies[0].vibratoRate) * vibratoDepth
