@@ -273,7 +273,8 @@ namespace libraries
     }
 
     bool extractTarGz (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
-                       const std::atomic<bool>* cancel, juce::String& error, std::function<bool (const juce::String&)> keep)
+                       const std::atomic<bool>* cancel, juce::String& error, std::function<bool (const juce::String&)> keep,
+                       std::function<juce::String (const juce::String&)> place)
     {
         auto file = std::make_unique<juce::FileInputStream> (archive);
         if (! file->openedOk())
@@ -345,7 +346,7 @@ namespace libraries
                 continue;
             }
 
-            auto target = safeChild (destination, name);
+            auto target = safeChild (destination, place ? place (name) : name);
             if (keep && ! keep (name))
                 target = juce::File();   // read past, not written
             if (type == '5')
@@ -540,39 +541,44 @@ namespace libraries
             }
         }
 
-        // 2. Unpacked into a folder of its own, then moved into place whole (0.89.2: unpacked straight into place, a
-        // stop part way (the host closed, two copies of the plugin at once, a full disk) left a folder holding its
-        // instrument but not all its samples, which counted as installed and played silence). Then the archive goes.
+        // 2. Unpacked beside the library as "<folder>.partial", then renamed into place whole (0.89.2: unpacked
+        // straight into place, a stop part way (the host closed, two copies of the plugin at once, a full disk) left
+        // a folder holding its instrument but not all its samples, which counted as installed and played silence).
+        // A sibling, not a folder holding the library: that added the long folder name to every path a second time
+        // and passed Windows' 260-character limit (0.89.2's first build failed so). Then the archive goes.
         state = State::unpacking;
         progress = 0.0f;
-        const auto unpacking = destination.getChildFile (".unpacking-" + library.folder + "-"
-                                                         + juce::String::toHexString (juce::Random::getSystemRandom().nextInt64()));
-        unpacking.deleteRecursively();
+        const auto partial = destination.getChildFile (library.folder + ".partial");
+        partial.deleteRecursively();
         juce::String error;
         const auto& lib = library;
-        const auto ok = extractTarGz (archive, unpacking, [this] (float p) { progress = p; }, &cancelled, error,
+        const auto ok = extractTarGz (archive, destination, [this] (float p) { progress = p; }, &cancelled, error,
                                       [&lib] (const juce::String& path)
                                       {
-                                          return ! path.startsWith (lib.folder + "/") || lib.keeps (path.substring (lib.folder.length() + 1));
+                                          // Only the library's own folder (anything else in the archive is left out).
+                                          return path.startsWith (lib.folder + "/") && lib.keeps (path.substring (lib.folder.length() + 1));
+                                      },
+                                      [&lib] (const juce::String& path)
+                                      {
+                                          return lib.folder + ".partial" + path.substring (lib.folder.length());
                                       });
         archive.deleteFile();
         if (! ok)
         {
-            unpacking.deleteRecursively();
+            partial.deleteRecursively();
             return fail ("Couldn't unpack it: " + error);
         }
-        if (! unpacking.getChildFile (library.folder).getChildFile (library.sfz).existsAsFile())
+        if (! partial.getChildFile (library.sfz).existsAsFile())
         {
-            unpacking.deleteRecursively();
+            partial.deleteRecursively();
             return fail ("The download doesn't hold " + library.sfz);
         }
         destination.getChildFile (library.folder).deleteRecursively();   // a folder left from an earlier try
-        if (! unpacking.getChildFile (library.folder).moveFileTo (destination.getChildFile (library.folder)))
+        if (! partial.moveFileTo (destination.getChildFile (library.folder)))
         {
-            unpacking.deleteRecursively();
+            partial.deleteRecursively();
             return fail ("Couldn't move the library into " + destination.getFullPathName());
         }
-        unpacking.deleteRecursively();
         // 3. (0.89.1) Audio the archive altered, fetched again as stored.
         if (rawUrl.isNotEmpty())
         {

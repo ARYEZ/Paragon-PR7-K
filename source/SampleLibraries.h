@@ -97,9 +97,11 @@ namespace libraries
     // are skipped). `progress` 0-1 by the compressed bytes read. False (and why, in `error`) if it isn't a readable
     // tar.gz or `cancel` was set.
     // (0.81.0) `keep`, when given, decides per path (as in the archive) whether it's unpacked.
+    // (0.89.2) `place`, when given, maps a path (as in the archive) to where it's written under `destination`.
     bool extractTarGz (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
                        const std::atomic<bool>* cancel, juce::String& error,
-                       std::function<bool (const juce::String&)> keep = {});
+                       std::function<bool (const juce::String&)> keep = {},
+                       std::function<juce::String (const juce::String&)> place = {});
 
     // Fetches and unpacks a library on a thread of its own: `destination` / library.folder once it's done.
     class Download final : private juce::Thread

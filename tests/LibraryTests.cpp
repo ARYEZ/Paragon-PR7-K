@@ -242,7 +242,7 @@ TEST_CASE ("Libraries: a library missing samples counts as not installed, is off
     CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
     CHECK (folder.getChildFile ("samples/C4v8.wav").existsAsFile());
     for (const auto& f : processor.getLibrariesFolder().findChildFiles (juce::File::findFilesAndDirectories, false))
-        CHECK_FALSE (f.getFileName().startsWith (".unpacking"));
+        CHECK_FALSE (f.getFileName().endsWith (".partial"));
 }
 
 TEST_CASE ("Libraries: Black And Green Guitars' audio, altered by GitHub's archive, is fetched again as stored (0.89.1)", "[library][plugin]")
