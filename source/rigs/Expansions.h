@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 38> list
+    inline constexpr std::array<Expansion, 39> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -240,5 +240,16 @@ namespace expansions
           "as metal, steam and clanks on every tooth. Its choir, bass, bells, piano and guitar play the Sonatina "
           "Symphonic Orchestra, Meatbass, VCSL, the Salamander Grand and Black And Green Guitars once downloaded (free). "
           "Our own sounds." },
+        { "HIGHNOON", "HN",
+          "Inspired by a story of a frontier theme park run by machines and the hosts who wake inside it: a fiddle at "
+          "the saloon door, the pure voice of the machine and a lonely cello slipping out of tune; dawn over the town, "
+          "a choir that's human but not quite and a memory on warped tape; the saloon's upright, a servo bass and the "
+          "ground giving way; the saloon's player piano, calibration bells and a piano coming apart; a galloping banjo, "
+          "a body being made and a loop breaking; a dusty guitar, a wind-up music box and a string giving out. Three "
+          "columns: the park, under the park and waking up. Built round RAGTIME (0.92.0) and MACRO 3, RAGTIME: the "
+          "park's player piano striking every note you hold on a roll in time with the song, stride bass and all. Its "
+          "fiddle, cello, strings, choir, bass, pianos, banjo, guitar and music box play the Sonatina Symphonic "
+          "Orchestra, Meatbass, the Salamander Grand, the Kay banjo, Shinyguitar and VCSL once downloaded (free). Our "
+          "own sounds." },
     }};
 }

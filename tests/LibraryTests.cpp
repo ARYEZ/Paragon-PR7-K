@@ -529,7 +529,8 @@ TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback un
             || rig.bank == Rig::numBanks + 31    // (0.81.0: NEW EDEN's, the same)
             || rig.bank == Rig::numBanks + 32    // (0.84.0: GUNSLINGER's honky-tonk, two Salamanders through grand())
             || rig.bank == Rig::numBanks + 35    // (0.89.0: PLAYGROUND's Pawn Shop Piano, the same)
-            || rig.bank == Rig::numBanks + 37)   // (0.91.0: DARK DESCENT's Rationed Piano, the same)
+            || rig.bank == Rig::numBanks + 37    // (0.91.0: DARK DESCENT's Rationed Piano, the same)
+            || rig.bank == Rig::numBanks + 38)   // (0.92.0: HIGHNOON's Player Piano and Unwound Piano, the same)
             continue;
         withPiano.add (rig.name);
         INFO (rig.name);
