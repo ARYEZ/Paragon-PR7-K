@@ -35,6 +35,7 @@
 //   PARAGON_SNAPSHOT_LIBRARIES=<folder>  the sample libraries (the Salamander's folder in it) for the piano presets
 //   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
 //   PARAGON_SNAPSHOT_WTREF=<ref>     a preset whose oscillator 1 names that pack table ("{wt:<pack>}/<file>"; 0.76.0)
+//   PARAGON_SNAPSHOT_SORT=1          with RACK=1: a melody played instead of the chord, for SORT's page (0.93.0)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
@@ -262,12 +263,26 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::ins (0, "WahPosition"), 0.15f);
             set (ParamIDs::ins (0, "WahDepth"), 0.7f);
             set (ParamIDs::ins (0, "WahResonance"), 7.0f);
-            for (const auto note : { 48, 55, 60, 64, 67 })
-                processor.getKeyboardState().noteOn (1, note, 0.85f);
+            // PARAGON_SNAPSHOT_SORT=1 (0.93.0): a melody an eighth a note instead of the chord, SORT re-filing it.
+            const auto melody = env ("PARAGON_SNAPSHOT_SORT") == "1";
+            const int tune[] = { 67, 60, 72, 64, 69, 62, 71, 65 };
+            if (! melody)
+                for (const auto note : { 48, 55, 60, 64, 67 })
+                    processor.getKeyboardState().noteOn (1, note, 0.85f);
             juce::AudioBuffer<float> buffer (2, 256);
             juce::MidiBuffer midi;
             for (int block = 0; block < 700; ++block)
             {
+                if (melody)
+                {
+                    const auto slice = block * 256 / 12000, before = (block - 1) * 256 / 12000;
+                    if (block == 0 || slice != before)
+                    {
+                        if (block > 0)
+                            processor.getKeyboardState().noteOff (1, tune[before % 8], 0.0f);
+                        processor.getKeyboardState().noteOn (1, tune[slice % 8], 0.85f);
+                    }
+                }
                 processor.processBlock (buffer, midi);
                 if (block > 600 && block % 10 == 0)   // the timers fire only when they're due
                 {
