@@ -2,6 +2,22 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.91.0
+
+**DARK DESCENT, a new expansion built round a new signature effect, GEARWORKS: industrial and mechanical from the oscillators up.**
+
+- **DARK DESCENT** (DK01-DK18), our own sounds and phrases: a story of the last people living in a buried tower a hundred levels deep. Three in every category: the machine depths, the stairs, the outside.
+  - Leads: Pressure Valve, Stairwell Whistle, Helmet Radio.
+  - Pads: Generator Hall, Hundred Levels, Ash Horizon.
+  - Basses: Piston Bass, Down Deep, Airlock Seal.
+  - Keys: Foundry Bells, Rationed Piano, Wall Screen.
+  - Arps: Assembly Line, Spiral Steps, Suit Telemetry (hold chords).
+  - Plucks: Bolt Driver, Mended Strings, Frost Glass.
+- **MACRO 3 GEARWORKS** on every preset: turned up, the sound is caught in the machinery. Two gears turn in time with the song and cut the sound wherever a tooth comes round, grinding out an interlocking pattern; the sound rings as metal, and steam and clanks hit on every tooth. At the macro's left the presets play exactly as they are.
+- **5 have a version on the free libraries**, played once they're downloaded: the orchestra's choir and strings for Hundred Levels, a real upright bass for Down Deep (Meatbass), real tubular bells for Foundry Bells (VCSL), the Salamander Grand on two strings pulled apart for Rationed Piano, and a real guitar for Mended Strings (the Gretsch of Black And Green Guitars).
+- **GEARWORKS** (FX page, SIGNATURE slot), our own design: AMOUNT, RATIO (the two gears' teeth: 3 : 4, 2 : 3, 3 : 5, 5 : 7), DIVISION (1/16, 1/8, 1/16 T), BITE (how deep a tooth cuts), METAL (ring modulation at 2.76 times the lowest note, a struck bar's first overtone), GRIND (held samples and fewer bits), STEAM (a hiss on every cut) and CLANK (struck metal on every tooth). The cut's loss is made up from the pattern itself, so the level holds; silence stays silent. Its page shows the two gears meshing and a whole turn of steps.
+- Levels measured: about -17 loudness, the bells, piano, plucks and Suit Telemetry by their peaks; every version under -3.5 dBFS at full GEARWORKS.
+
 ## 0.90.0
 
 **FINAL DIVIDE, a new expansion built round a new signature effect, CROSSROADS. This release also carries 0.89.2's fixes (GUNSLINGER's sampled presets play again), since 0.89.2 itself was held up by GitHub's Linux build machines.**
