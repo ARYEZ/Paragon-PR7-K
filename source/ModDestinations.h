@@ -97,7 +97,9 @@ namespace ModDestinations
                                                  // 0.90.0: CROSSROADS: how hard each side pulls, how bright, how dark
                                                  "crossAmount", "crossLight", "crossDark",
                                                  // 0.91.0: GEARWORKS: how caught, how metal, how ground
-                                                 "gearAmount", "gearMetal", "gearGrind" };
+                                                 "gearAmount", "gearMetal", "gearGrind",
+                                                 // 0.92.0: RAGTIME: how much of the roll, its swing, its accents
+                                                 "ragtimeAmount", "ragtimeSwing", "ragtimeAccent" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

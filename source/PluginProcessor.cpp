@@ -1074,6 +1074,8 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.navi = getNaviSettings();
         // CROSSROADS (0.90.0): the pull on the dark side, AMOUNT as the matrix moves it.
         s.cross = getCrossroadsPull();
+        // RAGTIME (0.92.0): AMOUNT, SWING and ACCENT as the matrix moves them.
+        s.ragtime = getRagtimeSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1489,6 +1491,20 @@ synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
     n.chaos = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviChaos"), ParamIDs::naviChaos));
     n.glide = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviGlide"), ParamIDs::naviGlide));
     return n;
+}
+
+synth::ragtime::Settings ParagonX1AudioProcessor::getRagtimeSettings() const noexcept
+{
+    synth::ragtime::Settings r;
+    r.on = isOn (ParamIDs::ragtimeOn);
+    r.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ragtimeAmount"), ParamIDs::ragtimeAmount));
+    r.pattern = juce::jlimit (0, synth::ragtime::patternNames.size() - 1, juce::roundToInt (param (ParamIDs::ragtimePattern)));
+    r.division = juce::jlimit (0, synth::ragtime::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::ragtimeDivision)));
+    r.swing = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ragtimeSwing"), ParamIDs::ragtimeSwing));
+    r.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ragtimeAccent"), ParamIDs::ragtimeAccent));
+    r.lift = juce::jlimit (0.0f, 1.0f, param (ParamIDs::ragtimeLift));
+    r.stride = isOn (ParamIDs::ragtimeStride);
+    return r;
 }
 
 effects::Colossus::Settings ParagonX1AudioProcessor::getColossusSettings() const noexcept

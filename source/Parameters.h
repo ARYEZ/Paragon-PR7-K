@@ -652,6 +652,15 @@ namespace ParamIDs
     inline constexpr auto naviScale    = "naviScale";      // synth::arp::scaleNames
     inline constexpr auto naviChaos    = "naviChaos";      // 0 to 1
     inline constexpr auto naviGlide    = "naviGlide";      // 0 to 1
+    // RAGTIME (0.92.0, version hint 60, synth::ragtime): every held note re-struck on a player-piano roll. In presets.
+    inline constexpr auto ragtimeOn       = "ragtimeOn";
+    inline constexpr auto ragtimeAmount   = "ragtimeAmount";     // 0 to 1: how much of the roll plays (the macro's)
+    inline constexpr auto ragtimePattern  = "ragtimePattern";    // synth::ragtime::patternNames
+    inline constexpr auto ragtimeDivision = "ragtimeDivision";   // synth::ragtime::divisionNames
+    inline constexpr auto ragtimeSwing    = "ragtimeSwing";      // 0 to 1
+    inline constexpr auto ragtimeAccent   = "ragtimeAccent";     // 0 to 1
+    inline constexpr auto ragtimeLift     = "ragtimeLift";       // 0 to 1
+    inline constexpr auto ragtimeStride   = "ragtimeStride";     // the bass and the chord apart
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.

@@ -10,6 +10,7 @@
 #include "Sfz.h"
 
 #include <atomic>
+#include <limits>
 
 #include <array>
 #include <vector>
@@ -261,6 +262,8 @@ namespace synth
             bool naviFresh = true;                                           // ...a new note takes its move at once
             float crossSemis = 0.0f;                                         // CROSSROADS (0.90.0): this note pulled, semitones (glided)
             bool crossFresh = true;                                          // ...a new note takes its pull at once
+            float ragVelocity = 1.0f;                                        // RAGTIME (0.92.0): the velocity it was played at
+            float ragGain = 1.0f;                                            // ...the damper's lift (1: none)
             float panLeft = 1.0f, panRight = 1.0f;      // the AMP's PAN, KEYTRACK and SPREAD for this note
             float notePan = 0.0f;                       // ...as a position, -1 to 1 (modulation moves it from here)
 
@@ -302,6 +305,9 @@ namespace synth
 
         void startVoice (Voice&, int note, float velocity, float fromPitch, const Settings&, int source = 0, std::uint8_t mask = 0xff) noexcept;
         void retrigger (Voice&, int note, float velocity, bool restartEnvelopes, bool glide, const Settings&) noexcept;
+        // RAGTIME (0.92.0): a held note struck again, as a hammer would: its envelopes start again from where they are, a
+        // sampled oscillator starts a fresh recording; its LFOs, vibrato, pitch and who holds it are left alone.
+        void restrike (Voice&, float velocity, const Settings&) noexcept;
         void releaseVoice (Voice&) noexcept;
         void kill (Voice&) noexcept;
         void free (Voice&) noexcept;
@@ -517,6 +523,16 @@ namespace synth
         int crossSteps = 0;
         float crossGlideCoef = 1.0f;
         SharedInt crossSideShown {};   // -1 off, 0 light, 1 dark
+        // RAGTIME (0.92.0): each interval's strike (bits ragtime::Who, 4 accented) and lift (who's lifted for the
+        // strike just after it), its own clock while stopped, the lowest key held (the bass), the step for the page.
+        std::array<std::uint8_t, maxIntervals> ragStrikes {}, ragLifts {};
+        double ragClock = 0.0;
+        bool ragPlaying = false;
+        int ragBass = -1, ragChords = 0;
+        std::int64_t ragLastStep = std::numeric_limits<std::int64_t>::min();   // the step last struck (never twice)
+        float ragDown = 1.0f, ragUp = 1.0f;   // the lift's glide per sample, down and back
+        SharedInt ragStepShown {};
+        SharedInt ragStrikeCount {};   // -1 until the first strike
         int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
     public:
         // The oscillator's key switch now (-1: none), for the panel.
@@ -524,6 +540,8 @@ namespace synth
         // NAVICOMPUTER's step now (0-15; -1: not moving), for its page.
         int getNaviStep() const noexcept { return naviStepShown.load(); }
         int getCrossSide() const noexcept { return crossSideShown.load(); }   // CROSSROADS: -1 off, 0 light, 1 dark
+        int getRagtimeStep() const noexcept { return ragStepShown.load(); }   // RAGTIME: the roll's step (0-15; -1 not playing)
+        int getRagtimeStrikes() const noexcept { return ragStrikeCount.load() + 1; }   // ...strikes so far
     private:
         sfz::Streamer* streamer = nullptr;
         bool waitForDisk = false;

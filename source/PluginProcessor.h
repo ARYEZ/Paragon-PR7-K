@@ -470,6 +470,9 @@ public:
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }
+    synth::ragtime::Settings getRagtimeSettings() const noexcept;                // RAGTIME (0.92.0)
+    int getRagtimeStep() const noexcept { return engine.getRagtimeStep(); }
+    int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
     const effects::Colossus& getColossus() const noexcept { return rack->colossus; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).

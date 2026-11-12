@@ -537,6 +537,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         add (layout, naviGlide, "Navicomputer Glide", { 0.0f, 1.0f }, d.glide, asPercent, stageNavi);
     }
 
+    // RAGTIME (0.92.0): every held note re-struck on a player-piano roll, in presets. Off and at AMOUNT 0 by default.
+    {
+        constexpr int stageRagtime = 60;
+        const synth::ragtime::Settings d;
+        addSwitch (layout, ragtimeOn, "Ragtime On", d.on, stageRagtime);
+        add (layout, ragtimeAmount, "Ragtime Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stageRagtime);
+        addChoice (layout, ragtimePattern, "Ragtime Pattern", synth::ragtime::patternNames, d.pattern, stageRagtime);
+        addChoice (layout, ragtimeDivision, "Ragtime Division", synth::ragtime::divisionNames, d.division, stageRagtime);
+        add (layout, ragtimeSwing, "Ragtime Swing", { 0.0f, 1.0f }, d.swing, asPercent, stageRagtime);
+        add (layout, ragtimeAccent, "Ragtime Accent", { 0.0f, 1.0f }, d.accent, asPercent, stageRagtime);
+        add (layout, ragtimeLift, "Ragtime Lift", { 0.0f, 1.0f }, d.lift, asPercent, stageRagtime);
+        addSwitch (layout, ragtimeStride, "Ragtime Stride", d.stride, stageRagtime);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);

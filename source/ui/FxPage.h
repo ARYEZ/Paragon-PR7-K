@@ -34,6 +34,7 @@
 #include "ui/FreezeTagPage.h"
 #include "ui/CrossroadsPage.h"
 #include "ui/GearworksPage.h"
+#include "ui/RagtimePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -73,7 +74,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks, ragtime };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -107,6 +108,7 @@ public:
     FreezeTagPage& getFreezeTagPage() noexcept { return freezeTagPage; }
     CrossroadsPage& getCrossroadsPage() noexcept { return crossroadsPage; }
     GearworksPage& getGearworksPage() noexcept { return gearworksPage; }
+    RagtimePage& getRagtimePage() noexcept { return ragtimePage; }
     BloomPage& getBloomPage() noexcept { return bloomPage; }
     LegionPage& getLegionPage() noexcept { return legionPage; }
     OverchargePage& getOverchargePage() noexcept { return overchargePage; }
@@ -141,7 +143,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 34> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 35> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -184,6 +186,7 @@ private:
     FreezeTagPage freezeTagPage;         // 0.89.0
     CrossroadsPage crossroadsPage;       // 0.90.0
     GearworksPage gearworksPage;         // 0.91.0
+    RagtimePage ragtimePage;             // 0.92.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

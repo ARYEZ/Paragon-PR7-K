@@ -161,6 +161,7 @@ target_sources(ParagonX1
         source/ui/FreezeTagPage.cpp
         source/ui/CrossroadsPage.cpp
         source/ui/GearworksPage.cpp
+        source/ui/RagtimePage.cpp
         source/ui/SynthFace.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp

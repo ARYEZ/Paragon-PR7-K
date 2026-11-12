@@ -10,6 +10,7 @@
 #include "Sirocco.h"
 #include "NaviComputer.h"
 #include "Crossroads.h"
+#include "Ragtime.h"
 
 #include <array>
 
@@ -304,6 +305,7 @@ namespace synth
         sirocco::Settings sirocco;   // 0.58.0: SIROCCO, the answering harmony
         navi::Settings navi;         // 0.86.0: NAVICOMPUTER, every note moved by a pattern in key, in time
         crossroads::Settings cross;  // 0.90.0: CROSSROADS, every note pulled down the scale on the dark side
+        ragtime::Settings ragtime;   // 0.92.0: RAGTIME, every held note re-struck on a player-piano roll, in time
         // 0.60.0, AFTERGLOW's voice half: each note its own analog character, as an old polysynth's voice cards.
         // AGE: each note's fixed offsets (tuning, filter, envelope times); DRIFT: each note's slow wander. At 0, nothing.
         struct Afterglow

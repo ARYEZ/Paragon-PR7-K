@@ -343,6 +343,8 @@ namespace synth
         sampleRate = newSampleRate;
         killStep = (float) (1.0 / juce::jmax (1.0, killMs * 0.001 * sampleRate));
         dcPole = (float) (1.0 - juce::MathConstants<double>::twoPi * 5.0 / sampleRate);
+        ragDown = (float) (1.0 - std::exp (-1.0 / (0.0012 * sampleRate)));   // RAGTIME: the damper lifts in about 1 ms...
+        ragUp = (float) (1.0 - std::exp (-1.0 / (0.002 * sampleRate)));      // ...and the strike comes back in about 2
         (void) tables::get (tables::Wave::saw, 0);   // builds the tables now, not on the first note
         for (auto& voice : voices)
         {
@@ -368,6 +370,8 @@ namespace synth
         seqClock = 0.0;
         naviClock = 0.0;
         crossClock = 0.0;
+        ragClock = 0.0;
+        ragLastStep = std::numeric_limits<std::int64_t>::min();
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
@@ -593,6 +597,12 @@ namespace synth
         // ...and CROSSROADS' (the first stretch is light).
         if (! anyHeld)
             crossClock = 0.0;
+        // ...and RAGTIME's (the roll starts with the first key).
+        if (! anyHeld)
+        {
+            ragClock = 0.0;
+            ragLastStep = std::numeric_limits<std::int64_t>::min();
+        }
         // ...and each oscillator's TRAVEL set to FIRST NOTE or LAST NOTE.
         for (size_t i = 0; i < travelClock.size(); ++i)
         {
@@ -884,6 +894,7 @@ namespace synth
         voice.naviFresh = true;
         voice.crossSemis = 0.0f;  // CROSSROADS: a new note takes its pull at once
         voice.crossFresh = true;
+        voice.ragGain = 1.0f;     // RAGTIME: no lift on a new note
         // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
         voice.glowTune = nextGlow();
         voice.glowCutoff = nextGlow();
@@ -900,10 +911,31 @@ namespace synth
         retrigger (voice, note, velocity, true, ! juce::approximatelyEqual (fromPitch, (float) note), settings);
     }
 
+    void Engine::restrike (Voice& voice, float velocity, const Settings& settings) noexcept
+    {
+        voice.velocity = velocity;
+        voice.amp.trigger (settings.amp.envelope);
+        voice.filter.trigger (settings.filter.envelope);
+        voice.spikePosition = 0.0f;
+        for (auto& envelope : voice.envelopes)
+            envelope.start();
+        voice.pitchEnvelope.start();
+        for (size_t i = 0; i < voice.oscillators.size(); ++i)
+        {
+            const auto& s = settings.oscillators[i];
+            auto& osc = voice.oscillators[i];
+            if (s.wave != OscWave::sfz || ! osc.active || osc.fadingOut)
+                continue;
+            startSfz (voice, osc, i, s, false);   // a fresh recording (the last fades out over 5 ms)
+        }
+        ragStrikeCount.store (ragStrikeCount.load() + 1);
+    }
+
     void Engine::retrigger (Voice& voice, int note, float velocity, bool restartEnvelopes, bool glide, const Settings& settings) noexcept
     {
         voice.note = note;
         voice.velocity = velocity;
+        voice.ragVelocity = velocity;   // RAGTIME strikes at the velocity the note was played
         voice.held = true;
         voice.sustained = false;
         setGlide (voice, (float) note, glide, settings);
@@ -1321,6 +1353,54 @@ namespace synth
                 crossGlideCoef = (float) (1.0 - std::exp (-(double) controlInterval / (tau * sampleRate)));
                 crossClock += length * beatsPerSample;
             }
+            // RAGTIME (0.92.0): which interval each strike of the roll falls in, and the ones its damper lifts in
+            // (about 4 ms before it), in time with the song (or its own count); the bass is the lowest key held.
+            ragPlaying = settings.ragtime.playing();
+            {
+                const auto& rt = settings.ragtime;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (ragPlaying)
+                {
+                    const auto beatsPerStep = rt.beatsPerStep();
+                    const auto liftSteps = 0.004 * juce::jmax (1.0, modulation.bpm) / 60.0 / beatsPerStep;
+                    ragBass = -1;
+                    for (const auto& v : voices)
+                        if (v.playing && ! v.killing && v.source == 0 && (v.held || v.sustained) && (ragBass < 0 || v.note < ragBass))
+                            ragBass = v.note;
+                    ragChords = 0;   // the notes over the bass (a lone note plays both hands' steps)
+                    for (const auto& v : voices)
+                        if (v.playing && ! v.killing && v.source == 0 && (v.held || v.sustained) && v.note != ragBass)
+                            ++ragChords;
+                    std::int64_t lastStep = 0;
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto n = juce::jmin (controlInterval, length - at);
+                        const auto beatsAt = [&] (int offset) { return followSong ? modulation.ppq + (samplesIntoBlock + start + offset) * beatsPerSample
+                                                                                  : ragClock + offset * beatsPerSample; };
+                        const auto from = beatsAt (at) / beatsPerStep, to = beatsAt (at + n) / beatsPerStep;
+                        std::uint8_t strike = 0, lift = 0;
+                        const auto k = ragtime::nextStrike (from, rt.swing);
+                        if (ragtime::strikeTime (k, rt.swing) < to && k != ragLastStep)
+                        {
+                            ragLastStep = k;   // (a step on a piece's edge can fall in both: strike it once)
+                            const auto hit = ragtime::strikeAt (rt, k);
+                            strike = (std::uint8_t) (hit.who | (hit.accent ? 4 : 0));
+                        }
+                        // A strike just ahead: the damper lifts for it now.
+                        const auto ahead = ragtime::nextStrike (to, rt.swing);
+                        if (ragtime::strikeTime (ahead, rt.swing) - to < liftSteps)
+                            lift = (std::uint8_t) ragtime::strikeAt (rt, ahead).who;
+                        ragStrikes[(size_t) i] = strike;
+                        ragLifts[(size_t) i] = lift;
+                        lastStep = (std::int64_t) std::floor (from + 1.0e-9);
+                    }
+                    ragStepShown.store ((int) (((lastStep % ragtime::numSteps) + ragtime::numSteps) % ragtime::numSteps));
+                }
+                else
+                    ragStepShown.store (-1);
+                ragClock += length * beatsPerSample;
+            }
             for (auto& voice : voices)
             {
                 if (! voice.playing)
@@ -1470,6 +1550,22 @@ namespace synth
 
     void Engine::renderVoice (Voice& voice, float* left, float* right, int n, const Settings& unmodulated, int interval) noexcept
     {
+        // RAGTIME (0.92.0): a key's note struck again on the roll's step (unless it has only just started: its own
+        // attack is the strike), the damper lifting it just before; nothing at all while it's off.
+        auto ragTarget = 1.0f;
+        if (ragPlaying && voice.source == 0 && (voice.held || voice.sustained) && ! voice.killing)
+        {
+            const auto slot = (size_t) juce::jlimit (0, maxIntervals - 1, interval);
+            const int mine = voice.note != ragBass ? ragtime::chord : ragChords > 0 ? ragtime::bass : ragtime::both;
+            const auto strike = ragStrikes[slot];
+            if ((strike & mine) != 0 && voice.seqAge > 0.01)
+            {
+                const auto& rt = unmodulated.ragtime;
+                restrike (voice, rt.strikeVelocity (voice.ragVelocity, (strike & 4) != 0), unmodulated);
+            }
+            else if ((ragLifts[slot] & mine) != 0)
+                ragTarget = 1.0f - unmodulated.ragtime.liftDepth();
+        }
         // The PITCH module's envelope (also a source for the matrix).
         const auto& pitchModule = unmodulated.pitch;
         if (pitchModule.shape != nullptr
@@ -1721,6 +1817,14 @@ namespace synth
         for (int i = 0; i < n; ++i)
         {
             auto gain = tail ? volume : voice.amp.next() * volume;
+            if (ragTarget != 1.0f || voice.ragGain != 1.0f)
+            {
+                // RAGTIME's damper: down for the strike, back with it.
+                voice.ragGain += (ragTarget - voice.ragGain) * (ragTarget < voice.ragGain ? ragDown : ragUp);
+                if (ragTarget == 1.0f && voice.ragGain > 0.9999f)
+                    voice.ragGain = 1.0f;
+                gain *= voice.ragGain;
+            }
             if (voice.spikePosition < 1.0f && ! tail)
             {
                 gain *= 1.0f + spike * (1.0f - synth::bend (voice.spikePosition, ampSettings.spikeCurve));
