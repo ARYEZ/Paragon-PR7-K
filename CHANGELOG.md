@@ -2,6 +2,22 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.92.0
+
+**HIGHNOON, a new expansion built round a new signature effect, RAGTIME: the park's player piano striking every note you hold.**
+
+- **HIGHNOON** (HN01-HN18), our own sounds and phrases: a story of a frontier theme park run by machines and the hosts who wake inside it. Three in every category: the park, under the park, waking up.
+  - Leads: Frontier Fiddle, Host Signal, Awakening Cello.
+  - Pads: Frontier Dawn, Synthetic Choir, Memory Haze.
+  - Basses: Saloon Upright, Servo Bass, Fault Line.
+  - Keys: Player Piano, Calibration Bells, Unwound Piano.
+  - Arps: Stagecoach, Fabrication, Loop Break (hold chords).
+  - Plucks: Dusty Strum, Wind-Up Box, Broken String.
+- **MACRO 3 RAGTIME** on every preset: turned up, a player piano's roll strikes the notes you hold again, in time with the song: the beats first, then the syncopations, then the pickups. At the macro's left the presets play exactly as they are. On the arps it strikes the layer your keys hold under the arp (the arp's own notes keep their rhythm).
+- **10 have a version on the free libraries**, played once they're downloaded: the orchestra's solo violin, solo cello, strings and choir; a real upright bass (Meatbass); the Salamander Grand twice over for Player Piano (the honky-tonk) and Unwound Piano; a real banjo (the Kay banjo); a real archtop guitar (Shinyguitar); a real glockenspiel for the music box (VCSL).
+- **RAGTIME** (FX page, SIGNATURE slot), our own design, and not an echo: each strike is a real new hammer blow in the synth (the note's envelopes start again, a sampled instrument plays a fresh recording), a quick damper LIFT just before it so even a held pad is struck. PATTERN (STRIDE, RAG, CAKEWALK, MARCH, ROLL), STRIDE (the lowest note you hold as the left hand's "oom", the rest as the right's "pah"), DIVISION, SWING, ACCENT, LIFT. Your vibrato and pitch are left alone, and a note the pedal holds is struck and still lets go when the pedal comes up. Its page shows the paper roll, the holes punched as AMOUNT rises and the step playing lit.
+- Levels measured: about -17 loudness, the pianos, bells and plucks by their peaks; every version under -3.5 dBFS at full RAGTIME.
+
 ## 0.91.0
 
 **DARK DESCENT, a new expansion built round a new signature effect, GEARWORKS: industrial and mechanical from the oscillators up.**
