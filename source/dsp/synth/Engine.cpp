@@ -405,6 +405,20 @@ namespace synth
         return count;
     }
 
+    int Engine::getNewestNotes (float* pitches, int capacity) const noexcept
+    {
+        const auto counts = [] (const Voice& v) { return v.playing && ! v.killing && v.held && v.source != answerSource && v.source != tailSource; };
+        auto newest = 1.0e30;
+        for (const auto& v : voices)
+            if (counts (v))
+                newest = juce::jmin (newest, v.seqAge);
+        int count = 0;
+        for (const auto& v : voices)
+            if (counts (v) && v.seqAge <= newest + 0.03 && count < capacity)
+                pitches[count++] = v.pitch;
+        return count;
+    }
+
     //==========================================================================
     void Engine::process (float* left, float* right, int numSamples,
                           const juce::MidiBuffer& midi, int midiStart, const Settings& settings) noexcept

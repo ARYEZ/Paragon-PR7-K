@@ -99,6 +99,8 @@ add_executable(ParagonX1Tests
     CrossroadsTests.cpp
     GearworksTests.cpp
     RagtimeTests.cpp
+    SortTests.cpp
+    SortPluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

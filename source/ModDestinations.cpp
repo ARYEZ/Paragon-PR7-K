@@ -100,7 +100,8 @@ namespace ModDestinations
                 { "FX Freeze Tag", "Amount" }, { "FX Freeze Tag", "Tremble" }, { "FX Freeze Tag", "Caught" },
                 { "FX Crossroads", "Amount" }, { "FX Crossroads", "Light" }, { "FX Crossroads", "Dark" },
                 { "FX Gearworks", "Amount" }, { "FX Gearworks", "Metal" }, { "FX Gearworks", "Grind" },
-                { "FX Ragtime", "Amount" }, { "FX Ragtime", "Swing" }, { "FX Ragtime", "Accent" } };
+                { "FX Ragtime", "Amount" }, { "FX Ragtime", "Swing" }, { "FX Ragtime", "Accent" },
+                { "FX Sort", "Amount" }, { "FX Sort", "Edge" }, { "FX Sort", "Strike" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

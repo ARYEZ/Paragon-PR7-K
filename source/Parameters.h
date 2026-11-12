@@ -661,6 +661,15 @@ namespace ParamIDs
     inline constexpr auto ragtimeAccent   = "ragtimeAccent";     // 0 to 1
     inline constexpr auto ragtimeLift     = "ragtimeLift";       // 0 to 1
     inline constexpr auto ragtimeStride   = "ragtimeStride";     // the bass and the chord apart
+    // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
+    inline constexpr auto sortOn     = "sortOn";
+    inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)
+    inline constexpr auto sortSlice  = "sortSlice";    // effects::Sort::sliceNames
+    inline constexpr auto sortLength = "sortLength";   // effects::Sort::lengthNames: the window re-filed at a time
+    inline constexpr auto sortOrder  = "sortOrder";    // effects::Sort::orderNames
+    inline constexpr auto sortGaps   = "sortGaps";     // effects::Sort::gapNames
+    inline constexpr auto sortEdge   = "sortEdge";     // 0 to 1: the crossfade between pieces, 1 to 30 ms
+    inline constexpr auto sortStrike = "sortStrike";   // 0 to 1: a hit at each piece's start
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -765,4 +774,5 @@ void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout&)
 void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.89.0)
 void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.90.0)
 void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.91.0)
+void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);         // RackParameters.cpp (0.93.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

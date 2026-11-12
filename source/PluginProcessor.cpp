@@ -334,6 +334,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->freezeTag.prepare (sampleRate, preparedBlockSize);
     rack->crossroads.prepare (sampleRate, preparedBlockSize);
     rack->gearworks.prepare (sampleRate, preparedBlockSize);
+    rack->sort.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1451,6 +1452,21 @@ effects::Gearworks::Settings ParagonX1AudioProcessor::getGearworksSettings() con
     return s;
 }
 
+effects::Sort::Settings ParagonX1AudioProcessor::getSortSettings() const noexcept
+{
+    using S = effects::Sort;
+    S::Settings s;
+    s.on = isOn (ParamIDs::sortOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sortAmount"), ParamIDs::sortAmount));
+    s.slice = juce::jlimit (0, S::sliceNames.size() - 1, juce::roundToInt (param (ParamIDs::sortSlice)));
+    s.length = juce::jlimit (0, S::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::sortLength)));
+    s.order = juce::jlimit (0, S::orderNames.size() - 1, juce::roundToInt (param (ParamIDs::sortOrder)));
+    s.gaps = juce::jlimit (0, S::gapNames.size() - 1, juce::roundToInt (param (ParamIDs::sortGaps)));
+    s.edge = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sortEdge"), ParamIDs::sortEdge));
+    s.strike = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sortStrike"), ParamIDs::sortStrike));
+    return s;
+}
+
 synth::crossroads::Settings ParagonX1AudioProcessor::getCrossroadsPull() const noexcept
 {
     synth::crossroads::Settings s;
@@ -1879,6 +1895,17 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         }
         else
             rack->gearworks.process (block, gear, juce::jmax (20.0, hostBpm.load()), piecePpq);   // keeps its own clock
+        // 0.93.0: the phrase re-filed (while it's on it keeps filing, by the newest notes, even at AMOUNT 0).
+        {
+            const auto sorting = getSortSettings();
+            if (sorting.on)
+            {
+                std::array<float, effects::Sort::maxNotes> newest {};
+                rack->sort.setNotes (newest.data(), engine.getNewestNotes (newest.data(), (int) newest.size()));
+            }
+            if (sorting.on || ! rack->sort.isResting())
+                rack->sort.process (block, sorting, juce::jmax (20.0, hostBpm.load()), piecePpq);
+        }
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

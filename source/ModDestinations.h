@@ -99,7 +99,9 @@ namespace ModDestinations
                                                  // 0.91.0: GEARWORKS: how caught, how metal, how ground
                                                  "gearAmount", "gearMetal", "gearGrind",
                                                  // 0.92.0: RAGTIME: how much of the roll, its swing, its accents
-                                                 "ragtimeAmount", "ragtimeSwing", "ragtimeAccent" };
+                                                 "ragtimeAmount", "ragtimeSwing", "ragtimeAccent",
+                                                 // 0.93.0: SORT: how much is re-filed, its edges, its strikes
+                                                 "sortAmount", "sortEdge", "sortStrike" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

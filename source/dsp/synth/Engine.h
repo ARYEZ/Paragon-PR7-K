@@ -85,6 +85,9 @@ namespace synth
         // 0.57.0, for DOWNPOUR: the pitches (MIDI notes, glides and all) of the notes sounding now, releasing ones too,
         // up to `capacity`; how many.
         int getSoundingNotes (float* pitches, int capacity, bool* isAnswer = nullptr) const noexcept;   // 0.58.0: and which are SIROCCO's answers
+        // 0.93.0, SORT: the newest note held (a key or an arp, held now: not a release, nor SIROCCO's answers), with
+        // any begun within 30 ms of it (a chord); none when nothing is held.
+        int getNewestNotes (float* pitches, int capacity) const noexcept;
 
         // 0.64.0, for PROXIMITY: the touches of playing, on the sample they happened (`clock`, on the samples rendered
         // since the start: compare with getSampleClock()): a note starting (keys and arps; SIROCCO's answers aren't

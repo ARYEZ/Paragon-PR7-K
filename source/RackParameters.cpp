@@ -39,6 +39,7 @@
 #include "dsp/effects/FreezeTag.h"
 #include "dsp/effects/Crossroads.h"
 #include "dsp/effects/Gearworks.h"
+#include "dsp/effects/Sort.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1068,4 +1069,21 @@ void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout
     layout.add (makeFloat (ParamIDs::gearGrind, "Gearworks Grind", { 0.0f, 1.0f, 0.01f }, d.grind, v, asPercent));
     layout.add (makeFloat (ParamIDs::gearSteam, "Gearworks Steam", { 0.0f, 1.0f, 0.01f }, d.steam, v, asPercent));
     layout.add (makeFloat (ParamIDs::gearClank, "Gearworks Clank", { 0.0f, 1.0f, 0.01f }, d.clank, v, asPercent));
+}
+
+void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SORT (0.93.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 61;
+    using S = effects::Sort;
+    const S::Settings d;
+    const ToText asEdge = [] (float value, int) { return juce::String (S::edgeMs (value), 1) + " ms"; };
+    layout.add (makeSwitch (ParamIDs::sortOn, "Sort On", v, false));
+    layout.add (makeFloat (ParamIDs::sortAmount, "Sort Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::sortSlice, "Sort Slice", v, S::sliceNames, d.slice));
+    layout.add (makeChoice (ParamIDs::sortLength, "Sort Length", v, S::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::sortOrder, "Sort Order", v, S::orderNames, d.order));
+    layout.add (makeChoice (ParamIDs::sortGaps, "Sort Gaps", v, S::gapNames, d.gaps));
+    layout.add (makeFloat (ParamIDs::sortEdge, "Sort Edge", { 0.0f, 1.0f, 0.01f }, d.edge, v, asEdge));
+    layout.add (makeFloat (ParamIDs::sortStrike, "Sort Strike", { 0.0f, 1.0f, 0.01f }, d.strike, v, asPercent));
 }
