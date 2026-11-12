@@ -2,6 +2,20 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.93.0
+
+**SORT, a new signature effect: the phrase you played, re-filed in order.** It's the centrepiece for the coming rebuild of SEVERED; this release has the effect on its own (SEVERED's presets are unchanged for now).
+
+- **SORT** (FX page, SIGNATURE slot), our own design: in time with the song it cuts the sound into pieces and, a window at a time, plays back the window before re-filed. Played G C C E A D B F, the next bar comes back C D E F G A B C.
+  - **ORDER**: UP (lowest note first), DOWN (highest first), PEAK (rising to the top and back), LOUDEST (loudest first), SHUFFLE (a new order every window).
+  - **SLICE** (quarters, eighths, sixteenths, eighth triplets) and **LENGTH** (half a bar, one bar or two bars: how much is re-filed at a time, and how far behind it comes back).
+  - **GAPS**: your rests go to the end, or stay where you played them.
+  - **EDGE**: how cleanly one piece cuts to the next (1 to 30 ms). **STRIKE**: a fresh hit at the start of each piece, since they're cut out of ringing notes.
+  - **AMOUNT**: from the live sound to the re-filed one. At 0 the sound passes exactly untouched. AMOUNT, EDGE and STRIKE can be moved by the mod matrix (FX Sort).
+  - Each piece is filed by the note the synth was playing, not by guessing the pitch from the sound (guessing slipped octaves on a piano). A chord is filed by its average pitch.
+  - It can only re-file what it has already heard, so what you hear is always a window behind what you play.
+- Its page shows two rows of index cards: the last window as played, and the same cards re-filed, the one playing now lit.
+
 ## 0.92.0
 
 **HIGHNOON, a new expansion built round a new signature effect, RAGTIME: the park's player piano striking every note you hold.**
