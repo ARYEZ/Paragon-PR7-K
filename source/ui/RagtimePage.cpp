@@ -26,7 +26,7 @@ void RagtimeDisplay::paint (juce::Graphics& g)
     g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2a160b), view.getX(), view.getY(),
                                              juce::Colour (0xff120904), view.getRight(), view.getBottom(), false));
     g.fillRoundedRectangle (view, 6.0f);
-    auto roll = view.reduced (view.getWidth() * 0.035f, view.getHeight() * 0.16f).withTrimmedTop (view.getHeight() * 0.05f);
+    auto roll = view.reduced (view.getWidth() * 0.035f, view.getHeight() * 0.16f).withTrimmedTop (view.getHeight() * 0.05f).withTrimmedLeft (64.0f);
     auto labels = roll.removeFromBottom (18.0f);
     g.setGradientFill (juce::ColourGradient (paper, roll.getX(), roll.getY(), paper.darker (0.18f), roll.getX(), roll.getBottom(), false));
     g.fillRect (roll);
@@ -89,10 +89,11 @@ void RagtimeDisplay::paint (juce::Graphics& g)
             g.drawText (juce::String (k / 4 + 1), juce::Rectangle<float> (roll.getX() + (float) k * cell, labels.getY(), cell, labels.getHeight()),
                         juce::Justification::centred, false);
     }
-    g.setColour (ink.withAlpha (0.55f));
-    g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
-    g.drawText (settings.stride ? "CHORD" : "", juce::Rectangle<float> (roll.getX() + 8.0f, laneChord - 22.0f, 80.0f, 12.0f), juce::Justification::centredLeft, false);
-    g.drawText (settings.stride ? "BASS" : "", juce::Rectangle<float> (roll.getX() + 8.0f, laneBass - 22.0f, 80.0f, 12.0f), juce::Justification::centredLeft, false);
+    // The lanes named on the cabinet, left of the roll.
+    g.setColour (brass);
+    g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+    g.drawText (settings.stride ? "CHORD" : "ALL", juce::Rectangle<float> (roll.getX() - 66.0f, laneChord - 7.0f, 54.0f, 14.0f), juce::Justification::centredRight, false);
+    g.drawText (settings.stride ? "BASS" : "ALL", juce::Rectangle<float> (roll.getX() - 66.0f, laneBass - 7.0f, 54.0f, 14.0f), juce::Justification::centredRight, false);
 
     // The bar across the top.
     auto bar = bounds.reduced (12.0f, 6.0f).removeFromTop (20.0f);
