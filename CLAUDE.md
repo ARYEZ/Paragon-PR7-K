@@ -147,6 +147,7 @@ Each change keeps every sum and its order (only independent work overlapped, or 
 - Run the full tests (under `ulimit -s 1024`) **after** the version bump, on exactly what will be pushed: 0.63.0's first build failed CI on the fuzz test when a run made just before the bump had passed.
 - After pushing, check the release published (both zips) about 15 minutes later, **and that its `target_commitish` is your commit**. If the version was already taken, CI skips silently and the release you'd link is someone else's build.
 - **One chat per plugin at a time.** In October 2026 two chats released PR7-G and PR7-V under the same version numbers: one chat's releases were skipped, and features (and a UI fix) went missing from the builds the owner installed. Before choosing a version, check the repo's tags *and* other branches for unreleased work; if another branch is ahead, merge it first so every release contains everything.
+- **pluginval's own Linux host crashes about 1 run in 25** (a segfault or abort in its run loop's event-handler map, none of the plugin's code on any thread), at shutdown or between tests: 0.93.0's first build died so in "Open plugin (cold)", and the published 0.92.0 crashed the same way 3 times in 80 local runs. CI counts the crash after SUCCESS as a pass and retries a crash before it up to twice with a new seed (a failed test still fails at once). Re-running a CI job from this session is refused (403).
 - The owner installs from GitHub Releases on **Windows**.
 
 ## How the owner likes to work
