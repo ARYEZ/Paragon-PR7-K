@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.95.0
+
+**ORIGIN, a new expansion: back to where it started, in the spirit of bank A's Supersaw Lead and Unison Strings.**
+
+- **ORIGIN** (OG01-OG18), our own sounds. What makes those two presets so good is how plain they are: one oscillator, one idea, done carefully. Every ORIGIN preset keeps to that:
+  - One or two oscillators of the plain waves: saw, pulse, triangle, sine. No wavetables, FFT editing, sync, FM or shapers.
+  - The movement comes from the oscillator itself: unison detune and spread, and vibrato that fades in as you hold a note. On the pads, the cellos and the flute lead each copy drifts on its own vibrato, like separate players in a section.
+  - One filter and one amp envelope, tuned with care. No effects stacked on top: the reverb and delay come in only with MACRO 2 SPACE.
+- The presets:
+  - Leads: Origin Lead (Supersaw Lead's big brother, every other saw an octave up), Singing Pulse, Glass Flute.
+  - Pads: Cello Section (Unison Strings an octave down), Square Drift, Octave Horizon.
+  - Basses: Wide Saw Bass, Square Punch, Pure Sub.
+  - Keys: Saw Bloom Keys, Pulse Organ, Soft Tines.
+  - Arps: Supersaw Arp, Pulse Run, Glass Ladder (hold chords).
+  - Plucks: Supersaw Pluck, Pulse Pluck, Triangle Bell.
+- **MACRO 3 WIDTH** on every preset: opens up the unison (more detune and spread), from focused to huge. Nothing else moves.
+- Levels measured: about -17 loudness, the plucks by their peaks.
+
 ## 0.94.0
 
 **SEVERED, rebuilt from the ground up round SORT: the office's tidy, pointless work done to what you play.**
