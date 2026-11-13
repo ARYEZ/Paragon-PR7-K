@@ -2,6 +2,23 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.96.0
+
+**OFFWORLD, a new expansion built on a two-line vintage polysynth, and FILTER 2: a second filter path in the synth.**
+
+- **FILTER 2** (a new tab on the FILTER panel): a second filter with its own envelope (shown in the envelope panel while its tab is open). Each oscillator chooses it with its FILTER 2 switch, so two groups of oscillators can each have their own filter, the way the classic two-line polysynths stack two complete synths. Both filters' cutoff, resonance, drive, keytrack, envelope and LOW CUT can be moved by the mod matrix.
+- **LOW CUT** on both filters: a resonant low cut in front of the filter, following its keytrack and envelope, 12 or 24 dB with the filter's slope. At its lowest setting it reads OFF and does nothing.
+- Your sounds and projects are unchanged: with FILTER 2 off or nothing routed to it, and LOW CUT off, the synth is identical to before, bit for bit.
+- **OFFWORLD** (OW01-OW18), our own sounds, modelled on how the famous two-line polysynth of the late 1970s is built (from its published design; no recordings of one were compared). Every preset is two lines: line I through FILTER 1, line II through FILTER 2, each with its low cut, its own filter envelope and a sine added after the filter. Pressing harder on a held key opens both filters and adds vibrato; the pitch wheel plays like a ribbon (the bend down falls far further than up). Some add ring modulation.
+  - Leads: Offworld Brass, Ribbon Singer, Night Flute.
+  - Pads: Two-Line Brass, Starlight Strings, Slow Horizon.
+  - Basses: Rainy Brass Bass, Hollow Bass, Soft Pluck Bass.
+  - Keys: Velvet Tines, Ring Bells, Bright Clav.
+  - Arps: Brass Stabs, Ring Mod Arp, Glass Lines.
+  - Plucks: Koto Pluck, Wood Mallet, Offworld Harp.
+- **MACRO 3 LINES** on every preset: detunes line II against line I and brings it up, from one clean line to the wide, beating two-line sound. MACRO 1 BRIGHT opens both filters, MACRO 2 SPACE brings in the reverb.
+- Levels measured: about -17 loudness, the plucks, bells and stabs by their peaks; full LINES adds 0.2-3 dB.
+
 ## 0.95.0
 
 **ORIGIN, a new expansion: back to where it started, in the spirit of bank A's Supersaw Lead and Unison Strings.**
