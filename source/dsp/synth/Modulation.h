@@ -69,7 +69,9 @@ namespace synth
             shaperEq1Gain, shaperEq1Freq, shaperEq1Q, shaperEq2Gain, shaperEq2Freq, shaperEq2Q,
             pitchEnvRange, pitchKeytrack, stepSeqVolMix,
             // 0.39.0: the VOICE filter
-            voiceVowel, voiceSize, voiceSharp, voiceMix
+            voiceVowel, voiceSize, voiceSharp, voiceMix,
+            // 0.96.0: FILTER 2 and the filters' LOW CUT
+            filter2Cutoff, filter2Resonance, filter2Drive, filter2Keytrack, filter2Envelope, filterLowCut, filter2LowCut
         };
         struct Target
         {

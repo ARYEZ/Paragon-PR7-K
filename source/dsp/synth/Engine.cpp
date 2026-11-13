@@ -350,6 +350,7 @@ namespace synth
         {
             voice.amp.setSampleRate (sampleRate);
             voice.filter.setSampleRate (sampleRate);
+            voice.filter2.setSampleRate (sampleRate);
         }
         reset();
     }
@@ -930,6 +931,7 @@ namespace synth
         voice.velocity = velocity;
         voice.amp.trigger (settings.amp.envelope);
         voice.filter.trigger (settings.filter.envelope);
+        voice.filter2.trigger (settings.filter2.envelope);
         voice.spikePosition = 0.0f;
         for (auto& envelope : voice.envelopes)
             envelope.start();
@@ -962,6 +964,7 @@ namespace synth
 
         voice.amp.trigger (settings.amp.envelope);
         voice.filter.trigger (settings.filter.envelope);
+        voice.filter2.trigger (settings.filter2.envelope);
         startLfos (voice, settings);
         voice.spikePosition = 0.0f;
 
@@ -1157,6 +1160,7 @@ namespace synth
             touch (Touch::Kind::release, (float) voice.note, voice.velocity);
         voice.amp.release();
         voice.filter.release();
+        voice.filter2.release();
         for (auto& envelope : voice.envelopes)
             envelope.release();
         voice.pitchEnvelope.release();
@@ -1227,6 +1231,7 @@ namespace synth
         voice.note = -1;
         voice.amp.reset();
         voice.filter.reset();
+        voice.filter2.reset();
         for (auto& osc : voice.oscillators)
         {
             osc.active = osc.fadingOut = false;
@@ -1676,7 +1681,8 @@ namespace synth
             const auto scale = std::exp2 (glow.age * Settings::Afterglow::ageTimeOctaves * voice.glowTime);
             auto amp = ampSettings.envelope;
             auto filt = filterSettings.envelope;
-            for (auto* e : { &amp, &filt })
+            auto filt2 = settings.filter2.envelope;
+            for (auto* e : { &amp, &filt, &filt2 })
             {
                 e->attackMs *= scale;
                 e->decayMs *= scale;
@@ -1684,11 +1690,13 @@ namespace synth
             }
             voice.amp.update (amp);
             voice.filter.update (filt);
+            voice.filter2.update (filt2);
         }
         else
         {
             voice.amp.update (ampSettings.envelope);
             voice.filter.update (filterSettings.envelope);
+            voice.filter2.update (settings.filter2.envelope);
         }
 
         // Glide, once per interval: straight, or along GLIDE CURVE's path.
@@ -1738,19 +1746,29 @@ namespace synth
         // The FILTER's cutoff for the end of this interval (each path glides to it from where it was).
         const auto velocityDown = 1.0f - voice.velocity;
         const auto filterEnvelope = voice.filter.step (n);
-        FilterChannel::Coefficients filterTarget;
-        if (filterSettings.on)
+        const auto filter2Envelope = voice.filter2.step (n);
+        // Each filter's targets (0.96.0: FILTER 2 the same way, from its own envelope; the LOW CUT moved with its filter).
+        FilterTargets targets;
+        const auto makeTargets = [&] (const FilterSettings& fs, float envelopeValue, FilterChannel::Coefficients& main,
+                                      FilterChannel::Coefficients& lowCut)
         {
-            auto octaves = filterSettings.keytrack * (voice.pitch - 60.0f) / 12.0f
-                         - filterSettings.velocity * filterVelocityOctaves * velocityDown
-                         + filterSettings.envelopeAmount * filterEnvelopeOctaves * filterEnvelope
-                               * (1.0f - filterSettings.envelopeVelocity * velocityDown);
+            auto octaves = fs.keytrack * (voice.pitch - 60.0f) / 12.0f
+                         - fs.velocity * filterVelocityOctaves * velocityDown
+                         + fs.envelopeAmount * filterEnvelopeOctaves * envelopeValue
+                               * (1.0f - fs.envelopeVelocity * velocityDown);
             if (glowing)
                 octaves += glowOctaves;
-            const auto cutoff = (double) filterSettings.cutoffHz * std::exp2 ((double) octaves);
-            const auto resonance = filterSettings.resonance * (1.0f - filterSettings.resonanceVelocity * velocityDown);
-            filterTarget = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
-        }
+            const auto shift = std::exp2 ((double) octaves);
+            const auto cutoff = (double) fs.cutoffHz * shift;
+            const auto resonance = fs.resonance * (1.0f - fs.resonanceVelocity * velocityDown);
+            main = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
+            if (fs.hasLowCut())
+                lowCut = FilterChannel::Coefficients::make ((double) fs.lowCutHz * shift, fs.lowCutResonance, sampleRate);
+        };
+        if (filterSettings.on)
+            makeTargets (filterSettings, filterEnvelope, targets.main[0], targets.lowCut[0]);
+        if (settings.filter2.on)
+            makeTargets (settings.filter2, filter2Envelope, targets.main[1], targets.lowCut[1]);
 
         // The VOICE filter's resonators for this note and its LEVELLING, worked out again when the note has moved
         // a quarter tone or its VOWEL, SIZE or SHARP have changed (by the knobs or the matrix).
@@ -1794,7 +1812,7 @@ namespace synth
         {
             if (! pathUsed[p])
                 continue;
-            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, filterTarget, vocalTarget, voice.vocalLevel);
+            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, targets, vocalTarget, voice.vocalLevel);
             if (const auto bus = busOf (voice.paths[p].key); bus > 0)
             {
                 for (int i = 0; i < n; ++i)
@@ -2438,6 +2456,13 @@ namespace synth
             case Field::voiceSize: s.voice.size = value; break;
             case Field::voiceSharp: s.voice.sharp = value; break;
             case Field::voiceMix: s.voice.mix = value; break;
+            case Field::filter2Cutoff: s.filter2.cutoffHz = value; break;
+            case Field::filter2Resonance: s.filter2.resonance = value; break;
+            case Field::filter2Drive: s.filter2.drive = value; break;
+            case Field::filter2Keytrack: s.filter2.keytrack = value; break;
+            case Field::filter2Envelope: s.filter2.envelopeAmount = value; break;
+            case Field::filterLowCut: s.filter.lowCutHz = value; break;
+            case Field::filter2LowCut: s.filter2.lowCutHz = value; break;
         }
     }
 
@@ -2453,7 +2478,11 @@ namespace synth
             keys[i] = -1;
             if (! s.on || ! voice.oscillators[i].active)
                 continue;
-            auto key = s.toFilter && settings.filter.on ? 1 : 0;
+            auto key = 0;
+            if (s.toFilter && s.toFilter2)   // (0.96.0) FILTER 2 instead (none while it's off)
+                key = settings.filter2.on ? (1 | filter2Bit) : 0;
+            else if (s.toFilter && settings.filter.on)
+                key = 1;
             if (s.toVoice && settings.voice.on)
                 key |= voiceBit;
             for (int k = 0; k < numShapers; ++k)
@@ -2513,7 +2542,7 @@ namespace synth
     }
 
     void Engine::processPath (Voice& voice, Path& path, float* left, float* right, int n, const Settings& settings,
-                              const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget,
+                              const FilterTargets& targets, const vocal::Coefficients& vocalTarget,
                               float vocalLevel) noexcept
     {
         const auto velocityDown = 1.0f - voice.velocity;
@@ -2522,11 +2551,27 @@ namespace synth
             if ((path.key & (2 << k)) != 0 && ! settings.shapers[(size_t) k].afterFilter)
                 processShaper (path, k, left, right, n, settings, velocityDown);
 
-        // ...the FILTER...
+        // ...the FILTER (or FILTER 2: 0.96.0)...
         if ((path.key & 1) != 0)
         {
-            const auto& filterSettings = settings.filter;
+            const auto second = (path.key & filter2Bit) != 0;
+            const auto& filterSettings = second ? settings.filter2 : settings.filter;
+            const auto& filterTarget = targets.main[second ? 1 : 0];
             const auto from = path.coefficientsFresh ? filterTarget : path.coefficients;
+            // LOW CUT: a 12 dB high-pass first, its cutoff moved with the filter's (glided the same way).
+            const auto lowCut = filterSettings.hasLowCut();
+            // ...as steep as its filter (as a vintage polysynth's one 12 / 24 dB switch sets both).
+            const auto ft = filterSettings.type;
+            const auto lowCutType = ft == FilterType::lp24 || ft == FilterType::hp24 || ft == FilterType::bp24 || ft == FilterType::bs24
+                                      ? FilterType::hp24 : FilterType::hp12;
+            const auto& lowCutTarget = targets.lowCut[second ? 1 : 0];
+            const auto lowCutFrom = path.coefficientsFresh || ! path.lowCutActive ? lowCutTarget : path.lowCutCoefficients;
+            if (lowCut && ! path.lowCutActive)
+            {
+                path.lowCutLeft.reset();
+                path.lowCutRight.reset();
+            }
+            path.lowCutActive = lowCut;
             path.coefficientsFresh = false;
 
             // DRIVE: up to +24 dB into the saturation, scaled back so a full-scale
@@ -2545,10 +2590,18 @@ namespace synth
                     l = path.driveLeft.process (l, driveGain, makeUp);
                     r = path.driveRight.process (r, driveGain, makeUp);
                 }
+                if (lowCut)
+                {
+                    const auto lc = FilterChannel::Coefficients::lerp (lowCutFrom, lowCutTarget, (float) (i + 1) / (float) n);
+                    l = path.lowCutLeft.process (l, lowCutType, lc);
+                    r = path.lowCutRight.process (r, lowCutType, lc);
+                }
                 left[i] = path.filterLeft.process (l, type, c);
                 right[i] = path.filterRight.process (r, type, c);
             }
             path.coefficients = filterTarget;
+            if (lowCut)
+                path.lowCutCoefficients = lowCutTarget;
         }
 
         // ...the VOICE filter (0.39.0): the vowel's formants at fixed frequencies, MIX against what went in...

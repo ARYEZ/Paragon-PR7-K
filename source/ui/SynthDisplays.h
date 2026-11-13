@@ -84,12 +84,14 @@ class FilterDisplay final : public ParameterDisplay
 public:
     explicit FilterDisplay (juce::AudioProcessorValueTreeState&);
     void paint (juce::Graphics&) override;
+    void setFilter (int which);   // 0.96.0: 0 the FILTER, 1 FILTER 2
 
     // The response in dB at `hz`, as the filter is set. For tests too.
     static double responseDb (synth::FilterType, double cutoffHz, double resonance, double hz);
 
 private:
     std::vector<float> snapshot() const override;
+    int which = 0;
 };
 
 // A SHAPER (stage 3e): its curve at the DRIVE set (left: what comes out for
@@ -133,6 +135,7 @@ public:
     // The envelope's eight parameter IDs, in the order A H D S R, A curve, D curve, R curve.
     EnvelopeDisplay (juce::AudioProcessorValueTreeState&, std::array<juce::String, 8> ids);
     void paint (juce::Graphics&) override;
+    void setIds (std::array<juce::String, 8> newIds) { ids = std::move (newIds); repaint(); }
 
 private:
     std::vector<float> snapshot() const override;

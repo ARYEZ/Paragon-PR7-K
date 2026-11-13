@@ -890,6 +890,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.toVoice = get (oscSetting ("Voice")) > 0.5f;
         o.sfzKey = juce::roundToInt (get (oscSetting ("SfzKey"))) - 1;
         o.sfzKeyTrack = get (oscSetting ("SfzKeyTrack")) > 0.5f;
+        o.toFilter2 = get (oscSetting ("Filter2")) > 0.5f;
         o.voiceLimit = juce::jlimit (1, synth::maxVoices, juce::roundToInt (get (oscSetting ("Voices"))));
         for (int k = 0; k < synth::numShapers; ++k)
             o.toShaper[(size_t) k] = get (oscSetting ("Shp1") + k) > 0.5f;
@@ -981,18 +982,24 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         return synth::EnvelopeSettings { param (a), param (h), param (d), param (su), param (r), param (ac), param (dc), param (rc) };
     };
 
-    auto& f = s.filter;
-    f.on = isOn (fltOn);
-    f.type = (synth::FilterType) choice (param (fltType), synth::filterTypeNames.size());
-    f.cutoffHz = param (fltCutoff);
-    f.resonance = param (fltRes);
-    f.drive = param (fltDrive);
-    f.keytrack = param (fltKey);
-    f.velocity = param (fltVel);
-    f.resonanceVelocity = param (fltResVel);
-    f.envelopeAmount = param (fltEnv);
-    f.envelopeVelocity = param (fltEnvVel);
-    f.envelope = envelope (fltAttack, fltHold, fltDecay, fltSustain, fltRelease, fltAttackCurve, fltDecayCurve, fltReleaseCurve);
+    for (int which = 0; which < 2; ++which)   // the FILTER and FILTER 2 (0.96.0), alike
+    {
+        const auto& ids = filterIds[which];
+        auto& f = which == 0 ? s.filter : s.filter2;
+        f.on = isOn (ids.on);
+        f.type = (synth::FilterType) choice (param (ids.type), synth::filterTypeNames.size());
+        f.cutoffHz = param (ids.cutoff);
+        f.resonance = param (ids.res);
+        f.drive = param (ids.drive);
+        f.keytrack = param (ids.key);
+        f.velocity = param (ids.vel);
+        f.resonanceVelocity = param (ids.resVel);
+        f.envelopeAmount = param (ids.env);
+        f.envelopeVelocity = param (ids.envVel);
+        f.envelope = envelope (ids.attack, ids.hold, ids.decay, ids.sustain, ids.release, ids.attackCurve, ids.decayCurve, ids.releaseCurve);
+        f.lowCutHz = param (ids.lowCut);
+        f.lowCutResonance = param (ids.lowCutRes);
+    }
 
     auto& v = s.voice;
     v.on = isOn (voiceOn);

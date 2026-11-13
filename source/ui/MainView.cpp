@@ -137,6 +137,13 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
         addAndMakeVisible (component);
 
     synthPage = { &filterEnvelope, &ampEnvelope, &amp, &play, &rackButton };
+    // The FILTER ENVELOPE panel follows the filter the FILTER panel shows (0.96.0: FILTER 2 has its own envelope).
+    filter.onFilterShown = [this] (int which)
+    {
+        const auto& ids = ParamIDs::filterIds[which];
+        filterEnvelope.show (which == 0 ? "FILTER ENVELOPE" : "FILTER 2 ENVELOPE",
+                             { ids.attack, ids.hold, ids.decay, ids.sustain, ids.release, ids.attackCurve, ids.decayCurve, ids.releaseCurve });
+    };
     for (auto* component : synthPage)
         addAndMakeVisible (component);
 

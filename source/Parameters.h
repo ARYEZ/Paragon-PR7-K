@@ -59,7 +59,9 @@ namespace ParamIDs
         "SfzKey",
         // 0.83.0: SFZ KEY TRACK (on: that key's samples pitched by the key played, from the chosen key: one gong or drone
         // across the keyboard).
-        "SfzKeyTrack" };
+        "SfzKeyTrack",
+        // 0.96.0: with TO FILTER, through FILTER 2 instead of FILTER 1.
+        "Filter2" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)
@@ -97,6 +99,41 @@ namespace ParamIDs
     inline constexpr auto fltAttackCurve  = "flt1AttackCurve";    // -1 to 1
     inline constexpr auto fltDecayCurve   = "flt1DecayCurve";
     inline constexpr auto fltReleaseCurve = "flt1ReleaseCurve";
+    // 0.96.0: each filter's LOW CUT (a resonant high-pass before it, moved with it; 20 Hz = none), and FILTER 2,
+    // the same settings as the FILTER's (its own envelope too), for the oscillators set to it.
+    inline constexpr auto fltLowCut    = "flt1LowCut";      // Hz
+    inline constexpr auto fltLowCutRes = "flt1LowCutRes";   // 0 to 1
+    inline constexpr auto flt2On       = "flt2On";
+    inline constexpr auto flt2Type     = "flt2Type";
+    inline constexpr auto flt2Cutoff   = "flt2Cutoff";
+    inline constexpr auto flt2Res      = "flt2Res";
+    inline constexpr auto flt2Drive    = "flt2Drive";
+    inline constexpr auto flt2Key      = "flt2Key";
+    inline constexpr auto flt2Vel      = "flt2Vel";
+    inline constexpr auto flt2ResVel   = "flt2ResVel";
+    inline constexpr auto flt2Env      = "flt2Env";
+    inline constexpr auto flt2EnvVel   = "flt2EnvVel";
+    inline constexpr auto flt2Attack   = "flt2Attack";
+    inline constexpr auto flt2Hold     = "flt2Hold";
+    inline constexpr auto flt2Decay    = "flt2Decay";
+    inline constexpr auto flt2Sustain  = "flt2Sustain";
+    inline constexpr auto flt2Release  = "flt2Release";
+    inline constexpr auto flt2AttackCurve  = "flt2AttackCurve";
+    inline constexpr auto flt2DecayCurve   = "flt2DecayCurve";
+    inline constexpr auto flt2ReleaseCurve = "flt2ReleaseCurve";
+    inline constexpr auto flt2LowCut    = "flt2LowCut";
+    inline constexpr auto flt2LowCutRes = "flt2LowCutRes";
+    // Both filters' IDs side by side (0: FILTER, 1: FILTER 2), for the code that treats them alike.
+    struct FilterIds
+    {
+        const char *on, *type, *cutoff, *res, *drive, *key, *vel, *resVel, *env, *envVel,
+                   *attack, *hold, *decay, *sustain, *release, *attackCurve, *decayCurve, *releaseCurve, *lowCut, *lowCutRes;
+    };
+    inline constexpr FilterIds filterIds[2] {
+        { fltOn, fltType, fltCutoff, fltRes, fltDrive, fltKey, fltVel, fltResVel, fltEnv, fltEnvVel,
+          fltAttack, fltHold, fltDecay, fltSustain, fltRelease, fltAttackCurve, fltDecayCurve, fltReleaseCurve, fltLowCut, fltLowCutRes },
+        { flt2On, flt2Type, flt2Cutoff, flt2Res, flt2Drive, flt2Key, flt2Vel, flt2ResVel, flt2Env, flt2EnvVel,
+          flt2Attack, flt2Hold, flt2Decay, flt2Sustain, flt2Release, flt2AttackCurve, flt2DecayCurve, flt2ReleaseCurve, flt2LowCut, flt2LowCutRes } };
 
     inline constexpr auto ampVolume   = "amp1Volume";     // 0 to 2
     inline constexpr auto ampVel      = "amp1Vel";        // 0 to 1

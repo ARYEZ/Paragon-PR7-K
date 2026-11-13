@@ -38,6 +38,14 @@ namespace ModDestinations
             d.push_back ({ ParamIDs::fltDrive, "Filter", "Drive", { Field::filterDrive, 0 } });
             d.push_back ({ ParamIDs::fltKey, "Filter", "Keytrack", { Field::filterKeytrack, 0 } });
             d.push_back ({ ParamIDs::fltEnv, "Filter", "Envelope", { Field::filterEnvelope, 0 } });
+            d.push_back ({ ParamIDs::fltLowCut, "Filter", "Low Cut", { Field::filterLowCut, 0 } });
+            // 0.96.0: FILTER 2
+            d.push_back ({ ParamIDs::flt2Cutoff, "Filter 2", "Cutoff", { Field::filter2Cutoff, 0 } });
+            d.push_back ({ ParamIDs::flt2Res, "Filter 2", "Resonance", { Field::filter2Resonance, 0 } });
+            d.push_back ({ ParamIDs::flt2Drive, "Filter 2", "Drive", { Field::filter2Drive, 0 } });
+            d.push_back ({ ParamIDs::flt2Key, "Filter 2", "Keytrack", { Field::filter2Keytrack, 0 } });
+            d.push_back ({ ParamIDs::flt2Env, "Filter 2", "Envelope", { Field::filter2Envelope, 0 } });
+            d.push_back ({ ParamIDs::flt2LowCut, "Filter 2", "Low Cut", { Field::filter2LowCut, 0 } });
 
             for (int k = 0; k < ParamIDs::numShapers; ++k)
             {

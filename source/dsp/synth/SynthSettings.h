@@ -124,6 +124,7 @@ namespace synth
         int subOctave = 1;          // index into subOctaveNames
         bool subInvert = false;
         bool toFilter = true;       // through the FILTER (off: straight to the AMP)
+        bool toFilter2 = false;     // (0.96.0) with toFilter: through FILTER 2 instead of FILTER 1
         bool toVoice = true;        // through the VOICE filter (0.39.0), when it's on
         int sfzKey = -1;            // 0.81.0: -1 an SFZ plays the key pressed; else this key's samples for every note,
                                     // at their own pitch (TRANSPOSE and FINE still move it): a drum on any key
@@ -236,6 +237,13 @@ namespace synth
         float envelopeAmount = 0.0f; // -1 to 1
         float envelopeVelocity = 0.0f;
         EnvelopeSettings envelope { 0.0f, 0.0f, 500.0f, 0.0f, 300.0f };
+        // LOW CUT (0.96.0): a resonant 12 dB high-pass before the filter, moved with it by the same keytrack, velocity
+        // and envelope (a channel of a vintage polysynth: high-pass into low-pass, one envelope for both). At its
+        // lowest (20 Hz) it isn't there at all.
+        float lowCutHz = 20.0f;
+        float lowCutResonance = 0.0f;
+        static constexpr float lowCutOffHz = 20.5f;
+        bool hasLowCut() const noexcept { return lowCutHz > lowCutOffHz; }
     };
 
     // The VOICE filter (0.39.0, VoiceFilter.h): fixed-frequency vowel formants, after the FILTER.
@@ -291,6 +299,7 @@ namespace synth
     {
         std::array<OscSettings, numOscillators> oscillators {};
         FilterSettings filter;
+        FilterSettings filter2;     // (0.96.0) FILTER 2: a second filter with its own envelope, for oscillators set to it
         VocalSettings voice;
         std::array<ShaperSettings, numShapers> shapers {};
         AmpSettings amp;

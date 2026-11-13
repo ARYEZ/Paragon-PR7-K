@@ -32,6 +32,7 @@ namespace
     constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
     constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
     constexpr int stageSirocco = 30;
+    constexpr int stageFilter2 = 62;      // 0.96.0: FILTER 2, the filters' LOW CUT, each oscillator's FILTER 2 switch
     constexpr int stageSfzKeyTrack = 51;  // 0.83.0: SFZ KEY TRACK (50: COLOSSUS, in RackParameters.cpp)
     constexpr int stageSfzKey = 49;       // 0.81.0: SFZ KEY (48: LOCKSTEP, in RackParameters.cpp)      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
 
@@ -190,16 +191,16 @@ namespace
     void addEnvelope (juce::AudioProcessorValueTreeState::ParameterLayout& layout, const juce::String& prefix,
                       const char* attack, const char* hold, const char* decay, const char* sustain, const char* release,
                       const char* attackCurve, const char* decayCurve, const char* releaseCurve,
-                      const synth::EnvelopeSettings& defaults)
+                      const synth::EnvelopeSettings& defaults, int version = 1)
     {
-        add (layout, attack, prefix + " Attack", timeRange (20000.0f), defaults.attackMs, asMs);
-        add (layout, hold, prefix + " Hold", timeRange (10000.0f), defaults.holdMs, asMs);
-        add (layout, decay, prefix + " Decay", timeRange (20000.0f), defaults.decayMs, asMs);
-        add (layout, sustain, prefix + " Sustain", { 0.0f, 1.0f }, defaults.sustain, asPercent);
-        add (layout, release, prefix + " Release", timeRange (20000.0f), defaults.releaseMs, asMs);
-        add (layout, attackCurve, prefix + " Attack Curve", { -1.0f, 1.0f }, defaults.attackCurve, asSignedPercent);
-        add (layout, decayCurve, prefix + " Decay Curve", { -1.0f, 1.0f }, defaults.decayCurve, asSignedPercent);
-        add (layout, releaseCurve, prefix + " Release Curve", { -1.0f, 1.0f }, defaults.releaseCurve, asSignedPercent);
+        add (layout, attack, prefix + " Attack", timeRange (20000.0f), defaults.attackMs, asMs, version);
+        add (layout, hold, prefix + " Hold", timeRange (10000.0f), defaults.holdMs, asMs, version);
+        add (layout, decay, prefix + " Decay", timeRange (20000.0f), defaults.decayMs, asMs, version);
+        add (layout, sustain, prefix + " Sustain", { 0.0f, 1.0f }, defaults.sustain, asPercent, version);
+        add (layout, release, prefix + " Release", timeRange (20000.0f), defaults.releaseMs, asMs, version);
+        add (layout, attackCurve, prefix + " Attack Curve", { -1.0f, 1.0f }, defaults.attackCurve, asSignedPercent, version);
+        add (layout, decayCurve, prefix + " Decay Curve", { -1.0f, 1.0f }, defaults.decayCurve, asSignedPercent, version);
+        add (layout, releaseCurve, prefix + " Release Curve", { -1.0f, 1.0f }, defaults.releaseCurve, asSignedPercent, version);
     }
 }
 
@@ -350,6 +351,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
              stageSfzKey);
         // SFZ KEY TRACK (0.83.0): SFZ KEY's samples follow the key played (off: at their own pitch).
         addSwitch (layout, osc (i, "SfzKeyTrack"), name + "Sfz Key Track", defaults.sfzKeyTrack, stageSfzKeyTrack);
+        addSwitch (layout, osc (i, "Filter2"), name + "To Filter 2", defaults.toFilter2, stageFilter2);
     }
 
     // The VOICE filter (0.39.0): off in a new sound.
@@ -391,6 +393,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     add (layout, fltEnvVel, "Filter Envelope Velocity", { 0.0f, 1.0f }, filter.envelopeVelocity, asPercent);
     addEnvelope (layout, "Filter", fltAttack, fltHold, fltDecay, fltSustain, fltRelease,
                  fltAttackCurve, fltDecayCurve, fltReleaseCurve, filter.envelope);
+    // 0.96.0: the LOW CUT, then FILTER 2 (the same, its own envelope and LOW CUT too).
+    const auto lowCutRange = logRange (20.0, 8000.0);
+    const auto asLowCut = [] (float value, int) { return value <= synth::FilterSettings::lowCutOffHz ? juce::String ("OFF")
+                                                         : value < 1000.0f ? juce::String (juce::roundToInt (value)) + " Hz"
+                                                                           : juce::String (value / 1000.0f, 2) + " kHz"; };
+    add (layout, fltLowCut, "Filter Low Cut", lowCutRange, filter.lowCutHz, asLowCut, stageFilter2);
+    add (layout, fltLowCutRes, "Filter Low Cut Resonance", { 0.0f, 1.0f }, filter.lowCutResonance, asPercent, stageFilter2);
+    addSwitch (layout, flt2On, "Filter 2 On", filter.on, stageFilter2);
+    addChoice (layout, flt2Type, "Filter 2 Type", synth::filterTypeNames, (int) filter.type, stageFilter2);
+    add (layout, flt2Cutoff, "Filter 2 Cutoff", logRange (20.0, 20000.0), filter.cutoffHz, asFrequency, stageFilter2);
+    add (layout, flt2Res, "Filter 2 Resonance", { 0.0f, 1.0f }, filter.resonance, asPercent, stageFilter2);
+    add (layout, flt2Drive, "Filter 2 Drive", { 0.0f, 1.0f }, filter.drive, asPercent, stageFilter2);
+    add (layout, flt2Key, "Filter 2 Keytrack", { 0.0f, 1.0f }, filter.keytrack, asPercent, stageFilter2);
+    add (layout, flt2Vel, "Filter 2 Velocity", { 0.0f, 1.0f }, filter.velocity, asPercent, stageFilter2);
+    add (layout, flt2ResVel, "Filter 2 Resonance Velocity", { 0.0f, 1.0f }, filter.resonanceVelocity, asPercent, stageFilter2);
+    add (layout, flt2Env, "Filter 2 Envelope", { -1.0f, 1.0f }, filter.envelopeAmount, asSignedPercent, stageFilter2);
+    add (layout, flt2EnvVel, "Filter 2 Envelope Velocity", { 0.0f, 1.0f }, filter.envelopeVelocity, asPercent, stageFilter2);
+    addEnvelope (layout, "Filter 2", flt2Attack, flt2Hold, flt2Decay, flt2Sustain, flt2Release,
+                 flt2AttackCurve, flt2DecayCurve, flt2ReleaseCurve, filter.envelope, stageFilter2);
+    add (layout, flt2LowCut, "Filter 2 Low Cut", lowCutRange, filter.lowCutHz, asLowCut, stageFilter2);
+    add (layout, flt2LowCutRes, "Filter 2 Low Cut Resonance", { 0.0f, 1.0f }, filter.lowCutResonance, asPercent, stageFilter2);
 
     // The SHAPERs (stage 3e): four, off in a new sound.
     const synth::ShaperSettings shaper;

@@ -200,6 +200,12 @@ namespace synth
         };
 
         // A route through the note: the FILTER (or not) and which SHAPERs, with their state.
+        // Each filter's target coefficients for this interval (0: FILTER, 1: FILTER 2), and their LOW CUTs'.
+        struct FilterTargets
+        {
+            std::array<FilterChannel::Coefficients, 2> main, lowCut;
+        };
+
         struct Path
         {
             int key = -1;               // bit 0: the FILTER; bits 1 to 4: SHAPERs 1 to 4 (-1: not in use);
@@ -209,6 +215,9 @@ namespace synth
             Saturator driveLeft, driveRight;
             FilterChannel::Coefficients coefficients;   // the filter's now (glided to each update)
             bool coefficientsFresh = true;
+            FilterChannel lowCutLeft, lowCutRight;               // (0.96.0) the filter's LOW CUT
+            FilterChannel::Coefficients lowCutCoefficients;
+            bool lowCutActive = false;
             std::array<shaper::Channel, numShapers> shapeLeft, shapeRight;
             std::array<float, numShapers> shapeGain {}, shapeMakeUp {};   // as of the last update, glided from (0: not yet)
             vocal::Channel vocalLeft, vocalRight;          // the VOICE filter (0.39.0)
@@ -223,6 +232,9 @@ namespace synth
                 driveLeft.reset();
                 driveRight.reset();
                 coefficientsFresh = true;
+                lowCutLeft.reset();
+                lowCutRight.reset();
+                lowCutActive = false;
                 vocalLeft.reset();
                 vocalRight.reset();
                 vocalFresh = true;
@@ -248,7 +260,7 @@ namespace synth
             bool killing = false;       // stolen: fading out fast
             float killGain = 1.0f;
 
-            Envelope amp, filter;
+            Envelope amp, filter, filter2;
             // One per route its oscillators take (stage 3e): oscillators going
             // through the same FILTER and SHAPERs share one; one set to its own
             // route gets its own filter and shapers. With no shapers on, every
@@ -301,8 +313,8 @@ namespace synth
         void startLfos (Voice&, const Settings&) noexcept;
         void renderOscillators (Voice&, int numSamples, const Settings&, float bendSemitones) noexcept;
         void assignPaths (Voice&, const Settings&) noexcept;   // each oscillator's route, and a path for each
-        void processPath (Voice&, Path&, float* left, float* right, int n, const Settings&,
-                          const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget, float vocalLevel) noexcept;
+        void processPath (Voice&, Path&, float* left, float* right, int n, const Settings&, const FilterTargets&,
+                          const vocal::Coefficients& vocalTarget, float vocalLevel) noexcept;
         void processShaper (Path&, int shaper, float* left, float* right, int n, const Settings&, float velocityDown) noexcept;
         float vibratoValue (VibratoWave, float& phase, float& held, float advance) noexcept;   // -1 to 1, then moves on
 
@@ -380,6 +392,7 @@ namespace synth
         static constexpr int busShift = 19;
         static int busOf (int key) noexcept { return (key >> busShift) & 7; }
         static constexpr int voiceBit = 1 << 22;   // 0.39.0: the path goes through the VOICE filter
+        static constexpr int filter2Bit = 1 << 23; // 0.96.0: with bit 0, the path's filter is FILTER 2
         float* outputBase = nullptr;   // `process`'s left output (renderVoice finds its place in the sends from it)
         bool sendsWanted (const Settings& s, int send) const noexcept { return s.sendOn[(size_t) send] && sendBaseLeft[(size_t) send] != nullptr; }
         static float sendGainOf (int key, int send) noexcept

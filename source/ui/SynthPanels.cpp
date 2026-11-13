@@ -999,8 +999,8 @@ void FilterPanel::PageTab::paintButton (juce::Graphics& g, bool highlighted, boo
     g.setColour (wasLit ? ParagonColours::accent : juce::Colour (0xff3a2f33));
     g.fillEllipse (led);
     g.setColour (isSelected || highlighted ? ParagonColours::text : ParagonColours::textDim);
-    g.setFont (juce::FontOptions (11.5f, juce::Font::bold));
-    g.drawText (getName(), area.withTrimmedLeft (16.0f), juce::Justification::centred, false);
+    g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+    g.drawText (getName(), area.withTrimmedLeft (15.0f), juce::Justification::centred, false);
 }
 
 FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
@@ -1016,6 +1016,10 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
       velocity (s, ParamIDs::fltVel, "VELOCITY", "Softer notes close the cutoff: how much."),
       resonanceVelocity (s, ParamIDs::fltResVel, "RES VEL", "Softer notes have less resonance: how much."),
       envelopeVelocity (s, ParamIDs::fltEnvVel, "ENV VEL", "Softer notes move the filter less: how much."),
+      lowCut (s, ParamIDs::fltLowCut, "LOW CUT", "A resonant high-pass in front of the filter, cutting the lows. It moves with the filter "
+                                                 "(the same envelope, keytrack and velocity), as a vintage polysynth's high-pass and low-pass "
+                                                 "do. Fully left: none."),
+      lowCutResonance (s, ParamIDs::fltLowCutRes, "LC RES", "A peak at the LOW CUT's cutoff."),
       shaperDisplay (s),
       shaperOn (s, ParamIDs::shp (0, "On"), "ON", "Switch this shaper on. The oscillators ticked under the picture go through it (all of them, unless you untick some)."),
       model (s, ParamIDs::shp (0, "Model"), "MODEL", "The kind of distortion. SOFT, SMOOTH and CUBIC round off gently; HARD clips flat; "
@@ -1051,10 +1055,13 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
         tabs.push_back (std::make_unique<PageTab> ("SHP " + juce::String (k + 1),
                                                    [this, k] { return state.getRawParameterValue (ParamIDs::shp (k, "On"))->load() > 0.5f; }));
     tabs.push_back (std::make_unique<PageTab> ("VOICE", [this] { return state.getRawParameterValue (ParamIDs::voiceOn)->load() > 0.5f; }));
+    tabs.push_back (std::make_unique<PageTab> ("FILTER 2", [this] { return state.getRawParameterValue (ParamIDs::flt2On)->load() > 0.5f; }));
     for (size_t i = 0; i < tabs.size(); ++i)
     {
         tabs[i]->setTooltip (i == 0 ? "The filter"
                              : (int) i == voicePage ? juce::String ("The VOICE filter: shapes the sound into a sung vowel, for choirs and voices")
+                             : (int) i == filter2Page ? juce::String ("FILTER 2: a second filter with its own envelope, for the oscillators set to it "
+                                                                      "(two layers, each filtered its own way)")
                                                     : "Shaper " + juce::String ((int) i) + ": a distortion on each note, with two EQ bands to colour it");
         tabs[i]->onClick = [this, i] { showPage ((int) i); };
         addAndMakeVisible (*tabs[i]);
@@ -1062,7 +1069,8 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
     tabs.front()->setToggleState (true, juce::dontSendNotification);
 
     addAndMakeVisible (display);
-    for (auto* control : { &on, &type, &cutoff, &resonance, &drive, &keytrack, &envelope, &velocity, &resonanceVelocity, &envelopeVelocity })
+    for (auto* control : { &on, &type, &cutoff, &resonance, &drive, &keytrack, &envelope, &velocity, &resonanceVelocity, &envelopeVelocity,
+                           &lowCut, &lowCutResonance })
         addAndMakeVisible (control);
     on.setCompact (true);
     type.setCompact (true);
@@ -1088,6 +1096,15 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
         addChildComponent (*routes.back());
     }
 
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+    {
+        filter2Routes.push_back (std::make_unique<ParamControl> (s, ParamIDs::osc (i, "Filter2"), juce::String (i + 1),
+                                                                 "Oscillator " + juce::String (i + 1) + " goes through FILTER 2 instead of the "
+                                                                 "first filter (when its TO FILTER is on)."));
+        filter2Routes.back()->setCompact (true);
+        addChildComponent (*filter2Routes.back());
+    }
+
     addChildComponent (voiceDisplay);
     for (auto* control : { &voiceOn, &vowel, &size, &sharp, &voiceMix })
         addChildComponent (control);
@@ -1104,18 +1121,35 @@ FilterPanel::FilterPanel (juce::AudioProcessorValueTreeState& s)
 
 void FilterPanel::showPage (int newPage)
 {
-    page = juce::jlimit (0, voicePage, newPage);
+    page = juce::jlimit (0, filter2Page, newPage);
     tabs[(size_t) page]->setToggleState (true, juce::dontSendNotification);
-    const auto filterPage = page == 0, isVoicePage = page == voicePage, shaperPage = ! filterPage && ! isVoicePage;
+    const auto second = page == filter2Page;
+    const auto filterPage = page == 0 || second, isVoicePage = page == voicePage, shaperPage = ! filterPage && ! isVoicePage;
     for (auto* control : std::initializer_list<juce::Component*> { &display, &on, &type, &cutoff, &resonance, &drive, &keytrack, &envelope,
-                                                                   &velocity, &resonanceVelocity, &envelopeVelocity })
+                                                                   &velocity, &resonanceVelocity, &envelopeVelocity, &lowCut, &lowCutResonance })
         control->setVisible (filterPage);
+    for (auto& route : filter2Routes)
+        route->setVisible (second);
+    if (filterPage)
+    {
+        // One set of filter controls, pointed at the filter shown (0.96.0).
+        const auto& ids = ParamIDs::filterIds[second ? 1 : 0];
+        const std::pair<ParamControl*, const char*> controls[] = {
+            { &on, ids.on }, { &type, ids.type }, { &cutoff, ids.cutoff }, { &resonance, ids.res }, { &drive, ids.drive },
+            { &keytrack, ids.key }, { &envelope, ids.env }, { &velocity, ids.vel }, { &resonanceVelocity, ids.resVel },
+            { &envelopeVelocity, ids.envVel }, { &lowCut, ids.lowCut }, { &lowCutResonance, ids.lowCutRes } };
+        for (const auto& [control, id] : controls)
+            control->attach (id);
+        display.setFilter (second ? 1 : 0);
+        if (onFilterShown != nullptr)
+            onFilterShown (second ? 1 : 0);
+    }
     for (auto* control : std::initializer_list<juce::Component*> { &shaperDisplay, &shaperOn, &model, &place, &shaperDrive, &driveVelocity,
                                                                    &mix, &output, &eq1Gain, &eq1Freq, &eq1Q, &eq2Gain, &eq2Freq, &eq2Q, &eqSplit })
         control->setVisible (shaperPage);
     for (auto& route : routes)
         route->setVisible (shaperPage);
-    routeLabel.setVisible (! filterPage);
+    routeLabel.setVisible (! filterPage || second);
     for (auto* control : std::initializer_list<juce::Component*> { &voiceDisplay, &voiceOn, &vowel, &size, &sharp, &voiceMix })
         control->setVisible (isVoicePage);
     for (auto& route : voiceRoutes)
@@ -1152,24 +1186,45 @@ void FilterPanel::resized()
     auto titleArea = getTitleArea().withTrimmedTop (4);
     auto right = titleArea.removeFromRight (162);
     auto strip = titleArea.reduced (0, 3).withTrimmedBottom (1);
-    for (size_t i = 0; i < tabs.size(); ++i)
+    // Each tab as wide as its name needs, all of them sharing the strip (0.96.0: seven tabs with FILTER 2).
     {
-        tabs[i]->setBounds (strip.removeFromLeft (i == 0 ? 72 : 60));
-        strip.removeFromLeft (4);
+        const auto gap = 4;
+        auto total = 0;
+        for (const auto& tab : tabs)
+            total += tab->getName().length() + 4;
+        const auto room = strip.getWidth() - gap * ((int) tabs.size() - 1);
+        for (size_t i = 0; i < tabs.size(); ++i)
+        {
+            const auto width = juce::jmin (72, room * (tabs[i]->getName().length() + 4) / juce::jmax (1, total));
+            tabs[i]->setBounds (strip.removeFromLeft (width));
+            strip.removeFromLeft (gap);
+        }
     }
     const auto h = ParamControl::knobHeight;
-    if (page == 0)
+    if (page == 0 || page == filter2Page)
     {
         type.setBounds (right.removeFromRight (96));
         right.removeFromRight (10);
         on.setBounds (right.removeFromRight (56));
 
         auto area = getContentArea().withTrimmedTop (6);
-        display.setBounds (area.removeFromTop (136));
+        if (page == filter2Page)
+        {
+            // FILTER 2: which oscillators go through it, under its picture.
+            display.setBounds (area.removeFromTop (106));
+            area.removeFromTop (6);
+            auto routeRow = area.removeFromTop (22);
+            routeLabel.setBounds (routeRow.removeFromLeft (84));
+            const auto routeWidth = juce::jmin (52, routeRow.getWidth() / ParamIDs::numOscillators);
+            for (auto& route : filter2Routes)
+                route->setBounds (routeRow.removeFromLeft (routeWidth));
+        }
+        else
+            display.setBounds (area.removeFromTop (136));
         area.removeFromTop (8);
         SynthPanel::layoutRow (area.removeFromTop (h), { &cutoff, &resonance, &drive, &keytrack, &envelope }, 86);
         area.removeFromTop (4);
-        SynthPanel::layoutRow (area.removeFromTop (h), { &velocity, &resonanceVelocity, &envelopeVelocity }, 86);
+        SynthPanel::layoutRow (area.removeFromTop (h), { &velocity, &resonanceVelocity, &envelopeVelocity, &lowCut, &lowCutResonance }, 86);
         return;
     }
 
@@ -1228,6 +1283,15 @@ EnvelopePanel::EnvelopePanel (juce::AudioProcessorValueTreeState& state, const j
         controls.push_back (std::make_unique<ParamControl> (state, ids[i], labels[i].first, labels[i].second));
         addAndMakeVisible (*controls.back());
     }
+}
+
+void EnvelopePanel::show (const juce::String& newTitle, std::array<juce::String, 8> ids)
+{
+    title = newTitle;
+    for (size_t i = 0; i < ids.size(); ++i)
+        controls[i]->attach (ids[i]);
+    display.setIds (std::move (ids));
+    repaint();
 }
 
 void EnvelopePanel::resized()
