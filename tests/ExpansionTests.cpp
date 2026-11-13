@@ -1285,6 +1285,72 @@ TEST_CASE ("HIGHNOON: MACRO 3 is RAGTIME on every preset, resting at its left; t
     CHECK (used.size() == 6);   // the orchestra, Meatbass, the Salamander, the Kay banjo, Shinyguitar, VCSL
 }
 
+TEST_CASE ("SEVERED (rebuilt in 0.94.0): MACRO 3 is SORT on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][sort]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 20)   // SEVERED: the twenty-first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "SORT");
+            CHECK (version->notes.contains ("SORT"));
+            CHECK (version->parameters.at (ParamIDs::sortOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::sortAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::sortAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 11);
+    CHECK (used.size() == 4);   // the orchestra, Meatbass, the Salamander, VCSL
+}
+
 TEST_CASE ("DARK DESCENT: MACRO 3 is GEARWORKS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][gearworks]")
 {
     ParagonX1AudioProcessor processor;
@@ -2816,16 +2882,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sev && type == "Bass")
         {
-            // Held notes (the step sequencer and GLITCH make the rhythm), then the plain ones re-struck: D, Bb, F, A.
-            if (rig.name == "Break Room Bass")
-            {
-                constexpr int roots[] = { 38, 34, 41, 33 };
-                for (int k = 0; k < 16; ++k)
-                    if (k % 4 != 3)
-                        line ({ { k * 1.0, 0.6, roots[k / 4] } }, k % 2 == 0 ? 110 : 90);
-            }
-            else
-                line ({ { 0, 3.9, 38 }, { 4, 3.9, 34 }, { 8, 3.9, 41 }, { 12, 3.9, 33 } }, 105);
+            // Held roots, a bar each: D, Bb, F, A.
+            line ({ { 0, 3.9, 38 }, { 4, 3.9, 34 }, { 8, 3.9, 41 }, { 12, 3.9, 33 } }, 105);
             wheel (8.0, 15.0, 90);
             length = 19.0 * beat;
         }

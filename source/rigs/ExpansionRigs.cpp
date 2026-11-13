@@ -12,6 +12,7 @@
 #include "dsp/effects/LoFi.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/Reverb.h"
+#include "dsp/effects/Sort.h"
 #include "dsp/effects/Wah.h"
 #include "dsp/synth/Wavetable.h"
 
@@ -166,6 +167,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
+            { "Desk Toy", -8.1f }, { "Filing Pizzicato", -2.0f }, { "Music Box Award", -7.7f },
             { "Dusty Strum", -3.5f }, { "Wind-Up Box", -7.5f }, { "Broken String", -0.7f },
             { "Bolt Driver", -1.5f }, { "Mended Strings", -4.7f }, { "Frost Glass", -8.0f },
             { "Broken Radio", 0.0f }, { "Front-Porch Banjo", -7.5f }, { "Snake Rattle", -5.5f },
@@ -191,12 +193,9 @@ namespace
             { "Code Drip", -2.6f },
             { "Condensation Drip", -5.4f },
             { "Control Room Mallet", -6.6f },
-            { "Corridor Pick", -2.7f },
-            { "Cubicle Pizzicato", -5.1f },
             { "Dashboard Pulse", -10.1f },
             { "Deep Pizzicato", -3.2f },
             { "Desert Oud", -4.2f },
-            { "Desk Toy Piano", -7.0f },
             { "Detuned Upright", 0.0f },
             { "Dosimeter Ping", -5.8f },
             { "Either Way", -7.2f },
@@ -9013,456 +9012,6 @@ namespace
         reverb (pkObserver, RT::hall, 0.65f, 0.24f);
         space (pkObserver);
         pkAdd (x, pkObserver);
-    }
-
-    // SEVERED: inspired by the score of a 2022 series about office workers whose work memories are surgically split
-    // from their home lives: a cheerful, sterile corporate surface (muzak, chimes, retro screens, humming lights, long
-    // white corridors) over quiet dread and a melancholy piano. No title, company, departments, characters, terms or
-    // music from the series: our own sounds. MACRO 3 is DREAD on every preset: the cheerful surface turns uneasy.
-    // Each preset is built round a different part of the synth.
-    void severed (Expansion x)
-    {
-        using SP20 = synth::mod::ShapePoint;
-        using GM = effects::Glitch::Mode;
-        const auto oneShot = [] (Builder& b, int env, std::vector<SP20> points)
-        {
-            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
-            b.rig.modulation.envelopes[(size_t) env] = { std::move (points), -1, -1, -1 };
-        };
-        const auto clean = [] (Builder& b, int o)   // off the filter, shapers, buses and VOICE
-        {
-            b.osc (o, "Filter", 0.0f).osc (o, "Insert", 0.0f).osc (o, "Voice", 0.0f);
-            for (const auto* shp : { "Shp1", "Shp2", "Shp3", "Shp4" })
-                b.osc (o, shp, 0.0f);
-        };
-        const auto ratio = [] (float r) { return 0.5f + std::log2 (r) / 8.0f; };   // FM / AM RATE for a ratio
-        // DREAD's clash: a quiet copy of the note a tritone up (or a half step), silent until MACRO 3 brings it in.
-        const auto clash = [&clean] (Builder& b, int o, synth::OscWave wave, float semitones, float amount)
-        {
-            b.osc (o, "On", 1.0f).osc (o, "Wave", (float) wave).osc (o, "Transpose", semitones).osc (o, "Volume", 0.0f);
-            clean (b, o);
-            route (b, "macro3", ParamIDs::osc (o, "Volume"), amount);
-        };
-
-        // ---- LEADS -------------------------------------------------------------------------------------------
-        auto memo = x.make ("Cheerful Memo", 1, { "Lead", "Freeform", "Bright", "Office" },
-            "A chipper office-jingle lead with a smile that doesn't reach the eyes: a hand-drawn wave (DRAW: a bright, "
-            "lopsided cycle) evened out by EDGE's SYMMETRY mode, blending it with its own mirror image, so it's rounder "
-            "and cleaner), a quick pluck of the filter, a short room. MACROS: BRIGHT, SPACE, DREAD (a tritone creeps in "
-            "underneath and the pitch wavers). MOD WHEEL: vibrato.");
-        {
-            synth::FreeformDrawing d;
-            for (int i = 0; i < synth::FreeformDrawing::points; ++i)
-            {
-                const auto t = (float) i / (float) synth::FreeformDrawing::points;
-                d.values[(size_t) i] = t < 0.3f ? t / 0.3f : 1.0f - 1.6f * (t - 0.3f) / 0.7f;   // a fast rise, a long fall
-            }
-            d.edge = 1.0f;
-            d.edgeMode = synth::FreeformEdge::symmetry;
-            memo.rig.drawings[0] = d;
-        }
-        memo.osc (0, "Wave", (float) synth::OscWave::freeform).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "VibRate", 5.5f)
-            .filter (FilterType::lp24, 3500.0f, 0.15f, 0.3f).filterEnvelope (0.0f, 250.0f, 0.5f, 200.0f).set (ParamIDs::fltKey, 0.5f)
-            .ampEnvelope (5.0f, 400.0f, 0.75f, 250.0f)
-            .mono (25.0f);
-        clash (memo, 1, synth::OscWave::triangle, -6.0f, 0.3f);
-        route (memo, "macro3", ParamIDs::osc (0, "VibAmount"), 0.15f);
-        route (memo, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
-        route (memo, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (memo, "BRIGHT", "SPACE", "DREAD");
-        delay (memo, "1/8", 0.25f, 0.1f, false, 5.0f);
-        reverb (memo, RT::room, 0.4f, 0.12f);
-        space (memo);
-        memo.set (ParamIDs::patchLevel, 1.3f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (memo);
-
-        auto sorter = x.make ("Number Sorter", 2, { "Lead", "Crush", "Retro", "Digital" },
-            "A stepped, retro-screen lead, like an old terminal humming to itself: a triangle cut into steps by SHAPE's "
-            "CRUSH in RATE mode (so it buzzes like early computer sound), a square an octave down, a dry little room. "
-            "MACROS: BRIGHT (finer steps), SPACE, DREAD (coarser steps and a half-step clash). MOD WHEEL: vibrato.");
-        sorter.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "Crush", 0.35f).osc (0, "CrushMode", 0.0f).osc (0, "VibRate", 6.0f)
-              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.2f)
-              .ampEnvelope (3.0f, 300.0f, 0.8f, 150.0f)
-              .mono (0.0f);
-        clash (sorter, 2, synth::OscWave::triangle, 1.0f, 0.2f);
-        route (sorter, "macro1", ParamIDs::osc (0, "Crush"), -0.2f);
-        route (sorter, "macro3", ParamIDs::osc (0, "Crush"), 0.3f);
-        route (sorter, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
-        macros (sorter, "BRIGHT", "SPACE", "DREAD");
-        delay (sorter, "1/16 dotted", 0.3f, 0.12f, true, 5.0f);
-        reverb (sorter, RT::room, 0.35f, 0.1f);
-        space (sorter);
-        sorter.set (ParamIDs::patchLevel, -0.7f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (sorter);
-
-        auto whistle = x.make ("Hallway Whistle", 3, { "Lead", "Formant", "Whistle", "Echo" },
-            "A thin whistle echoing down long white corridors: a sine played faster within each cycle by SHAPE's "
-            "FORMANT in X-FADE mode (a hollow, breathy edge), through a band-pass sitting on the note, a breath of noise, "
-            "long echoes and a hall. MACROS: BRIGHT (more formant), SPACE, DREAD (the pitch sags flat and wavers). MOD "
-            "WHEEL: vibrato.");
-        whistle.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f).osc (0, "Formant", 0.35f)
-               .osc (0, "FormantMode", 2.0f).osc (0, "VibRate", 5.0f).osc (0, "VibAmount", 4.0f).osc (0, "VibFade", 400.0f)
-               .osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.5f).osc (1, "NoiseColour", 0.1f).osc (1, "Volume", 0.08f)
-               .filter (FilterType::bp12, 350.0f, 0.3f, 0.0f).set (ParamIDs::fltKey, 1.0f)
-               .ampEnvelope (60.0f, 500.0f, 0.9f, 500.0f)
-               .mono (60.0f);
-        route (whistle, "macro1", ParamIDs::osc (0, "Formant"), 0.2f);
-        route (whistle, "macro3", ParamIDs::osc (0, "Fine"), -0.12f);
-        route (whistle, "macro3", ParamIDs::osc (0, "VibAmount"), 0.12f);
-        route (whistle, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
-        macros (whistle, "BRIGHT", "SPACE", "DREAD");
-        delay (whistle, "1/4 dotted", 0.4f, 0.2f, true, 3.5f);
-        reverb (whistle, RT::hall, 0.8f, 0.25f, 40.0f, 4.0f);
-        eqBand (whistle, 0, eq::Shape::lowCut, 200.0f, 0.0f);
-        space (whistle);
-        whistle.set (ParamIDs::patchLevel, 4.8f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (whistle);
-
-        // ---- PADS --------------------------------------------------------------------------------------------
-        auto hum = x.make ("Fluorescent Hum", 4, { "Pad", "FFT", "Pulsing", "Office" },
-            "Office lights buzzing overhead: a saw whose harmonics swell and fade at a fast, uneven flicker (the FFT "
-            "editor's VSPEED and VSTRENGTH), a quiet mains-like hum an octave down, and ECHELON's dynamic band pulling "
-            "the low-mids back whenever they bloom. MACROS: BRIGHT, SPACE, DREAD (a tritone and the filter's "
-            "grit). MOD WHEEL: opens the filter.");
-        hum.osc (0, "Volume", 0.5f).osc (0, "FftVSpeed", 0.55f).osc (0, "FftVStrength", 0.5f)
-           .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.06f).osc (0, "UniSpread", 0.7f)
-           .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.2f)
-           .filter (FilterType::lp12, 2500.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.3f)
-           .ampEnvelope (700.0f, 1500.0f, 1.0f, 1500.0f);
-        clash (hum, 2, synth::OscWave::saw, 6.0f, 0.15f);
-        eqBand (hum, 0, eq::Shape::bell, 300.0f, 0.0f, 1.0f);
-        hum.set (ParamIDs::eqBand (0, "Dyn"), -6.0f).set (ParamIDs::eqBand (0, "DynAuto"), 1.0f);
-        route (hum, "modWheel", ParamIDs::fltCutoff, 0.2f);
-        route (hum, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (hum, "macro3", ParamIDs::fltDrive, 0.4f);
-        macros (hum, "BRIGHT", "SPACE", "DREAD");
-        reverb (hum, RT::room, 0.6f, 0.2f);
-        space (hum);
-        hum.set (ParamIDs::patchLevel, -6.7f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (hum);
-
-        auto wellness = x.make ("Wellness Room", 5, { "Pad", "Warp", "Soothing", "Wrong" },
-            "Soothing on the surface, quietly bending out of shape underneath: soft triangles whose cycles are skewed and "
-            "pinched back and forth by two slow LFOs (SHAPE's SKEW and PINCH), so the tone keeps leaning and never "
-            "settles, a warm filter, a big soft hall. MACROS: BRIGHT, SPACE, DREAD (deeper bending and a tritone). MOD "
-            "WHEEL: more bending.");
-        wellness.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f)
-                .osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.6f).osc (0, "UniDetune", 0.07f).osc (0, "UniSpread", 0.8f)
-                .filter (FilterType::lp12, 2000.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.4f)
-                .ampEnvelope (1200.0f, 2000.0f, 1.0f, 2500.0f)
-                .set (ParamIDs::lfo (0, "Rate"), 0.11f).set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global)
-                .set (ParamIDs::lfo (1, "Wave"), (float) synth::mod::LfoWave::smoothRandom).set (ParamIDs::lfo (1, "Rate"), 0.17f)
-                .set (ParamIDs::lfo (1, "Trigger"), (float) synth::mod::LfoTrigger::global);
-        clash (wellness, 1, synth::OscWave::triangle, 6.0f, 0.15f);
-        route (wellness, "lfo1", ParamIDs::osc (0, "Skew"), 0.3f);
-        route (wellness, "lfo2", ParamIDs::osc (0, "Pinch"), 0.25f);
-        route (wellness, "modWheel", ParamIDs::osc (0, "Skew"), 0.3f);
-        route (wellness, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (wellness, "macro3", ParamIDs::osc (0, "Pinch"), 0.3f);
-        macros (wellness, "BRIGHT", "SPACE", "DREAD");
-        reverb (wellness, RT::hall, 0.9f, 0.3f, 40.0f, 3.5f);
-        space (wellness);
-        wellness.set (ParamIDs::patchLevel, -15.1f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (wellness);
-
-        auto elevator = x.make ("Elevator Descent", 6, { "Pad", "Organ", "Rotary", "Sinking" },
-            "The long ride down between one life and the other: the Organ Stack table through MOD's ROTARY speaker, the "
-            "whole chord sinking slowly a semitone over each held chord (the PITCH envelope), a soft hall. MACROS: BRIGHT, "
-            "SPACE, DREAD (a deeper sink and a faster rotor). MOD WHEEL: the rotor speeds up.");
-        elevator.osc (0, "Wave", wavetable).osc (0, "Table", table ("Organ Stack")).osc (0, "WtIndex", 0.4f).osc (0, "Volume", 0.6f)
-                .filter (FilterType::lp12, 3000.0f, 0.1f, 0.0f)
-                .ampEnvelope (250.0f, 1000.0f, 1.0f, 1500.0f)
-                .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchEnvRange, 2.0f);
-        elevator.rig.modulation.pitchEnvelope = { { SP20 { 0.0f, 0.5f, 0.0f }, SP20 { 6.0f, 0.25f, 0.0f } }, -1, -1, -1 };
-        chorus (elevator, ParamIDs::modIds, MT::rotary, 0.3f, 0.6f, 0.8f);
-        route (elevator, "modWheel", ParamIDs::modRate, 0.4f);
-        route (elevator, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (elevator, "macro3", ParamIDs::pitchEnvRange, 0.08f);
-        route (elevator, "macro3", ParamIDs::modRate, 0.3f);
-        macros (elevator, "BRIGHT", "SPACE", "DREAD");
-        reverb (elevator, RT::hall, 0.7f, 0.22f);
-        space (elevator);
-        elevator.set (ParamIDs::patchLevel, -0.8f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (elevator);
-
-        // ---- BASSES ------------------------------------------------------------------------------------------
-        auto quarterly = x.make ("Quarterly Bass", 7, { "Bass", "Step Seq", "Legato", "Pulse" },
-            "A busy, efficient bass that never stops working: a held note chopped by the STEP SEQUENCER in sixteenths "
-            "with your song, some steps TIED so they flow into the next without a gap (legato runs among the stabs), a "
-            "low filter, a clean sine under it. MACROS: BRIGHT, SPACE, DREAD (the filter's grit and a half-step growl). "
-            "MOD WHEEL: opens the filter.");
-        quarterly.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.5f)
-                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
-                 .filter (FilterType::lp24, 700.0f, 0.25f, 0.0f).set (ParamIDs::fltKey, 0.5f)
-                 .ampEnvelope (5.0f, 500.0f, 1.0f, 200.0f)
-                 .mono (15.0f)
-                 .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 1.0f).set (ParamIDs::seqGate, 0.6f)
-                 .set (ParamIDs::seqContour, 0.15f).set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 16.0f);
-        clean (quarterly, 1);
-        for (int row = 0; row < 2; ++row)
-            for (int k = 0; k < synth::seq::maxSteps; ++k)
-            {
-                auto& step = quarterly.rig.modulation.stepPattern.rows[(size_t) row][(size_t) k];
-                const auto at = k % 16;
-                step.on = at != 3 && at != 11;
-                step.level = at % 4 == 0 ? 1.0f : 0.7f;
-                step.tied = at == 5 || at == 6 || at == 13;   // runs of linked steps
-            }
-        clash (quarterly, 2, synth::OscWave::saw, 1.0f, 0.15f);
-        route (quarterly, "modWheel", ParamIDs::fltCutoff, 0.15f);
-        route (quarterly, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (quarterly, "macro3", ParamIDs::fltDrive, 0.4f);
-        macros (quarterly, "BRIGHT", "SPACE", "DREAD");
-        reverb (quarterly, RT::room, 0.35f, 0.05f);
-        space (quarterly);
-        quarterly.set (ParamIDs::patchLevel, -3.4f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (quarterly);
-
-        auto sub = x.make ("Severed Sub", 8, { "Bass", "Glitch", "Sub", "Split" },
-            "A bass split in two: a clean, steady sine sub straight to the mix, and over it a buzzy saw an octave up on "
-            "insert bus A, cut in and out by GLITCH's KILLSWITCH in sixteenths with your song (two halves of one sound "
-            "that never quite meet). MACROS: BRIGHT, SPACE, DREAD (the upper half louder and grittier). MOD WHEEL: opens "
-            "the filter.");
-        sub.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
-           .osc (1, "On", 1.0f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.3f).osc (1, "Insert", 1.0f)
-           .filter (FilterType::lp24, 1200.0f, 0.25f, 0.0f).set (ParamIDs::fltKey, 0.5f)
-           .ampEnvelope (5.0f, 600.0f, 1.0f, 250.0f)
-           .mono (20.0f);
-        clean (sub, 0);
-        glitch (sub, 0, GM::killswitch, "1/16", 6.0f, 3.0f, 1.0f);
-        route (sub, "modWheel", ParamIDs::fltCutoff, 0.15f);
-        route (sub, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (sub, "macro3", ParamIDs::osc (1, "Volume"), 0.2f);
-        route (sub, "macro3", ParamIDs::fltDrive, 0.4f);
-        macros (sub, "BRIGHT", "SPACE", "DREAD");
-        reverb (sub, RT::room, 0.35f, 0.05f);
-        space (sub);
-        sub.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (sub);
-
-        auto breakRoom = x.make ("Break Room Bass", 9, { "Bass", "Sync", "Snap", "Hard" },
-            "A bass with a hard, unfriendly snap: a saw hard-synced high at the start of each note and falling back over "
-            "a quarter second (SYNC's own envelope), so every note barks then settles, a low filter, a clean sine "
-            "underneath. MACROS: BRIGHT, SPACE, DREAD (a harsher sync and the filter's grit). MOD WHEEL: opens the "
-            "filter.");
-        breakRoom.osc (0, "Volume", 0.5f).osc (0, "SyncAmount", 0.1f).osc (0, "SyncEnv", 0.55f).osc (0, "SyncEnvTime", 250.0f)
-                 .osc (0, "SyncEnvCurve", -0.4f)
-                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.45f).osc (1, "PhaseRand", 0.0f)
-                 .filter (FilterType::lp24, 1500.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.5f)
-                 .ampEnvelope (3.0f, 500.0f, 0.9f, 200.0f)
-                 .mono (10.0f);
-        clean (breakRoom, 1);
-        route (breakRoom, "modWheel", ParamIDs::fltCutoff, 0.15f);
-        route (breakRoom, "macro1", ParamIDs::fltCutoff, 0.2f);
-        route (breakRoom, "macro3", ParamIDs::osc (0, "SyncAmount"), 0.2f);
-        route (breakRoom, "macro3", ParamIDs::fltDrive, 0.4f);
-        macros (breakRoom, "BRIGHT", "SPACE", "DREAD");
-        reverb (breakRoom, RT::room, 0.35f, 0.05f);
-        space (breakRoom);
-        breakRoom.set (ParamIDs::patchLevel, -0.8f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (breakRoom);
-
-        // ---- KEYS --------------------------------------------------------------------------------------------
-        auto lobby = x.make ("Lobby Piano", 10, { "Keys", "Piano", "Muzak", "Radio" },
-            "The soft felt piano as reception-desk muzak, heard through a small radio on the counter (LO-FI's AM RADIO, "
-            "thin and boxed in), a little room. MACROS: BRIGHT, SPACE, DREAD (the radio's tape wobbles and the signal "
-            "frays). The MOD WHEEL adds the felt's noise.");
-        softPiano (lobby);
-        lobby.set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) effects::LoFi::Type::amRadio)
-             .set (ParamIDs::lofiAmount, 3.0f).set (ParamIDs::lofiMix, 0.75f).set (ParamIDs::lofiNoise, 0.0f);
-        chorus (lobby, ParamIDs::mod2Ids, MT::vibrato, 0.6f, 0.4f, 0.0f);
-        route (lobby, "macro3", ParamIDs::mod2Mix, 0.6f);
-        route (lobby, "macro3", ParamIDs::lofiAmount, 0.3f);
-        macros (lobby, "BRIGHT", "SPACE", "DREAD");
-        reverb (lobby, RT::room, 0.4f, 0.15f);
-        space (lobby);
-        lobby.set (ParamIDs::patchLevel, -4.1f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (lobby);
-
-        auto marimba = x.make ("Incentive Marimba", 11, { "Keys", "FM", "Mallet", "Eager" },
-            "A bright, eager marimba, like a reward chime for good work: a sine struck with FM at four times its pitch "
-            "(the bar's bright overtone), dying fast, harder hits ringing brighter, a bright room. MACROS: BRIGHT, SPACE, "
-            "DREAD (a detuned, tritone shadow under every hit). ");
-        marimba.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
-               .osc (0, "FmAmount", 0.05f).osc (0, "ModRate", ratio (4.0f)).osc (0, "ModGrid", 1.0f)
-               .ampEnvelope (1.0f, 700.0f, 0.0f, 400.0f).set (ParamIDs::ampVel, 0.6f);
-        oneShot (marimba, 0, { SP20 { 0.0f, 1.0f, -0.7f }, SP20 { 0.15f, 0.0f, 0.0f } });
-        route (marimba, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
-        route (marimba, "velocity", ParamIDs::osc (0, "FmAmount"), 0.12f);
-        route (marimba, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
-        clash (marimba, 1, synth::OscWave::sine, -6.0f, 0.25f);
-        macros (marimba, "BRIGHT", "SPACE", "DREAD");
-        reverb (marimba, RT::room, 0.5f, 0.15f);
-        space (marimba);
-        marimba.set (ParamIDs::patchLevel, -3.8f);   // LEVEL: set by its peaks when a chord is struck (measured, not by ear)
-        x.add (marimba);
-
-        auto chimes = x.make ("Memo Chimes", 12, { "Keys", "Wavetable", "Travel", "Chime" },
-            "Chimes whose colour changes as they ring: the Harmonic Rise table walked by TRAVEL with its +MOD strength "
-            "curves, bright at the strike and falling back to a soft fundamental, each note decaying slowly, a digital "
-            "space. MACROS: BRIGHT (more travel), SPACE, DREAD (a quarter-tone-flat ghost of each chime). ");
-        chimes.osc (0, "Wave", wavetable).osc (0, "Table", table ("Harmonic Rise")).osc (0, "WtIndex", 0.0f).osc (0, "Volume", 0.6f)
-              .osc (0, "TrOn", 1.0f).osc (0, "TrEditors", (float) synth::travel::Editors::envSeqMod).osc (0, "TrMode", (float) synth::travel::Mode::oneShot)
-              .osc (0, "TrSync", (float) synth::mod::LfoSync::free).osc (0, "TrRate", 0.6f).osc (0, "TrSteps", 1.0f)
-              .osc (0, "TrStrength", 0.8f)
-              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Fine", -50.0f).osc (1, "Volume", 0.0f)
-              .ampEnvelope (1.0f, 2500.0f, 0.0f, 1500.0f).set (ParamIDs::ampVel, 0.5f);
-        {
-            auto& t = chimes.rig.modulation.travel[0];
-            t.envelope = { { SP20 { 0.0f, 1.0f, -0.6f }, SP20 { 1.0f, 0.0f, 0.0f } }, -1, -1, -1 };   // bright, then back down
-            t.pattern.strength[0] = { 1.0f, 0.6f, 0.2f, true, -0.4f };                                      // the travel itself fading
-        }
-        route (chimes, "macro1", ParamIDs::osc (0, "TrStrength"), 0.2f);
-        route (chimes, "macro3", ParamIDs::osc (1, "Volume"), 0.25f);
-        macros (chimes, "BRIGHT", "SPACE", "DREAD");
-        reverb (chimes, RT::digital, 0.6f, 0.22f, 30.0f, 5.0f);
-        space (chimes);
-        chimes.set (ParamIDs::patchLevel, -5.1f);   // LEVEL: set by its peaks when a chord is struck (measured, not by ear)
-        x.add (chimes);
-
-        // ---- ARPS --------------------------------------------------------------------------------------------
-        auto refine = x.make ("Data Refinement", 13, { "Arp", "Chords", "Interlock", "Precise" },
-            "Two arps sorting the same chord between them: ARP 1 plays the chord you hold as stabs on the beat (CHORDS "
-            "mode: the chord, then its sus and seventh versions), ARP 2 picks single notes between them in sixteenths, "
-            "both on one clock (ARPS TOGETHER), with your song. MACROS: BRIGHT, SPACE, DREAD (a tritone in the stabs).");
-        refine.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.4f).osc (0, "Arp", 1.0f)
-              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.45f).osc (1, "Arp", 2.0f)
-              .filter (FilterType::lp24, 3000.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 150.0f, 0.2f, 100.0f).set (ParamIDs::fltKey, 0.5f)
-              .ampEnvelope (1.0f, 250.0f, 0.1f, 150.0f)
-              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::chords)
-              .set (ParamIDs::arp (0, "Division"), division ("1/4")).set (ParamIDs::arp (0, "Gate"), 0.4f).set (ParamIDs::arp (0, "Length"), 4.0f)
-              .set (ParamIDs::arp (1, "On"), 1.0f).set (ParamIDs::arp (1, "Mode"), (float) synth::arp::Mode::upDown)
-              .set (ParamIDs::arp (1, "Division"), division ("1/16")).set (ParamIDs::arp (1, "Octaves"), 2.0f)
-              .set (ParamIDs::arp (1, "Gate"), 0.4f)
-              .set (ParamIDs::arpsTogether, 1.0f);
-        {
-            auto& p = refine.rig.modulation.arps[0].patterns[0];
-            p = {};
-            const char* chords[] = { "Minor", "Sus4", "Min7", "Sus2" };
-            for (int k = 0; k < 4; ++k)
-            {
-                auto& b = p.blocks[(size_t) k];
-                b.on = true;
-                b.chord = (int) chord (chords[k]);
-                b.velocity = k == 0 ? 1.0f : 0.8f;
-            }
-            auto& q = refine.rig.modulation.arps[1].patterns[0];
-            q = synth::arp::Patterns::makeDefault().patterns[0];
-            for (int k = 0; k < 16; ++k)
-                q.blocks[(size_t) k].on = k % 4 != 0;   // the steps between the stabs
-        }
-        clash (refine, 2, synth::OscWave::pulse, 6.0f, 0.15f);
-        refine.osc (2, "Arp", 1.0f);
-        route (refine, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (refine, "BRIGHT", "SPACE", "DREAD");
-        delay (refine, "1/8 dotted", 0.3f, 0.12f, true, 5.0f);
-        reverb (refine, RT::plate, 0.5f, 0.12f);
-        space (refine);
-        refine.set (ParamIDs::patchLevel, -0.7f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (refine);
-
-        auto sorting = x.make ("Sorting Pulse", 14, { "Arp", "Ratchet", "Slide", "Busy" },
-            "A busy little arp that never stops sorting: ARP 1 runs up the chord you hold in sixteenths with your song, "
-            "some steps rattled out twice or three times (RATCHET) and some sliding into the next note (SLIDE), a "
-            "plucky square, crisp echoes. MACROS: BRIGHT, SPACE, DREAD (a half-step shadow on every note).");
-        sorting.osc (0, "Wave", pulse).osc (0, "Width", 0.45f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
-               .filter (FilterType::lp24, 2800.0f, 0.25f, 0.3f).filterEnvelope (0.0f, 120.0f, 0.1f, 80.0f).set (ParamIDs::fltKey, 0.5f)
-               .ampEnvelope (1.0f, 200.0f, 0.2f, 100.0f)
-               .set (ParamIDs::glide, 60.0f)
-               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
-               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
-               .set (ParamIDs::arp (0, "Gate"), 0.5f);
-        {
-            auto& p = sorting.rig.modulation.arps[0].patterns[0];
-            p = synth::arp::Patterns::makeDefault().patterns[0];
-            p.blocks[3].ratchet = 2;
-            p.blocks[7].slide = true;
-            p.blocks[10].ratchet = 3;
-            p.blocks[14].slide = true;
-            p.blocks[15].ratchet = 2;
-        }
-        clash (sorting, 1, synth::OscWave::pulse, 1.0f, 0.15f);
-        sorting.osc (1, "Arp", 1.0f);
-        route (sorting, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (sorting, "BRIGHT", "SPACE", "DREAD");
-        delay (sorting, "1/16 dotted", 0.3f, 0.12f, true, 5.5f);
-        reverb (sorting, RT::room, 0.45f, 0.1f);
-        space (sorting);
-        sorting.set (ParamIDs::patchLevel, -1.1f);   // LEVEL: balanced against the others (measured, not by ear)
-        x.add (sorting);
-
-        auto corridor = x.make ("Cold Corridor", 15, { "Arp", "Pulse", "Tritone", "Cold" },
-            "Walking a cold corridor that never ends: a cold pulse of the chord you hold, in time with your song. MACROS: "
-            "BRIGHT, SPACE, DREAD (a tritone in the pulse).");
-        corridor.osc (0, "Wave", triangle).osc (0, "Volume", 0.45f)
-                .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.4f).osc (0, "UniDetune", 0.06f).osc (0, "UniSpread", 0.7f)
-                .filter (FilterType::lp24, 1800.0f, 0.2f, 0.0f)
-                .ampEnvelope (200.0f, 800.0f, 1.0f, 600.0f)
-                .set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqVolMix, 0.6f).set (ParamIDs::seqGate, 0.5f)
-                .set (ParamIDs::seqContour, 0.3f).set (ParamIDs::seqDivision, division ("1/8")).set (ParamIDs::seqLength, 8.0f);   // short, so each swell is one beat long
-        clash (corridor, 1, synth::OscWave::triangle, 6.0f, 0.15f);
-        route (corridor, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (corridor, "BRIGHT", "SPACE", "DREAD");
-        reverb (corridor, RT::hall, 0.8f, 0.2f);
-        space (corridor);
-        corridor.set (ParamIDs::patchLevel, -3.1f);   // LEVEL: re-measured without the drums (0.54.0; measured, not by ear)
-        x.add (corridor);
-
-        // ---- PLUCKS (0.70.0) ---------------------------------------------------------------------------------
-        auto pkToy = x.make ("Desk Toy Piano", 16, { "Pluck", "FM", "Toy Piano", "Office" },
-            "A cheerful toy piano on a manager's desk: a sine struck by FM from a sine 3.9 times its pitch (the clangy, "
-            "slightly wrong overtones of a struck metal rod), bright at the strike and settling fast, a short room. "
-            "MACROS: BRIGHT, SPACE, DREAD (a tritone creeps in underneath).");
-        pkToy.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
-             .osc (0, "FmSource", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.745f).osc (0, "FmAmount", 0.06f)
-             .ampEnvelope (0.3f, 900.0f, 0.0f, 400.0f).set (ParamIDs::ampVel, 0.45f);
-        oneShot (pkToy, 0, { SP20 { 0.0f, 1.0f, -0.6f }, SP20 { 0.15f, 0.0f, 0.0f } });
-        route (pkToy, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
-        route (pkToy, "velocity", ParamIDs::osc (0, "FmAmount"), 0.1f);
-        route (pkToy, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
-        clash (pkToy, 1, synth::OscWave::sine, -6.0f, 0.25f);
-        macros (pkToy, "BRIGHT", "SPACE", "DREAD");
-        reverb (pkToy, RT::room, 0.4f, 0.15f);
-        space (pkToy);
-        pkAdd (x, pkToy);
-
-        auto pkCorridor = x.make ("Corridor Pick", 17, { "Pluck", "Palm Mute", "Muted", "Office" },
-            "Footsteps in a long white corridor, as a muted string: a saw and a pulse with the string damped as soon as "
-            "it's picked (the filter shut inside a tenth of a second), a dry thud of the pick. MACROS: BRIGHT, SPACE, "
-            "DREAD (a half step above, rubbing).");
-        pkCorridor.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
-                  .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f)
-                  .filter (FilterType::lp24, 450.0f, 0.2f, 0.45f).set (ParamIDs::fltKey, 0.5f)
-                  .filterEnvelope (0.3f, 80.0f, 0.0f, 80.0f)
-                  .ampEnvelope (0.5f, 240.0f, 0.0f, 100.0f);
-        pkStrike (pkCorridor, 2, 0, 0.12f, 4.0f, 0.5f);
-        pkVelocity (pkCorridor, 0.4f, 0.3f, 0.4f);
-        clash (pkCorridor, 3, synth::OscWave::saw, 1.0f, 0.18f);
-        route (pkCorridor, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (pkCorridor, "BRIGHT", "SPACE", "DREAD");
-        delay (pkCorridor, "1/8", 0.25f, 0.12f, false, 4.0f);
-        reverb (pkCorridor, RT::room, 0.5f, 0.15f);
-        space (pkCorridor);
-        pkAdd (x, pkCorridor);
-
-        auto pkCubicle = x.make ("Cubicle Pizzicato", 18, { "Pluck", "Pizzicato", "Strings", "Office" },
-            "Polite office pizzicato, every player smiling: a small section of three saw players plucking neatly, the "
-            "pluck's edge gone in a tenth of a second, each note panned a little differently, a bright little room. "
-            "MACROS: BRIGHT, SPACE, DREAD (a tritone below, quietly wrong).");
-        pkCubicle.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
-                 .filter (FilterType::lp12, 1300.0f, 0.15f, 0.45f).set (ParamIDs::fltKey, 0.5f)
-                 .filterEnvelope (0.5f, 110.0f, 0.0f, 110.0f)
-                 .ampEnvelope (2.0f, 380.0f, 0.0f, 170.0f);
-        pkSection (pkCubicle, 0, 3, 0.06f, 0.0f, 5.0f, 0.0f);
-        pkStrike (pkCubicle, 1, 0, 0.05f, 3.0f, 0.3f);
-        route (pkCubicle, "random", ParamIDs::osc (0, "Pan"), 0.3f);
-        pkVelocity (pkCubicle, 0.5f, 0.3f, 0.5f);
-        clash (pkCubicle, 2, synth::OscWave::saw, -6.0f, 0.2f);
-        route (pkCubicle, "macro1", ParamIDs::fltCutoff, 0.2f);
-        macros (pkCubicle, "BRIGHT", "SPACE", "DREAD");
-        reverb (pkCubicle, RT::room, 0.5f, 0.2f);
-        space (pkCubicle);
-        pkAdd (x, pkCubicle);
     }
 
     // SLINGBLADE: inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling
@@ -19679,6 +19228,458 @@ namespace
         space (frost);
         gears (frost, { 3, 2, 0.45f, 0.4f, 0.35f, 0.15f, 0.25f, 1.0f });
         pkAdd (x, frost);
+    }
+
+    // ---- SEVERED (0.48.0; rebuilt from the ground up in 0.94.0 at the owner's word, round SORT). The owner's theme (a
+    // series about office workers whose work memories are surgically split from their home lives) and name; nothing
+    // from the show on the plugin. Three columns in every category: the floor (the bright, sterile office), outside
+    // (the cold, grieving town in winter), the founder's church (the company as a religion). MACRO 3 SORT on every
+    // preset: the phrase you played, re-filed in order a window later.
+    struct Filing
+    {
+        int slice = 1;          // effects::Sort::sliceNames: 1/8
+        int length = 1;         // lengthNames: 1 bar
+        int order = 0;          // orderNames: UP
+        int gaps = 0;           // gapNames: at the end
+        float edge = 0.3f, strike = 0.3f;
+        float top = 1.0f;       // the macro's AMOUNT at full
+    };
+
+    void filing (Builder& b, Filing f)
+    {
+        b.set (ParamIDs::sortOn, 1.0f).set (ParamIDs::sortAmount, 0.0f).set (ParamIDs::sortSlice, (float) f.slice)
+         .set (ParamIDs::sortLength, (float) f.length).set (ParamIDs::sortOrder, (float) f.order)
+         .set (ParamIDs::sortGaps, (float) f.gaps).set (ParamIDs::sortEdge, f.edge).set (ParamIDs::sortStrike, f.strike);
+        route (b, "macro3", ParamIDs::sortAmount, f.top);
+    }
+
+    void severed (Expansion x)
+    {
+        using S = effects::Sort;
+        const auto& vcsl = libraries::versilianCollection();
+        const auto& upright = libraries::meatbass();
+
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto lfo = [] (Builder& b, int l, int wave, float hz)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Rate"), hz)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        // An organ's stops from sines: 16', 8', 4', 2 2/3', 2' at these volumes.
+        const auto stops = [] (Builder& b, std::array<float, 5> volumes)
+        {
+            constexpr std::array<float, 5> transpose { -12.0f, 0.0f, 12.0f, 19.0f, 24.0f };
+            for (int k = 0; k < 5; ++k)
+                b.osc (k, "On", volumes[(size_t) k] > 0.0f ? 1.0f : 0.0f).osc (k, "Wave", sine).osc (k, "PhaseRand", 0.0f)
+                 .osc (k, "Transpose", transpose[(size_t) k]).osc (k, "Volume", volumes[(size_t) k]);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        // The floor: a whistled tune, cheerful and a little too clean.
+        auto whistle = x.make ("Desk Whistle", 1, { "Lead", "Floor", "Whistle", "Clean" },
+            "Somebody whistling at their desk, cheerful and a little too clean: a sine with a breath of air round it, a "
+            "quick even vibrato, sliding between notes. Tunes. MOD WHEEL: more breath. MACROS: BRIGHT, SPACE, SORT.");
+        whistle.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f)
+               .ampEnvelope (25.0f, 400.0f, 0.85f, 150.0f).mono (35.0f);
+        noiseOsc (whistle, 1, 0.05f, 0.0f);
+        whistle.filter (FilterType::bp12, 1000.0f, 0.4f, 0.0f).set (ParamIDs::fltKey, 1.0f);
+        vibrato (whistle, 0, 12.0f, 5.8f, 250.0f);
+        route (whistle, "modWheel", ParamIDs::osc (1, "Volume"), 0.08f);
+        route (whistle, "macro1", ParamIDs::osc (1, "Volume"), 0.05f);
+        macros (whistle, "BRIGHT", "SPACE", "SORT");
+        reverb (whistle, RT::room, 0.4f, 0.14f, 8.0f, 5.0f);
+        space (whistle);
+        whistle.set (ParamIDs::patchLevel, -3.6f);
+        filing (whistle, { 1, 1, S::up, 0, 0.3f, 0.2f, 1.0f });
+        x.add (whistle);
+
+        // Outside: a lonely cello in the snow.
+        auto cello = x.make ("Winter Cello", 2, { "Lead", "Outside", "Cello", "Bowed" },
+            "A lonely cello in a snowed-in town: a dark bowed string with a wide, slow vibrato, the bow's hair just "
+            "audible. Slow lines. MOD WHEEL: more bow. MACROS: BRIGHT, SPACE, SORT.");
+        cello.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp24, 1400.0f, 0.15f, 0.25f).set (ParamIDs::fltKey, 0.6f)
+             .filterEnvelope (90.0f, 600.0f, 0.6f, 400.0f)
+             .ampEnvelope (90.0f, 800.0f, 0.85f, 500.0f).mono (60.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        for (int o = 0; o < 2; ++o)
+            vibrato (cello, o, 18.0f, 4.6f, 400.0f);
+        noiseOsc (cello, 2, 0.02f, 0.05f);
+        route (cello, "modWheel", ParamIDs::osc (2, "Volume"), 0.05f);
+        route (cello, "modWheel", ParamIDs::fltCutoff, 0.1f);
+        route (cello, "macro1", ParamIDs::fltCutoff, 0.18f);
+        macros (cello, "BRIGHT", "SPACE", "SORT");
+        reverb (cello, RT::hall, 0.7f, 0.25f, 30.0f, 3.5f);
+        space (cello);
+        cello.set (ParamIDs::patchLevel, -2.2f);
+        filing (cello, { 0, 1, S::down, 0, 0.5f, 0.3f, 1.0f });
+        orchestra (cello, { { { 0, "Strings - Notation/Cello Solo Sustain.sfz", 1.0f, 0.0f, true } },
+                            { 0, 1, 2 }, 5.2f,
+                            "A lonely cello in a snowed-in town: the orchestra's solo cello.",
+                            70.0f, 700.0f, 0.95f, 500.0f, 40.0f, {} });
+        x.add (cello);
+
+        // The founder's church: a solemn trumpet for the founder's portrait.
+        auto brass = x.make ("Founding Brass", 3, { "Lead", "Church", "Trumpet", "Solemn" },
+            "A solemn trumpet played for the founder's portrait: a brassy tone that swells as it opens, a measured "
+            "vibrato, a stone hall. MOD WHEEL: more brass. MACROS: BRIGHT, SPACE, SORT.");
+        brass.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Fine", -4.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp24, 900.0f, 0.1f, 0.55f).set (ParamIDs::fltKey, 0.5f)
+             .filterEnvelope (120.0f, 500.0f, 0.5f, 300.0f)
+             .ampEnvelope (60.0f, 600.0f, 0.85f, 350.0f).mono (40.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        for (int o = 0; o < 2; ++o)
+            vibrato (brass, o, 10.0f, 5.2f, 500.0f);
+        route (brass, "modWheel", ParamIDs::fltEnv, 0.15f);
+        route (brass, "macro1", ParamIDs::fltCutoff, 0.18f);
+        macros (brass, "BRIGHT", "SPACE", "SORT");
+        reverb (brass, RT::hall, 0.75f, 0.24f, 35.0f, 4.0f);
+        space (brass);
+        brass.set (ParamIDs::patchLevel, -5.7f);
+        filing (brass, { 1, 1, S::peak, 0, 0.4f, 0.3f, 1.0f });
+        orchestra (brass, { { { 0, "Brass - Notation/Trumpet Solo Sustain (looped).sfz", 1.0f, 0.0f, true } },
+                            { 0, 1 }, 5.9f,
+                            "A solemn trumpet for the founder's portrait: the orchestra's solo trumpet, looped so it holds.",
+                            30.0f, 600.0f, 0.95f, 350.0f, 30.0f,
+                            [] (Builder& s) { s.set (ParamIDs::fltCutoff, 4500.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        x.add (brass);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        // The floor: an airy ceiling with a fluorescent buzz in it.
+        auto ceiling = x.make ("Drop Ceiling", 4, { "Pad", "Floor", "Airy", "Sterile" },
+            "The office's drop ceiling: an airy, sterile pad of soft triangles and air, a faint fluorescent buzz high "
+            "up in it. Hold chords. MOD WHEEL: the buzz. MACROS: BRIGHT, SPACE, SORT.");
+        ceiling.osc (0, "Wave", triangle).osc (0, "Volume", 0.5f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.6f)
+               .osc (0, "UniDetune", 0.06f).osc (0, "UniSpread", 0.8f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.1f).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.02f)
+               .filter (FilterType::lp12, 4000.0f, 0.0f, 0.0f)
+               .ampEnvelope (600.0f, 800.0f, 0.9f, 1200.0f);
+        noiseOsc (ceiling, 2, 0.03f, 0.1f);
+        route (ceiling, "modWheel", ParamIDs::osc (1, "Volume"), 0.06f);
+        route (ceiling, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (ceiling, "BRIGHT", "SPACE", "SORT");
+        reverb (ceiling, RT::plate, 0.6f, 0.25f, 20.0f, 5.0f);
+        space (ceiling);
+        ceiling.set (ParamIDs::patchLevel, -7.6f);
+        filing (ceiling, { 0, 2, S::shuffle, 0, 0.8f, 0.0f, 1.0f });
+        x.add (ceiling);
+
+        // Outside: slow, cold strings falling like snow.
+        auto snow = x.make ("Snowfall Strings", 5, { "Pad", "Outside", "Strings", "Cold" },
+            "Snow over a quiet town: a slow string section, cold and dark, every player their own vibrato, the hall "
+            "wide. Hold chords. MOD WHEEL: the section swells. MACROS: BRIGHT, SPACE, SORT.");
+        snow.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.12f)
+            .filter (FilterType::lp24, 1600.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (900.0f, 800.0f, 0.9f, 1500.0f);
+        pkSection (snow, 0, 5, 0.14f, 10.0f, 5.0f, 400.0f);
+        pkSection (snow, 1, 3, 0.1f, 8.0f, 5.4f, 500.0f);
+        route (snow, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (snow, "modWheel", ParamIDs::ampVolume, 0.15f);
+        route (snow, "macro1", ParamIDs::fltCutoff, 0.18f);
+        macros (snow, "BRIGHT", "SPACE", "SORT");
+        reverb (snow, RT::hall, 0.8f, 0.3f, 30.0f, 3.5f);
+        space (snow);
+        snow.set (ParamIDs::patchLevel, -9.1f);
+        filing (snow, { 0, 2, S::up, 0, 0.8f, 0.0f, 1.0f });
+        orchestra (snow, { { { 4, "Strings - Notation/All Strings Sustain.sfz", 0.6f, 0.0f, true } },
+                           {}, -11.0f,
+                           "Snow over a quiet town: the orchestra's strings over PR7-K's own (the recordings fade after a "
+                           "few seconds; the synth's strings hold).",
+                           700.0f, 800.0f, 1.0f, 1500.0f, -1.0f,
+                           [] (Builder& s) { s.osc (0, "Volume", 0.3f).osc (1, "Volume", 0.08f); } });
+        x.add (snow);
+
+        // The founder's church: a large choir, reverent and too still.
+        auto choir = x.make ("Portrait Choir", 6, { "Pad", "Church", "Choir", "Still" },
+            "A choir singing to the founder's portrait, reverent and too still: voices on \"ah\" with no vibrato at all, "
+            "every one exactly together, in a stone hall. Hold chords. MOD WHEEL: the vowel opens. MACROS: BRIGHT, "
+            "SPACE, SORT.");
+        choir.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "UniVoices", 4.0f).osc (0, "UniMix", 0.7f)
+             .osc (0, "UniDetune", 0.04f).osc (0, "UniSpread", 0.8f)
+             .filter (FilterType::lp12, 3000.0f, 0.0f, 0.0f)
+             .ampEnvelope (500.0f, 800.0f, 0.9f, 1200.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.4f).set (ParamIDs::voiceSize, 0.4f)
+             .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.9f);
+        route (choir, "modWheel", ParamIDs::voiceVowel, 0.3f);
+        route (choir, "macro1", ParamIDs::fltCutoff, 0.18f);
+        macros (choir, "BRIGHT", "SPACE", "SORT");
+        reverb (choir, RT::hall, 0.8f, 0.3f, 35.0f, 4.0f);
+        space (choir);
+        choir.set (ParamIDs::patchLevel, -7.4f);
+        filing (choir, { 0, 2, S::down, 0, 0.8f, 0.0f, 1.0f });
+        orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f, false } },
+                            { 0 }, -0.8f,
+                            "A choir for the founder's portrait: the orchestra's large choir.",
+                            400.0f, 800.0f, 1.0f, 1200.0f, -1.0f,
+                            [] (Builder& s) { s.set (ParamIDs::voiceOn, 0.0f); } });
+        x.add (choir);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        // The floor: a muzak walking bass.
+        auto walk = x.make ("Office Walk", 7, { "Bass", "Floor", "Upright", "Muzak" },
+            "The lobby's muzak walking bass: a round plucked upright, a soft thump on each note, polite and endless. "
+            "Walking lines. MOD WHEEL: brighter fingers. MACROS: BRIGHT, SPACE, SORT.");
+        walk.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Volume", 0.3f)
+            .filter (FilterType::lp12, 900.0f, 0.1f, 0.4f).filterEnvelope (1.0f, 250.0f, 0.1f, 150.0f)
+            .ampEnvelope (2.0f, 700.0f, 0.3f, 150.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (walk, 2, 0, 0.06f, 8.0f, 0.4f);
+        route (walk, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (walk, "macro1", ParamIDs::fltCutoff, 0.12f);
+        macros (walk, "BRIGHT", "SPACE", "SORT");
+        reverb (walk, RT::room, 0.35f, 0.1f, 6.0f, 4.0f);
+        space (walk);
+        walk.set (ParamIDs::patchLevel, 3.9f);
+        filing (walk, { 1, 1, S::up, 1, 0.2f, 0.5f, 1.0f });
+        orchestra (walk, { { { 0, "Programs/04_pizz.sfz", 1.0f, 0.0f, true, &upright } },
+                           { 0, 1, 2 }, 8.8f,
+                           "The lobby's muzak walking bass: a real double bass, plucked (Meatbass).",
+                           1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                           [] (Builder& s) { s.set (ParamIDs::fltCutoff, 3000.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        x.add (walk);
+
+        // Outside: a frozen lake, a deep slow drone.
+        auto lake = x.make ("Frozen Lake", 8, { "Bass", "Outside", "Drone", "Deep" },
+            "A frozen lake at night: a deep sine sub with a dark, slowly breathing saw over it, coming in slowly and "
+            "fading slowly. Long notes. MOD WHEEL: the ice creaks (the saw opens). MACROS: BRIGHT, SPACE, SORT.");
+        lake.osc (0, "Wave", sine).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.3f).osc (1, "Fine", -5.0f)
+            .filter (FilterType::lp24, 300.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+            .ampEnvelope (400.0f, 800.0f, 0.95f, 1200.0f);
+        lfo (lake, 0, 0, 0.12f);
+        route (lake, "lfo1", ParamIDs::fltCutoff, 0.05f);
+        route (lake, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (lake, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (lake, "BRIGHT", "SPACE", "SORT");
+        reverb (lake, RT::hall, 0.7f, 0.18f, 20.0f, 3.0f);
+        space (lake);
+        lake.set (ParamIDs::patchLevel, -6.2f);
+        filing (lake, { 0, 2, S::down, 0, 0.6f, 0.0f, 1.0f });
+        x.add (lake);
+
+        // The founder's church: an organ's pedal notes.
+        auto pedal = x.make ("Procession Pedal", 9, { "Bass", "Church", "Organ", "Pedal" },
+            "The organ's pedal under a slow procession: 16' and 8' pipes with a little 4', a breath of wind as each "
+            "pipe speaks, a stone hall. Slow bass lines. MOD WHEEL: the 4' stop. MACROS: BRIGHT, SPACE, SORT.");
+        stops (pedal, { 0.55f, 0.45f, 0.12f, 0.0f, 0.0f });
+        pedal.set (ParamIDs::fltOn, 0.0f).ampEnvelope (60.0f, 400.0f, 1.0f, 500.0f);
+        pkStrike (pedal, 5, 0, 0.03f, 60.0f, 0.3f, false);
+        route (pedal, "modWheel", ParamIDs::osc (2, "Volume"), 0.2f);
+        route (pedal, "macro1", ParamIDs::osc (2, "Volume"), 0.12f);
+        macros (pedal, "BRIGHT", "SPACE", "SORT");
+        reverb (pedal, RT::hall, 0.8f, 0.22f, 30.0f, 3.5f);
+        space (pedal);
+        pedal.set (ParamIDs::patchLevel, -5.1f);
+        filing (pedal, { 0, 1, S::peak, 0, 0.5f, 0.2f, 1.0f });
+        x.add (pedal);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        // The floor: a lounge electric piano for the elevator.
+        auto muzak = x.make ("Elevator Muzak", 10, { "Keys", "Floor", "Electric Piano", "Lounge" },
+            "Elevator music: a lounge electric piano, a bell-like tine on each strike and a soft tremolo, pleasant and "
+            "empty. Chords. MOD WHEEL: deeper tremolo. MACROS: BRIGHT, SPACE, SORT.");
+        muzak.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", (float) synth::fmFirstOscillator + 1).osc (0, "FmAmount", 0.04f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 28.0f).osc (2, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 1800.0f, 0.25f, 500.0f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (muzak, 2, 0, 0.12f, 0.3f);
+        route (muzak, "velocity", ParamIDs::osc (0, "FmAmount"), 0.08f);
+        chorus (muzak, ParamIDs::modIds, MT::tremolo, 4.5f, 0.2f, 1.0f);
+        route (muzak, "modWheel", ParamIDs::modDepth, 0.4f);
+        route (muzak, "macro1", ParamIDs::osc (2, "Volume"), 0.06f);
+        macros (muzak, "BRIGHT", "SPACE", "SORT");
+        reverb (muzak, RT::room, 0.4f, 0.14f, 8.0f, 4.5f);
+        space (muzak);
+        muzak.set (ParamIDs::patchLevel, -4.8f);
+        filing (muzak, { 1, 1, S::up, 0, 0.3f, 0.3f, 1.0f });
+        x.add (muzak);
+
+        // Outside: the melancholy morning piano.
+        auto morning = x.make ("Cold Morning Piano", 11, { "Keys", "Outside", "Piano", "Melancholy" },
+            "A cold morning, alone in the kitchen: a felt piano, soft and close, the notes left to ring. Slow chords and "
+            "a high melody, with the pedal. MOD WHEEL: softer felt. MACROS: BRIGHT, SPACE, SORT.");
+        feltPiano (morning);
+        dropMacro3 (morning);
+        morning.set (ParamIDs::fltCutoff, 1500.0f).set (ParamIDs::ampSustain, 0.05f);
+        route (morning, "modWheel", ParamIDs::fltCutoff, -0.12f);
+        macros (morning, "BRIGHT", "SPACE", "SORT");
+        reverb (morning, RT::hall, 0.6f, 0.22f, 20.0f, 3.5f);
+        space (morning);
+        morning.set (ParamIDs::patchLevel, -8.0f);
+        filing (morning, { 1, 1, S::down, 0, 0.3f, 0.6f, 1.0f });
+        grand (morning, { 4, 2800.0f, 0.4f, 0.3f, 3.9f, 1.0f, 0.0f, 300.0f, 1.0f, 800.0f,
+                          "A cold morning, alone in the kitchen: the Salamander Grand, soft and dark.", {} });
+        x.add (morning);
+
+        // The founder's church: a pipe organ.
+        auto organ = x.make ("Founder's Organ", 12, { "Keys", "Church", "Organ", "Pipes" },
+            "The organ in the founder's hall: principal stops from 16' up to 2', a breath of wind as each pipe speaks, a "
+            "long stone hall. Chords. MOD WHEEL: the mixture (the high stops). MACROS: BRIGHT, SPACE, SORT.");
+        stops (organ, { 0.3f, 0.45f, 0.25f, 0.08f, 0.1f });
+        organ.set (ParamIDs::fltOn, 0.0f).ampEnvelope (40.0f, 300.0f, 1.0f, 600.0f);
+        pkStrike (organ, 5, 0, 0.025f, 50.0f, 0.2f, false);
+        route (organ, "modWheel", ParamIDs::osc (3, "Volume"), 0.12f);
+        route (organ, "modWheel", ParamIDs::osc (4, "Volume"), 0.12f);
+        route (organ, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        macros (organ, "BRIGHT", "SPACE", "SORT");
+        reverb (organ, RT::hall, 0.85f, 0.28f, 35.0f, 4.0f);
+        space (organ);
+        organ.set (ParamIDs::patchLevel, -10.5f);
+        filing (organ, { 0, 1, S::up, 0, 0.5f, 0.1f, 1.0f });
+        orchestra (organ, { { { 0, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz", 1.0f, 0.0f, false, &vcsl } },
+                            { 0, 1, 2, 3, 4, 5 }, -2.5f,
+                            "The organ in the founder's hall: a real pipe organ (VCSL's).",
+                            20.0f, 300.0f, 1.0f, 600.0f, -1.0f,
+                            [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "HALL"; } });
+        x.add (organ);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        // The floor: numbers cascading down a screen.
+        auto cascade = x.make ("Number Cascade", 13, { "Arp", "Floor", "Digital", "Precise" },
+            "Numbers cascading down an old green screen: a cold, precise pulse arp running the held chord up and down "
+            "three octaves in sixteenths. Hold chords. MOD WHEEL: narrower pulse. MACROS: BRIGHT, SPACE, SORT.");
+        cascade.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+               .filter (FilterType::lp24, 2500.0f, 0.2f, 0.3f).filterEnvelope (1.0f, 150.0f, 0.1f, 100.0f)
+               .ampEnvelope (1.0f, 200.0f, 0.3f, 100.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+               .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 3.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.4f);
+        route (cascade, "modWheel", ParamIDs::osc (0, "Width"), -0.3f);
+        route (cascade, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (cascade, "BRIGHT", "SPACE", "SORT");
+        reverb (cascade, RT::digital, 0.45f, 0.15f, 12.0f, 4.5f);
+        delay (cascade, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
+        space (cascade);
+        cascade.set (ParamIDs::patchLevel, -0.1f);
+        filing (cascade, { 2, 1, S::up, 0, 0.1f, 0.2f, 1.0f });
+        x.add (cascade);
+
+        // Outside: a night drive home through the snow.
+        auto commute = x.make ("Night Commute", 14, { "Arp", "Outside", "Driving", "Snow" },
+            "The drive home through snow at night: a soft, driving arp of muted saws in eighths, the held chord under "
+            "it like the hum of the car. Hold chords. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, SORT.");
+        commute.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Arp", 1.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.18f)
+               .filter (FilterType::lp24, 1200.0f, 0.2f, 0.35f).filterEnvelope (1.0f, 250.0f, 0.2f, 150.0f)
+               .ampEnvelope (1.0f, 400.0f, 0.4f, 200.0f)
+               .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+               .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+               .set (ParamIDs::arp (0, "Gate"), 0.6f);
+        route (commute, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (commute, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (commute, "BRIGHT", "SPACE", "SORT");
+        reverb (commute, RT::hall, 0.6f, 0.2f, 20.0f, 3.5f);
+        delay (commute, "1/4 dotted", 0.35f, 0.12f, true, 3.5f);
+        space (commute);
+        commute.set (ParamIDs::patchLevel, 2.2f);
+        filing (commute, { 1, 1, S::down, 0, 0.3f, 0.3f, 1.0f });
+        x.add (commute);
+
+        // The founder's church: hand chimes rung in a ritual pattern.
+        auto chimes = x.make ("Ceremony Bells", 15, { "Arp", "Church", "Chimes", "Ritual" },
+            "Hand chimes rung in a ritual pattern: pure struck bells running the held chord in a slow, even order, each "
+            "ringing on. Hold chords. MOD WHEEL: brighter partials. MACROS: BRIGHT, SPACE, SORT.");
+        chimes.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Arp", 1.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Fine", 8.0f).osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 1.0f)
+              .set (ParamIDs::fltOn, 0.0f)
+              .ampEnvelope (1.0f, 2000.0f, 0.0f, 1500.0f).set (ParamIDs::ampDecayCurve, -0.6f)
+              .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::upDown)
+              .set (ParamIDs::arp (0, "Division"), division ("1/8")).set (ParamIDs::arp (0, "Octaves"), 2.0f)
+              .set (ParamIDs::arp (0, "Gate"), 0.9f);
+        pkPartial (chimes, 1, 0, 0.15f, 0.5f);
+        route (chimes, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (chimes, "macro1", ParamIDs::osc (1, "Volume"), 0.08f);
+        macros (chimes, "BRIGHT", "SPACE", "SORT");
+        reverb (chimes, RT::hall, 0.75f, 0.26f, 25.0f, 4.0f);
+        space (chimes);
+        chimes.set (ParamIDs::patchLevel, -4.1f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        filing (chimes, { 1, 1, S::peak, 0, 0.3f, 0.2f, 1.0f });
+        orchestra (chimes, { { { 0, "Idiophones/Struck Idiophones/Hand Chimes.sfz", 1.0f, 0.0f, false, &vcsl } },
+                             { 0, 1 }, 1.4f,
+                             "Hand chimes rung in a ritual pattern: real hand chimes (VCSL's).",
+                             1.0f, 300.0f, 1.0f, 1500.0f, -1.0f,
+                             [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "HALL"; } });
+        x.add (chimes);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        // The floor: a bright marimba desk toy.
+        auto toy = x.make ("Desk Toy", 16, { "Pluck", "Floor", "Marimba", "Toy" },
+            "A desk toy that plays a little tune: a bright wooden bar struck (its note and its fourth harmonic, gone "
+            "quickly), small and cheerful. MOD WHEEL: harder mallets. MACROS: BRIGHT, SPACE, SORT.");
+        toy.osc (0, "Wave", sine).osc (0, "PhaseRand", 0.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Fine", 5.0f).osc (1, "PhaseRand", 0.0f)
+           .set (ParamIDs::fltOn, 0.0f)
+           .ampEnvelope (1.0f, 700.0f, 0.0f, 300.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (toy, 0, 0, 0.7f, 0.7f);
+        pkPartial (toy, 1, 1, 0.2f, 0.12f);
+        route (toy, "modWheel", ParamIDs::osc (1, "Volume"), 0.12f);
+        route (toy, "macro1", ParamIDs::osc (1, "Volume"), 0.08f);
+        macros (toy, "BRIGHT", "SPACE", "SORT");
+        reverb (toy, RT::room, 0.4f, 0.14f, 8.0f, 4.5f);
+        space (toy);
+        filing (toy, { 2, 1, S::up, 1, 0.2f, 0.3f, 1.0f });
+        orchestra (toy, { { { 0, "Idiophones/Struck Idiophones/Marimba.sfz", 1.0f, 0.0f, false, &vcsl } },
+                          { 0, 1 }, 1.0f,
+                          "A desk toy that plays a little tune: a real marimba (VCSL's).",
+                          1.0f, 300.0f, 1.0f, 500.0f, -1.0f,
+                          [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "HALL"; } });
+        pkAdd (x, toy);
+
+        // Outside: plucked strings, filing through the cold.
+        auto pizz = x.make ("Filing Pizzicato", 17, { "Pluck", "Outside", "Pizzicato", "Strings" },
+            "Plucked strings in a cold room: a small section playing pizzicato, each player a hair apart, short and "
+            "woody. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, SORT.");
+        pizz.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+            .filter (FilterType::lp24, 1500.0f, 0.2f, 0.45f).filterEnvelope (1.0f, 180.0f, 0.0f, 120.0f)
+            .set (ParamIDs::fltKey, 0.6f)
+            .ampEnvelope (1.0f, 450.0f, 0.0f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkSection (pizz, 0, 3, 0.08f, 0.0f, 5.0f, 0.0f);
+        route (pizz, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (pizz, "macro1", ParamIDs::fltCutoff, 0.15f);
+        macros (pizz, "BRIGHT", "SPACE", "SORT");
+        reverb (pizz, RT::hall, 0.55f, 0.2f, 15.0f, 3.5f);
+        space (pizz);
+        filing (pizz, { 2, 1, S::down, 0, 0.2f, 0.4f, 1.0f });
+        orchestra (pizz, { { { 0, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f, 0.0f, true } },
+                           { 0 }, 4.0f,
+                           "Plucked strings in a cold room: the orchestra's strings, pizzicato.",
+                           1.0f, 300.0f, 1.0f, 300.0f, -1.0f,
+                           [] (Builder& s) { s.set (ParamIDs::fltCutoff, 5000.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        pkAdd (x, pizz);
+
+        // The founder's church: a music box that plays when an award is given.
+        auto award = x.make ("Music Box Award", 18, { "Pluck", "Church", "Glockenspiel", "Award" },
+            "The little music box played when an award is given: a glockenspiel's bright bars (the note and its high "
+            "partials struck at once, the high ones gone first). MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, SORT.");
+        award.osc (0, "Wave", sine).osc (0, "Transpose", 12.0f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 40.0f).osc (1, "Fine", -20.0f).osc (1, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 1400.0f, 0.0f, 600.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (award, 0, 0, 0.65f, 1.4f);
+        pkPartial (award, 1, 1, 0.15f, 0.2f);
+        route (award, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (award, "macro1", ParamIDs::osc (1, "Volume"), 0.08f);
+        macros (award, "BRIGHT", "SPACE", "SORT");
+        reverb (award, RT::plate, 0.5f, 0.2f, 12.0f, 4.5f);
+        space (award);
+        filing (award, { 1, 1, S::peak, 0, 0.2f, 0.3f, 1.0f });
+        orchestra (award, { { { 0, "Idiophones/Struck Idiophones/Glockenspiel.sfz", 1.0f, 0.0f, false, &vcsl } },
+                            { 0, 1 }, 8.0f,
+                            "The music box played for an award: a real glockenspiel (VCSL's).",
+                            1.0f, 300.0f, 1.0f, 800.0f, -1.0f,
+                            [] (Builder& s) { route (s, "macro1", ParamIDs::reverbSize, 0.2f); s.rig.modulation.macroNames[0] = "HALL"; } });
+        pkAdd (x, award);
     }
 
     // ---- HIGHNOON (0.92.0, the owner's theme (a series about a frontier theme park run by machines, its hosts made

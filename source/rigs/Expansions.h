@@ -109,9 +109,10 @@ namespace expansions
           "(copies drifting apart, notes never the same twice, patterns that never repeat), and under it the warm "
           "thread of home. Our own sounds." },
         { "SEVERED", "SV",
-          "Inspired by the score of a 2022 series about office workers whose work memories are split from their home "
-          "lives: a cheerful, sterile corporate surface (muzak, chimes, retro screens, humming lights, long white "
-          "corridors) over quiet dread and a melancholy piano. Our own sounds." },
+          "Inspired by a series about office workers whose work memories are split from their home lives, in three "
+          "columns: the floor (bright and sterile), outside (the cold, grieving town in winter) and the founder's "
+          "church (the company as a religion). Built round SORT (0.93.0) and MACRO 3 SORT: the phrase you played, "
+          "re-filed in order a window later. Our own sounds." },
         { "SLINGBLADE", "SB",
           "Inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling class: in "
           "three acts, the brutal heaviness of the mines below (drills, machinery, a fragile song in the dark), the "
