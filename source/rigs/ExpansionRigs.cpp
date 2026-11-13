@@ -167,6 +167,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
+            { "Koto Pluck", -1.0f }, { "Wood Mallet", 4.2f }, { "Offworld Harp", 1.2f },
             { "Supersaw Pluck", -4.6f }, { "Pulse Pluck", -3.2f }, { "Triangle Bell", -3.6f },
             { "Desk Toy", -8.1f }, { "Filing Pizzicato", -2.0f }, { "Music Box Award", -7.7f },
             { "Dusty Strum", -3.5f }, { "Wind-Up Box", -7.5f }, { "Broken String", -0.7f },
@@ -20501,6 +20502,408 @@ namespace
         pkAdd (x, bell);
     }
 
+    // ---- OFFWORLD (0.96.0): the owner's ask and name, the best emulation we can make of a famous 1970s two-line
+    // polysynth (its software version's manual supplied by the owner: Arturia's, never committed). What makes it, from
+    // the manual: two complete lines of synthesis in every voice, each an oscillator (saw, square / pulse, a sine added
+    // after the filters), a resonant high-pass into a resonant low-pass moved by one envelope (initial level, attack
+    // level, attack, decay, release), and its own amplifier; line II detuned against line I and mixed in; key pressure
+    // and velocity on each line's brightness and level; a ribbon whose downward bend goes all the way to silence; a
+    // slow sub-oscillator; an "initial" pitch bend-in; a ring modulator; chorus. Here: line I through FILTER 1, line II
+    // through FILTER 2 (0.96.0), each with its LOW CUT; no signature effect (the owner's choice: keep it pure).
+    // MACRO 3 LINES: line II detuned further against line I and brought up in the mix, the instrument's own thickening.
+    void offworld (Expansion x)
+    {
+        using VM = synth::VibratoMode;
+        // An oscillator of a line: its wave, pulse width, level, octave ("feet"), which line (II: FILTER 2).
+        const auto line = [] (Builder& b, int o, float wave, float volume, bool lineTwo, float transpose = 0.0f, float width = 0.5f)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", wave).osc (o, "Volume", volume).osc (o, "Transpose", transpose)
+             .osc (o, "Width", width).osc (o, "Filter2", lineTwo ? 1.0f : 0.0f);
+        };
+        // A line's filter as the instrument sets it: CUTOFF where the envelope comes to rest, the envelope starting
+        // INITIAL octaves below it, rising to ATTACK LEVEL octaves above, falling back to the cutoff (held there), and
+        // back down to the initial level on release. Our envelope draws that shape exactly: the cutoff knob at the
+        // initial level, the amount spanning initial + attack level, the sustain at the cutoff's share.
+        const auto filterLine = [] (Builder& b, int which, synth::FilterType type, float cutoffHz, float resonance,
+                                    float lowCutHz, float lowCutResonance, float initialOct, float attackOct,
+                                    float attackMs, float decayMs, float releaseMs, float keytrack = 0.5f, float envVelocity = 0.4f)
+        {
+            const auto& ids = ParamIDs::filterIds[which];
+            const auto span = juce::jlimit (0.0f, 8.0f, initialOct + attackOct);
+            b.set (ids.on, 1.0f).set (ids.type, (float) (int) type)
+             .set (ids.cutoff, juce::jlimit (20.0f, 20000.0f, cutoffHz * std::exp2 (-initialOct)))
+             .set (ids.res, resonance).set (ids.lowCut, lowCutHz).set (ids.lowCutRes, lowCutResonance)
+             .set (ids.env, span / 8.0f).set (ids.envVel, envVelocity).set (ids.key, keytrack)
+             .set (ids.attack, attackMs).set (ids.hold, 0.0f).set (ids.decay, decayMs)
+             .set (ids.sustain, span > 0.0f ? initialOct / span : 0.0f).set (ids.release, releaseMs);
+        };
+        // Key pressure: brighter (both filters) and a vibrato coming in, on the lines' oscillators.
+        const auto touch = [] (Builder& b, std::initializer_list<int> oscs, float bright, float vibratoCents, float rate = 5.8f)
+        {
+            route (b, "aftertouch", ParamIDs::fltCutoff, bright, 80.0f);
+            route (b, "aftertouch", ParamIDs::flt2Cutoff, bright, 80.0f);
+            for (const auto o : oscs)
+            {
+                b.osc (o, "VibRate", rate).osc (o, "VibAmount", 0.0f);
+                if (vibratoCents > 0.0f)
+                    route (b, "aftertouch", ParamIDs::osc (o, "VibAmount"), vibratoCents / 100.0f, 120.0f);
+            }
+        };
+        // The ribbon: a little up, all the way down.
+        const auto ribbon = [] (Builder& b, float up, float down)
+        {
+            b.set (ParamIDs::bendUp, up).set (ParamIDs::bendDown, down);
+        };
+        // MACRO 1 BRIGHT (both filters), MACRO 2 SPACE, MACRO 3 LINES (line II's oscillators detuned up to `cents`
+        // further and brought up by `volume`).
+        const auto finish = [] (Builder& b, std::initializer_list<int> lineTwo, float cents, float volume, RT room, float size, float mix)
+        {
+            route (b, "macro1", ParamIDs::fltCutoff, 0.15f);
+            route (b, "macro1", ParamIDs::flt2Cutoff, 0.15f);
+            for (const auto o : lineTwo)
+            {
+                route (b, "macro3", ParamIDs::osc (o, "Fine"), cents / 200.0f);
+                if (volume > 0.0f)
+                    route (b, "macro3", ParamIDs::osc (o, "Volume"), volume / 2.0f);
+            }
+            macros (b, "BRIGHT", "SPACE", "LINES");
+            reverb (b, room, size, mix, 25.0f, 4.5f);
+            space (b);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, synth::arp::Mode mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        const auto ringMod = [] (Builder& b, int o, float amount, float rate)   // AM at a free ratio (0.683: 2.76x)
+        {
+            b.osc (o, "AmShape", 0.0f).osc (o, "ModGrid", 0.0f).osc (o, "ModRate", rate).osc (o, "AmAmount", amount);
+        };
+        using FT = FilterType;
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto brassLead = x.make ("Offworld Brass", 1, { "Lead", "Two Lines", "Brass", "Touch" },
+            "The cinematic brass lead: two saw lines, line II a few cents sharp, each filter swelling from below and "
+            "settling, a little scoop up into every note. Press into the keys: it brightens and a slow, wide vibrato "
+            "comes in. The ribbon (pitch wheel) bends two up and two octaves down. MOD WHEEL: vibrato. MACROS: BRIGHT, "
+            "SPACE, LINES.");
+        line (brassLead, 0, saw, 0.55f, false);
+        line (brassLead, 1, saw, 0.4f, true);
+        brassLead.osc (1, "Fine", 6.0f);
+        filterLine (brassLead, 0, FT::lp12, 1500.0f, 0.25f, 110.0f, 0.15f, 1.3f, 2.2f, 140.0f, 900.0f, 450.0f);
+        filterLine (brassLead, 1, FT::lp12, 1800.0f, 0.2f, 160.0f, 0.1f, 1.0f, 2.0f, 220.0f, 1200.0f, 500.0f);
+        brassLead.ampEnvelope (70.0f, 700.0f, 0.85f, 500.0f).set (ParamIDs::ampReleaseCurve, -0.4f).set (ParamIDs::ampVel, 0.4f);
+        pkBend (brassLead, -0.5f, 0.12f, -0.4f);
+        touch (brassLead, { 0, 1 }, 0.18f, 28.0f, 5.6f);
+        route (brassLead, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (brassLead, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.2f);
+        ribbon (brassLead, 2.0f, 24.0f);
+        finish (brassLead, { 1 }, 14.0f, 0.2f, RT::hall, 0.7f, 0.12f);
+        brassLead.set (ParamIDs::patchLevel, -3.8f);
+        x.add (brassLead);
+
+        auto singer = x.make ("Ribbon Singer", 2, { "Lead", "Two Lines", "Mono", "Ribbon" },
+            "A singing lead, one note at a time: a pulse on line I and a saw on line II, gliding between notes, a vibrato "
+            "growing in as you hold. The ribbon (pitch wheel) falls all the way down, four octaves, for those long "
+            "dives. Press in for more. MOD WHEEL: vibrato. MACROS: BRIGHT, SPACE, LINES.");
+        line (singer, 0, pulse, 0.5f, false, 0.0f, 0.4f);
+        line (singer, 1, saw, 0.35f, true);
+        singer.osc (1, "Fine", -5.0f);
+        filterLine (singer, 0, FT::lp12, 2200.0f, 0.35f, 90.0f, 0.0f, 0.8f, 1.4f, 60.0f, 700.0f, 300.0f);
+        filterLine (singer, 1, FT::lp12, 2600.0f, 0.2f, 200.0f, 0.2f, 0.6f, 1.2f, 90.0f, 900.0f, 300.0f);
+        singer.ampEnvelope (25.0f, 500.0f, 0.9f, 350.0f).set (ParamIDs::ampReleaseCurve, -0.4f).mono (80.0f);
+        touch (singer, { 0, 1 }, 0.15f, 18.0f, 5.4f);
+        for (int o = 0; o < 2; ++o)
+            singer.osc (o, "VibAmount", 7.0f).osc (o, "VibFade", 600.0f);
+        route (singer, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (singer, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.2f);
+        ribbon (singer, 12.0f, 48.0f);
+        delay (singer, "1/4 dotted", 0.3f, 0.0f, true, 4.0f);
+        finish (singer, { 1 }, 12.0f, 0.17f, RT::hall, 0.65f, 0.1f);
+        singer.set (ParamIDs::patchLevel, -3.2f);
+        x.add (singer);
+
+        auto flute = x.make ("Night Flute", 3, { "Lead", "Two Lines", "Sine", "Breath" },
+            "A breathy flute: a soft triangle on line I, a narrow pulse on line II kept dark and quiet (the breath), and "
+            "a pure sine added after the filters for the body. Press in for a gentle vibrato. MOD WHEEL: breath. "
+            "MACROS: BRIGHT, SPACE, LINES.");
+        line (flute, 0, triangle, 0.45f, false);
+        line (flute, 1, pulse, 0.12f, true, 12.0f, 0.15f);
+        flute.osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Volume", 0.45f).osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f);
+        filterLine (flute, 0, FT::lp12, 2500.0f, 0.05f, 60.0f, 0.0f, 0.5f, 0.8f, 120.0f, 600.0f, 300.0f);
+        filterLine (flute, 1, FT::lp12, 1800.0f, 0.3f, 900.0f, 0.4f, 0.4f, 1.0f, 200.0f, 800.0f, 300.0f);
+        flute.ampEnvelope (90.0f, 400.0f, 0.9f, 300.0f).set (ParamIDs::ampReleaseCurve, -0.4f).mono (40.0f);
+        touch (flute, { 0, 2 }, 0.1f, 14.0f, 5.0f);
+        route (flute, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        ribbon (flute, 2.0f, 12.0f);
+        finish (flute, { 1 }, 10.0f, 0.06f, RT::hall, 0.6f, 0.12f);
+        flute.set (ParamIDs::patchLevel, 2.0f);
+        x.add (flute);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto brassPad = x.make ("Two-Line Brass", 4, { "Pad", "Two Lines", "Brass", "Touch" },
+            "The big two-line brass pad: two saw lines a few cents apart, line I's filter swelling quickly and line II's "
+            "slowly behind it, so every chord blooms twice. Press in to brighten it. Hold chords. MOD WHEEL: vibrato. "
+            "MACROS: BRIGHT, SPACE, LINES.");
+        line (brassPad, 0, saw, 0.45f, false);
+        line (brassPad, 1, saw, 0.4f, true);
+        brassPad.osc (1, "Fine", 7.0f);
+        filterLine (brassPad, 0, FT::lp12, 1200.0f, 0.2f, 100.0f, 0.1f, 1.2f, 1.8f, 300.0f, 1500.0f, 1200.0f, 0.4f, 0.3f);
+        filterLine (brassPad, 1, FT::lp12, 1500.0f, 0.15f, 140.0f, 0.1f, 1.5f, 1.5f, 900.0f, 2000.0f, 1500.0f, 0.4f, 0.3f);
+        brassPad.ampEnvelope (300.0f, 1000.0f, 0.85f, 1400.0f).set (ParamIDs::ampReleaseCurve, -0.5f).set (ParamIDs::ampVel, 0.3f);
+        touch (brassPad, { 0, 1 }, 0.15f, 16.0f, 5.2f);
+        route (brassPad, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.15f);
+        route (brassPad, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.15f);
+        ribbon (brassPad, 2.0f, 24.0f);
+        finish (brassPad, { 1 }, 14.0f, 0.2f, RT::hall, 0.8f, 0.15f);
+        brassPad.set (ParamIDs::patchLevel, -5.7f);
+        x.add (brassPad);
+
+        auto strings = x.make ("Starlight Strings", 5, { "Pad", "Two Lines", "Strings", "Chorus" },
+            "Lush strings: a pulse on line I whose width slowly breathes, a saw on line II, both bowed in softly, through "
+            "the chorus. Hold chords. MOD WHEEL: more breath in the pulse. MACROS: BRIGHT, SPACE, LINES.");
+        line (strings, 0, pulse, 0.45f, false, 0.0f, 0.35f);
+        line (strings, 1, saw, 0.35f, true);
+        strings.osc (1, "Fine", 5.0f);
+        filterLine (strings, 0, FT::lp12, 3200.0f, 0.1f, 180.0f, 0.0f, 0.4f, 0.4f, 700.0f, 1500.0f, 1500.0f, 0.4f, 0.2f);
+        filterLine (strings, 1, FT::lp12, 2600.0f, 0.1f, 250.0f, 0.0f, 0.4f, 0.4f, 900.0f, 1500.0f, 1500.0f, 0.4f, 0.2f);
+        strings.ampEnvelope (550.0f, 1000.0f, 0.9f, 1700.0f).set (ParamIDs::ampReleaseCurve, -0.5f).set (ParamIDs::ampVel, 0.3f);
+        strings.set (ParamIDs::lfo (0, "Wave"), 1.0f).set (ParamIDs::lfo (0, "Rate"), 0.35f)
+               .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (strings, "lfo1", ParamIDs::osc (0, "Width"), 0.1f);
+        route (strings, "modWheel", ParamIDs::osc (0, "Width"), 0.12f);
+        touch (strings, { 0, 1 }, 0.1f, 10.0f, 5.0f);
+        chorus (strings, ParamIDs::modIds, MT::chorus, 0.45f, 0.55f, 0.45f);
+        ribbon (strings, 2.0f, 12.0f);
+        finish (strings, { 1 }, 12.0f, 0.17f, RT::hall, 0.8f, 0.15f);
+        strings.set (ParamIDs::patchLevel, -6.2f);
+        x.add (strings);
+
+        auto horizon = x.make ("Slow Horizon", 6, { "Pad", "Two Lines", "Dark", "Slow" },
+            "A slow, dark pad: a saw on line I opening over two seconds, a pulse on line II with its low end cut, "
+            "opening over four, so the chord keeps changing long after you play it; the sub-oscillator drifts both "
+            "filters. Hold chords. MOD WHEEL: the drift. MACROS: BRIGHT, SPACE, LINES.");
+        line (horizon, 0, saw, 0.45f, false);
+        line (horizon, 1, pulse, 0.35f, true, 0.0f, 0.3f);
+        horizon.osc (1, "Fine", -6.0f);
+        filterLine (horizon, 0, FT::lp24, 700.0f, 0.25f, 60.0f, 0.0f, 1.8f, 1.8f, 2000.0f, 3000.0f, 2500.0f, 0.3f, 0.2f);
+        filterLine (horizon, 1, FT::lp12, 1600.0f, 0.3f, 380.0f, 0.3f, 1.5f, 1.5f, 4000.0f, 3000.0f, 3000.0f, 0.3f, 0.2f);
+        horizon.ampEnvelope (1400.0f, 1500.0f, 0.9f, 2600.0f).set (ParamIDs::ampReleaseCurve, -0.5f).set (ParamIDs::ampVel, 0.3f);
+        horizon.set (ParamIDs::lfo (0, "Wave"), 0.0f).set (ParamIDs::lfo (0, "Rate"), 0.12f)
+               .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (horizon, "lfo1", ParamIDs::fltCutoff, 0.04f);
+        route (horizon, "lfo1", ParamIDs::flt2Cutoff, -0.04f);
+        route (horizon, "modWheel", ParamIDs::fltCutoff, 0.12f);
+        touch (horizon, { 0, 1 }, 0.1f, 0.0f);
+        ribbon (horizon, 2.0f, 12.0f);
+        finish (horizon, { 1 }, 14.0f, 0.17f, RT::hall, 0.85f, 0.15f);
+        horizon.set (ParamIDs::patchLevel, -7.4f);
+        x.add (horizon);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto brassBass = x.make ("Rainy Brass Bass", 7, { "Bass", "Two Lines", "Brass", "Round" },
+            "A round brass bass: two saw lines an octave down, the 24 dB filters snapping open from below and settling "
+            "warm, harder notes brighter. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, LINES.");
+        line (brassBass, 0, saw, 0.5f, false, -12.0f);
+        line (brassBass, 1, saw, 0.4f, true, -12.0f);
+        brassBass.osc (1, "Fine", 5.0f);
+        filterLine (brassBass, 0, FT::lp24, 320.0f, 0.2f, 35.0f, 0.0f, 0.8f, 2.6f, 4.0f, 450.0f, 200.0f, 0.4f, 0.6f);
+        filterLine (brassBass, 1, FT::lp24, 420.0f, 0.15f, 45.0f, 0.0f, 0.6f, 2.2f, 8.0f, 600.0f, 200.0f, 0.4f, 0.6f);
+        brassBass.ampEnvelope (3.0f, 500.0f, 0.8f, 180.0f).set (ParamIDs::ampVel, 0.4f).mono (0.0f);
+        route (brassBass, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (brassBass, "modWheel", ParamIDs::flt2Cutoff, 0.15f);
+        touch (brassBass, { 0, 1 }, 0.12f, 0.0f);
+        ribbon (brassBass, 2.0f, 12.0f);
+        finish (brassBass, { 1 }, 10.0f, 0.2f, RT::room, 0.4f, 0.0f);
+        brassBass.set (ParamIDs::patchLevel, 5.6f);
+        x.add (brassBass);
+
+        auto hollow = x.make ("Hollow Bass", 8, { "Bass", "Two Lines", "High-Pass", "Hollow" },
+            "A hollow, nasal bass, the high-pass doing the work: a square on line I and a saw on line II, their lows "
+            "cut by resonant LOW CUTs that sweep down as each note settles. MOD WHEEL: hollower. MACROS: BRIGHT, "
+            "SPACE, LINES.");
+        line (hollow, 0, pulse, 0.55f, false, -12.0f, 0.5f);
+        line (hollow, 1, saw, 0.35f, true, -12.0f);
+        hollow.osc (1, "Fine", -4.0f);
+        // A sine an octave down under it, unfiltered, so the hollow tone still has a floor.
+        hollow.osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f)
+              .osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f);
+        filterLine (hollow, 0, FT::lp12, 1600.0f, 0.15f, 260.0f, 0.55f, 0.0f, 1.2f, 2.0f, 350.0f, 150.0f, 0.5f, 0.3f);
+        filterLine (hollow, 1, FT::lp12, 1900.0f, 0.1f, 340.0f, 0.45f, 0.0f, 1.0f, 2.0f, 450.0f, 150.0f, 0.5f, 0.3f);
+        hollow.ampEnvelope (2.0f, 400.0f, 0.85f, 150.0f).mono (0.0f);
+        route (hollow, "modWheel", ParamIDs::fltLowCut, 0.12f);
+        route (hollow, "modWheel", ParamIDs::flt2LowCut, 0.12f);
+        touch (hollow, { 0, 1 }, 0.1f, 0.0f);
+        ribbon (hollow, 2.0f, 12.0f);
+        finish (hollow, { 1 }, 10.0f, 0.17f, RT::room, 0.4f, 0.0f);
+        hollow.set (ParamIDs::patchLevel, -4.9f);
+        x.add (hollow);
+
+        auto softBass = x.make ("Soft Pluck Bass", 9, { "Bass", "Two Lines", "Pluck", "Velocity" },
+            "A soft plucked bass: two lines struck through filters that jump open with each note and fall back, much "
+            "brighter the harder you play. Short lines. MOD WHEEL: longer pluck. MACROS: BRIGHT, SPACE, LINES.");
+        line (softBass, 0, saw, 0.5f, false, -12.0f);
+        line (softBass, 1, pulse, 0.3f, true, -12.0f, 0.4f);
+        softBass.osc (1, "Fine", 4.0f);
+        filterLine (softBass, 0, FT::lp12, 280.0f, 0.1f, 30.0f, 0.0f, 0.0f, 3.2f, 1.0f, 280.0f, 150.0f, 0.4f, 0.8f);
+        filterLine (softBass, 1, FT::lp12, 350.0f, 0.1f, 60.0f, 0.0f, 0.0f, 2.6f, 1.0f, 220.0f, 150.0f, 0.4f, 0.8f);
+        softBass.ampEnvelope (1.0f, 700.0f, 0.35f, 200.0f).set (ParamIDs::ampDecayCurve, -0.4f).set (ParamIDs::ampVel, 0.6f).mono (0.0f);
+        route (softBass, "modWheel", ParamIDs::fltEnv, 0.1f);
+        touch (softBass, { 0, 1 }, 0.1f, 0.0f);
+        ribbon (softBass, 2.0f, 12.0f);
+        finish (softBass, { 1 }, 10.0f, 0.15f, RT::room, 0.4f, 0.0f);
+        softBass.set (ParamIDs::patchLevel, 3.6f);
+        x.add (softBass);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto tines = x.make ("Velvet Tines", 10, { "Keys", "Two Lines", "Electric Piano", "Velocity" },
+            "An electric piano: a sine body added after the filters, a narrow pulse on line II for the tine's bark whose "
+            "filter jumps open by how hard you play and falls away. Soft is round, hard barks. MOD WHEEL: a slow "
+            "tremolo-like vibrato. MACROS: BRIGHT, SPACE, LINES.");
+        line (tines, 0, triangle, 0.35f, false);
+        line (tines, 1, pulse, 0.2f, true, 12.0f, 0.2f);
+        tines.osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Volume", 0.5f).osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f);
+        filterLine (tines, 0, FT::lp12, 1800.0f, 0.05f, 60.0f, 0.0f, 0.0f, 1.0f, 1.0f, 900.0f, 400.0f, 0.5f, 0.7f);
+        filterLine (tines, 1, FT::lp12, 900.0f, 0.2f, 300.0f, 0.1f, 0.0f, 3.0f, 1.0f, 450.0f, 300.0f, 0.5f, 0.9f);
+        tines.ampEnvelope (2.0f, 2500.0f, 0.3f, 600.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.7f);
+        for (const auto o : { 0, 2 })
+            tines.osc (o, "VibRate", 4.5f);
+        route (tines, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.08f);
+        route (tines, "modWheel", ParamIDs::osc (2, "VibAmount"), 0.08f);
+        ribbon (tines, 2.0f, 12.0f);
+        finish (tines, { 1 }, 12.0f, 0.1f, RT::room, 0.5f, 0.1f);
+        tines.set (ParamIDs::patchLevel, -3.9f);
+        x.add (tines);
+
+        auto bells = x.make ("Ring Bells", 11, { "Keys", "Two Lines", "Ring Mod", "Bells" },
+            "Ring-modulator bells: a sine on line I ring-modulated at a bell's uneven ratio, a triangle on line II an "
+            "octave up for the shimmer, both ringing away. MOD WHEEL: more ring. MACROS: BRIGHT, SPACE, LINES.");
+        line (bells, 0, sine, 0.55f, false);
+        line (bells, 1, triangle, 0.25f, true, 12.0f);
+        bells.osc (0, "PhaseRand", 0.0f).osc (1, "Fine", 6.0f);
+        ringMod (bells, 0, 0.7f, 0.683f);
+        filterLine (bells, 0, FT::lp12, 5000.0f, 0.05f, 150.0f, 0.0f, 0.0f, 0.8f, 1.0f, 1500.0f, 800.0f, 0.4f, 0.5f);
+        filterLine (bells, 1, FT::lp12, 6000.0f, 0.05f, 400.0f, 0.0f, 0.0f, 0.5f, 1.0f, 1200.0f, 800.0f, 0.4f, 0.5f);
+        bells.ampEnvelope (1.0f, 2200.0f, 0.0f, 1200.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        route (bells, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.15f);
+        ribbon (bells, 2.0f, 12.0f);
+        finish (bells, { 1 }, 14.0f, 0.12f, RT::hall, 0.7f, 0.15f);
+        bells.set (ParamIDs::patchLevel, 1.8f);
+        x.add (bells);
+
+        auto clav = x.make ("Bright Clav", 12, { "Keys", "Two Lines", "Clavinet", "Bright" },
+            "A bright clavinet-like key: a narrow pulse on line I through a resonant filter that snaps shut, a square "
+            "an octave up on line II with its lows cut, short and funky, harder notes brighter. MOD WHEEL: brighter. "
+            "MACROS: BRIGHT, SPACE, LINES.");
+        line (clav, 0, pulse, 0.5f, false, 0.0f, 0.22f);
+        line (clav, 1, pulse, 0.25f, true, 12.0f, 0.5f);
+        clav.osc (1, "Fine", 4.0f);
+        filterLine (clav, 0, FT::lp12, 1100.0f, 0.4f, 120.0f, 0.0f, 0.0f, 2.6f, 0.0f, 260.0f, 120.0f, 0.5f, 0.7f);
+        filterLine (clav, 1, FT::lp12, 2200.0f, 0.2f, 450.0f, 0.2f, 0.0f, 1.8f, 0.0f, 200.0f, 120.0f, 0.5f, 0.7f);
+        clav.ampEnvelope (1.0f, 900.0f, 0.4f, 120.0f).set (ParamIDs::ampDecayCurve, -0.4f).set (ParamIDs::ampVel, 0.6f);
+        route (clav, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        touch (clav, { 0, 1 }, 0.12f, 0.0f);
+        ribbon (clav, 2.0f, 12.0f);
+        finish (clav, { 1 }, 10.0f, 0.12f, RT::room, 0.4f, 0.08f);
+        clav.set (ParamIDs::patchLevel, -6.4f);
+        x.add (clav);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto stabs = x.make ("Brass Stabs", 13, { "Arp", "Two Lines", "Brass", "Stabs" },
+            "Short two-line brass stabs walking up the held chord in eighths, each one swelling and cut short. Hold "
+            "chords. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, LINES.");
+        line (stabs, 0, saw, 0.5f, false);
+        line (stabs, 1, saw, 0.4f, true);
+        stabs.osc (1, "Fine", 7.0f);
+        filterLine (stabs, 0, FT::lp12, 1300.0f, 0.2f, 120.0f, 0.1f, 1.0f, 2.0f, 40.0f, 300.0f, 200.0f, 0.4f, 0.4f);
+        filterLine (stabs, 1, FT::lp12, 1600.0f, 0.15f, 160.0f, 0.1f, 0.8f, 1.8f, 70.0f, 400.0f, 200.0f, 0.4f, 0.4f);
+        stabs.ampEnvelope (15.0f, 350.0f, 0.5f, 200.0f);
+        arpOn (stabs, { 0, 1 }, synth::arp::Mode::up, "1/8", 1.0f, 0.6f);
+        route (stabs, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (stabs, "modWheel", ParamIDs::flt2Cutoff, 0.15f);
+        delay (stabs, "1/8 dotted", 0.3f, 0.0f, true, 4.0f);
+        finish (stabs, { 1 }, 14.0f, 0.2f, RT::hall, 0.6f, 0.1f);
+        stabs.set (ParamIDs::patchLevel, 1.0f);
+        x.add (stabs);
+
+        auto ringArp = x.make ("Ring Mod Arp", 14, { "Arp", "Two Lines", "Ring Mod", "Metallic" },
+            "Ring-modulated tones bouncing up and down the held chord in sixteenths, metallic and bright, a square under "
+            "them on line II. Hold chords. MOD WHEEL: more ring. MACROS: BRIGHT, SPACE, LINES.");
+        line (ringArp, 0, sine, 0.5f, false, 12.0f);
+        line (ringArp, 1, pulse, 0.2f, true, 0.0f, 0.5f);
+        ringArp.osc (0, "PhaseRand", 0.0f).osc (1, "Fine", 5.0f);
+        ringMod (ringArp, 0, 0.55f, 0.573f);
+        filterLine (ringArp, 0, FT::lp12, 4000.0f, 0.1f, 200.0f, 0.0f, 0.0f, 0.8f, 1.0f, 300.0f, 150.0f, 0.4f, 0.4f);
+        filterLine (ringArp, 1, FT::lp12, 1500.0f, 0.3f, 150.0f, 0.0f, 0.0f, 1.5f, 1.0f, 250.0f, 150.0f, 0.4f, 0.4f);
+        ringArp.ampEnvelope (1.0f, 350.0f, 0.15f, 200.0f);
+        arpOn (ringArp, { 0, 1 }, synth::arp::Mode::upDown, "1/16", 2.0f, 0.45f);
+        route (ringArp, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.2f);
+        delay (ringArp, "1/8", 0.25f, 0.0f, true, 4.0f);
+        finish (ringArp, { 1 }, 12.0f, 0.1f, RT::room, 0.5f, 0.08f);
+        ringArp.set (ParamIDs::patchLevel, 2.5f);
+        x.add (ringArp);
+
+        auto glass = x.make ("Glass Lines", 15, { "Arp", "Two Lines", "Glass", "Clean" },
+            "Glassy and calm: a triangle on line I and a sine an octave up on line II climbing the held chord over two "
+            "octaves in sixteenths. Hold chords. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, LINES.");
+        line (glass, 0, triangle, 0.5f, false, 12.0f);
+        line (glass, 1, sine, 0.3f, true, 24.0f);
+        glass.osc (1, "PhaseRand", 0.0f).osc (1, "Fine", 4.0f);
+        filterLine (glass, 0, FT::lp12, 5000.0f, 0.05f, 200.0f, 0.0f, 0.0f, 0.6f, 1.0f, 300.0f, 200.0f, 0.3f, 0.3f);
+        filterLine (glass, 1, FT::lp12, 7000.0f, 0.05f, 300.0f, 0.0f, 0.0f, 0.4f, 1.0f, 300.0f, 200.0f, 0.3f, 0.3f);
+        glass.ampEnvelope (1.0f, 400.0f, 0.15f, 250.0f);
+        arpOn (glass, { 0, 1 }, synth::arp::Mode::up, "1/16", 2.0f, 0.35f);
+        route (glass, "modWheel", ParamIDs::fltCutoff, 0.12f);
+        delay (glass, "1/4 dotted", 0.3f, 0.0f, true, 5.0f);
+        finish (glass, { 1 }, 12.0f, 0.15f, RT::hall, 0.6f, 0.12f);
+        glass.set (ParamIDs::patchLevel, 2.1f);
+        x.add (glass);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto koto = x.make ("Koto Pluck", 16, { "Pluck", "Two Lines", "Koto", "Plucked" },
+            "A koto-like pluck: a narrow pulse on line I through a resonant filter snapping shut, a saw on line II with "
+            "its lows cut, the string starting a hair sharp. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, LINES.");
+        line (koto, 0, pulse, 0.5f, false, 0.0f, 0.18f);
+        line (koto, 1, saw, 0.25f, true);
+        koto.osc (1, "Fine", 6.0f);
+        filterLine (koto, 0, FT::lp12, 900.0f, 0.35f, 150.0f, 0.1f, 0.0f, 2.8f, 0.0f, 350.0f, 250.0f, 0.5f, 0.6f);
+        filterLine (koto, 1, FT::lp12, 1400.0f, 0.2f, 400.0f, 0.2f, 0.0f, 2.0f, 0.0f, 250.0f, 250.0f, 0.5f, 0.6f);
+        koto.ampEnvelope (1.0f, 700.0f, 0.0f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.5f);
+        pkBend (koto, 0.3f, 0.06f, -0.4f);
+        route (koto, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        finish (koto, { 1 }, 10.0f, 0.12f, RT::room, 0.5f, 0.1f);
+        pkAdd (x, koto);
+
+        auto mallet = x.make ("Wood Mallet", 17, { "Pluck", "Two Lines", "Mallet", "Wood" },
+            "A wooden mallet: a triangle on line I with a quick filter knock, a sine two octaves up on line II gone in an "
+            "instant (the wood's click), round and short. MOD WHEEL: harder mallet. MACROS: BRIGHT, SPACE, LINES.");
+        line (mallet, 0, triangle, 0.6f, false);
+        line (mallet, 1, sine, 0.25f, true, 24.0f);
+        mallet.osc (0, "PhaseRand", 0.0f).osc (1, "PhaseRand", 0.0f);
+        filterLine (mallet, 0, FT::lp12, 900.0f, 0.1f, 80.0f, 0.0f, 0.0f, 2.0f, 0.0f, 200.0f, 150.0f, 0.5f, 0.6f);
+        filterLine (mallet, 1, FT::lp12, 6000.0f, 0.05f, 500.0f, 0.0f, 0.0f, 0.5f, 0.0f, 60.0f, 60.0f, 0.5f, 0.6f);
+        mallet.ampEnvelope (1.0f, 380.0f, 0.0f, 220.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.5f);
+        route (mallet, "modWheel", ParamIDs::fltEnv, 0.1f);
+        finish (mallet, { 1 }, 10.0f, 0.12f, RT::room, 0.45f, 0.1f);
+        pkAdd (x, mallet);
+
+        auto harp = x.make ("Offworld Harp", 18, { "Pluck", "Two Lines", "Harp", "Ringing" },
+            "A harp: a saw and a pulse, one on each line, their filters opening by how hard you pluck and closing "
+            "slowly as the strings ring out. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, LINES.");
+        line (harp, 0, saw, 0.45f, false);
+        line (harp, 1, pulse, 0.3f, true, 0.0f, 0.3f);
+        harp.osc (1, "Fine", 5.0f);
+        filterLine (harp, 0, FT::lp12, 700.0f, 0.1f, 90.0f, 0.0f, 0.0f, 2.6f, 1.0f, 1200.0f, 900.0f, 0.5f, 0.8f);
+        filterLine (harp, 1, FT::lp12, 900.0f, 0.1f, 150.0f, 0.0f, 0.0f, 2.2f, 1.0f, 900.0f, 900.0f, 0.5f, 0.8f);
+        harp.ampEnvelope (1.0f, 1800.0f, 0.0f, 900.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        route (harp, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        finish (harp, { 1 }, 12.0f, 0.15f, RT::hall, 0.65f, 0.15f);
+        pkAdd (x, harp);
+    }
+
 std::vector<Rig> makeExpansionRigs()
 {
     std::vector<Rig> rigs;
@@ -20544,5 +20947,6 @@ std::vector<Rig> makeExpansionRigs()
     darkDescent ({ Rig::numBanks + 37, rigs });
     highNoon ({ Rig::numBanks + 38, rigs });
     origin ({ Rig::numBanks + 39, rigs });
+    offworld ({ Rig::numBanks + 40, rigs });
     return rigs;
 }

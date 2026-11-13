@@ -1351,6 +1351,47 @@ TEST_CASE ("SEVERED (rebuilt in 0.94.0): MACRO 3 is SORT on every preset, restin
     CHECK (used.size() == 4);   // the orchestra, Meatbass, the Salamander, VCSL
 }
 
+TEST_CASE ("OFFWORLD: two lines in every preset, MACRO 3 LINES moving only line II", "[rigs][expansions][filter2]")
+{
+    // 0.96.0: line I through FILTER 1, line II through FILTER 2 (0.96.0), each with a LOW CUT; LINES detunes line II
+    // further and brings it up, and nothing else.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 40)   // OFFWORLD: the forty-first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        CHECK (value (ParamIDs::fltOn, 0.0f) == 1.0f);
+        CHECK (value (ParamIDs::flt2On, 0.0f) == 1.0f);
+        CHECK (rig.modulation.macroNames[2] == "LINES");
+        CHECK (rig.notes.contains ("LINES"));
+        std::set<int> lineTwo;
+        for (int o = 0; o < ParamIDs::numOscillators; ++o)
+            if (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) > 0.5f && value (ParamIDs::osc (o, "Filter2"), 0.0f) > 0.5f)
+                lineTwo.insert (o);
+        CHECK_FALSE (lineTwo.empty());
+        bool detunes = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                INFO (r.destination);
+                auto onLineTwo = false;
+                for (const auto o : lineTwo)
+                    onLineTwo = onLineTwo || r.destination == ParamIDs::osc (o, "Fine") || r.destination == ParamIDs::osc (o, "Volume");
+                CHECK (onLineTwo);
+                detunes = detunes || r.destination.endsWith ("Fine");
+            }
+        CHECK (detunes);
+    }
+    CHECK (count == 18);
+}
+
 TEST_CASE ("ORIGIN: pure synth in the spirit of Supersaw Lead and Unison Strings, MACRO 3 WIDTH", "[rigs][expansions]")
 {
     // 0.95.0: one or two oscillators of the plain waves, the movement from unison and vibrato, no effects but the
@@ -1773,8 +1814,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 39, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9, 9 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 40, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 || bankIndex == 35 ? major : minor;
             const auto degree = [&] (int d)
             {

@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 40> list
+    inline constexpr std::array<Expansion, 41> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -261,5 +261,15 @@ namespace expansions
           "bass, a punchy square bass and a pure sine sub; saw keys that bloom, a pulse organ and soft tines; supersaw, "
           "pulse and glass arps; supersaw, pulse and bell plucks. MACRO 3, WIDTH: the unison opened up, from focused to "
           "huge. Our own sounds." },
+        { "OFFWORLD", "OW",
+          "Our emulation of a famous 1970s two-line polysynth: in every voice two complete lines of synthesis, each "
+          "its own oscillator, a resonant high-pass into a resonant low-pass moved by one envelope, rising from below "
+          "and settling; line II detuned against line I; key pressure brightening the filters and bringing in "
+          "vibrato; a ribbon (the pitch wheel) that bends two up and falls octaves down. The cinematic brass lead, a "
+          "singing lead for ribbon dives and a breathy flute; the big two-line brass pad, lush strings through the "
+          "chorus and a slow dark pad; a round brass bass, a hollow high-pass bass and a soft plucked one; an electric "
+          "piano, ring-modulator bells and a bright clav; brass stabs, a ring-mod arp and glassy lines; a koto, a wood "
+          "mallet and a harp. Built on FILTER 2 (0.96.0). MACRO 3, LINES: line II detuned further and brought up, the "
+          "instrument's own thickening. Our own sounds; no product named." },
     }};
 }
