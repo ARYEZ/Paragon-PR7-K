@@ -2,6 +2,21 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.94.0
+
+**SEVERED, rebuilt from the ground up round SORT: the office's tidy, pointless work done to what you play.**
+
+- **SEVERED** (SV01-SV18), our own sounds and phrases, replacing the 15 presets it had since 0.48.0 (a preset you saved from one of them is kept in your own banks). Three in every category: the floor, outside, the founder's church.
+  - Leads: Desk Whistle, Winter Cello, Founding Brass.
+  - Pads: Drop Ceiling, Snowfall Strings, Portrait Choir.
+  - Basses: Office Walk, Frozen Lake, Procession Pedal.
+  - Keys: Elevator Muzak, Cold Morning Piano, Founder's Organ.
+  - Arps: Number Cascade, Night Commute, Ceremony Bells.
+  - Plucks: Desk Toy, Filing Pizzicato, Music Box Award.
+- **MACRO 3 SORT** on every preset: turned up, what you played comes back a window later re-filed (lowest note first, highest first, rising to a peak, or shuffled), each preset its own way: the pads and drones re-file whole two-bar windows, the basses and keys eighths, the arps and plucks sixteenths. At the macro's left the presets play exactly as they are.
+- **11 have a version on the free libraries**, played once they're downloaded: the orchestra's solo cello, solo trumpet, strings, choir and pizzicato strings; a real upright bass (Meatbass); the Salamander Grand; a real pipe organ, hand chimes, marimba and glockenspiel (VCSL).
+- Levels measured: about -17 loudness, the plucks, piano and bass by their peaks; every version under -3.5 dBFS at full SORT.
+
 ## 0.93.0
 
 **SORT, a new signature effect: the phrase you played, re-filed in order.** It's the centrepiece for the coming rebuild of SEVERED; this release has the effect on its own (SEVERED's presets are unchanged for now).
