@@ -167,6 +167,7 @@ namespace
     float pluckLevel (const juce::String& name)
     {
         static const std::map<juce::String, float> levels {
+            { "Supersaw Pluck", -4.6f }, { "Pulse Pluck", -3.2f }, { "Triangle Bell", -3.6f },
             { "Desk Toy", -8.1f }, { "Filing Pizzicato", -2.0f }, { "Music Box Award", -7.7f },
             { "Dusty Strum", -3.5f }, { "Wind-Up Box", -7.5f }, { "Broken String", -0.7f },
             { "Bolt Driver", -1.5f }, { "Mended Strings", -4.7f }, { "Frost Glass", -8.0f },
@@ -20184,6 +20185,322 @@ namespace
         pkAdd (x, broken);
     }
 
+    // ---- ORIGIN (0.95.0): the owner's ask, a bank in the spirit of bank A's Supersaw Lead and Unison Strings ----------
+    // (0.2.0), "two of the best sounds you have ever made". What makes those two: one oscillator, one idea; the movement
+    // comes from the oscillator itself (unison detune and spread, vibrato that fades in, INDEPENDENT so each copy drifts
+    // like a player of its own); one filter and one amp envelope with soft curves; no effects on top. So every ORIGIN
+    // preset keeps to that: one or two oscillators of the plain waves (saw, pulse, triangle, sine), no wavetables, FFT,
+    // SYNC, FM or shapers; the reverb and delay only on MACRO 2 SPACE (their mix 0 until it's turned up). MACRO 3 WIDTH:
+    // more unison detune and spread (focused to huge), nothing else.
+    void origin (Expansion x)
+    {
+        using VM = synth::VibratoMode;
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs, bool independent)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs);
+            if (independent)
+                b.osc (o, "VibMode", (float) VM::independent);
+        };
+        // MACRO 3 WIDTH: the unison opened up (and nothing else); the reverb and delay at 0 for MACRO 2 SPACE.
+        const auto finish = [] (Builder& b, std::initializer_list<int> oscs, float detune, float spread, RT room, float size)
+        {
+            for (const auto o : oscs)
+            {
+                route (b, "macro3", ParamIDs::osc (o, "UniDetune"), detune);
+                if (spread > 0.0f)
+                    route (b, "macro3", ParamIDs::osc (o, "UniSpread"), spread);
+            }
+            macros (b, "BRIGHT", "SPACE", "WIDTH");
+            reverb (b, room, size, 0.0f, 20.0f, 5.0f);
+            space (b);
+        };
+        const auto arpOn = [] (Builder& b, synth::arp::Mode mode, const char* step, float octaves, float gate)
+        {
+            b.osc (0, "Arp", 1.0f)
+             .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto lead = x.make ("Origin Lead", 1, { "Lead", "Unison", "Saw", "Wide" },
+            "Supersaw Lead's big brother: seven detuned saws spread wide, every other copy an octave up, a gentle "
+            "vibrato that grows in as you hold the note, a filter that opens a little with each note. MOD WHEEL: deeper "
+            "vibrato. MACROS: BRIGHT, SPACE, WIDTH.");
+        lead.osc (0, "Volume", 0.5f).osc (0, "UniOctaves", 1.0f);
+        unison (lead, 0, 7, 0.8f, 0.45f, 0.85f);
+        vibrato (lead, 0, 7.0f, 5.5f, 450.0f, false);
+        lead.filter (FilterType::lp24, 3800.0f, 0.15f, 0.2f).filterEnvelope (5.0f, 500.0f, 0.5f, 300.0f).set (ParamIDs::fltKey, 0.5f)
+            .ampEnvelope (5.0f, 300.0f, 0.9f, 400.0f).set (ParamIDs::ampReleaseCurve, -0.4f);
+        route (lead, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (lead, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (lead, { 0 }, 0.3f, 0.15f, RT::hall, 0.6f);
+        lead.set (ParamIDs::patchLevel, -3.3f);
+        x.add (lead);
+
+        auto pulseLead = x.make ("Singing Pulse", 2, { "Lead", "Unison", "Pulse", "Mono" },
+            "Five detuned pulses with a narrow, reedy width that slowly moves, a singing vibrato that comes in late, one "
+            "note at a time sliding gently into the next. MOD WHEEL: deeper vibrato. MACROS: BRIGHT, SPACE, WIDTH.");
+        pulseLead.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.55f);
+        unison (pulseLead, 0, 5, 0.7f, 0.3f, 0.7f);
+        vibrato (pulseLead, 0, 9.0f, 5.2f, 550.0f, false);
+        pulseLead.filter (FilterType::lp24, 2800.0f, 0.2f, 0.25f).filterEnvelope (10.0f, 600.0f, 0.55f, 300.0f).set (ParamIDs::fltKey, 0.5f)
+                 .ampEnvelope (8.0f, 400.0f, 0.9f, 350.0f).set (ParamIDs::ampReleaseCurve, -0.4f)
+                 .mono (40.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato)
+                 .set (ParamIDs::lfo (0, "Wave"), 1.0f).set (ParamIDs::lfo (0, "Rate"), 0.3f)
+                 .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (pulseLead, "lfo1", ParamIDs::osc (0, "Width"), 0.12f);
+        route (pulseLead, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (pulseLead, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (pulseLead, { 0 }, 0.35f, 0.25f, RT::hall, 0.6f);
+        pulseLead.set (ParamIDs::patchLevel, -6.4f);
+        x.add (pulseLead);
+
+        auto flute = x.make ("Glass Flute", 3, { "Lead", "Unison", "Triangle", "Soft" },
+            "A soft solo: three triangles barely apart, each with its own slow vibrato so they breathe against each "
+            "other, a gentle attack and a glide between notes. MOD WHEEL: deeper vibrato. MACROS: BRIGHT, SPACE, WIDTH.");
+        flute.osc (0, "Wave", triangle).osc (0, "Volume", 0.7f);
+        unison (flute, 0, 3, 0.55f, 0.12f, 0.5f);
+        vibrato (flute, 0, 10.0f, 5.0f, 350.0f, true);
+        flute.filter (FilterType::lp12, 4000.0f, 0.05f, 0.1f).filterEnvelope (60.0f, 500.0f, 0.7f, 300.0f).set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (60.0f, 400.0f, 0.9f, 300.0f).set (ParamIDs::ampReleaseCurve, -0.4f)
+             .mono (60.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        route (flute, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (flute, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (flute, { 0 }, 0.25f, 0.4f, RT::hall, 0.55f);
+        flute.set (ParamIDs::patchLevel, -2.6f);
+        x.add (flute);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto cellos = x.make ("Cello Section", 4, { "Pad", "Unison", "Saw", "Strings" },
+            "Unison Strings' low section: five saws an octave down, each player with its own slow vibrato so the "
+            "section never sits still, a bow that swells in and a long, soft release. MOD WHEEL: more vibrato. MACROS: "
+            "BRIGHT, SPACE, WIDTH.");
+        cellos.osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.5f);
+        unison (cellos, 0, 5, 1.0f, 0.28f, 1.0f);
+        vibrato (cellos, 0, 10.0f, 4.2f, 900.0f, true);
+        cellos.filter (FilterType::lp12, 1500.0f, 0.1f, 0.1f).filterEnvelope (700.0f, 1500.0f, 0.7f, 1300.0f).set (ParamIDs::fltKey, 0.5f)
+              .ampEnvelope (550.0f, 800.0f, 0.85f, 1600.0f).set (ParamIDs::ampReleaseCurve, -0.5f).set (ParamIDs::ampVel, 0.5f);
+        route (cellos, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (cellos, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (cellos, { 0 }, 0.3f, 0.0f, RT::hall, 0.7f);
+        cellos.set (ParamIDs::patchLevel, -9.4f);
+        x.add (cellos);
+
+        auto square = x.make ("Square Drift", 5, { "Pad", "Unison", "Pulse", "Warm" },
+            "A warm square-wave pad: six hollow squares, each drifting on its own slow vibrato, a dark filter that "
+            "slowly opens. Hold chords. MOD WHEEL: more drift. MACROS: BRIGHT, SPACE, WIDTH.");
+        square.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.5f);
+        unison (square, 0, 6, 1.0f, 0.25f, 0.9f);
+        vibrato (square, 0, 9.0f, 3.8f, 1000.0f, true);
+        square.filter (FilterType::lp24, 1100.0f, 0.12f, 0.15f).filterEnvelope (900.0f, 2000.0f, 0.6f, 1500.0f).set (ParamIDs::fltKey, 0.4f)
+              .ampEnvelope (700.0f, 1000.0f, 0.9f, 1800.0f).set (ParamIDs::ampReleaseCurve, -0.5f).set (ParamIDs::ampVel, 0.4f);
+        route (square, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (square, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (square, { 0 }, 0.3f, 0.1f, RT::hall, 0.7f);
+        square.set (ParamIDs::patchLevel, -15.6f);
+        x.add (square);
+
+        auto horizon = x.make ("Octave Horizon", 6, { "Pad", "Unison", "Saw", "Vast" },
+            "Slow and vast: seven saws stacked in octaves, each drifting on its own, coming in like dawn and fading "
+            "like dusk. Hold chords. MOD WHEEL: more drift. MACROS: BRIGHT, SPACE, WIDTH.");
+        horizon.osc (0, "Volume", 0.45f).osc (0, "UniOctaves", 1.0f);
+        unison (horizon, 0, 7, 0.9f, 0.32f, 1.0f);
+        vibrato (horizon, 0, 8.0f, 4.6f, 1200.0f, true);
+        horizon.filter (FilterType::lp24, 2400.0f, 0.1f, 0.15f).filterEnvelope (1500.0f, 2500.0f, 0.6f, 2000.0f).set (ParamIDs::fltKey, 0.4f)
+               .ampEnvelope (1200.0f, 1500.0f, 0.9f, 2500.0f).set (ParamIDs::ampReleaseCurve, -0.5f).set (ParamIDs::ampVel, 0.4f);
+        route (horizon, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (horizon, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (horizon, { 0 }, 0.3f, 0.0f, RT::hall, 0.8f);
+        horizon.set (ParamIDs::patchLevel, -10.0f);
+        x.add (horizon);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto sawBass = x.make ("Wide Saw Bass", 7, { "Bass", "Unison", "Saw", "Wide" },
+            "Five detuned saws wide on top, a sine an octave down holding the middle solid, a filter that snaps open on "
+            "each note. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        sawBass.osc (0, "Volume", 0.45f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f)
+               .osc (1, "PhaseRand", 0.0f).osc (1, "Filter", 0.0f);
+        unison (sawBass, 0, 5, 0.5f, 0.25f, 0.6f);
+        sawBass.filter (FilterType::lp24, 900.0f, 0.15f, 0.35f).filterEnvelope (2.0f, 350.0f, 0.3f, 200.0f).set (ParamIDs::fltKey, 0.4f)
+               .ampEnvelope (2.0f, 400.0f, 0.85f, 150.0f).mono (0.0f);
+        route (sawBass, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (sawBass, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (sawBass, { 0 }, 0.3f, 0.3f, RT::room, 0.4f);
+        sawBass.set (ParamIDs::patchLevel, -2.3f);
+        x.add (sawBass);
+
+        auto punch = x.make ("Square Punch", 8, { "Bass", "Unison", "Pulse", "Punchy" },
+            "A punchy square bass: three squares barely apart over a sine an octave down, the filter snapping shut "
+            "after each hit, harder hits brighter. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        punch.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f)
+             .osc (1, "PhaseRand", 0.0f).osc (1, "Filter", 0.0f);
+        unison (punch, 0, 3, 0.4f, 0.12f, 0.3f);
+        punch.filter (FilterType::lp24, 500.0f, 0.25f, 0.55f).filterEnvelope (1.0f, 220.0f, 0.15f, 120.0f).set (ParamIDs::fltKey, 0.4f)
+             .set (ParamIDs::fltEnvVel, 0.4f)
+             .ampEnvelope (1.0f, 300.0f, 0.7f, 120.0f).set (ParamIDs::ampDecayCurve, -0.4f).mono (0.0f);
+        route (punch, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (punch, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (punch, { 0 }, 0.3f, 0.4f, RT::room, 0.4f);
+        punch.set (ParamIDs::patchLevel, -2.6f);
+        x.add (punch);
+
+        auto sub = x.make ("Pure Sub", 9, { "Bass", "Unison", "Sine", "Deep" },
+            "A pure sine sub, steady and deep, with a quiet haze of three saws on top for an edge you feel more than "
+            "hear. MOD WHEEL: more edge. MACROS: BRIGHT, SPACE, WIDTH.");
+        sub.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.12f);
+        unison (sub, 1, 3, 1.0f, 0.2f, 0.5f);
+        sub.filter (FilterType::lp12, 1200.0f, 0.05f, 0.1f).filterEnvelope (3.0f, 400.0f, 0.6f, 200.0f).set (ParamIDs::fltKey, 0.4f)
+           .ampEnvelope (3.0f, 500.0f, 0.95f, 200.0f).mono (30.0f);
+        route (sub, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (sub, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (sub, { 1 }, 0.3f, 0.4f, RT::room, 0.4f);
+        sub.set (ParamIDs::patchLevel, -4.4f);
+        x.add (sub);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto bloom = x.make ("Saw Bloom Keys", 10, { "Keys", "Unison", "Saw", "Bloom" },
+            "Four detuned saws as a keyboard: the filter blooms open with each chord and settles, harder playing "
+            "brighter. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        bloom.osc (0, "Volume", 0.5f);
+        unison (bloom, 0, 4, 0.7f, 0.2f, 0.7f);
+        bloom.filter (FilterType::lp24, 900.0f, 0.15f, 0.5f).filterEnvelope (2.0f, 900.0f, 0.35f, 500.0f).set (ParamIDs::fltKey, 0.5f)
+             .set (ParamIDs::fltEnvVel, 0.5f)
+             .ampEnvelope (3.0f, 1500.0f, 0.5f, 600.0f).set (ParamIDs::ampDecayCurve, -0.4f).set (ParamIDs::ampVel, 0.5f);
+        route (bloom, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (bloom, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (bloom, { 0 }, 0.3f, 0.2f, RT::room, 0.5f);
+        bloom.set (ParamIDs::patchLevel, -7.2f);
+        x.add (bloom);
+
+        auto organ = x.make ("Pulse Organ", 11, { "Keys", "Unison", "Pulse", "Organ" },
+            "A detuned pulse organ: two hollow squares an octave apart, a few copies each, a light shimmer of vibrato, "
+            "on the moment you press and gone the moment you let go. MOD WHEEL: more shimmer. MACROS: BRIGHT, SPACE, "
+            "WIDTH.");
+        organ.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.45f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.3f);
+        for (int o = 0; o < 2; ++o)
+        {
+            unison (organ, o, 3, 0.6f, 0.15f, 0.6f);
+            vibrato (organ, o, 5.0f, 6.0f, 0.0f, false);
+            route (organ, "modWheel", ParamIDs::osc (o, "VibAmount"), 0.15f);
+        }
+        organ.filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (5.0f, 100.0f, 1.0f, 150.0f);
+        route (organ, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (organ, { 0, 1 }, 0.25f, 0.2f, RT::room, 0.5f);
+        organ.set (ParamIDs::patchLevel, -10.9f);
+        x.add (organ);
+
+        auto tines = x.make ("Soft Tines", 12, { "Keys", "Unison", "Triangle", "Soft" },
+            "A soft electric-piano-like key: a triangle with a quiet sine an octave up for the bell, two copies barely "
+            "apart, softer playing darker and quieter. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        tines.osc (0, "Wave", triangle).osc (0, "Volume", 0.7f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f);
+        unison (tines, 0, 2, 0.4f, 0.06f, 0.4f);
+        tines.filter (FilterType::lp12, 2500.0f, 0.05f, 0.3f).filterEnvelope (1.0f, 600.0f, 0.3f, 400.0f).set (ParamIDs::fltKey, 0.5f)
+             .set (ParamIDs::fltEnvVel, 0.6f)
+             .ampEnvelope (2.0f, 2000.0f, 0.35f, 500.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.7f);
+        route (tines, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (tines, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        finish (tines, { 0 }, 0.25f, 0.4f, RT::room, 0.5f);
+        tines.set (ParamIDs::patchLevel, -5.0f);
+        x.add (tines);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto sawArp = x.make ("Supersaw Arp", 13, { "Arp", "Unison", "Saw", "Trance" },
+            "Seven detuned saws running up the held chord in sixteenths over two octaves, each step a short, bright "
+            "pluck. Hold chords. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        sawArp.osc (0, "Volume", 0.5f);
+        unison (sawArp, 0, 7, 0.8f, 0.4f, 0.8f);
+        sawArp.filter (FilterType::lp24, 2500.0f, 0.15f, 0.3f).filterEnvelope (1.0f, 250.0f, 0.2f, 150.0f).set (ParamIDs::fltKey, 0.5f)
+              .ampEnvelope (1.0f, 350.0f, 0.2f, 200.0f);
+        arpOn (sawArp, synth::arp::Mode::up, "1/16", 2.0f, 0.5f);
+        route (sawArp, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (sawArp, "macro1", ParamIDs::fltCutoff, 0.15f);
+        delay (sawArp, "1/8 dotted", 0.3f, 0.0f, true, 5.0f);
+        finish (sawArp, { 0 }, 0.3f, 0.15f, RT::hall, 0.6f);
+        sawArp.set (ParamIDs::patchLevel, -2.5f);
+        x.add (sawArp);
+
+        auto pulseRun = x.make ("Pulse Run", 14, { "Arp", "Unison", "Pulse", "Bounce" },
+            "Three narrow pulses bouncing up and down the held chord in sixteenths, a little resonance on the filter "
+            "so each step pops. Hold chords. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        pulseRun.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.55f);
+        unison (pulseRun, 0, 3, 0.5f, 0.15f, 0.5f);
+        pulseRun.filter (FilterType::lp24, 1800.0f, 0.25f, 0.4f).filterEnvelope (1.0f, 200.0f, 0.1f, 120.0f).set (ParamIDs::fltKey, 0.5f)
+                .ampEnvelope (1.0f, 300.0f, 0.15f, 150.0f);
+        arpOn (pulseRun, synth::arp::Mode::upDown, "1/16", 2.0f, 0.45f);
+        route (pulseRun, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (pulseRun, "macro1", ParamIDs::fltCutoff, 0.15f);
+        delay (pulseRun, "1/8", 0.25f, 0.0f, true, 5.0f);
+        finish (pulseRun, { 0 }, 0.3f, 0.3f, RT::room, 0.5f);
+        pulseRun.set (ParamIDs::patchLevel, -2.5f);
+        x.add (pulseRun);
+
+        auto ladder = x.make ("Glass Ladder", 15, { "Arp", "Unison", "Triangle", "Glass" },
+            "Clean triangles an octave up climbing the held chord over three octaves, two copies barely apart, glassy "
+            "and calm. Hold chords. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        ladder.osc (0, "Wave", triangle).osc (0, "Transpose", 12.0f).osc (0, "Volume", 0.65f);
+        unison (ladder, 0, 2, 0.45f, 0.06f, 0.5f);
+        ladder.filter (FilterType::lp12, 6000.0f, 0.05f, 0.1f).filterEnvelope (1.0f, 300.0f, 0.4f, 200.0f).set (ParamIDs::fltKey, 0.3f)
+              .ampEnvelope (1.0f, 400.0f, 0.15f, 250.0f);
+        arpOn (ladder, synth::arp::Mode::up, "1/16", 3.0f, 0.35f);
+        route (ladder, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (ladder, "macro1", ParamIDs::fltCutoff, 0.15f);
+        delay (ladder, "1/4 dotted", 0.3f, 0.0f, true, 5.0f);
+        finish (ladder, { 0 }, 0.25f, 0.4f, RT::hall, 0.6f);
+        ladder.set (ParamIDs::patchLevel, -0.3f);
+        x.add (ladder);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto sawPluck = x.make ("Supersaw Pluck", 16, { "Pluck", "Unison", "Saw", "Bright" },
+            "Seven detuned saws struck: the filter snaps open and falls straight back, harder hits brighter. MOD "
+            "WHEEL: brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        sawPluck.osc (0, "Volume", 0.5f);
+        unison (sawPluck, 0, 7, 0.8f, 0.4f, 0.8f);
+        sawPluck.filter (FilterType::lp24, 600.0f, 0.2f, 0.6f).filterEnvelope (2.0f, 250.0f, 0.05f, 150.0f).set (ParamIDs::fltKey, 0.5f)
+                .set (ParamIDs::fltEnvVel, 0.4f)
+                .ampEnvelope (3.0f, 500.0f, 0.0f, 250.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        route (sawPluck, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (sawPluck, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (sawPluck, { 0 }, 0.3f, 0.15f, RT::room, 0.5f);
+        pkAdd (x, sawPluck);
+
+        auto pulsePluck = x.make ("Pulse Pluck", 17, { "Pluck", "Unison", "Pulse", "Pop" },
+            "Three squares struck through a resonant filter that pops open and shuts, round and woody. MOD WHEEL: "
+            "brighter. MACROS: BRIGHT, SPACE, WIDTH.");
+        pulsePluck.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.55f);
+        unison (pulsePluck, 0, 3, 0.5f, 0.15f, 0.5f);
+        pulsePluck.filter (FilterType::lp24, 700.0f, 0.3f, 0.55f).filterEnvelope (0.0f, 180.0f, 0.0f, 120.0f).set (ParamIDs::fltKey, 0.5f)
+                  .set (ParamIDs::fltEnvVel, 0.4f)
+                  .ampEnvelope (1.0f, 350.0f, 0.0f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        route (pulsePluck, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (pulsePluck, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (pulsePluck, { 0 }, 0.3f, 0.3f, RT::room, 0.5f);
+        pkAdd (x, pulsePluck);
+
+        auto bell = x.make ("Triangle Bell", 18, { "Pluck", "Unison", "Triangle", "Bell" },
+            "A triangle struck like a small bell, a pure sine two octaves up ringing over it and gone first, two copies "
+            "barely apart. MOD WHEEL: more ring. MACROS: BRIGHT, SPACE, WIDTH.");
+        bell.osc (0, "Wave", triangle).osc (0, "Volume", 0.65f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.15f).osc (1, "PhaseRand", 0.0f)
+            .set (ParamIDs::fltOn, 0.0f)
+            .ampEnvelope (1.0f, 1200.0f, 0.0f, 700.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        unison (bell, 0, 2, 0.45f, 0.05f, 0.5f);
+        route (bell, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (bell, "macro1", ParamIDs::osc (1, "Volume"), 0.1f);
+        finish (bell, { 0 }, 0.25f, 0.4f, RT::plate, 0.5f);
+        pkAdd (x, bell);
+    }
+
 std::vector<Rig> makeExpansionRigs()
 {
     std::vector<Rig> rigs;
@@ -20226,5 +20543,6 @@ std::vector<Rig> makeExpansionRigs()
     finalDivide ({ Rig::numBanks + 36, rigs });
     darkDescent ({ Rig::numBanks + 37, rigs });
     highNoon ({ Rig::numBanks + 38, rigs });
+    origin ({ Rig::numBanks + 39, rigs });
     return rigs;
 }

@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 39> list
+    inline constexpr std::array<Expansion, 40> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -252,5 +252,14 @@ namespace expansions
           "fiddle, cello, strings, choir, bass, pianos, banjo, guitar and music box play the Sonatina Symphonic "
           "Orchestra, Meatbass, the Salamander Grand, the Kay banjo, Shinyguitar and VCSL once downloaded (free). Our "
           "own sounds." },
+        { "ORIGIN", "OG",
+          "Back to where it started: a bank in the spirit of bank A's Supersaw Lead and Unison Strings. One oscillator, "
+          "one idea, plain waves (saw, pulse, triangle, sine); the movement from the oscillator itself, unison detune "
+          "and spread, vibrato that fades in, each copy drifting on its own like a player in a section; one filter and "
+          "one amp envelope, tuned with care; no effects stacked on top. A wide supersaw lead, a singing pulse lead and "
+          "a soft triangle solo; a low cello section, a warm square pad and a vast pad stacked in octaves; a wide saw "
+          "bass, a punchy square bass and a pure sine sub; saw keys that bloom, a pulse organ and soft tines; supersaw, "
+          "pulse and glass arps; supersaw, pulse and bell plucks. MACRO 3, WIDTH: the unison opened up, from focused to "
+          "huge. Our own sounds." },
     }};
 }

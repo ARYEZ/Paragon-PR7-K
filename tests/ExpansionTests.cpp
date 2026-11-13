@@ -1351,6 +1351,58 @@ TEST_CASE ("SEVERED (rebuilt in 0.94.0): MACRO 3 is SORT on every preset, restin
     CHECK (used.size() == 4);   // the orchestra, Meatbass, the Salamander, VCSL
 }
 
+TEST_CASE ("ORIGIN: pure synth in the spirit of Supersaw Lead and Unison Strings, MACRO 3 WIDTH", "[rigs][expansions]")
+{
+    // 0.95.0: one or two oscillators of the plain waves, the movement from unison and vibrato, no effects but the
+    // reverb and delay MACRO 2 brings in, and MACRO 3 only opening the unison up.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 39)   // ORIGIN: the fortieth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.sampled == nullptr);
+        CHECK (rig.modulation.macroNames[2] == "WIDTH");
+        CHECK (rig.notes.contains ("WIDTH"));
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        int oscillators = 0;
+        for (int o = 0; o < ParamIDs::numOscillators; ++o)
+        {
+            if (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) < 0.5f)
+                continue;
+            ++oscillators;
+            const auto wave = (int) value (ParamIDs::osc (o, "Wave"), (float) synth::OscWave::saw);
+            CHECK ((wave == (int) synth::OscWave::saw || wave == (int) synth::OscWave::pulse
+                    || wave == (int) synth::OscWave::triangle || wave == (int) synth::OscWave::sine));
+            for (const auto* setting : { "SyncAmount", "FmAmount", "AmAmount", "Skew", "Pinch", "Formant", "Crush" })
+                CHECK (value (ParamIDs::osc (o, setting), 0.0f) == 0.0f);
+        }
+        CHECK (oscillators >= 1);
+        CHECK (oscillators <= 2);
+        for (int k = 0; k < 4; ++k)
+            CHECK (value (ParamIDs::shp (k, "On"), 0.0f) == 0.0f);
+        // The effects: only the reverb and delay, both at 0 until MACRO 2 SPACE.
+        CHECK (value (ParamIDs::reverbMix, 0.0f) == 0.0f);
+        CHECK (value (ParamIDs::delayMix, 0.0f) == 0.0f);
+        for (const auto* id : { ParamIDs::modOn, ParamIDs::mod2On, ParamIDs::lofiOn, ParamIDs::voiceOn })
+            CHECK (value (id, 0.0f) == 0.0f);
+        bool wide = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                CHECK ((r.destination.endsWith ("UniDetune") || r.destination.endsWith ("UniSpread")));
+                wide = wide || r.destination.endsWith ("UniDetune");
+            }
+        CHECK (wide);
+    }
+    CHECK (count == 18);
+}
+
 TEST_CASE ("DARK DESCENT: MACRO 3 is GEARWORKS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][gearworks]")
 {
     ParagonX1AudioProcessor processor;
@@ -1721,8 +1773,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 36, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 39, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 || bankIndex == 35 ? major : minor;
             const auto degree = [&] (int d)
             {
