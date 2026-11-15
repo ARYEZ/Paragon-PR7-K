@@ -178,17 +178,17 @@ TEST_CASE ("WOBBLE: the pattern's speed changes beat by beat", "[wobble]")
     }
 }
 
-TEST_CASE ("WOBBLE: TALK moves the tone as a vowel, OO shut to EH open", "[wobble]")
+TEST_CASE ("WOBBLE: TALK moves the tone as a vowel, OO shut to AH open", "[wobble]")
 {
-    // A low saw (110 Hz) through a slow wobble (HALF-TIME at 60 BPM: one a second). TALK's vowel moves its second
-    // formant from OO's 600 Hz (shut: the sixth harmonic) up towards EH's 1.6 kHz (open: about the fourteenth).
-    // What TALK adds over the same wobble without it: open, the fourteenth comes up against the sixth; shut, the
-    // other way round (the low-pass moves both the same in either run, so it cancels).
+    // A low saw (110 Hz) through a slow wobble (HALF-TIME at 60 BPM: one a second), LOW at 800 Hz so the low-pass
+    // never reaches the harmonics measured. TALK's vowel is OO shut (its first formant near 350 Hz: the third
+    // harmonic) and AH open (near 600 Hz: the sixth's 660 Hz, the third far weaker). What TALK does to the sixth
+    // against the third, over the same wobble without it, open and shut (the low-pass is the same in both runs).
     const auto bpm = 60.0;
     const auto in = saw (110.0, 8.0);
     auto s = full();
     s.pattern = 1;
-    s.low = 0.6f;
+    s.low = 1.0f;
     s.range = 0.8f;
     s.talk = 1.0f;
     const auto talking = runWobble (in, in, s, bpm);
@@ -198,7 +198,7 @@ TEST_CASE ("WOBBLE: TALK moves the tone as a vowel, OO shut to EH open", "[wobbl
     const auto tilt = [window] (const std::vector<float>& x, double second)
     {
         const auto from = (size_t) (second * sampleRate) - window / 2;
-        return db (levelAt (x, 1540.0, from, window)) - db (levelAt (x, 660.0, from, window));
+        return db (levelAt (x, 660.0, from, window)) - db (levelAt (x, 330.0, from, window));
     };
     double open = 0.0, shut = 0.0;
     for (int beat = 3; beat < 7; ++beat)
@@ -208,7 +208,7 @@ TEST_CASE ("WOBBLE: TALK moves the tone as a vowel, OO shut to EH open", "[wobbl
     }
     open /= 4.0;
     shut /= 4.0;
-    WARN ("TALK lifts the 14th harmonic against the 6th by " << open << " dB open and " << shut << " dB shut");
+    WARN ("TALK lifts the 6th harmonic against the 3rd by " << open << " dB open and " << shut << " dB shut");
     CHECK (open - shut > 6.0);
 }
 

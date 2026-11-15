@@ -4,7 +4,7 @@
 #include "ui/SynthControls.h"
 
 // WOBBLE's page (0.97.0): the pattern's two bars as the wobble opening and closing (the cutoff, low at the foot),
-// each beat named with its speed, where the song is now lit; on the right TALK's vowels, OO shut to EH open, the
+// each beat named with its speed, where the song is now lit; on the right TALK's vowels, OO shut to AH open, the
 // one sounding lit. Across the top the pattern and shape, the cutoff, the level kept; under it ON, AMOUNT, PATTERN,
 // SHAPE, LOW, RANGE, RESONANCE, TALK and DRIVE.
 class WobbleDisplay final : public juce::Component,

@@ -18,8 +18,9 @@ namespace effects
     //  - SHAPE (never reorder `shapeNames`): SMOOTH (a cosine, the classic wub), SNAP (open at once, falling fast: the
     //    punchy one), RISE (opening across each wobble, the "yoi");
     //  - TALK: a vowel filter (the VOICE filter's five bass formants, `synth::vocal`, each 2.5 times as wide and at least
-    //    100 Hz so a low bass's harmonics fall in them) moving from OO (shut) through OH and AH towards EH (open) with
-    //    the wobble, blended in before the low-pass: the "talking" growl;
+    //    100 Hz so a low bass's harmonics fall in them) moving from OO (shut) through OH to AH (open) with the wobble,
+    //    blended in before the low-pass: the "talking" growl, the "wow" (OO to EH was tried first: both ends put their
+    //    first formant near 350-420 Hz and the vowel hardly showed);
     //  - DRIVE: tanh going in (scaled so a 0.3 level stays 0.3), the grit under the wobble;
     //  - RESONANCE: how much the low-pass sings.
     // AMOUNT moves the cutoff in from fully open (20 kHz) to the wobble's, the resonance, TALK and DRIVE with it, and
@@ -95,8 +96,8 @@ namespace effects
         {
             return juce::jlimit (30.0f, 20000.0f, lowHz (st.low) * std::exp2 ((float) w * rangeOctaves (st.range)));
         }
-        // TALK's vowel (0 OO to 1 EE, as the VOICE filter's) at openness `w`: OO shut, towards EH open.
-        static float vowelAt (double w) noexcept { return 0.72f * (float) w; }
+        // TALK's vowel (0 OO to 1 EE, as the VOICE filter's) at openness `w`: OO shut, AH open.
+        static float vowelAt (double w) noexcept { return 0.5f * (float) w; }
 
         void prepare (double sampleRate, int maxBlockSize);
         void reset() noexcept;

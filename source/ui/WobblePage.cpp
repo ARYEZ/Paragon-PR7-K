@@ -8,7 +8,7 @@
 WobbleDisplay::WobbleDisplay (ParagonX1AudioProcessor& p) : processor (p)
 {
     setTooltip ("The pattern's two bars: the wobble opening and closing (the cutoff, low at the foot, high at the top), "
-                "each beat named with its speed and where the song is now lit; on the right TALK's vowel, OO shut to EH open.");
+                "each beat named with its speed and where the song is now lit; on the right TALK's vowel, OO shut to AH open.");
     startTimerHz (30);
 }
 
@@ -95,17 +95,17 @@ void WobbleDisplay::paint (juce::Graphics& g)
         g.fillEllipse (x - 4.0f, y - 4.0f, 8.0f, 8.0f);
     }
 
-    // TALK's vowels: OO (shut) at the foot to EH (open), the one sounding lit by how much TALK there is.
+    // TALK's vowels: OO (shut) at the foot to AH (open), the one sounding lit by how much TALK there is.
     {
         g.setColour (juce::Colour (0xff3a2a48));
         g.drawRoundedRectangle (vowelArea, 4.0f, 1.0f);
         g.setColour (ParagonColours::textDim);
         g.setFont (juce::FontOptions (9.0f));
         g.drawText ("TALK", vowelArea.withHeight (12.0f).translated (0.0f, -14.0f), juce::Justification::centred, false);
-        const auto vowelNow = W::vowelAt (live ? fx.getOpen() : 0.0f) * 4.0f;   // 0 OO .. 4 EE
+        const auto vowelNow = W::vowelAt (live ? fx.getOpen() : 0.0f) * 4.0f;   // 0 OO .. 2 AH
         const auto talk = settings.talk * amount;
-        const auto step = vowelArea.getHeight() / 4.0f;
-        for (int v = 0; v < 4; ++v)
+        const auto step = vowelArea.getHeight() / 3.0f;
+        for (int v = 0; v < 3; ++v)
         {
             const auto row = juce::Rectangle<float> (vowelArea.getX(), vowelArea.getBottom() - step * (float) (v + 1), vowelArea.getWidth(), step);
             const auto near = juce::jmax (0.0f, 1.0f - std::abs (vowelNow - (float) v));
@@ -152,7 +152,7 @@ WobblePage::WobblePage (ParagonX1AudioProcessor& p) : display (p)
     make (controls, ParamIDs::wobbleLow, "LOW", "Where the filter shuts: 40 Hz to 800 Hz.");
     make (controls, ParamIDs::wobbleRange, "RANGE", "How far it opens above LOW: 2 to 7 octaves.");
     make (controls, ParamIDs::wobbleResonance, "RESONANCE", "How much the filter sings as it moves.");
-    make (controls, ParamIDs::wobbleTalk, "TALK", "A vowel filter moving with the wobble, OO shut to EH open: the talking growl.");
+    make (controls, ParamIDs::wobbleTalk, "TALK", "A vowel filter moving with the wobble, OO shut to AH open: the talking growl, the \"wow\".");
     make (controls, ParamIDs::wobbleDrive, "DRIVE", "Grit going in, under the wobble.");
     for (auto* list : { &top, &controls })
         for (auto& c : *list)
