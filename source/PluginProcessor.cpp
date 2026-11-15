@@ -335,6 +335,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->crossroads.prepare (sampleRate, preparedBlockSize);
     rack->gearworks.prepare (sampleRate, preparedBlockSize);
     rack->sort.prepare (sampleRate, preparedBlockSize);
+    rack->wobble.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1459,6 +1460,22 @@ effects::Gearworks::Settings ParagonX1AudioProcessor::getGearworksSettings() con
     return s;
 }
 
+effects::Wobble::Settings ParagonX1AudioProcessor::getWobbleSettings() const noexcept
+{
+    using W = effects::Wobble;
+    W::Settings s;
+    s.on = isOn (ParamIDs::wobbleOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("wobbleAmount"), ParamIDs::wobbleAmount));
+    s.pattern = juce::jlimit (0, W::patternNames.size() - 1, juce::roundToInt (param (ParamIDs::wobblePattern)));
+    s.shape = juce::jlimit (0, W::shapeNames.size() - 1, juce::roundToInt (param (ParamIDs::wobbleShape)));
+    s.low = param (ParamIDs::wobbleLow);
+    s.range = param (ParamIDs::wobbleRange);
+    s.resonance = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("wobbleResonance"), ParamIDs::wobbleResonance));
+    s.talk = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("wobbleTalk"), ParamIDs::wobbleTalk));
+    s.drive = param (ParamIDs::wobbleDrive);
+    return s;
+}
+
 effects::Sort::Settings ParagonX1AudioProcessor::getSortSettings() const noexcept
 {
     using S = effects::Sort;
@@ -1913,6 +1930,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             if (sorting.on || ! rack->sort.isResting())
                 rack->sort.process (block, sorting, juce::jmax (20.0, hostBpm.load()), piecePpq);
         }
+        rack->wobble.process (block, getWobbleSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.97.0: the wobble
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }

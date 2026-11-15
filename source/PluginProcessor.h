@@ -470,6 +470,8 @@ public:
     const effects::Gearworks& getGearworks() const noexcept { return rack->gearworks; }
     effects::Sort::Settings getSortSettings() const noexcept;                    // SORT (0.93.0)
     const effects::Sort& getSort() const noexcept { return rack->sort; }
+    effects::Wobble::Settings getWobbleSettings() const noexcept;                // WOBBLE (0.97.0)
+    const effects::Wobble& getWobble() const noexcept { return rack->wobble; }
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }

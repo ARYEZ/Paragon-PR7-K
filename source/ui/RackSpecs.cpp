@@ -2,6 +2,7 @@
 
 #include "dsp/synth/NaviComputer.h"
 #include "dsp/effects/Sweep.h"
+#include "dsp/effects/Wobble.h"
 #include "dsp/effects/Redline.h"
 #include "dsp/effects/FreezeTag.h"
 #include "dsp/effects/Crossroads.h"
@@ -626,19 +627,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 36> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 37> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 36> specs;
+    std::array<RackUnit::Spec, 37> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -2133,6 +2134,56 @@ std::array<RackUnit::Spec, 36> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (35); };
+    }
+
+    // WOBBLE (0.97.0): the wobble's speed now in big type, the cutoff, its settings; the keys set AMOUNT: WUB, GROWL,
+    // FILTHY; the ladder how open the wobble is now.
+    {
+        auto& s = specs[36];
+        s.name = "WOBBLE";
+        s.kind = "FILTER  TALK  DRIVE";
+        s.onParameterIds = { ParamIDs::wobbleOn };
+        s.powerTooltip = "WOBBLE on or off: the dubstep wobble, locked to the song and changing speed beat by beat. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "WUB", 0.35f, "A gentle wobble: the filter pulsing with the song" },
+                                            { "GROWL", 0.7f, "Most of the way: the wobble deep, talking where TALK is up" },
+                                            { "FILTHY", 1.0f, "All of it: shut to wide open on every wobble, driven hard" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::wobbleAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::wobbleAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::wobbleAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::wobbleTalk, "TALK" } };
+        s.ladderTitle = "OPEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "OPEN", "", "1/2", "", "SHUT" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getWobble();
+            return p.getWobbleSettings().on && ! fx.isResting() ? fx.getOpen() * fx.getAmount() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            using W = effects::Wobble;
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getWobbleSettings();
+            const auto& fx = p.getWobble();
+            const auto live = settings.on && ! fx.isResting();
+            const auto rate = W::rateAt (live ? fx.getBeat() : 0.0, settings.pattern);
+            // The speed as a number of wobbles a beat (the digits can't draw "1/8 T").
+            const auto end = drawNumber (g, juce::String (rate < 1.0f ? 0.5f : rate, rate < 1.0f ? 1 : 0), left.getTopLeft(), h);
+            line (g, "/BEAT", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, live ? W::rateName (rate) + "  " + juce::String (juce::roundToInt (fx.getCutoffHz())) + " Hz" : "OPEN",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::wobbleAmount), "PATTERN " + textOf (p, ParamIDs::wobblePattern),
+                                  "TALK " + textOf (p, ParamIDs::wobbleTalk), "DRIVE " + textOf (p, ParamIDs::wobbleDrive) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (36); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

@@ -1351,6 +1351,37 @@ TEST_CASE ("SEVERED (rebuilt in 0.94.0): MACRO 3 is SORT on every preset, restin
     CHECK (used.size() == 4);   // the orchestra, Meatbass, the Salamander, VCSL
 }
 
+TEST_CASE ("STEEL TITANS: MACRO 3 is WOBBLE on every preset, resting at its left", "[rigs][expansions][wobble]")
+{
+    // 0.97.0: WOBBLE on at AMOUNT 0 (so the macro's left is the preset as built), MACRO 3 only to its AMOUNT.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 41)   // STEEL TITANS: the forty-second expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        CHECK (value (ParamIDs::wobbleOn, 0.0f) == 1.0f);
+        CHECK (value (ParamIDs::wobbleAmount, 1.0f) == 0.0f);
+        CHECK (rig.modulation.macroNames[2] == "WOBBLE");
+        CHECK (rig.notes.contains ("WOBBLE"));
+        auto toAmount = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                CHECK (r.destination == ParamIDs::wobbleAmount);
+                toAmount = toAmount || r.amount >= 0.7f;
+            }
+        CHECK (toAmount);
+    }
+    CHECK (count == 18);
+}
+
 TEST_CASE ("OFFWORLD: two lines in every preset, MACRO 3 LINES moving only line II", "[rigs][expansions][filter2]")
 {
     // 0.96.0: line I through FILTER 1, line II through FILTER 2 (0.96.0), each with a LOW CUT; LINES detunes line II
@@ -1752,8 +1783,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto divide = rig.bank == Rig::numBanks + 36;    // FINAL DIVIDE: 84 BPM in E minor, Em C Am B (a bar a side)
         const auto descent = rig.bank == Rig::numBanks + 37;   // DARK DESCENT: 96 BPM in D minor, Dm Bb Gm A
         const auto noon = rig.bank == Rig::numBanks + 38;      // HIGHNOON: 96 BPM in G major, G Em C D
+        const auto steel = rig.bank == Rig::numBanks + 41;     // STEEL TITANS: 140 BPM in F minor, Fm Db Ab Eb (half-time drops)
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -1814,8 +1846,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9, 9 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 40, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9, 9, 5 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 41, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 || bankIndex == 35 ? major : minor;
             const auto degree = [&] (int d)
             {
@@ -2834,6 +2866,66 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 }
                 wheel (8.0, 14.0, 90);
                 length = 20.0 * beat;
+            }
+        }
+        else if (steel)
+        {
+            // Our own phrases (none from any film or record): F minor, the chords F minor, D flat, A flat and E flat at
+            // 140 BPM; the basses held in half-time so a wobble has notes to move, the stabs short, the arps held.
+            const std::vector<std::vector<int>> chords { { 29, 53, 56, 60, 65 }, { 25, 49, 53, 56, 61 },
+                                                         { 32, 56, 60, 63, 68 }, { 27, 51, 55, 58, 63 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1, 72 }, { 1, 0.5, 75 }, { 1.5, 1.5, 77 }, { 3, 1, 75 }, { 4, 1, 73 }, { 5, 0.5, 72 }, { 5.5, 2.5, 68 },
+                        { 8, 1, 72 }, { 9, 0.5, 75 }, { 9.5, 1.5, 80 }, { 11, 1, 79 }, { 12, 1, 75 }, { 13, 1, 77 }, { 14, 2, 72 } }, 105);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // Half-time: the root held for most of two beats, a stab, an octave jump into the next chord.
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0] + 12;
+                    line ({ { c * 4.0, 1.8, r }, { c * 4.0 + 2.0, 0.9, r }, { c * 4.0 + 3.0, 0.45, r + 12 }, { c * 4.0 + 3.5, 0.45, r } }, 110);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const std::vector<int> n (chords[(size_t) c].begin() + 1, chords[(size_t) c].end());
+                    if (rig.tags.contains ("Stab"))
+                        for (const auto h : { 0.0, 0.75, 1.5, 3.0 })
+                            chord (e, at (c * 4.0 + h), at (c * 4.0 + h + 0.35), n, 110);
+                    else
+                    {
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.4), n, 100);
+                        chord (e, at (c * 4.0 + 1.5), at (c * 4.0 + 1.9), n, 80);
+                        chord (e, at (c * 4.0 + 2.5), at (c * 4.0 + 3.8), n, 95);
+                    }
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1], n[2], n[3] }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
             }
         }
         else if (descent)

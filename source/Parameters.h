@@ -707,6 +707,16 @@ namespace ParamIDs
     inline constexpr auto sortGaps   = "sortGaps";     // effects::Sort::gapNames
     inline constexpr auto sortEdge   = "sortEdge";     // 0 to 1: the crossfade between pieces, 1 to 30 ms
     inline constexpr auto sortStrike = "sortStrike";   // 0 to 1: a hit at each piece's start
+    // WOBBLE (0.97.0, version hint 63, effects::Wobble): the dubstep bank's signature: the wobble locked to the song.
+    inline constexpr auto wobbleOn        = "wobbleOn";
+    inline constexpr auto wobbleAmount    = "wobbleAmount";      // 0 to 1 (the macro's)
+    inline constexpr auto wobblePattern   = "wobblePattern";     // effects::Wobble::patternNames
+    inline constexpr auto wobbleShape     = "wobbleShape";       // effects::Wobble::shapeNames
+    inline constexpr auto wobbleLow       = "wobbleLow";         // 0 to 1: 40 Hz to 800 Hz, the cutoff shut
+    inline constexpr auto wobbleRange     = "wobbleRange";       // 0 to 1: 2 to 7 octaves it opens
+    inline constexpr auto wobbleResonance = "wobbleResonance";   // 0 to 1
+    inline constexpr auto wobbleTalk      = "wobbleTalk";        // 0 to 1: the vowel filter blended in
+    inline constexpr auto wobbleDrive     = "wobbleDrive";       // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -812,4 +822,5 @@ void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.90.0)
 void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.91.0)
 void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);         // RackParameters.cpp (0.93.0)
+void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.97.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

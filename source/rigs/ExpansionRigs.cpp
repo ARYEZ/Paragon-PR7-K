@@ -168,6 +168,7 @@ namespace
     {
         static const std::map<juce::String, float> levels {
             { "Koto Pluck", -1.0f }, { "Wood Mallet", 4.2f }, { "Offworld Harp", 1.2f },
+            { "Vocal Chop", 0.0f }, { "Metal Pluck", 0.0f }, { "Laser Pluck", 0.0f },
             { "Supersaw Pluck", -4.6f }, { "Pulse Pluck", -3.2f }, { "Triangle Bell", -3.6f },
             { "Desk Toy", -8.1f }, { "Filing Pizzicato", -2.0f }, { "Music Box Award", -7.7f },
             { "Dusty Strum", -3.5f }, { "Wind-Up Box", -7.5f }, { "Broken String", -0.7f },
@@ -20904,6 +20905,483 @@ namespace
         pkAdd (x, harp);
     }
 
+    // STEEL TITANS (0.97.0, the owner's theme: the giant transforming-robot films, the music dubstep and festival
+    // anthems in the style the owner named; no film, robot, faction, artist or song names on the plugin; our own sounds).
+    // Three columns in every category: the heroes (the anthem side: huge supersaws, pumping chords, big piano, vocal
+    // chops), the villains (the dark, aggressive side: screeching leads, talking growl basses, distorted stabs,
+    // stutters), the machines (servo whines, gearshift drops, ring-mod sparks, cockpit bleeps, lasers).
+    // MACRO 3, WOBBLE (0.97.0): WOBBLE on at AMOUNT 0 (the preset as built), the macro to AMOUNT; each preset its own
+    // pattern, shape, range, resonance, TALK and DRIVE.
+    struct Wub
+    {
+        int pattern, shape;
+        float low, range, resonance, talk, drive, top;
+    };
+    void wobble (Builder& b, Wub w)
+    {
+        b.set (ParamIDs::wobbleOn, 1.0f).set (ParamIDs::wobbleAmount, 0.0f).set (ParamIDs::wobblePattern, (float) w.pattern)
+         .set (ParamIDs::wobbleShape, (float) w.shape).set (ParamIDs::wobbleLow, w.low).set (ParamIDs::wobbleRange, w.range)
+         .set (ParamIDs::wobbleResonance, w.resonance).set (ParamIDs::wobbleTalk, w.talk).set (ParamIDs::wobbleDrive, w.drive);
+        route (b, "macro3", ParamIDs::wobbleAmount, w.top);
+    }
+
+    void steelTitans (Expansion x)
+    {
+        using DM = effects::Drive::Model;
+        using LW = synth::mod::LfoWave;
+        using AM = synth::arp::Mode;
+        enum { steady, halfTime, triplets, drop, rolls, talker, stutter, bounce };   // effects::Wobble::patternNames
+        enum { smooth, snap, rise };                                                // effects::Wobble::shapeNames
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto on = [] (Builder& b, int o, float wave, float volume)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", wave).osc (o, "Volume", volume);
+        };
+        // The step sequencer pumping the volume each beat: the festival sidechain under a kick that isn't there.
+        const auto pump = [] (Builder& b, float depth)
+        {
+            b.set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqMode, (float) synth::seq::Mode::mono)
+             .set (ParamIDs::seqVolMix, depth).set (ParamIDs::seqGate, 1.0f).set (ParamIDs::seqContour, 0.5f)
+             .set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 4.0f);
+            const float levels[] { 0.1f, 0.55f, 0.85f, 1.0f };
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = b.rig.modulation.stepPattern.rows[0][(size_t) k];
+                step.on = true;
+                step.level = levels[k % 4];
+            }
+        };
+        const auto lfo = [] (Builder& b, int l, LW wave, const char* sync)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Sync"), 1.0f)
+             .set (ParamIDs::lfo (l, "Division"), (float) synth::mod::lfoDivisionNames.indexOf (sync))
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        const auto finish = [] (Builder& b, RT room, float size, float mix)
+        {
+            macros (b, "BRIGHT", "SPACE", "WOBBLE");
+            reverb (b, room, size, mix, 15.0f, 5.0f);
+            space (b);
+        };
+        // FM from the oscillator's own sine at a ratio (the FREE grid: 2^((rate - 0.5) x 8)).
+        const auto fm = [] (Builder& b, int o, float ratio, float amount)
+        {
+            b.osc (o, "FmSource", 0.0f).osc (o, "FmAmount", amount).osc (o, "ModGrid", 0.0f)
+             .osc (o, "ModRate", 0.5f + std::log2 (ratio) / 8.0f);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto anthem = x.make ("Anthem Lead", 1, { "Lead", "Heroes", "Supersaw", "Festival" },
+            "The festival anthem lead: seven saws spread wide with every other copy an octave up, a square an octave "
+            "above them for the edge, a filter that opens on each note, a dotted echo and a plate. Play it in chords too. "
+            "MOD WHEEL: vibrato. MACROS: BRIGHT, SPACE, WOBBLE.");
+        anthem.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "UniOctaves", 1.0f)
+              .osc (0, "VibAmount", 0.0f).osc (0, "VibRate", 5.5f).osc (0, "VibFade", 300.0f);
+        unison (anthem, 0, 7, 0.85f, 0.4f, 0.9f);
+        on (anthem, 1, pulse, 0.12f);
+        anthem.osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f);
+        unison (anthem, 1, 3, 0.6f, 0.2f, 0.8f);
+        anthem.filter (FilterType::lp24, 5000.0f, 0.1f, 0.25f).filterEnvelope (2.0f, 600.0f, 0.6f, 300.0f).set (ParamIDs::fltKey, 0.4f)
+              .ampEnvelope (3.0f, 300.0f, 0.9f, 350.0f);
+        chorus (anthem, ParamIDs::modIds, MT::dimension, 0.4f, 0.4f, 0.35f);
+        delay (anthem, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
+        route (anthem, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (anthem, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (anthem, RT::plate, 0.6f, 0.18f);
+        wobble (anthem, { steady, smooth, 0.55f, 0.55f, 0.4f, 0.0f, 0.2f, 0.9f });
+        anthem.set (ParamIDs::patchLevel, 0.0f);
+        x.add (anthem);
+
+        auto screech = x.make ("Screech Lead", 2, { "Lead", "Villains", "FM", "Distorted" },
+            "The screech: a saw frequency-modulated by its own sine an octave up and squeezed through its formant, a hard "
+            "square synced against it, a hard shaper and a screaming drive; every note scooped up and gliding into the "
+            "next, a fizz of random FM jitter in sixteenths. MOD WHEEL: more FM. MACROS: BRIGHT, SPACE, WOBBLE.");
+        screech.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Formant", 0.3f).osc (0, "Insert", 1.0f);
+        fm (screech, 0, 2.0f, 0.3f);
+        on (screech, 1, pulse, 0.35f);
+        screech.osc (1, "Width", 0.5f).osc (1, "Fine", 9.0f).osc (1, "SyncAmount", 0.3f).osc (1, "Insert", 1.0f);
+        screech.filter (FilterType::lp24, 3500.0f, 0.45f, 0.3f).filterEnvelope (2.0f, 300.0f, 0.5f, 200.0f).set (ParamIDs::fltKey, 0.4f)
+               .ampEnvelope (2.0f, 300.0f, 0.9f, 150.0f)
+               .shaper (0, synth::ShaperModel::hard, 0.5f)
+               .mono (35.0f);
+        drive (screech, 0, DM::screamer, 5.0f, 6.0f, -3.0f, 0.2f, 0.2f);
+        pkBend (screech, -1.5f, 0.05f, -0.5f);
+        lfo (screech, 0, LW::sampleHold, "1/16");
+        route (screech, "lfo1", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (screech, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (screech, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (screech, "1/8", 0.25f, 0.1f, true, 4.0f);
+        finish (screech, RT::room, 0.45f, 0.12f);
+        wobble (screech, { stutter, snap, 0.5f, 0.6f, 0.5f, 0.5f, 0.4f, 1.0f });
+        screech.set (ParamIDs::patchLevel, 0.0f);
+        x.add (screech);
+
+        auto servo = x.make ("Servo Whine", 3, { "Lead", "Machines", "Sync", "Glide" },
+            "A machine's whine: a hard-synced saw whose sync sweeps down as each note speaks, every note rising into place "
+            "like a servo turning, a long glide between notes, a fast vibrato like a motor's hum, a clean sine an octave "
+            "down. MOD WHEEL: more sync. MACROS: BRIGHT, SPACE, WOBBLE.");
+        servo.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "SyncAmount", 0.3f).osc (0, "SyncEnv", 0.5f)
+             .osc (0, "SyncEnvTime", 120.0f).osc (0, "SyncEnvCurve", -0.4f)
+             .osc (0, "VibAmount", 12.0f).osc (0, "VibRate", 7.5f).osc (0, "VibFade", 200.0f);
+        on (servo, 1, sine, 0.35f);
+        servo.osc (1, "Transpose", -12.0f).osc (1, "Filter", 0.0f).osc (1, "PhaseRand", 0.0f);
+        servo.filter (FilterType::lp12, 4000.0f, 0.3f, 0.2f).filterEnvelope (5.0f, 400.0f, 0.6f, 200.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (5.0f, 300.0f, 0.9f, 200.0f)
+             .mono (120.0f);
+        pkBend (servo, -5.0f, 0.18f, 0.5f);
+        route (servo, "modWheel", ParamIDs::osc (0, "SyncAmount"), 0.4f);
+        route (servo, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (servo, "1/8", 0.25f, 0.12f, true, 5.0f);
+        finish (servo, RT::room, 0.5f, 0.12f);
+        wobble (servo, { bounce, rise, 0.5f, 0.6f, 0.45f, 0.3f, 0.2f, 0.9f });
+        servo.set (ParamIDs::patchLevel, 0.0f);
+        x.add (servo);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto titans = x.make ("Rise Of Titans", 4, { "Pad", "Heroes", "Supersaw", "Pump" },
+            "The anthem's chords: seven wide saws stacked in octaves over five more an octave down, a filter that swells "
+            "open, all of it pumping on every beat as if a festival kick were driving it, a big hall behind. Hold "
+            "chords. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, WOBBLE.");
+        titans.osc (0, "Wave", saw).osc (0, "Volume", 0.4f).osc (0, "UniOctaves", 1.0f);
+        unison (titans, 0, 7, 0.9f, 0.35f, 1.0f);
+        on (titans, 1, saw, 0.3f);
+        titans.osc (1, "Transpose", -12.0f);
+        unison (titans, 1, 5, 0.8f, 0.3f, 0.9f);
+        titans.filter (FilterType::lp24, 2800.0f, 0.1f, 0.2f).filterEnvelope (400.0f, 1200.0f, 0.7f, 1200.0f).set (ParamIDs::fltKey, 0.3f)
+              .ampEnvelope (300.0f, 800.0f, 0.9f, 1200.0f);
+        pump (titans, 0.55f);
+        chorus (titans, ParamIDs::modIds, MT::dimension, 0.3f, 0.5f, 0.4f);
+        route (titans, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (titans, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (titans, RT::hall, 0.8f, 0.25f);
+        wobble (titans, { halfTime, smooth, 0.6f, 0.5f, 0.3f, 0.15f, 0.1f, 0.8f });
+        titans.set (ParamIDs::patchLevel, 0.0f);
+        x.add (titans);
+
+        auto fallen = x.make ("Fallen City", 5, { "Pad", "Villains", "Reese", "Dark" },
+            "A ruined skyline: two banks of saws fourteen cents apart grinding against each other, a tube shaper, a "
+            "dark filter that drifts on its own, a little dust in the noise, a long dark hall. Slow, heavy chords. MOD "
+            "WHEEL: opens the filter. MACROS: BRIGHT, SPACE, WOBBLE.");
+        fallen.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        unison (fallen, 0, 4, 0.8f, 0.2f, 0.9f);
+        on (fallen, 1, saw, 0.4f);
+        fallen.osc (1, "Fine", -14.0f);
+        unison (fallen, 1, 4, 0.8f, 0.2f, 0.9f);
+        fallen.osc (2, "On", 1.0f).osc (2, "Gain", 0.0f).osc (2, "Noise", 0.5f).osc (2, "NoiseColour", 0.2f)
+              .osc (2, "NoiseWidth", 2.0f).osc (2, "Volume", 0.05f);
+        fallen.filter (FilterType::lp24, 1200.0f, 0.25f, 0.1f).set (ParamIDs::fltKey, 0.3f)
+              .ampEnvelope (600.0f, 1000.0f, 0.9f, 1600.0f)
+              .shaper (0, synth::ShaperModel::tube, 0.3f)
+              .set (ParamIDs::lfo (0, "Wave"), (float) LW::smoothRandom).set (ParamIDs::lfo (0, "Rate"), 0.2f)
+              .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (fallen, "lfo1", ParamIDs::fltCutoff, 0.1f);
+        route (fallen, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (fallen, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (fallen, RT::hall, 0.85f, 0.3f);
+        wobble (fallen, { halfTime, rise, 0.45f, 0.55f, 0.45f, 0.45f, 0.3f, 0.85f });
+        fallen.set (ParamIDs::patchLevel, 0.0f);
+        x.add (fallen);
+
+        auto spark = x.make ("Spark Core", 6, { "Pad", "Machines", "Ring Mod", "Shimmer" },
+            "A glowing machine heart: soft triangles spread wide, a sine a twelfth up ring-modulated into metal and "
+            "breathing slowly in and out, a slow chorus and a long echo. Hold chords. MOD WHEEL: more metal. MACROS: "
+            "BRIGHT, SPACE, WOBBLE.");
+        spark.osc (0, "Wave", triangle).osc (0, "Volume", 0.5f);
+        unison (spark, 0, 5, 0.75f, 0.12f, 1.0f);
+        on (spark, 1, sine, 0.12f);
+        spark.osc (1, "Transpose", 19.0f).osc (1, "AmAmount", 0.7f).osc (1, "AmShape", 0.0f).osc (1, "ModGrid", 0.0f)
+             .osc (1, "ModRate", 0.683f);
+        spark.filter (FilterType::lp12, 5000.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (500.0f, 1000.0f, 0.9f, 1500.0f)
+             .set (ParamIDs::lfo (0, "Wave"), (float) LW::sine).set (ParamIDs::lfo (0, "Rate"), 0.15f)
+             .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (spark, "lfo1", ParamIDs::osc (1, "Volume"), 0.08f);
+        route (spark, "modWheel", ParamIDs::osc (1, "Volume"), 0.12f);
+        route (spark, "macro1", ParamIDs::fltCutoff, 0.2f);
+        chorus (spark, ParamIDs::modIds, MT::dimension, 0.25f, 0.6f, 0.5f);
+        delay (spark, "1/4 dotted", 0.4f, 0.15f, true, 5.0f);
+        finish (spark, RT::hall, 0.75f, 0.25f);
+        wobble (spark, { halfTime, smooth, 0.65f, 0.45f, 0.35f, 0.0f, 0.0f, 0.75f });
+        spark.set (ParamIDs::patchLevel, 0.0f);
+        x.add (spark);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto wub = x.make ("Titan Drop", 7, { "Bass", "Heroes", "Wobble", "Drop" },
+            "The drop's bass: a saw and a square a hair apart through a driven drive and a resonant filter that bites on "
+            "each note, a clean sine an octave down holding the floor. Turn MACRO 3 up for the wobble: eighths into a "
+            "triplet and sixteenth fill. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, WOBBLE.");
+        wub.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f);
+        on (wub, 1, pulse, 0.35f);
+        wub.osc (1, "Width", 0.5f).osc (1, "Fine", 7.0f).osc (1, "Insert", 1.0f);
+        on (wub, 2, sine, 0.45f);
+        wub.osc (2, "Transpose", -12.0f).osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f);
+        wub.filter (FilterType::lp24, 900.0f, 0.3f, 0.3f).filterEnvelope (2.0f, 250.0f, 0.4f, 150.0f).set (ParamIDs::fltKey, 0.3f)
+           .ampEnvelope (2.0f, 300.0f, 1.0f, 120.0f)
+           .shaper (0, synth::ShaperModel::tube, 0.3f)
+           .mono (20.0f);
+        drive (wub, 0, DM::skyline, 4.0f, 5.0f, -2.0f, 0.0f, 0.1f);
+        route (wub, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (wub, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (wub, RT::room, 0.3f, 0.0f);
+        wobble (wub, { drop, smooth, 0.3f, 0.7f, 0.6f, 0.3f, 0.5f, 1.0f });
+        wub.set (ParamIDs::patchLevel, 0.0f);
+        x.add (wub);
+
+        auto growl = x.make ("Growl Bass", 8, { "Bass", "Villains", "Talking", "Growl" },
+            "The talking growl: a saw frequency-modulated by its own sine, a square an octave down, both through the VOICE "
+            "filter so the bass says a vowel that moves with the beat, a diode shaper and a hard drive; a clean sine "
+            "under it. Turn MACRO 3 up and it talks: \"yoi\", \"wow\". MOD WHEEL: more FM. MACROS: BRIGHT, SPACE, WOBBLE.");
+        growl.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f);
+        fm (growl, 0, 1.0f, 0.25f);
+        on (growl, 1, pulse, 0.35f);
+        growl.osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Insert", 1.0f);
+        on (growl, 2, sine, 0.4f);
+        growl.osc (2, "Transpose", -12.0f).osc (2, "Filter", 0.0f).osc (2, "Voice", 0.0f).osc (2, "PhaseRand", 0.0f);
+        growl.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.3f).set (ParamIDs::voiceSize, 0.2f)
+             .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 0.7f);
+        growl.filter (FilterType::lp24, 2500.0f, 0.3f, 0.1f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (2.0f, 300.0f, 1.0f, 120.0f)
+             .shaper (0, synth::ShaperModel::diode, 0.4f)
+             .mono (15.0f);
+        drive (growl, 0, DM::rabid, 3.0f, 5.0f, -4.0f, 0.0f, 0.1f);
+        lfo (growl, 0, LW::triangle, "1/4");
+        route (growl, "lfo1", ParamIDs::voiceVowel, 0.2f);
+        route (growl, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (growl, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (growl, RT::room, 0.3f, 0.0f);
+        wobble (growl, { talker, snap, 0.35f, 0.65f, 0.5f, 0.8f, 0.6f, 1.0f });
+        growl.set (ParamIDs::patchLevel, 0.0f);
+        x.add (growl);
+
+        auto gearshift = x.make ("Gearshift Reese", 9, { "Bass", "Machines", "Reese", "Dive" },
+            "A reese that drops a gear on every note: two saws eighteen cents apart phasing against each other, a clean "
+            "sine sub, each note diving in from an octave up as if a machine were shifting down, a soft shaper. MOD "
+            "WHEEL: opens the filter. MACROS: BRIGHT, SPACE, WOBBLE.");
+        gearshift.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        unison (gearshift, 0, 2, 0.6f, 0.15f, 0.6f);
+        on (gearshift, 1, saw, 0.45f);
+        gearshift.osc (1, "Fine", -18.0f);
+        unison (gearshift, 1, 2, 0.6f, 0.15f, 0.6f);
+        on (gearshift, 2, sine, 0.4f);
+        gearshift.osc (2, "Transpose", -12.0f).osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f);
+        gearshift.filter (FilterType::lp24, 700.0f, 0.2f, 0.25f).filterEnvelope (2.0f, 300.0f, 0.5f, 150.0f).set (ParamIDs::fltKey, 0.3f)
+                 .ampEnvelope (2.0f, 300.0f, 1.0f, 150.0f)
+                 .shaper (0, synth::ShaperModel::soft, 0.3f)
+                 .mono (30.0f);
+        pkBend (gearshift, 12.0f, 0.12f, -0.6f);
+        route (gearshift, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (gearshift, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (gearshift, RT::room, 0.3f, 0.0f);
+        wobble (gearshift, { bounce, smooth, 0.3f, 0.6f, 0.55f, 0.25f, 0.4f, 0.95f });
+        gearshift.set (ParamIDs::patchLevel, 0.0f);
+        x.add (gearshift);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto piano = x.make ("Anthem Piano", 10, { "Keys", "Heroes", "Piano", "Pump" },
+            "The breakdown's piano: a bright house piano (a triangle, a saw an octave up and a narrow pulse through a "
+            "filter struck open by how hard you play), big chords pumping on every beat, a plate. MOD WHEEL: brighter. "
+            "MACROS: BRIGHT, SPACE, WOBBLE.");
+        piano.osc (0, "Wave", triangle).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f);
+        on (piano, 1, saw, 0.22f);
+        piano.osc (1, "Transpose", 12.0f);
+        on (piano, 2, pulse, 0.18f);
+        piano.osc (2, "Width", 0.3f);
+        piano.filter (FilterType::lp12, 2500.0f, 0.1f, 0.45f).filterEnvelope (1.0f, 350.0f, 0.15f, 300.0f).set (ParamIDs::fltKey, 0.5f)
+             .ampEnvelope (1.0f, 900.0f, 0.25f, 350.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkVelocity (piano);
+        pump (piano, 0.4f);
+        chorus (piano, ParamIDs::modIds, MT::dimension, 0.3f, 0.3f, 0.3f);
+        route (piano, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (piano, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (piano, RT::plate, 0.55f, 0.18f);
+        wobble (piano, { steady, snap, 0.6f, 0.5f, 0.3f, 0.0f, 0.1f, 0.8f });
+        piano.set (ParamIDs::patchLevel, 0.0f);
+        x.add (piano);
+
+        auto stab = x.make ("Metal Stab", 11, { "Keys", "Villains", "Stab", "Distorted" },
+            "A brass stab with teeth: three saws and a square through a resonant filter that snaps shut, a hard shaper and "
+            "a screaming drive, each stab dropping a hair in pitch as it hits. Short chords. MOD WHEEL: opens the filter. "
+            "MACROS: BRIGHT, SPACE, WOBBLE.");
+        stab.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f);
+        unison (stab, 0, 3, 0.7f, 0.15f, 0.8f);
+        on (stab, 1, pulse, 0.3f);
+        stab.osc (1, "Width", 0.5f).osc (1, "Fine", 8.0f).osc (1, "Insert", 1.0f);
+        on (stab, 2, saw, 0.25f);
+        stab.osc (2, "Transpose", -12.0f).osc (2, "Insert", 1.0f);
+        stab.filter (FilterType::lp24, 900.0f, 0.35f, 0.55f).filterEnvelope (1.0f, 180.0f, 0.2f, 120.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (1.0f, 250.0f, 0.3f, 120.0f)
+            .shaper (0, synth::ShaperModel::hard, 0.45f);
+        drive (stab, 0, DM::screamer, 4.0f, 5.5f, -3.0f, 0.2f, 0.2f);
+        pkBend (stab, 1.5f, 0.08f, -0.5f);
+        route (stab, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (stab, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (stab, "1/8", 0.2f, 0.1f, true, 4.0f);
+        finish (stab, RT::room, 0.45f, 0.12f);
+        wobble (stab, { rolls, snap, 0.5f, 0.6f, 0.5f, 0.35f, 0.5f, 1.0f });
+        stab.set (ParamIDs::patchLevel, 0.0f);
+        x.add (stab);
+
+        auto cockpit = x.make ("Cockpit Keys", 12, { "Keys", "Machines", "FM", "Bleep" },
+            "The cockpit's panel: a sine struck by a high, bright FM tine that fades in a quarter of a second, a sine an "
+            "octave up, a wide chorus and a ping-pong echo, clean and exact. MOD WHEEL: brighter tine. MACROS: BRIGHT, "
+            "SPACE, WOBBLE.");
+        cockpit.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f);
+        fm (cockpit, 0, 14.0f, 0.04f);
+        pkShot (cockpit, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.25f, 0.0f, 0.0f } });
+        route (cockpit, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
+        on (cockpit, 1, sine, 0.18f);
+        cockpit.osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f);
+        cockpit.filter (FilterType::lp12, 6000.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+               .ampEnvelope (1.0f, 1200.0f, 0.3f, 400.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkVelocity (cockpit, 0.0f, 0.2f, 0.5f);
+        chorus (cockpit, ParamIDs::modIds, MT::dimension, 0.35f, 0.5f, 0.4f);
+        delay (cockpit, "1/8 dotted", 0.35f, 0.2f, true, 5.0f);
+        route (cockpit, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (cockpit, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (cockpit, RT::room, 0.5f, 0.15f);
+        wobble (cockpit, { steady, smooth, 0.7f, 0.45f, 0.25f, 0.0f, 0.0f, 0.7f });
+        cockpit.set (ParamIDs::patchLevel, 0.0f);
+        x.add (cockpit);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto pumpArp = x.make ("Pump Saw Arp", 13, { "Arp", "Heroes", "Supersaw", "Pump" },
+            "A festival build: five wide saws arpeggiated up two octaves in sixteenths, each note snapping open, the "
+            "whole thing pumping on every beat. Hold chords. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, WOBBLE.");
+        pumpArp.osc (0, "Wave", saw).osc (0, "Volume", 0.5f);
+        unison (pumpArp, 0, 5, 0.8f, 0.3f, 0.9f);
+        arpOn (pumpArp, { 0 }, AM::up, "1/16", 2.0f, 0.5f);
+        pumpArp.filter (FilterType::lp24, 3500.0f, 0.2f, 0.35f).filterEnvelope (1.0f, 200.0f, 0.3f, 150.0f).set (ParamIDs::fltKey, 0.4f)
+               .ampEnvelope (1.0f, 250.0f, 0.5f, 150.0f);
+        pump (pumpArp, 0.5f);
+        delay (pumpArp, "1/8 dotted", 0.3f, 0.15f, true, 5.0f);
+        route (pumpArp, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (pumpArp, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (pumpArp, RT::plate, 0.55f, 0.15f);
+        wobble (pumpArp, { triplets, smooth, 0.55f, 0.55f, 0.4f, 0.0f, 0.2f, 0.85f });
+        pumpArp.set (ParamIDs::patchLevel, 0.0f);
+        x.add (pumpArp);
+
+        auto stutterArp = x.make ("Stutter Arp", 14, { "Arp", "Villains", "Ratchet", "Glitch" },
+            "A machine gun of notes: a square and a saw an octave down jumping at random over two octaves in sixteenths, "
+            "some steps rattling two, three or four times, a resonant filter snapping on each. Hold chords. MOD WHEEL: "
+            "opens the filter. MACROS: BRIGHT, SPACE, WOBBLE.");
+        stutterArp.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.5f);
+        on (stutterArp, 1, saw, 0.3f);
+        stutterArp.osc (1, "Transpose", -12.0f);
+        arpOn (stutterArp, { 0, 1 }, AM::random, "1/16", 2.0f, 0.6f);
+        {
+            auto& blocks = stutterArp.rig.modulation.arps[0].patterns[0].blocks;
+            const int ratchets[] { 1, 1, 2, 1, 1, 3, 1, 1, 1, 1, 2, 1, 4, 1, 1, 2 };
+            for (int k = 0; k < 16; ++k)
+                blocks[(size_t) k].ratchet = ratchets[k];
+        }
+        stutterArp.filter (FilterType::lp24, 2500.0f, 0.35f, 0.4f).filterEnvelope (1.0f, 150.0f, 0.2f, 100.0f).set (ParamIDs::fltKey, 0.4f)
+                  .ampEnvelope (1.0f, 200.0f, 0.4f, 100.0f)
+                  .shaper (0, synth::ShaperModel::hard, 0.3f);
+        route (stutterArp, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (stutterArp, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (stutterArp, "1/16", 0.2f, 0.08f, true, 4.0f);
+        finish (stutterArp, RT::room, 0.4f, 0.1f);
+        wobble (stutterArp, { stutter, snap, 0.45f, 0.65f, 0.5f, 0.4f, 0.4f, 1.0f });
+        stutterArp.set (ParamIDs::patchLevel, 0.0f);
+        x.add (stutterArp);
+
+        auto gears = x.make ("Gear Sequence", 15, { "Arp", "Machines", "Wavetable", "Sequence" },
+            "A machine working: a stepped, digital wavetable whose frame jumps at random on every sixteenth, up and down "
+            "an octave, a sine an octave down with it, a filter clicking open on each step and a short echo. Hold chords. "
+            "MOD WHEEL: wider jumps. MACROS: BRIGHT, SPACE, WOBBLE.");
+        gears.osc (0, "Wave", wavetable).osc (0, "Table", table ("Bit Steps")).osc (0, "WtIndex", 0.4f).osc (0, "Volume", 0.6f);
+        on (gears, 1, sine, 0.3f);
+        gears.osc (1, "Transpose", -12.0f).osc (1, "Filter", 0.0f).osc (1, "PhaseRand", 0.0f);
+        arpOn (gears, { 0, 1 }, AM::upDown, "1/16", 1.0f, 0.55f);
+        lfo (gears, 0, LW::sampleHold, "1/16");
+        route (gears, "lfo1", ParamIDs::osc (0, "WtIndex"), 0.25f);
+        route (gears, "modWheel", ParamIDs::osc (0, "WtIndex"), 0.25f);
+        gears.filter (FilterType::lp24, 3000.0f, 0.3f, 0.3f).filterEnvelope (1.0f, 150.0f, 0.3f, 100.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (1.0f, 200.0f, 0.5f, 100.0f);
+        route (gears, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (gears, "1/16", 0.25f, 0.1f, true, 5.0f);
+        finish (gears, RT::room, 0.45f, 0.1f);
+        wobble (gears, { drop, smooth, 0.5f, 0.6f, 0.45f, 0.2f, 0.3f, 0.9f });
+        gears.set (ParamIDs::patchLevel, 0.0f);
+        x.add (gears);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto chop = x.make ("Vocal Chop", 16, { "Pluck", "Heroes", "Voice", "Chop" },
+            "A chopped vocal: three saws through the VOICE filter as a high voice, each note's vowel snapping from OH to "
+            "EH as it speaks and its pitch flicking down into place, a breath of noise, a dotted echo. Play it as a "
+            "melody. MOD WHEEL: a brighter vowel. MACROS: BRIGHT, SPACE, WOBBLE.");
+        chop.osc (0, "Wave", saw).osc (0, "Volume", 0.6f);
+        unison (chop, 0, 3, 0.6f, 0.1f, 0.6f);
+        chop.osc (1, "On", 1.0f).osc (1, "Gain", 0.0f).osc (1, "Noise", 0.5f).osc (1, "NoiseColour", 0.1f)
+            .osc (1, "NoiseWidth", 2.0f).osc (1, "Volume", 0.06f);
+        chop.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.25f).set (ParamIDs::voiceSize, 0.75f)
+            .set (ParamIDs::voiceSharp, 0.5f).set (ParamIDs::voiceMix, 1.0f);
+        pkShot (chop, 0, { PK { 0.0f, 0.0f, 0.4f }, PK { 0.12f, 1.0f, 0.0f } });
+        route (chop, "env1", ParamIDs::voiceVowel, 0.5f);
+        pkBend (chop, 2.0f, 0.04f, -0.5f);
+        chop.filter (FilterType::lp12, 6000.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (1.0f, 220.0f, 0.0f, 120.0f).set (ParamIDs::ampVel, 0.4f);
+        route (chop, "modWheel", ParamIDs::voiceVowel, 0.2f);
+        route (chop, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (chop, "1/8 dotted", 0.35f, 0.2f, true, 5.0f);
+        finish (chop, RT::plate, 0.5f, 0.18f);
+        wobble (chop, { steady, snap, 0.6f, 0.5f, 0.3f, 0.2f, 0.0f, 0.8f });
+        pkAdd (x, chop);
+
+        auto metal = x.make ("Metal Pluck", 17, { "Pluck", "Villains", "FM", "Metal" },
+            "Struck steel: a sine frequency-modulated at 2.76 (a struck bar's first overtone) that rings out in a "
+            "fifth of a second, a sine an octave up ring-modulated into metal, a click of noise on the strike, a hard "
+            "shaper. MOD WHEEL: harder strike. MACROS: BRIGHT, SPACE, WOBBLE.");
+        metal.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f);
+        fm (metal, 0, 2.76f, 0.05f);
+        pkShot (metal, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.2f, 0.0f, 0.0f } });
+        route (metal, "env1", ParamIDs::osc (0, "FmAmount"), 0.35f);
+        on (metal, 1, sine, 0.2f);
+        metal.osc (1, "Transpose", 12.0f).osc (1, "AmAmount", 0.8f).osc (1, "AmShape", 0.0f).osc (1, "ModGrid", 0.0f)
+             .osc (1, "ModRate", 0.683f).osc (1, "PhaseRand", 0.0f);
+        pkStrike (metal, 2, 1, 0.3f, 8.0f, 0.1f);
+        metal.filter (FilterType::lp12, 5000.0f, 0.1f, 0.3f).filterEnvelope (1.0f, 250.0f, 0.0f, 200.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (1.0f, 400.0f, 0.0f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f)
+             .shaper (0, synth::ShaperModel::hard, 0.3f);
+        pkVelocity (metal);
+        route (metal, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (metal, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (metal, "1/8", 0.25f, 0.12f, true, 5.0f);
+        finish (metal, RT::room, 0.45f, 0.12f);
+        wobble (metal, { triplets, snap, 0.5f, 0.6f, 0.45f, 0.3f, 0.4f, 0.9f });
+        pkAdd (x, metal);
+
+        auto laser = x.make ("Laser Pluck", 18, { "Pluck", "Machines", "Chirp", "Laser" },
+            "A laser shot: a square and a saw chirping down two octaves into each note in fifty milliseconds, a filter "
+            "snapping shut, a ping-pong echo throwing it across the room. MOD WHEEL: opens the filter. MACROS: BRIGHT, "
+            "SPACE, WOBBLE.");
+        laser.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.5f);
+        on (laser, 1, saw, 0.3f);
+        laser.osc (1, "Fine", 10.0f);
+        pkBend (laser, 24.0f, 0.05f, -0.7f);
+        laser.filter (FilterType::lp24, 4500.0f, 0.3f, 0.3f).filterEnvelope (1.0f, 150.0f, 0.0f, 100.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (1.0f, 180.0f, 0.0f, 120.0f);
+        pkVelocity (laser);
+        route (laser, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (laser, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (laser, "1/8", 0.4f, 0.2f, true, 5.0f);
+        finish (laser, RT::room, 0.45f, 0.12f);
+        wobble (laser, { bounce, rise, 0.55f, 0.55f, 0.4f, 0.0f, 0.2f, 0.85f });
+        pkAdd (x, laser);
+    }
+
 std::vector<Rig> makeExpansionRigs()
 {
     std::vector<Rig> rigs;
@@ -20948,5 +21426,6 @@ std::vector<Rig> makeExpansionRigs()
     highNoon ({ Rig::numBanks + 38, rigs });
     origin ({ Rig::numBanks + 39, rigs });
     offworld ({ Rig::numBanks + 40, rigs });
+    steelTitans ({ Rig::numBanks + 41, rigs });
     return rigs;
 }

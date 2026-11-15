@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 41> list
+    inline constexpr std::array<Expansion, 42> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -271,5 +271,12 @@ namespace expansions
           "piano, ring-modulator bells and a bright clav; brass stabs, a ring-mod arp and glassy lines; a koto, a wood "
           "mallet and a harp. Built on FILTER 2 (0.96.0). MACRO 3, LINES: line II detuned further and brought up, the "
           "instrument's own thickening. Our own sounds; no product named." },
+        { "STEEL TITANS", "ST",
+          "Giant machines and the drop: dubstep and festival anthems in one bank. The heroes: a huge supersaw anthem "
+          "lead, chords pumping on every beat, a bright house piano and chopped vocals. The villains: a screeching FM "
+          "lead, a talking growl bass, distorted brass stabs and stuttering arps. The machines: a servo's whine, a "
+          "reese that drops a gear on every note, ring-modulated sparks, cockpit bleeps and lasers. MACRO 3, WOBBLE: "
+          "the dubstep wobble locked to your song, changing speed beat by beat, from a gentle pulse to talking filth. "
+          "Our own sounds; no film, artist or song named." },
     }};
 }

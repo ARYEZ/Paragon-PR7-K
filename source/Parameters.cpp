@@ -643,5 +643,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addCrossroadsParameters (layout);      // CROSSROADS (0.90.0, version hint 58): RackParameters.cpp
     addGearworksParameters (layout);       // GEARWORKS (0.91.0, version hint 59): RackParameters.cpp
     addSortParameters (layout);            // SORT (0.93.0, version hint 61): RackParameters.cpp
+    addWobbleParameters (layout);          // WOBBLE (0.97.0, version hint 63): RackParameters.cpp
     return layout;
 }

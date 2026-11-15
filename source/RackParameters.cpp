@@ -40,6 +40,7 @@
 #include "dsp/effects/Crossroads.h"
 #include "dsp/effects/Gearworks.h"
 #include "dsp/effects/Sort.h"
+#include "dsp/effects/Wobble.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1086,4 +1087,23 @@ void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout& lay
     layout.add (makeChoice (ParamIDs::sortGaps, "Sort Gaps", v, S::gapNames, d.gaps));
     layout.add (makeFloat (ParamIDs::sortEdge, "Sort Edge", { 0.0f, 1.0f, 0.01f }, d.edge, v, asEdge));
     layout.add (makeFloat (ParamIDs::sortStrike, "Sort Strike", { 0.0f, 1.0f, 0.01f }, d.strike, v, asPercent));
+}
+
+void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // WOBBLE (0.97.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 63;
+    using W = effects::Wobble;
+    const W::Settings d;
+    const ToText asLow = [] (float value, int) { return juce::String (juce::roundToInt (W::lowHz (value))) + " Hz"; };
+    const ToText asRange = [] (float value, int) { return juce::String (W::rangeOctaves (value), 1) + " oct"; };
+    layout.add (makeSwitch (ParamIDs::wobbleOn, "Wobble On", v, false));
+    layout.add (makeFloat (ParamIDs::wobbleAmount, "Wobble Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::wobblePattern, "Wobble Pattern", v, W::patternNames, d.pattern));
+    layout.add (makeChoice (ParamIDs::wobbleShape, "Wobble Shape", v, W::shapeNames, d.shape));
+    layout.add (makeFloat (ParamIDs::wobbleLow, "Wobble Low", { 0.0f, 1.0f, 0.01f }, d.low, v, asLow));
+    layout.add (makeFloat (ParamIDs::wobbleRange, "Wobble Range", { 0.0f, 1.0f, 0.01f }, d.range, v, asRange));
+    layout.add (makeFloat (ParamIDs::wobbleResonance, "Wobble Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::wobbleTalk, "Wobble Talk", { 0.0f, 1.0f, 0.01f }, d.talk, v, asPercent));
+    layout.add (makeFloat (ParamIDs::wobbleDrive, "Wobble Drive", { 0.0f, 1.0f, 0.01f }, d.drive, v, asPercent));
 }
