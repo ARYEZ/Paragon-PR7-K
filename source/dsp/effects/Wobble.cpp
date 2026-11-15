@@ -171,7 +171,7 @@ namespace effects
             powerOut += (outPower - powerOut) * levelCoef;
             if (powerIn > 1.0e-9f && powerOut > 1.0e-12f)
             {
-                const auto want = juce::jlimit (0.35f, 2.8f, std::sqrt (powerIn / powerOut));
+                const auto want = juce::jlimit (0.25f, 4.0f, std::sqrt (powerIn / powerOut));   // at most +12 dB: a talking bass shut loses more than 9
                 gain += ((amountNow > 0.0f ? want : 1.0f) - gain) * gainCoef;
             }
             else if (amountNow <= 0.0f)

@@ -168,7 +168,7 @@ namespace
     {
         static const std::map<juce::String, float> levels {
             { "Koto Pluck", -1.0f }, { "Wood Mallet", 4.2f }, { "Offworld Harp", 1.2f },
-            { "Vocal Chop", 0.0f }, { "Metal Pluck", 0.0f }, { "Laser Pluck", 0.0f },
+            { "Vocal Chop", -3.8f }, { "Metal Pluck", -7.1f }, { "Laser Pluck", -4.2f },
             { "Supersaw Pluck", -4.6f }, { "Pulse Pluck", -3.2f }, { "Triangle Bell", -3.6f },
             { "Desk Toy", -8.1f }, { "Filing Pizzicato", -2.0f }, { "Music Box Award", -7.7f },
             { "Dusty Strum", -3.5f }, { "Wind-Up Box", -7.5f }, { "Broken String", -0.7f },
@@ -21000,7 +21000,7 @@ namespace
         route (anthem, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (anthem, RT::plate, 0.6f, 0.18f);
         wobble (anthem, { steady, smooth, 0.55f, 0.55f, 0.4f, 0.0f, 0.2f, 0.9f });
-        anthem.set (ParamIDs::patchLevel, 0.0f);
+        anthem.set (ParamIDs::patchLevel, -2.0f);
         x.add (anthem);
 
         auto screech = x.make ("Screech Lead", 2, { "Lead", "Villains", "FM", "Distorted" },
@@ -21024,7 +21024,7 @@ namespace
         delay (screech, "1/8", 0.25f, 0.1f, true, 4.0f);
         finish (screech, RT::room, 0.45f, 0.12f);
         wobble (screech, { stutter, snap, 0.5f, 0.6f, 0.5f, 0.5f, 0.4f, 1.0f });
-        screech.set (ParamIDs::patchLevel, 0.0f);
+        screech.set (ParamIDs::patchLevel, 0.5f);
         x.add (screech);
 
         auto servo = x.make ("Servo Whine", 3, { "Lead", "Machines", "Sync", "Glide" },
@@ -21045,7 +21045,7 @@ namespace
         delay (servo, "1/8", 0.25f, 0.12f, true, 5.0f);
         finish (servo, RT::room, 0.5f, 0.12f);
         wobble (servo, { bounce, rise, 0.5f, 0.6f, 0.45f, 0.3f, 0.2f, 0.9f });
-        servo.set (ParamIDs::patchLevel, 0.0f);
+        servo.set (ParamIDs::patchLevel, -1.4f);
         x.add (servo);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -21066,7 +21066,7 @@ namespace
         route (titans, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (titans, RT::hall, 0.8f, 0.25f);
         wobble (titans, { halfTime, smooth, 0.6f, 0.5f, 0.3f, 0.15f, 0.1f, 0.8f });
-        titans.set (ParamIDs::patchLevel, 0.0f);
+        titans.set (ParamIDs::patchLevel, -5.1f);
         x.add (titans);
 
         auto fallen = x.make ("Fallen City", 5, { "Pad", "Villains", "Reese", "Dark" },
@@ -21090,7 +21090,7 @@ namespace
         route (fallen, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (fallen, RT::hall, 0.85f, 0.3f);
         wobble (fallen, { halfTime, rise, 0.45f, 0.55f, 0.45f, 0.45f, 0.3f, 0.85f });
-        fallen.set (ParamIDs::patchLevel, 0.0f);
+        fallen.set (ParamIDs::patchLevel, -12.7f);
         x.add (fallen);
 
         auto spark = x.make ("Spark Core", 6, { "Pad", "Machines", "Ring Mod", "Shimmer" },
@@ -21113,7 +21113,7 @@ namespace
         delay (spark, "1/4 dotted", 0.4f, 0.15f, true, 5.0f);
         finish (spark, RT::hall, 0.75f, 0.25f);
         wobble (spark, { halfTime, smooth, 0.65f, 0.45f, 0.35f, 0.0f, 0.0f, 0.75f });
-        spark.set (ParamIDs::patchLevel, 0.0f);
+        spark.set (ParamIDs::patchLevel, -8.8f);
         x.add (spark);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -21135,7 +21135,7 @@ namespace
         route (wub, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (wub, RT::room, 0.3f, 0.0f);
         wobble (wub, { drop, smooth, 0.3f, 0.7f, 0.6f, 0.3f, 0.5f, 1.0f });
-        wub.set (ParamIDs::patchLevel, 0.0f);
+        wub.set (ParamIDs::patchLevel, -5.0f);
         x.add (wub);
 
         auto growl = x.make ("Growl Bass", 8, { "Bass", "Villains", "Talking", "Growl" },
@@ -21161,7 +21161,7 @@ namespace
         route (growl, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (growl, RT::room, 0.3f, 0.0f);
         wobble (growl, { talker, snap, 0.35f, 0.65f, 0.5f, 0.8f, 0.6f, 1.0f });
-        growl.set (ParamIDs::patchLevel, 0.0f);
+        growl.set (ParamIDs::patchLevel, -4.5f);
         x.add (growl);
 
         auto gearshift = x.make ("Gearshift Reese", 9, { "Bass", "Machines", "Reese", "Dive" },
@@ -21184,7 +21184,7 @@ namespace
         route (gearshift, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (gearshift, RT::room, 0.3f, 0.0f);
         wobble (gearshift, { bounce, smooth, 0.3f, 0.6f, 0.55f, 0.25f, 0.4f, 0.95f });
-        gearshift.set (ParamIDs::patchLevel, 0.0f);
+        gearshift.set (ParamIDs::patchLevel, -10.2f);
         x.add (gearshift);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -21206,7 +21206,7 @@ namespace
         route (piano, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (piano, RT::plate, 0.55f, 0.18f);
         wobble (piano, { steady, snap, 0.6f, 0.5f, 0.3f, 0.0f, 0.1f, 0.8f });
-        piano.set (ParamIDs::patchLevel, 0.0f);
+        piano.set (ParamIDs::patchLevel, -0.7f);
         x.add (piano);
 
         auto stab = x.make ("Metal Stab", 11, { "Keys", "Villains", "Stab", "Distorted" },
@@ -21229,7 +21229,7 @@ namespace
         delay (stab, "1/8", 0.2f, 0.1f, true, 4.0f);
         finish (stab, RT::room, 0.45f, 0.12f);
         wobble (stab, { rolls, snap, 0.5f, 0.6f, 0.5f, 0.35f, 0.5f, 1.0f });
-        stab.set (ParamIDs::patchLevel, 0.0f);
+        stab.set (ParamIDs::patchLevel, 0.2f);
         x.add (stab);
 
         auto cockpit = x.make ("Cockpit Keys", 12, { "Keys", "Machines", "FM", "Bleep" },
@@ -21251,7 +21251,7 @@ namespace
         route (cockpit, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (cockpit, RT::room, 0.5f, 0.15f);
         wobble (cockpit, { steady, smooth, 0.7f, 0.45f, 0.25f, 0.0f, 0.0f, 0.7f });
-        cockpit.set (ParamIDs::patchLevel, 0.0f);
+        cockpit.set (ParamIDs::patchLevel, -4.1f);
         x.add (cockpit);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -21294,7 +21294,7 @@ namespace
         delay (stutterArp, "1/16", 0.2f, 0.08f, true, 4.0f);
         finish (stutterArp, RT::room, 0.4f, 0.1f);
         wobble (stutterArp, { stutter, snap, 0.45f, 0.65f, 0.5f, 0.4f, 0.4f, 1.0f });
-        stutterArp.set (ParamIDs::patchLevel, 0.0f);
+        stutterArp.set (ParamIDs::patchLevel, -8.7f);
         x.add (stutterArp);
 
         auto gears = x.make ("Gear Sequence", 15, { "Arp", "Machines", "Wavetable", "Sequence" },
@@ -21314,7 +21314,7 @@ namespace
         delay (gears, "1/16", 0.25f, 0.1f, true, 5.0f);
         finish (gears, RT::room, 0.45f, 0.1f);
         wobble (gears, { drop, smooth, 0.5f, 0.6f, 0.45f, 0.2f, 0.3f, 0.9f });
-        gears.set (ParamIDs::patchLevel, 0.0f);
+        gears.set (ParamIDs::patchLevel, -1.4f);
         x.add (gears);
 
         // ---- PLUCKS ------------------------------------------------------------------------------------------
