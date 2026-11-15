@@ -114,11 +114,11 @@ namespace expansions
           "church (the company as a religion). Built round SORT (0.93.0) and MACRO 3 SORT: the phrase you played, "
           "re-filed in order a window later. Our own sounds." },
         { "SLINGBLADE", "SB",
-          "Inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling class: in "
-          "three acts, the brutal heaviness of the mines below (drills, machinery, a fragile song in the dark), the "
-          "opulence of a gilded court at war (brass fanfares, glass, a harpsichord), and the soaring dawn of a "
-          "rebellion (anthems, a rising choir, victory bells). Built round the WAH: work it with the EXPR wheel. Our own "
-          "sounds." },
+          "Inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling class, and "
+          "its violence, in heavy 1990s industrial: machine-tight sequenced basses, distorted power-chord stabs, "
+          "screaming leads, broken pianos, dark choirs and cold machines. The mines (brutal and grinding), the war "
+          "games (violent and chaotic) and the gilded (cold and cruel). Every sound runs through the WAH into a drive; "
+          "MACRO 3, WAH, rocks the pedal from heel to toe and drives it harder. Our own sounds." },
         { "PARADOX", "PX",
           "Inspired by the score of a German series about four families in a small town where time runs in a loop, and "
           "past, present and future are tied together: crushing sub drones, walls of noise, bowed strings, a choir, "

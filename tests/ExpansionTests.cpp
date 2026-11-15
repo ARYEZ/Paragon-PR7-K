@@ -1351,6 +1351,43 @@ TEST_CASE ("SEVERED (rebuilt in 0.94.0): MACRO 3 is SORT on every preset, restin
     CHECK (used.size() == 4);   // the orchestra, Meatbass, the Salamander, VCSL
 }
 
+TEST_CASE ("SLINGBLADE: industrial, every preset through the WAH, MACRO 3 WAH rocking its pedal", "[rigs][expansions][wah]")
+{
+    // 0.98.0 (rebuilt): bus A's WAH on in every preset and at least one oscillator through it; MACRO 3 named WAH,
+    // moving the pedal heel to toe (and only the pedal, shaper 1's drive, the filter's resonance or the crush).
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 21)   // SLINGBLADE: the twenty-second expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        CHECK (value (ParamIDs::ins (0, "WahOn"), 0.0f) == 1.0f);
+        auto throughBus = false;
+        for (int o = 0; o < ParamIDs::numOscillators; ++o)
+            throughBus = throughBus || (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) > 0.5f && value (ParamIDs::osc (o, "Insert"), 0.0f) == 1.0f);
+        CHECK (throughBus);
+        CHECK (rig.modulation.macroNames[2] == "WAH");
+        CHECK (rig.notes.contains ("WAH"));
+        auto rocks = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                INFO (r.destination);
+                CHECK ((r.destination == ParamIDs::ins (0, "WahPosition") || r.destination == ParamIDs::shp (0, "Drive")
+                        || r.destination == juce::String (ParamIDs::fltRes) || r.destination == juce::String (ParamIDs::lofiMix)));
+                rocks = rocks || (r.destination == ParamIDs::ins (0, "WahPosition") && r.amount > 0.3f);
+            }
+        CHECK (rocks);
+    }
+    CHECK (count == 18);
+}
+
 TEST_CASE ("STEEL TITANS: MACRO 3 is WOBBLE on every preset, resting at its left", "[rigs][expansions][wobble]")
 {
     // 0.97.0: WOBBLE on at AMOUNT 0 (so the macro's left is the preset as built), MACRO 3 only to its AMOUNT.
@@ -1765,7 +1802,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto dust = rig.bank == Rig::numBanks + 18;      // DUSTFALL: 70 BPM in D minor, vast and cold
         const auto super = rig.bank == Rig::numBanks + 19;     // SUPERPOSITION: 90 BPM in C minor, cold and cerebral
         const auto sev = rig.bank == Rig::numBanks + 20;       // SEVERED: 96 BPM, D minor slipping into bright F major
-        const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
+        const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 110 BPM in E minor, Em C D B (industrial)
         const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
         const auto melt = rig.bank == Rig::numBanks + 23;      // MELTDOWN: 66 BPM in D minor, slow, with half-step clusters
         const auto atomic = rig.bank == Rig::numBanks + 24;    // ATOMIC AGE: 116 BPM in C major, a cheerful lounge, C6 Fmaj7 Dm7 G7
@@ -1785,7 +1822,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto noon = rig.bank == Rig::numBanks + 38;      // HIGHNOON: 96 BPM in G major, G Em C D
         const auto steel = rig.bank == Rig::numBanks + 41;     // STEEL TITANS: 140 BPM in F minor, Fm Db Ab Eb (half-time drops)
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -1846,7 +1883,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9, 9, 5 };
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 4, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9, 9, 5 };
             const auto root = 57 + ((roots[juce::jlimit (0, 41, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
             const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 || bankIndex == 35 ? major : minor;
             const auto degree = [&] (int d)
@@ -1871,100 +1908,69 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sling)
         {
-            // The EXPR wheel rocked heel to toe and back (controller 11), for the presets whose wah it works.
-            const auto rock = [&] (double from, double to)
-            {
-                for (int k = 0; k <= 24; ++k)
-                {
-                    const auto t = from + (to - from) * k / 24.0;
-                    const auto v = (int) std::round (127.0 * std::sin (juce::MathConstants<double>::pi * k / 24.0));
-                    e.push_back ({ at (t), juce::MidiMessage::controllerEvent (1, 11, v) });
-                }
-            };
-            const auto onExpr = rig.name == "Drillbit Scream" || rig.name == "Dawnbreaker" || rig.name == "Fleet Assault";
-            // The pedal at the heel for those; for the rest all the way up (unrouted, controller 11 is the volume swell,
-            // and the clip before may have left it down).
-            e.push_back ({ 0.0, juce::MidiMessage::controllerEvent (1, 11, onExpr ? 0 : 127) });
+            // Our own phrases (none from any book or record): E minor, the chords E minor, C, D and B, hard and in time:
+            // the sequences held so the machine runs, the stabs short, the leads with a slide.
+            const std::vector<std::vector<int>> chords { { 28, 52, 55, 59, 64 }, { 24, 52, 55, 60, 64 },
+                                                         { 26, 54, 57, 62, 66 }, { 23, 51, 54, 59, 63 } };
             if (type == "Lead")
             {
-                // A defiant line in C minor: a riff, its answer climbing, a long held note with the wah rocked.
-                line ({ { 0, 0.5, 60 }, { 0.5, 0.5, 63 }, { 1, 0.5, 65 }, { 1.5, 0.5, 67 }, { 2, 1.5, 70 }, { 3.5, 0.5, 67 },
-                        { 4, 0.5, 68 }, { 4.5, 0.5, 67 }, { 5, 0.5, 65 }, { 5.5, 0.5, 63 }, { 6, 2, 65 },
-                        { 8, 0.5, 67 }, { 8.5, 0.5, 70 }, { 9, 0.5, 72 }, { 9.5, 0.5, 74 }, { 10, 2, 75 }, { 12, 4, 72 } }, 105);
-                if (onExpr)
-                {
-                    rock (0.0, 4.0);
-                    rock (6.0, 8.0);
-                    rock (12.0, 14.0);
-                    rock (14.0, 16.0);
-                }
-                else
-                    wheel (12.0, 16.0, 100);
-                length = 20.0 * beat;
+                line ({ { 0, 0.5, 64 }, { 0.5, 0.5, 64 }, { 1, 0.5, 67 }, { 1.5, 1, 69 }, { 2.5, 1.5, 67 },
+                        { 4, 0.5, 64 }, { 4.5, 0.5, 67 }, { 5, 1, 71 }, { 6, 2, 72 },
+                        { 8, 0.5, 74 }, { 8.5, 0.5, 72 }, { 9, 0.5, 71 }, { 9.5, 0.5, 69 }, { 10, 2, 71 },
+                        { 12, 1, 67 }, { 13, 1, 66 }, { 14, 2, 64 } }, 110);
+                wheel (12.0, 16.0, 90);
+                length = 19.0 * beat;
             }
             else if (type == "Pad")
             {
-                // C minor, A flat, E flat, then G major: the long climb.
-                chord (e, at (0), at (3.9), { 36, 48, 55, 60, 63 }, 90);
-                chord (e, at (4), at (7.9), { 32, 48, 56, 60, 63 }, 90);
-                chord (e, at (8), at (11.9), { 39, 51, 55, 58, 63 }, 90);
-                chord (e, at (12), at (15.8), { 31, 50, 55, 59, 62 }, 90);
-                wheel (8.0, 15.0, 100);
-                length = 22.0 * beat;
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
             }
             else if (type == "Bass")
             {
-                constexpr int roots[] = { 36, 32, 39, 31 };
-                if (rig.name == "Pick And Hammer")   // re-struck eighths, harder on the beat: each opens the auto-wah
+                for (int c = 0; c < 4; ++c)
                 {
-                    for (int k = 0; k < 32; ++k)
-                        if (k % 8 != 7)
-                            line ({ { k * 0.5, 0.4, roots[k / 8] } }, k % 2 == 0 ? 120 : 80);
+                    const auto r = chords[(size_t) c][0] + 12;
+                    if (rig.tags.contains ("Sequence"))   // the root held: the machine hammers it
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 110);
+                    else
+                    {
+                        const int pattern[] { 0, 0, 12, 0, 0, 10, 0, 7 };
+                        for (int k = 0; k < 8; ++k)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + 0.42), { r + pattern[k] }, k % 2 == 0 ? 115 : 90);
+                    }
                 }
-                else
-                    line ({ { 0, 3.9, roots[0] }, { 4, 3.9, roots[1] }, { 8, 3.9, roots[2] }, { 12, 3.9, roots[3] } }, 105);
-                wheel (8.0, 15.0, 90);
-                length = 19.0 * beat;
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
             }
             else if (type == "Keys")
             {
-                const std::initializer_list<int> chords[] = { { 48, 55, 60, 63 }, { 44, 56, 60, 63 }, { 51, 55, 58, 63 }, { 43, 55, 59, 62 } };
-                if (rig.name == "Victory Bells")   // single strikes, then the chord at the end
+                for (int c = 0; c < 4; ++c)
                 {
-                    line ({ { 0, 2, 60 }, { 2, 2, 67 }, { 4, 2, 63 }, { 6, 2, 72 }, { 8, 2, 55 }, { 10, 2, 62 } }, 100);
-                    chord (e, at (12), at (15), { 48, 55, 59, 62 }, 110);
-                }
-                else
-                {
-                    int k = 0;
-                    for (const auto& notes : chords)
+                    const auto& n = chords[(size_t) c];
+                    if (rig.tags.contains ("Guitar"))   // power chords (the root; the fifth and octave from the chorder)
+                        for (const auto h : { 0.0, 0.5, 1.5, 2.0, 2.5, 3.5 })
+                            chord (e, at (c * 4.0 + h), at (c * 4.0 + h + 0.35), { n[0] + 24 }, 115);
+                    else
                     {
-                        chord (e, at (k * 4.0), at (k * 4.0 + 3.0), notes, 90);
-                        ++k;
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.9), std::vector<int> (n.begin() + 1, n.end()), 95);
+                        chord (e, at (c * 4.0 + 2), at (c * 4.0 + 3.8), std::vector<int> (n.begin() + 1, n.end()), 80);
                     }
-                    line ({ { 1, 1, 75 }, { 2, 1, 74 }, { 5, 1, 72 }, { 6, 1, 68 }, { 9, 1, 70 }, { 13, 2, 71 } }, 85);
                 }
-                length = 20.0 * beat;
-            }
-            else
-            {
-                // Arps: a C minor chord, then A flat (Siege Clock holds just the root).
-                if (rig.name == "Siege Clock")
-                {
-                    chord (e, at (0), at (7.9), { 60 }, 100);
-                    chord (e, at (8), at (15.9), { 56 }, 100);
-                }
-                else
-                {
-                    chord (e, at (0), at (7.9), { 60, 63, 67 }, 100);
-                    chord (e, at (8), at (15.9), { 56, 60, 63 }, 100);
-                }
-                if (onExpr)
-                {
-                    rock (0.0, 4.0);
-                    rock (8.0, 12.0);
-                }
+                wheel (8.0, 14.0, 90);
                 length = 19.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1], n[2], n[3] }, 105);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
             }
         }
         else if (cinema)
