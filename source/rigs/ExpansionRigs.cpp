@@ -9338,7 +9338,8 @@ namespace
         wah (hammer, { WM::pedal, WR::classic, 0.35f, 0.95f, 6.0f, 0.3f, 0.15f });
         route (hammer, "modWheel", ParamIDs::fltCutoff, 0.25f);
         finish (hammer, RT::room, 0.4f, 0.1f);
-        hammer.set (ParamIDs::patchLevel, 2.6f);
+        hammer.set (ParamIDs::patchLevel, 2.6f)
+              .set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);   // a ceiling: RABID waking from silence clicks the first hit about 18 dB over the rest
         x.add (hammer);
 
         auto organ = x.make ("Steel Organ", 12, { "Keys", "Gilded", "Organ", "Wah" },
