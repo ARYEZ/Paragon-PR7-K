@@ -2,6 +2,22 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.97.0
+
+**STEEL TITANS, a new expansion: dubstep and festival anthems, with giant machines, and WOBBLE, the dubstep wobble locked to your song.**
+
+- **WOBBLE** (a new signature effect, in the FX page's SIGNATURE slot): a resonant filter that opens and closes in time with your song, changing speed beat by beat as a dubstep bass does. Our own design.
+  - PATTERN, the speeds over two bars: STEADY eighths, HALF-TIME, TRIPLETS, DROP (eighths into a triplet and sixteenth fill), ROLLS (speeding up to 32nds), TALKER, STUTTER, BOUNCE.
+  - SHAPE: SMOOTH (the classic wub), SNAP (open at once, punchy), RISE (opening across each wobble, the "yoi").
+  - TALK: a vowel moving with the wobble, OO shut to AH open (the "wow"). DRIVE: grit going in. LOW, RANGE and RESONANCE set the filter.
+  - The level is kept as it opens and shuts. At AMOUNT 0 your sound passes untouched. AMOUNT, TALK and RESONANCE can be moved by the mod matrix.
+- **STEEL TITANS** (ST01-ST18), our own sounds, no film, artist or song named. Three columns in every category:
+  - The heroes (the anthem side): Anthem Lead, Rise Of Titans, Titan Drop, Anthem Piano, Pump Saw Arp, Vocal Chop.
+  - The villains (dark and aggressive): Screech Lead, Fallen City, Growl Bass, Metal Stab, Stutter Arp, Metal Pluck.
+  - The machines: Servo Whine, Spark Core, Gearshift Reese, Cockpit Keys, Gear Sequence, Laser Pluck.
+- **MACRO 3 WOBBLE** on every preset, each with its own pattern, shape, vowel and drive: from the preset as built to the full wobble. MACRO 1 BRIGHT, MACRO 2 SPACE.
+- Levels measured: about -17 loudness (the plucks by their peaks); full WOBBLE changes the loudness by under 1 dB on most, Growl Bass 3 dB quieter.
+
 ## 0.96.0
 
 **OFFWORLD, a new expansion built on a two-line vintage polysynth, and FILTER 2: a second filter path in the synth.**

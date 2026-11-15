@@ -25,7 +25,7 @@ namespace effects
     //  - RESONANCE: how much the low-pass sings.
     // AMOUNT moves the cutoff in from fully open (20 kHz) to the wobble's, the resonance, TALK and DRIVE with it, and
     // blends the filtered sound in over its first third. The level is kept (power in and out followed over 0.3 s, gain
-    // 0.35-2.8, glided), since a wobble's shut half takes far more away than its open half gives back. In time with `ppq`
+    // 0.25-4, glided: at most +12 dB, since at 0.35-2.8 Growl Bass came out 6 dB quieter at full), since a wobble's shut half takes far more away than its open half gives back. In time with `ppq`
     // while the song plays (4/4); its own count while stopped, from the pattern's start when it wakes. Each side its own
     // filters, the same settings. AMOUNT smoothed 30 ms; under 0.001 it counts as 0, and at 0, once the gain is back to
     // 1 for 0.3 s, the sound passes untouched bit for bit (`isResting`).
