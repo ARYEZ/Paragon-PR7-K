@@ -2,6 +2,19 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.98.0
+
+**SLINGBLADE, rebuilt from the ground up: violent, aggressive, heavy 1990s industrial, with the WAH at its centre.**
+
+- **SLINGBLADE** (SB01-SB18), 18 new presets in place of the old 18, our own sounds. Three columns in every category:
+  - The mines: Wah Scream, Rust Choir, Piston Sequence, Broken Piano, Pit Sequence, Shrapnel Pluck.
+  - The war games: Razor Wire, Smoke Over Ash, Bonegrinder, Hammer Stab, War March, Wire Pluck.
+  - The gilded: Gilded Knife, Cold Throne, Slaughter Reese, Steel Organ, Static Arp, Blade Pluck.
+- Every preset runs through the WAH on insert bus A, each set its own way: a pedal parked half down, an auto-wah following your playing, or a wah moving in time with the song.
+- **MACRO 3 WAH** on every preset: rocks the pedal from heel to toe, drives it harder and makes the filter sing. MACRO 1 BRIGHT, MACRO 2 SPACE.
+- Levels measured: about -17 loudness, the stabs and plucks by their peaks; full WAH keeps the loudness within about 1.5 dB on most (Wire Pluck about 3 dB thinner at the toe).
+- Presets saved from the old SLINGBLADE in your own banks keep their sound; the old factory presets are gone.
+
 ## 0.97.0
 
 **STEEL TITANS, a new expansion: dubstep and festival anthems, with giant machines, and WOBBLE, the dubstep wobble locked to your song.**
