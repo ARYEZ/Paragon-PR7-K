@@ -146,7 +146,7 @@ TEST_CASE ("WOBBLE: the pattern's speed changes beat by beat", "[wobble]")
     // ROLLS: quarters, eighths, sixteenths, then 32nds. Each beat is shut where its own speed says and open half a
     // wobble later.
     const auto bpm = 120.0;
-    const auto in = noise (8.0);
+    const auto in = noise (13.0);   // 26 beats: the bars measured are beats 8 to 24
     auto s = full();
     s.pattern = 4;
     const auto run = runWobble (in, in, s, bpm);
@@ -168,7 +168,7 @@ TEST_CASE ("WOBBLE: the pattern's speed changes beat by beat", "[wobble]")
         for (size_t b = 0; b < p.size(); ++b)
         {
             const auto rate = p[b];
-            CHECK ((rate == std::floor (rate) || (rate == 0.5f && b % 2 == 0 && p[b + 1] == 0.5f)));
+            CHECK ((rate == std::floor (rate) || (rate == 0.5f && (b % 2 == 0 ? p[b + 1] == 0.5f : p[b - 1] == 0.5f))));
         }
     for (int shape = 0; shape < 3; ++shape)
     {
@@ -180,35 +180,36 @@ TEST_CASE ("WOBBLE: the pattern's speed changes beat by beat", "[wobble]")
 
 TEST_CASE ("WOBBLE: TALK moves the tone as a vowel, OO shut to EH open", "[wobble]")
 {
-    // A low saw through a wobble whose filter stays high (LOW 800 Hz), slow (HALF-TIME at 60 BPM: one a second), so
-    // what changes is mostly TALK's vowel. Shut, OO keeps the third harmonic (near OO's 350 Hz) over the tenth; open,
-    // towards EH, the tenth (1.1 kHz, near AH / EH's second formant) comes up.
+    // A low saw (110 Hz) through a slow wobble (HALF-TIME at 60 BPM: one a second). TALK's vowel moves its second
+    // formant from OO's 600 Hz (shut: the sixth harmonic) up towards EH's 1.6 kHz (open: about the fourteenth).
+    // What TALK adds over the same wobble without it: open, the fourteenth comes up against the sixth; shut, the
+    // other way round (the low-pass moves both the same in either run, so it cancels).
     const auto bpm = 60.0;
     const auto in = saw (110.0, 8.0);
     auto s = full();
     s.pattern = 1;
-    s.low = 1.0f;
-    s.range = 1.0f;
+    s.low = 0.6f;
+    s.range = 0.8f;
     s.talk = 1.0f;
     const auto talking = runWobble (in, in, s, bpm);
     s.talk = 0.0f;
     const auto plain = runWobble (in, in, s, bpm);
-    const auto window = (size_t) (0.12 * sampleRate);
+    const auto window = (size_t) (0.1 * sampleRate);
     const auto tilt = [window] (const std::vector<float>& x, double second)
     {
         const auto from = (size_t) (second * sampleRate) - window / 2;
-        return db (levelAt (x, 1100.0, from, window)) - db (levelAt (x, 330.0, from, window));
+        return db (levelAt (x, 1540.0, from, window)) - db (levelAt (x, 660.0, from, window));
     };
-    double talkSwing = 0.0, plainSwing = 0.0;
+    double open = 0.0, shut = 0.0;
     for (int beat = 3; beat < 7; ++beat)
     {
-        talkSwing += tilt (talking.out[0], beat + 0.5) - tilt (talking.out[0], beat + 0.06);
-        plainSwing += tilt (plain.out[0], beat + 0.5) - tilt (plain.out[0], beat + 0.06);
+        open += tilt (talking.out[0], beat + 0.5) - tilt (plain.out[0], beat + 0.5);
+        shut += tilt (talking.out[0], beat + 0.1) - tilt (plain.out[0], beat + 0.1);
     }
-    talkSwing /= 4.0;
-    plainSwing /= 4.0;
-    WARN ("TALK: the tenth harmonic against the third swings " << talkSwing << " dB shut to open, " << plainSwing << " dB without TALK");
-    CHECK (talkSwing > plainSwing + 6.0);
+    open /= 4.0;
+    shut /= 4.0;
+    WARN ("TALK lifts the 14th harmonic against the 6th by " << open << " dB open and " << shut << " dB shut");
+    CHECK (open - shut > 6.0);
 }
 
 TEST_CASE ("WOBBLE: the level is kept, silence stays silent, and turned down it rests untouched", "[wobble]")
@@ -231,7 +232,7 @@ TEST_CASE ("WOBBLE: the level is kept, silence stays silent, and turned down it 
     CHECK (silent.out[0] == quiet);
 
     // One side silent stays silent.
-    const auto oneSide = runWobble (in, quiet, s);
+    const auto oneSide = runWobble (in, std::vector<float> (in.size(), 0.0f), s);
     for (auto v : oneSide.out[1])
         REQUIRE (v == 0.0f);
 

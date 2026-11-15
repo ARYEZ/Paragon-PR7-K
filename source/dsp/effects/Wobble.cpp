@@ -14,6 +14,9 @@ namespace effects
         constexpr float driveIn = 1.5f;          // the resonant stage's light saturation
         constexpr float talkMakeUp = 3.0f;       // TALK's band-passes take a lot away; the level keeper does the rest
         constexpr float driveRef = 0.3f;         // DRIVE scaled so this level stays the same
+        // TALK's formants widened from the singer's data (40-120 Hz wide): on a low bass most harmonics fell between
+        // such narrow peaks and the vowel barely showed (3.6 dB of movement measured); a growl wants broad ones.
+        constexpr float talkWidth = 2.5f, talkMinBandwidth = 100.0f;
     }
 
     void Wobble::prepare (double newSampleRate, int)
@@ -108,7 +111,7 @@ namespace effects
                     {
                         const auto fHz = juce::jlimit (40.0f, 0.45f * sr, formants[f].hz);
                         const auto fg = std::tan (juce::MathConstants<float>::pi * fHz / sr);
-                        fk[f] = juce::jlimit (0.02f, 2.0f, formants[f].bandwidthHz / fHz);
+                        fk[f] = juce::jlimit (0.02f, 2.0f, juce::jmax (talkMinBandwidth, talkWidth * formants[f].bandwidthHz) / fHz);
                         fa1[f] = 1.0f / (1.0f + fg * (fg + fk[f]));
                         fa2[f] = fg * fa1[f];
                         fa3[f] = fg * fa2[f];
