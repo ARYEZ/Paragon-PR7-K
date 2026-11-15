@@ -168,7 +168,7 @@ namespace
     {
         static const std::map<juce::String, float> levels {
             { "Koto Pluck", -1.0f }, { "Wood Mallet", 4.2f }, { "Offworld Harp", 1.2f },
-            { "Shrapnel Pluck", 0.0f }, { "Wire Pluck", 0.0f }, { "Blade Pluck", 0.0f },
+            { "Shrapnel Pluck", 12.0f }, { "Wire Pluck", 2.2f }, { "Blade Pluck", -6.1f },
             { "Vocal Chop", -3.8f }, { "Metal Pluck", -7.1f }, { "Laser Pluck", -4.2f },
             { "Supersaw Pluck", -4.6f }, { "Pulse Pluck", -3.2f }, { "Triangle Bell", -3.6f },
             { "Desk Toy", -8.1f }, { "Filing Pizzicato", -2.0f }, { "Music Box Award", -7.7f },
@@ -9108,7 +9108,7 @@ namespace
         route (scream, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.25f);
         delay (scream, "1/8 dotted", 0.25f, 0.12f, true, 4.0f);
         finish (scream, RT::room, 0.45f, 0.12f);
-        scream.set (ParamIDs::patchLevel, 0.0f);
+        scream.set (ParamIDs::patchLevel, -2.9f);
         x.add (scream);
 
         auto razor = x.make ("Razor Wire", 2, { "Lead", "War Games", "Wah", "Crushed" },
@@ -9131,7 +9131,7 @@ namespace
         route (razor, "modWheel", ParamIDs::lofiMix, 0.4f);
         delay (razor, "1/8", 0.25f, 0.1f, true, 4.0f);
         finish (razor, RT::room, 0.4f, 0.1f);
-        razor.set (ParamIDs::patchLevel, 0.0f);
+        razor.set (ParamIDs::patchLevel, 7.2f);
         x.add (razor);
 
         auto knife = x.make ("Gilded Knife", 3, { "Lead", "Gilded", "Wah", "FM" },
@@ -9150,11 +9150,12 @@ namespace
              .shaper (0, SM::soft, 0.1f)
              .mono (60.0f);
         drive (knife, 0, DM::skyline, 2.0f, 6.0f, -1.0f, 0.2f, 0.25f);
-        wah (knife, { WM::pedal, WR::wide, 0.3f, 0.9f, 8.0f, 0.3f, 0.15f });
+        wah (knife, { WM::pedal, WR::classic, 0.3f, 0.7f, 8.0f, 0.3f, 0.15f });
+        knife.set (ParamIDs::ins (0, "WahMix"), 0.6f);   // some dry kept, the classic range: wide, at the toe, the wah lost 10 dB of a sine
         route (knife, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
         delay (knife, "1/4 dotted", 0.3f, 0.12f, true, 6.0f);
         finish (knife, RT::plate, 0.55f, 0.15f);
-        knife.set (ParamIDs::patchLevel, 0.0f);
+        knife.set (ParamIDs::patchLevel, -1.7f);
         x.add (knife);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -9178,7 +9179,7 @@ namespace
         wah (rust, { WM::lfo, WR::low, 0.3f, 0.75f, 5.0f, 0.35f, 0.1f, 0.4f, "1/2" });
         route (rust, "modWheel", ParamIDs::voiceVowel, 0.3f);
         finish (rust, RT::hall, 0.85f, 0.25f);
-        rust.set (ParamIDs::patchLevel, 0.0f);
+        rust.set (ParamIDs::patchLevel, -4.9f);
         x.add (rust);
 
         auto smoke = x.make ("Smoke Over Ash", 5, { "Pad", "War Games", "Reese", "Dark" },
@@ -9199,7 +9200,7 @@ namespace
         wah (smoke, { WM::lfo, WR::classic, 0.15f, 0.65f, 5.0f, 0.3f, 0.1f, 0.6f, "1/1" });
         route (smoke, "modWheel", ParamIDs::fltCutoff, 0.25f);
         finish (smoke, RT::hall, 0.85f, 0.3f);
-        smoke.set (ParamIDs::patchLevel, 0.0f);
+        smoke.set (ParamIDs::patchLevel, 3.0f);
         x.add (smoke);
 
         auto throne = x.make ("Cold Throne", 6, { "Pad", "Gilded", "Glass", "Wah" },
@@ -9215,11 +9216,12 @@ namespace
         bus (throne, { 0, 1, 2 });
         throne.filter (FilterType::lp12, 5000.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.3f)
               .ampEnvelope (900.0f, 1000.0f, 0.9f, 1800.0f);
-        wah (throne, { WM::pedal, WR::wide, 0.45f, 0.9f, 6.0f, 0.0f, 0.15f });
+        wah (throne, { WM::pedal, WR::wide, 0.45f, 0.8f, 6.0f, 0.0f, 0.15f });
+        throne.set (ParamIDs::ins (0, "WahMix"), 0.6f);   // some dry kept: the triangles lost 5.6 dB at the toe
         route (throne, "modWheel", ParamIDs::osc (2, "Volume"), 0.1f);
         delay (throne, "1/4 dotted", 0.4f, 0.12f, true, 5.0f);
         finish (throne, RT::plate, 0.75f, 0.25f);
-        throne.set (ParamIDs::patchLevel, 0.0f);
+        throne.set (ParamIDs::patchLevel, -5.6f);
         x.add (throne);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -9240,7 +9242,7 @@ namespace
         wah (piston, { WM::autoWah, WR::classic, 0.15f, 0.7f, 6.0f, 0.3f, 0.15f, 0.7f, "1/4", 7.0f });
         route (piston, "modWheel", ParamIDs::fltCutoff, 0.25f);
         finish (piston, RT::room, 0.3f, 0.0f);
-        piston.set (ParamIDs::patchLevel, 0.0f);
+        piston.set (ParamIDs::patchLevel, 1.7f);
         x.add (piston);
 
         auto grinder = x.make ("Bonegrinder", 8, { "Bass", "War Games", "Growl", "FM" },
@@ -9262,7 +9264,7 @@ namespace
         wah (grinder, { WM::pedal, WR::low, 0.2f, 0.9f, 7.0f, 0.3f, 0.15f });
         route (grinder, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.3f);
         finish (grinder, RT::room, 0.3f, 0.0f);
-        grinder.set (ParamIDs::patchLevel, 0.0f);
+        grinder.set (ParamIDs::patchLevel, -5.6f);
         x.add (grinder);
 
         auto slaughter = x.make ("Slaughter Reese", 9, { "Bass", "Gilded", "Reese", "Wah" },
@@ -9283,7 +9285,7 @@ namespace
         wah (slaughter, { WM::lfo, WR::low, 0.2f, 0.7f, 6.0f, 0.3f, 0.15f, 0.5f, "1/4" });
         route (slaughter, "modWheel", ParamIDs::fltCutoff, 0.25f);
         finish (slaughter, RT::room, 0.3f, 0.0f);
-        slaughter.set (ParamIDs::patchLevel, 0.0f);
+        slaughter.set (ParamIDs::patchLevel, -6.7f);
         x.add (slaughter);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -9315,7 +9317,7 @@ namespace
         route (piano, "macro3", ParamIDs::lofiMix, 0.3f);
         wah (piano, { WM::pedal, WR::classic, 0.6f, 0.95f, 3.0f, 0.2f, 0.0f });
         finish (piano, RT::room, 0.5f, 0.2f);
-        piano.set (ParamIDs::patchLevel, 0.0f);
+        piano.set (ParamIDs::patchLevel, -5.2f);
         x.add (piano);
 
         auto hammer = x.make ("Hammer Stab", 11, { "Keys", "War Games", "Stab", "Guitar" },
@@ -9330,13 +9332,13 @@ namespace
               .osc (1, "Ch1On", 1.0f).osc (1, "Ch1Coarse", 7.0f);
         bus (hammer, { 0, 1 });
         hammer.filter (FilterType::lp24, 1200.0f, 0.3f, 0.5f).filterEnvelope (1.0f, 200.0f, 0.3f, 120.0f).set (ParamIDs::fltKey, 0.4f)
-              .ampEnvelope (1.0f, 250.0f, 0.4f, 120.0f)
+              .ampEnvelope (4.0f, 250.0f, 0.4f, 120.0f)   // not 1 ms: a 1 ms attack into the fuzz spiked over the hit
               .shaper (0, SM::hard, 0.3f);
         drive (hammer, 0, DM::rabid, 4.0f, 5.0f, -5.0f, 0.15f, 0.15f);
         wah (hammer, { WM::pedal, WR::classic, 0.35f, 0.95f, 6.0f, 0.3f, 0.15f });
         route (hammer, "modWheel", ParamIDs::fltCutoff, 0.25f);
         finish (hammer, RT::room, 0.4f, 0.1f);
-        hammer.set (ParamIDs::patchLevel, 0.0f);
+        hammer.set (ParamIDs::patchLevel, 2.6f);
         x.add (hammer);
 
         auto organ = x.make ("Steel Organ", 12, { "Keys", "Gilded", "Organ", "Wah" },
@@ -9358,7 +9360,7 @@ namespace
         wah (organ, { WM::lfo, WR::classic, 0.3f, 0.75f, 4.0f, 0.3f, 0.0f, 0.4f, "1/8 triplet" });
         route (organ, "modWheel", ParamIDs::osc (3, "Volume"), 0.15f);
         finish (organ, RT::hall, 0.8f, 0.25f);
-        organ.set (ParamIDs::patchLevel, 0.0f);
+        organ.set (ParamIDs::patchLevel, -1.8f);
         x.add (organ);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -9377,7 +9379,7 @@ namespace
         route (pit, "modWheel", ParamIDs::fltCutoff, 0.25f);
         delay (pit, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
         finish (pit, RT::room, 0.4f, 0.1f);
-        pit.set (ParamIDs::patchLevel, 0.0f);
+        pit.set (ParamIDs::patchLevel, 3.5f);
         x.add (pit);
 
         auto march = x.make ("War March", 14, { "Arp", "War Games", "March", "Ratchet" },
@@ -9401,7 +9403,7 @@ namespace
         wah (march, { WM::lfo, WR::wide, 0.2f, 0.65f, 6.0f, 0.3f, 0.1f, 0.5f, "1/4" });
         route (march, "modWheel", ParamIDs::fltCutoff, 0.25f);
         finish (march, RT::room, 0.4f, 0.1f);
-        march.set (ParamIDs::patchLevel, 0.0f);
+        march.set (ParamIDs::patchLevel, 6.9f);
         x.add (march);
 
         auto staticArp = x.make ("Static Arp", 15, { "Arp", "Gilded", "Wavetable", "Digital" },
@@ -9423,7 +9425,7 @@ namespace
         wah (staticArp, { WM::pedal, WR::wide, 0.5f, 0.95f, 6.0f, 0.0f, 0.15f });
         delay (staticArp, "1/16", 0.25f, 0.1f, true, 5.0f);
         finish (staticArp, RT::plate, 0.45f, 0.1f);
-        staticArp.set (ParamIDs::patchLevel, 0.0f);
+        staticArp.set (ParamIDs::patchLevel, 9.4f);
         x.add (staticArp);
 
         // ---- PLUCKS ------------------------------------------------------------------------------------------
@@ -9458,7 +9460,7 @@ namespace
             .ampEnvelope (1.0f, 350.0f, 0.0f, 150.0f).set (ParamIDs::ampDecayCurve, -0.5f)
             .shaper (0, SM::diode, 0.15f);
         drive (wire, 0, DM::skyline, 4.0f, 5.5f, -4.0f, 0.15f, 0.15f);
-        wah (wire, { WM::pedal, WR::classic, 0.25f, 0.9f, 8.0f, 0.3f, 0.1f });
+        wah (wire, { WM::pedal, WR::classic, 0.25f, 0.75f, 8.0f, 0.3f, 0.1f });
         pkVelocity (wire);
         route (wire, "modWheel", ParamIDs::fltCutoff, 0.2f);
         delay (wire, "1/8", 0.3f, 0.12f, true, 5.0f);
