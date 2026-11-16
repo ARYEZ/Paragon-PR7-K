@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/EnvelopeGrid.h"
 #include "ui/SynthControls.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -74,10 +75,14 @@ public:
     const ParamControl& getMacroKnob (int index) const { return *macros[(size_t) index]; }
     FaceWheel& getModWheel() noexcept { return modWheel; }
     FaceWheel& getExpressionWheel() noexcept { return exprWheel; }
+    EnvelopeGrid& getGrid() noexcept { return grid; }
 
 private:
     void timerCallback() override;   // scrolls the notes
     void paintScreen (juce::Graphics&) const;
+    // 0.98.0: the face's top part (today's layout, 1476 x 372 units) and, below it when the face is taller (the full
+    // faceplate), THE GRID.
+    float topHeight() const noexcept;
 
     ParagonX1AudioProcessor& processor;
     FaceWheel modWheel { "MOD", 0.0f }, exprWheel { "EXPR", 1.0f };
@@ -85,6 +90,7 @@ private:
     ParamControl cutoff, resonance, attack, release;
     juce::TextButton previous { juce::CharPointer_UTF8 ("\xe2\x96\xb2") }, next { juce::CharPointer_UTF8 ("\xe2\x96\xbc") };
     juce::Rectangle<int> screenArea;
+    EnvelopeGrid grid;
     Screen screen;
     float tickerOffset = 0.0f;   // how far the notes have scrolled, in pixels
     juce::Image grain;

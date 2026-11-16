@@ -511,6 +511,19 @@ namespace synth
                             streamsInUse[(size_t) player.stream] = true;
             streamer->release (streamsInUse);
         }
+
+        // THE GRID's spark: the newest note sounding, where it is in its envelopes (read by the front panel).
+        const Voice* newest = nullptr;
+        for (const auto& v : voices)
+            if (v.playing && ! v.killing && v.amp.isActive() && v.source != answerSource && v.source != tailSource
+                && (newest == nullptr || v.seqAge < newest->seqAge))
+                newest = &v;
+        const auto spark = [] (const Envelope& e)
+        {
+            return (int) e.getStage() * 10000 + juce::jlimit (0, 9999, (int) (e.getProgress() * 9999.0f));
+        };
+        ampSparkShown.store (newest != nullptr ? spark (newest->amp) : -1);
+        filterSparkShown.store (newest != nullptr && newest->filter.isActive() ? spark (newest->filter) : -1);
     }
 
     void Engine::handle (const juce::MidiMessage& message, const Settings& settings) noexcept

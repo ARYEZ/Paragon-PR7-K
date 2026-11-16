@@ -157,7 +157,7 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
     face.onScreenClicked = [this] { showPage (Page::presets); };
     rackButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff151217));
     rackButton.setColour (juce::TextButton::textColourOffId, ParagonColours::text);
-    rackButton.setTooltip ("Shows the full OSCILLATORS and FILTER panels (the rack), or the front panel in their place.");
+    rackButton.setTooltip ("Shows the rack (the OSCILLATORS, FILTER, envelopes, AMP and PLAY panels and the keyboard), or the full front panel in their place.");
     rackButton.onClick = [this] { showRack (! rackShown); };
     rackShown = Finish::rackShown();
 
@@ -204,17 +204,39 @@ void MainView::showPage (Page newPage)
     auto& tab = newPage == Page::presets ? presetsTab : newPage == Page::settings ? settingsTab : newPage == Page::modulation ? modTab
               : newPage == Page::arp ? arpTab : newPage == Page::fx ? fxTab : synthTab;
     tab.setToggleState (true, juce::dontSendNotification);
+    // 0.98.0: with the rack hidden the front panel is the whole faceplate (THE GRID under its top part) down to the
+    // window's foot; the envelopes, AMP, PLAY and the keyboard strip come with the rack.
     for (auto* component : synthPage)
-        component->setVisible (newPage == Page::synth);
+        component->setVisible (newPage == Page::synth && (component == &rackButton || rackShown));
     oscillators.setVisible (newPage == Page::synth && rackShown);
     filter.setVisible (newPage == Page::synth && rackShown);
     face.setVisible (newPage == Page::synth && ! rackShown);
+    const auto keysShown = newPage != Page::synth || rackShown;
+    keyboard.setVisible (keysShown);
+    sources.setVisible (keysShown);
+    layoutSynthPage();
+    repaint();
     rackButton.setButtonText (rackShown ? "HIDE RACK" : "SHOW RACK");
     modPage.setVisible (newPage == Page::modulation);
     arpPage.setVisible (newPage == Page::arp);
     fxPage.setVisible (newPage == Page::fx);
     rigBrowser.setVisible (newPage == Page::presets);
     settingsPage.setVisible (newPage == Page::settings);
+}
+
+bool MainView::isFullFace() const noexcept
+{
+    return page == Page::synth && ! rackShown;
+}
+
+void MainView::layoutSynthPage()
+{
+    // The front panel: the whole faceplate down to the window's foot while it's up (0.98.0), OUTPUT alongside.
+    const auto full = isFullFace();
+    face.setBounds (full ? oscillatorArea.getUnion (filterArea).withBottom (keyboardArea.getBottom()) : oscillatorArea.getUnion (filterArea));
+    const auto output = full ? outputArea.withBottom (keyboardArea.getBottom()) : outputArea;
+    outputColumn.setBounds (output.withTrimmedBottom (44));
+    rackButton.setBounds (output.withTop (output.getBottom() - 38));
 }
 
 void MainView::showRack (bool shown, bool remember)
@@ -492,8 +514,9 @@ void MainView::paint (juce::Graphics& g)
     g.setColour (ParagonColours::panelEdge);
     g.drawHorizontalLine (juce::roundToInt (64.0f * mockScale), 0.0f, (float) getWidth());
 
-    // The keyboard's frame.
-    DockStyle::drawPanel (g, keyboardArea.toFloat().expanded (0.0f, 0.0f));
+    // The keyboard's frame (not under the full faceplate, 0.98.0).
+    if (! isFullFace())
+        DockStyle::drawPanel (g, keyboardArea.toFloat().expanded (0.0f, 0.0f));
 }
 
 void MainView::resized()
@@ -515,14 +538,11 @@ void MainView::resized()
 
     oscillators.setBounds (oscillatorArea);
     filter.setBounds (filterArea);
-    face.setBounds (oscillatorArea.getUnion (filterArea));
     filterEnvelope.setBounds (filterEnvelopeArea);
     ampEnvelope.setBounds (ampEnvelopeArea);
     amp.setBounds (ampArea);
     play.setBounds (playArea);
-    // OUTPUT, with the rack key under it (on the SYNTH page).
-    outputColumn.setBounds (outputArea.withTrimmedBottom (44));
-    rackButton.setBounds (outputArea.withTop (outputArea.getBottom() - 38));
+    layoutSynthPage();
 
     // Seven octaves from C1, filling the strip (the width first: changing it moves the view).
     auto keys = keyboardArea.reduced (8, 6);

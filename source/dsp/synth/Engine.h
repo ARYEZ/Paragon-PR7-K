@@ -549,6 +549,7 @@ namespace synth
         float ragDown = 1.0f, ragUp = 1.0f;   // the lift's glide per sample, down and back
         SharedInt ragStepShown {};
         SharedInt ragStrikeCount {};   // -1 until the first strike
+        SharedInt ampSparkShown {}, filterSparkShown {};   // THE GRID's spark (0.98.0): see getAmpSpark
         int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
     public:
         // The oscillator's key switch now (-1: none), for the panel.
@@ -558,6 +559,11 @@ namespace synth
         int getCrossSide() const noexcept { return crossSideShown.load(); }   // CROSSROADS: -1 off, 0 light, 1 dark
         int getRagtimeStep() const noexcept { return ragStepShown.load(); }   // RAGTIME: the roll's step (0-15; -1 not playing)
         int getRagtimeStrikes() const noexcept { return ragStrikeCount.load() + 1; }   // ...strikes so far
+        // THE GRID (the front panel's lower half, 0.98.0): where the newest note sounding (a key or an arp; not
+        // SIROCCO's answers or release tails) is in its AMP and FILTER envelopes, as the stage (Envelope::Stage by
+        // number) x 10000 + how far through it x 9999; -1 while none sounds (the filter's: or its envelope isn't running).
+        int getAmpSpark() const noexcept { return ampSparkShown.load(); }
+        int getFilterSpark() const noexcept { return filterSparkShown.load(); }
     private:
         sfz::Streamer* streamer = nullptr;
         bool waitForDisk = false;

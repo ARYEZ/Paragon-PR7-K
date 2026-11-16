@@ -36,7 +36,7 @@
 //   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
 //   PARAGON_SNAPSHOT_WTREF=<ref>     a preset whose oscillator 1 names that pack table ("{wt:<pack>}/<file>"; 0.76.0)
 //   PARAGON_SNAPSHOT_SORT=1          with RACK=1: a melody played instead of the chord, for SORT's page (0.93.0)
-//   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
+//   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, keys light and THE GRID's sparks run)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
     const auto env = [] (const char* name) { return juce::SystemStats::getEnvironmentVariable (name, {}); };
@@ -559,6 +559,18 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     const auto width = juce::jmax (960, juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", "1600").getIntValue());
     editor->setSize (width, width * 9 / 16);
     editor->resized();
+    // THE GRID's sparks (0.98.0): a few ticks, so a held note's spark and its trail are drawn.
+    for (int tick = 0; tick < 6; ++tick)
+    {
+        if (env ("PARAGON_SNAPSHOT_NOTES") == "1")
+        {
+            juce::AudioBuffer<float> buffer (2, 256);
+            juce::MidiBuffer midi;
+            processor.processBlock (buffer, midi);
+            processor.processBlock (buffer, midi);
+        }
+        view->getFace().getGrid().updateForTest();
+    }
 
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds());
     juce::File file (juce::File::getCurrentWorkingDirectory().getChildFile (path));

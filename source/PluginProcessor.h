@@ -475,6 +475,8 @@ public:
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }
+    int getAmpSpark() const noexcept { return engine.getAmpSpark(); }       // THE GRID's spark (0.98.0): Engine::getAmpSpark
+    int getFilterSpark() const noexcept { return engine.getFilterSpark(); }
     synth::ragtime::Settings getRagtimeSettings() const noexcept;                // RAGTIME (0.92.0)
     int getRagtimeStep() const noexcept { return engine.getRagtimeStep(); }
     int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }

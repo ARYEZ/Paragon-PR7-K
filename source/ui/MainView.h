@@ -123,6 +123,8 @@ private:
     juce::TextButton rackButton;
     bool rackShown = false;
     void showRack (bool, bool remember = true);
+    bool isFullFace() const noexcept;   // 0.98.0: the SYNTH page with the rack hidden (the faceplate to the window's foot)
+    void layoutSynthPage();
     EnvelopePanel filterEnvelope, ampEnvelope;
     AmpPanel amp;
     PlayPanel play;

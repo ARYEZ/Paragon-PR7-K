@@ -167,6 +167,7 @@ target_sources(ParagonX1
         source/ui/SortPage.cpp
         source/ui/WobblePage.cpp
         source/ui/SynthFace.cpp
+        source/ui/EnvelopeGrid.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
         source/ui/MultiPointEditor.cpp
