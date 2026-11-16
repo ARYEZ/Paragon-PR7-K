@@ -2,6 +2,16 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 0.99.0
+
+**THE GRID: the front panel becomes one full faceplate, its lower half a glowing grid where your envelopes stand as walls of light, with a spark that follows every note.**
+
+- **One faceplate, top to bottom.** With the rack hidden, the front panel now runs from the header to the bottom of the window. Its top half is as before; under a glowing seam is THE GRID, in the look of PR7-D's kit: a red grid floor running to a glowing horizon.
+- **Your envelopes as walls of light.** The filter envelope (pink) and the amp envelope (orange) stand on the floor in the preset's real shape: a pluck's sharp spike, a pad's slow rise. Over them, their values and the play mode, voices and notes playing.
+- **The spark.** While a note sounds, a spark runs along each wall exactly where that envelope is: up the attack, down the decay, breathing on the sustain, sliding down the release when you let go, with a short light trail. It follows the newest note (keys or arps).
+- **SHOW RACK holds the controls.** The envelopes, AMP and PLAY panels and the on-screen keyboard now come with the rack, so the faceplate is all picture. Play from your keyboard or DAW; SHOW RACK brings the on-screen keyboard back.
+- The sound is unchanged: THE GRID only shows what the synth is doing.
+
 ## 0.98.0
 
 **SLINGBLADE, rebuilt from the ground up: violent, aggressive, heavy 1990s industrial, with the WAH at its centre.**
