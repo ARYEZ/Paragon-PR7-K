@@ -2,6 +2,24 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.2.0
+
+**Groundwork for the koto bank: a free sampled koto the plugin can download, with its pressed-string bends.**
+
+- **A koto.** The free 13-string koto by Unreal Instruments, a Japanese developer: about 650 recordings, C3 to C6, with its playing styles on key switches (G1 to B2). It's free to use, needs no credit, and music made with it can be sold. Its maker doesn't allow its files to be passed on, so PR7-K fetches it from the maker's own download link (282 MB on disk). The presets that use it come with the koto bank, next.
+- **The koto's bends play.** Its best styles are a koto player's left-hand presses, made in the file by bending the plain notes with pitch envelopes, which the SFZ reader didn't play until now:
+  - *tsuki-iro*: a quick push up and back;
+  - *ato-oshi*: plucked, then pressed up;
+  - *oshi-hanashi*: plucked pressed, then released down;
+  - *yuri-iro*: a slow wobble;
+  - *hiki-iro*: pulled down;
+  - two depths of vibrato.
+- **More SFZ.** Besides those pitch envelopes, the reader now plays an instrument's own vibrato (PITCHLFO) and pitch envelope (PITCHEG), and notes that start a moment late (DELAY: the koto starts its string a few milliseconds after the pick's click).
+- **Up to 8 recordings per note** (was 4): a koto note layers up to 7 (pick, pick noise, the string, two microphones). With 4, the string itself was dropped.
+- **RAR archives.** The koto is published as a RAR file, so the plugin can now unpack those too, with dmc_unrar, a free RAR reader by Sven Hesse (GPL). Every file is checked as it comes out.
+- **If Google Drive is busy.** The koto lives on Google Drive, which sometimes holds a file back for up to a day when many people have fetched it. The plugin now says so plainly; try again later.
+- Already-released sounds are unchanged: the new SFZ features only act on instruments that use them.
+
 ## 1.1.0
 
 **The neon keyboard: the on-screen keys in THE GRID's colours, and back under the full faceplate.**

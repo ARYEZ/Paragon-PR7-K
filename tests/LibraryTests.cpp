@@ -9,6 +9,7 @@
 #include "Parameters.h"
 #include "PluginProcessor.h"
 #include "SampleLibraries.h"
+#include "dsp/synth/Sfz.h"
 #include "ui/MainView.h"
 #include "rigs/FactoryRigs.h"
 
@@ -97,6 +98,75 @@ namespace
     };
 
     juce::MemoryBlock text (const juce::String& s) { return { s.toRawUTF8(), s.getNumBytesAsUTF8() }; }
+
+    // (1.2.0) A RAR 4 archive, written here with its files stored (method 0x30, no compression): the one kind of RAR
+    // that can be made without the RAR program, which is closed. dmc_unrar reads it as any other.
+    struct RarWriter
+    {
+        juce::MemoryOutputStream data;
+
+        static std::uint32_t crc32 (const void* bytes, size_t n)
+        {
+            std::uint32_t crc = 0xffffffffu;
+            for (size_t i = 0; i < n; ++i)
+            {
+                crc ^= ((const std::uint8_t*) bytes)[i];
+                for (int k = 0; k < 8; ++k)
+                    crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+            }
+            return ~crc;
+        }
+        static void put (std::vector<std::uint8_t>& v, std::uint32_t value, int bytes)
+        {
+            for (int i = 0; i < bytes; ++i)
+                v.push_back ((std::uint8_t) (value >> (8 * i)));
+        }
+        // A block: its CRC (the low half of the CRC-32 of what follows it), type, flags, size, the rest.
+        void block (std::uint8_t type, std::uint16_t flags, const std::vector<std::uint8_t>& rest)
+        {
+            std::vector<std::uint8_t> h { type };
+            put (h, flags, 2);
+            put (h, (std::uint32_t) (7 + rest.size()), 2);
+            h.insert (h.end(), rest.begin(), rest.end());
+            const auto crc = (std::uint16_t) (crc32 (h.data(), h.size()) & 0xffffu);
+            data.writeShort ((short) crc);
+            data.write (h.data(), h.size());
+        }
+        RarWriter()
+        {
+            const std::uint8_t marker[] { 0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00 };
+            data.write (marker, sizeof (marker));
+            block (0x73, 0, std::vector<std::uint8_t> (6, 0));   // the archive header
+        }
+        void entry (const juce::String& name, const juce::MemoryBlock& content, bool folder, bool damaged = false)
+        {
+            std::vector<std::uint8_t> rest;
+            const auto size = (std::uint32_t) content.getSize();
+            put (rest, size, 4);                                  // packed
+            put (rest, size, 4);                                  // unpacked
+            rest.push_back (3);                                   // made on Unix (paths with '/')
+            put (rest, crc32 (content.getData(), content.getSize()), 4);
+            put (rest, 0x5a210000u, 4);                           // a DOS date and time
+            rest.push_back (20);                                  // needs RAR 2.0 to unpack
+            rest.push_back (0x30);                                // stored
+            put (rest, (std::uint32_t) name.getNumBytesAsUTF8(), 2);
+            put (rest, folder ? 0x41edu << 16 : 0x81a4u << 16, 4);
+            for (size_t i = 0; i < name.getNumBytesAsUTF8(); ++i)
+                rest.push_back ((std::uint8_t) name.toRawUTF8()[i]);
+            block (0x74, (std::uint16_t) (0x8000 | (folder ? 0x00e0 : 0)), rest);
+            auto bytes = content;
+            if (damaged && bytes.getSize() > 100)
+                bytes[100] = (char) (bytes[100] ^ 0x55);
+            data.write (bytes.getData(), bytes.getSize());
+        }
+        void file (const juce::String& name, const juce::MemoryBlock& content, bool damaged = false) { entry (name, content, false, damaged); }
+        void folder (const juce::String& name) { entry (name, {}, true); }
+        void write (const juce::File& file)
+        {
+            block (0x7b, 0x4000, {});   // the end
+            file.replaceWithData (data.getData(), data.getDataSize());
+        }
+    };
 
     // A one-second middle C, mono 16-bit WAV, as a file's bytes.
     juce::MemoryBlock sineWav()
@@ -442,7 +512,7 @@ TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets
     CHECK (libraries::libraryFor (libraries::refFor (sso, horns)) == &sso);
     CHECK (libraries::libraryFor (libraries::refFor (piano)) == &piano);
     CHECK (libraries::libraryFor ("{sfz:some other folder}/x.sfz") == nullptr);
-    CHECK (libraries::all().size() == 12);   // 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three; 0.84.0: the western five
+    CHECK (libraries::all().size() == 13);   // 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three; 0.84.0: the western five; 1.2.0: the koto
 
     TempFolder t;
     const auto presets = t.dir.getChildFile ("presets");
@@ -596,6 +666,132 @@ TEST_CASE ("Libraries: the expansions' pianos play their synthesized fallback un
     // A preset without one is unchanged.
     processor.loadRig (*processor.getRigLibrary().findFactory ("Fog Glass"));
     CHECK (waveNow() != (float) synth::OscWave::sfz);
+}
+
+TEST_CASE ("Libraries: a RAR archive unpacks, nothing lands outside the folder, and a damaged file is caught (1.2.0)", "[library]")
+{
+    TempFolder t;
+    const auto archive = t.dir.getChildFile ("a.rar");
+    {
+        RarWriter rar;
+        rar.folder ("Lib");
+        rar.folder ("Lib/KOTO");
+        rar.file ("Lib/KOTO/#KOTO.sfz", text ("<region> sample=../Samples/c4.wav\n"));
+        rar.file ("Lib/Samples/c4.wav", sineWav());
+        rar.file ("Lib/skip/me.txt", text ("left out"));
+        rar.file ("../outside.txt", text ("never"));
+        rar.write (archive);
+    }
+    const auto into = t.dir.getChildFile ("out");
+    juce::String error;
+    float last = 0.0f;
+    REQUIRE (libraries::extractRar (archive, into, [&last] (float p) { last = p; }, nullptr, error,
+                                    [] (const juce::String& path) { return ! path.startsWith ("Lib/skip/"); },
+                                    [] (const juce::String& path) { return "Moved" + path.substring (3); }));
+    INFO (error);
+    CHECK (into.getChildFile ("Moved/KOTO/#KOTO.sfz").loadFileAsString().startsWith ("<region>"));
+    juce::MemoryBlock wav;
+    into.getChildFile ("Moved/Samples/c4.wav").loadFileAsData (wav);
+    CHECK (wav == sineWav());
+    CHECK_FALSE (into.getChildFile ("Moved/skip").exists());
+    CHECK_FALSE (t.dir.getChildFile ("outside.txt").exists());
+    CHECK_FALSE (into.getChildFile ("outside.txt").exists());
+    CHECK (last == 1.0f);
+
+    // A file whose bytes don't match its CRC fails (and isn't left behind).
+    const auto damaged = t.dir.getChildFile ("damaged.rar");
+    {
+        RarWriter rar;
+        rar.file ("Lib/Samples/c4.wav", sineWav(), true);
+        rar.write (damaged);
+    }
+    const auto into2 = t.dir.getChildFile ("out2");
+    CHECK_FALSE (libraries::extractRar (damaged, into2, {}, nullptr, error));
+    CHECK (error.isNotEmpty());
+    CHECK_FALSE (into2.getChildFile ("Lib/Samples/c4.wav").exists());
+
+    // Not a RAR at all.
+    const auto junk = t.dir.getChildFile ("junk.rar");
+    junk.replaceWithText ("<html>nope</html>");
+    CHECK_FALSE (libraries::extractRar (junk, t.dir.getChildFile ("out3"), {}, nullptr, error));
+}
+
+TEST_CASE ("Libraries: GET THE KOTO fetches its maker's RAR and unpacks it; a refusal from Google Drive says why (1.2.0)", "[library]")
+{
+    const auto& koto = libraries::unrealKoto();
+    CHECK (koto.archive == libraries::Library::Archive::rar);
+    CHECK (koto.url.startsWith ("https://drive.usercontent.google.com/download?id="));
+    CHECK (koto.url.contains ("confirm=t"));
+    CHECK (libraries::libraryFor (libraries::refFor (koto)) == &koto);
+    const auto all = libraries::all();
+    CHECK (std::find (all.begin(), all.end(), &koto) != all.end());
+
+    TempFolder t;
+    const auto server = t.dir.getChildFile ("server");
+    server.createDirectory();
+    const auto archive = server.getChildFile ("Ui_KOTO.rar");
+    {
+        RarWriter rar;
+        rar.folder (koto.folder);
+        rar.file (koto.folder + "/" + koto.sfz, text ("<region> sample=../Samples/c4.wav lokey=0 hikey=127 pitch_keycenter=60\n"));
+        rar.file (koto.folder + "/Samples/c4.wav", sineWav());
+        rar.write (archive);
+    }
+    const auto into = t.dir.getChildFile ("Libraries");
+    {
+        libraries::Download download;
+        download.start (koto, into, juce::URL (archive).toString (false));
+        REQUIRE (download.waitUntilFinished (30000));
+        INFO (download.getMessage());
+        CHECK (download.getState() == libraries::Download::State::done);
+        CHECK (libraries::isComplete (koto, into.getChildFile (koto.folder)));
+        CHECK_FALSE (into.getChildFile (koto.folder + ".rar.download").exists());
+        CHECK_FALSE (into.getChildFile (koto.folder + ".partial").exists());
+        const auto inst = synth::sfz::load (into.getChildFile (koto.folder).getChildFile (koto.sfz));
+        REQUIRE (inst != nullptr);
+        CHECK (inst->regions.size() == 1);
+    }
+    {
+        // Google Drive's "too many users have downloaded this file" page instead of the file.
+        const auto page = server.getChildFile ("quota.html");
+        page.replaceWithText ("<html><title>Google Drive - Quota exceeded</title>Too many users have viewed or downloaded this file recently.</html>");
+        const auto into2 = t.dir.getChildFile ("Libraries2");
+        libraries::Download download;
+        download.start (koto, into2, juce::URL (page).toString (false));
+        REQUIRE (download.waitUntilFinished (30000));
+        CHECK (download.getState() == libraries::Download::State::failed);
+        CHECK (download.getMessage().contains ("Google Drive"));
+        CHECK (download.getMessage().contains ("Try again later"));
+        CHECK_FALSE (into2.getChildFile (koto.folder).exists());
+        CHECK_FALSE (into2.getChildFile (koto.folder + ".rar.download").exists());
+    }
+}
+
+// (1.2.0) The real koto archive (PARAGON_KOTO_RAR) unpacks as bsdtar's copy of it (PARAGON_KOTO_DIR, its top folder
+// inside), file for file.
+TEST_CASE ("Libraries: the real koto RAR unpacks as stored", "[.rarcheck]")
+{
+    const juce::File archive (juce::SystemStats::getEnvironmentVariable ("PARAGON_KOTO_RAR", {}));
+    const juce::File reference (juce::SystemStats::getEnvironmentVariable ("PARAGON_KOTO_DIR", {}));
+    if (! archive.existsAsFile() || ! reference.isDirectory())
+        return;
+    TempFolder t;
+    juce::String error;
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    REQUIRE (libraries::extractRar (archive, t.dir, {}, nullptr, error));
+    WARN ("unpacked in " << (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 << " s");
+    auto compared = 0;
+    for (const auto& entry : juce::RangedDirectoryIterator (reference, true, "*", juce::File::findFiles))
+    {
+        const auto relative = entry.getFile().getRelativePathFrom (reference.getParentDirectory());
+        const auto ours = t.dir.getChildFile (relative);
+        INFO (relative);
+        REQUIRE (ours.existsAsFile());
+        CHECK (ours.hasIdenticalContentTo (entry.getFile()));
+        ++compared;
+    }
+    WARN (compared << " files compared");
+    CHECK (compared > 700);
 }
 
 TEST_CASE ("Libraries: a broken download isn't unpacked and leaves nothing behind", "[library]")

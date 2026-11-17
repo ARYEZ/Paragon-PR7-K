@@ -58,6 +58,8 @@ target_sources(ParagonX1
         source/dsp/synth/Sfz.cpp
         source/dsp/synth/SfzStreamer.cpp
         source/SampleLibraries.cpp
+        source/RarArchive.cpp
+        source/thirdparty/dmc_unrar/dmc_unrar.c   # (1.2.0) RAR archives (GPL-2.0-or-later): see its README
         # PR7-E's effects, kept for the effects rack (a later stage): built and tested, not yet in the sound.
         source/dsp/dominion/Dominion.cpp
         source/dsp/effects/Compressor.cpp
@@ -204,6 +206,10 @@ target_compile_definitions(ParagonX1
         JUCE_WEB_BROWSER=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_USE_MP3AUDIOFORMAT=0)
+
+# dmc_unrar is someone else's C, compiled as written: its warnings aren't ours to fix.
+set_source_files_properties(source/thirdparty/dmc_unrar/dmc_unrar.c PROPERTIES
+    COMPILE_OPTIONS "$<IF:$<C_COMPILER_ID:MSVC>,/w,-w>")
 
 target_link_libraries(ParagonX1
     PRIVATE

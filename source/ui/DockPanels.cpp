@@ -224,7 +224,9 @@ void SettingsPage::paint (juce::Graphics& g)
                    "Karoryfer Samples (CC0), downloaded from github.com/sfzinstruments. "
                    "The western guitars, upright bass and banjos are Black And Green Guitars, Shinyguitar and Meatbass by "
                    "Karoryfer Samples (CC0), ganjo by itsclipping (CC0) and the Kay 5-String Banjo by FlameStudios, SFZ by "
-                   "S. Christian Collins (GPL-3.0-or-later), downloaded from github.com/sfzinstruments.");
+                   "S. Christian Collins (GPL-3.0-or-later), downloaded from github.com/sfzinstruments. "
+                   "The koto is 13Strings KOTO by Unreal Instruments (free), downloaded from its maker's own link "
+                   "(unreal-instruments.wixsite.com), unpacked with dmc_unrar by Sven Hesse (GPL-2.0-or-later).");
 }
 
 void SettingsPage::resized()

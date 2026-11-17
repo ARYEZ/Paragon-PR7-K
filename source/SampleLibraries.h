@@ -42,6 +42,10 @@ namespace libraries
         // repository's line-ending rules, and Black And Green Guitars' (`* text eol=crlf`) mark every file as text, so
         // a CR goes in before every lone LF byte of its WAVs. Empty: the archive is as stored.
         juce::String rawBase;
+        // (1.2.0) What the download is: a .tar.gz (the rest), or a RAR archive (Unreal Instruments' koto), unpacked by
+        // dmc_unrar (source/thirdparty).
+        enum class Archive { tarGz, rar };
+        Archive archive = Archive::tarGz;
     };
 
     // (0.89.1) Written into a library's folder once its audio has been put back as stored (`rawBase`): without it the
@@ -83,6 +87,11 @@ namespace libraries
     const Library& ganjo();
     const Library& kayBanjo();
 
+    // (1.2.0, for the koto bank) Unreal Instruments' 13Strings KOTO: a 13-string koto, 48 kHz FLAC, C3-C6, key-switched
+    // styles (its bends modelled from the sustains with pitch envelopes). Free, no credit needed; its maker forbids
+    // altering or passing on its files, so PR7-K fetches it from the maker's own link (a Google Drive file, a RAR).
+    const Library& unrealKoto();
+
     // Every library PR7-K can download.
     std::vector<const Library*> all();
 
@@ -102,6 +111,13 @@ namespace libraries
                        const std::atomic<bool>* cancel, juce::String& error,
                        std::function<bool (const juce::String&)> keep = {},
                        std::function<juce::String (const juce::String&)> place = {});
+
+    // (1.2.0) Unpacks a RAR archive (dmc_unrar: RAR 1.5 to 5) as extractTarGz does a .tar.gz: the same `keep` and
+    // `place`, paths outside `destination` refused, each file's CRC checked. `progress` 0-1 by the bytes unpacked.
+    bool extractRar (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
+                     const std::atomic<bool>* cancel, juce::String& error,
+                     std::function<bool (const juce::String&)> keep = {},
+                     std::function<juce::String (const juce::String&)> place = {});
 
     // Fetches and unpacks a library on a thread of its own: `destination` / library.folder once it's done.
     class Download final : private juce::Thread

@@ -1,5 +1,9 @@
 #include "SampleLibraries.h"
 
+#include "RarArchive.h"
+
+#include <cstring>
+
 namespace libraries
 {
     const Library& salamanderGrand()
@@ -205,11 +209,33 @@ namespace libraries
         return library;
     }
 
+    const Library& unrealKoto()
+    {
+        static const Library library = []
+        {
+            Library l;
+            l.name = "Unreal Instruments Koto";
+            // The maker's own link (unreal-instruments.wixsite.com/unreal-instruments/koto): Google Drive asks a browser
+            // to confirm a file it can't scan for viruses; confirm=t says yes at once.
+            l.url = "https://drive.usercontent.google.com/download?id=1gJLM4OhADQoTSusjra23xM1NIb2s5WFK&export=download&confirm=t";
+            l.bytes = 222005533;            // as of November 2026 (about: the maker may update it; each file's CRC is checked)
+            l.folder = "Ui_KOTO";
+            l.sfz = "KOTO/#KOTO.sfz";
+            l.credit = "13Strings KOTO by Unreal Instruments (free, no credit asked), unreal-instruments.wixsite.com";
+            l.what = "KOTO";
+            l.exactSize = false;
+            l.unpackedMb = 282;
+            l.archive = Library::Archive::rar;
+            return l;
+        }();
+        return library;
+    }
+
     std::vector<const Library*> all()
     {
         return { &salamanderGrand(), &sonatinaOrchestra(), &versilianCollection(), &samsSonor(),
                  &bigRustyDrums(), &gogodzePhu(), &squidpipes(),
-                 &blackAndGreenGuitars(), &shinyguitar(), &meatbass(), &ganjo(), &kayBanjo() };
+                 &blackAndGreenGuitars(), &shinyguitar(), &meatbass(), &ganjo(), &kayBanjo(), &unrealKoto() };
     }
 
     juce::String refFor (const Library& library)
@@ -399,6 +425,77 @@ namespace libraries
         return true;
     }
 
+    bool extractRar (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
+                     const std::atomic<bool>* cancel, juce::String& error, std::function<bool (const juce::String&)> keep,
+                     std::function<juce::String (const juce::String&)> place)
+    {
+        RarArchive rar;
+        // (UTF-8 paths: dmc_unrar opens them through the Windows API on Windows)
+        if (const auto why = rar.open (archive.getFullPathName().toStdString(), [cancel] { return cancel != nullptr && cancel->load(); });
+            ! why.empty())
+        {
+            error = archive.getFileName() + " isn't a readable RAR archive (" + juce::String (why) + ")";
+            return false;
+        }
+        if (! destination.createDirectory())
+        {
+            error = "Couldn't make " + destination.getFullPathName();
+            return false;
+        }
+        const auto count = rar.count();
+        juce::int64 total = 0, done = 0;
+        for (size_t i = 0; i < count; ++i)
+            if (! rar.isFolder (i))
+                total += (juce::int64) rar.size (i);
+        auto files = 0;
+        for (size_t i = 0; i < count; ++i)
+        {
+            if (cancel != nullptr && cancel->load())
+            {
+                error = "Cancelled";
+                return false;
+            }
+            const auto path = juce::String::fromUTF8 (rar.name (i).c_str()).replaceCharacter ('\\', '/');
+            if (path.isEmpty() || rar.isFolder (i))
+                continue;
+            const auto bytes = (juce::int64) rar.size (i);
+            auto target = safeChild (destination, place ? place (path) : path);
+            if ((keep && ! keep (path)) || target == juce::File())
+            {
+                done += bytes;   // (left out: nothing written)
+                continue;
+            }
+            target.getParentDirectory().createDirectory();
+            target.deleteFile();
+            auto out = target.createOutputStream();
+            if (out == nullptr || ! out->openedOk())
+            {
+                error = "Couldn't write " + target.getFullPathName();
+                return false;
+            }
+            const auto why = rar.extract (i, [&out] (const void* data, size_t n) { return out->write (data, n); });
+            out.reset();
+            if (! why.empty())
+            {
+                target.deleteFile();
+                error = why == "cancelled" ? juce::String ("Cancelled")
+                      : why == "write failed" ? "Couldn't write " + target.getFullPathName() + " (is the disk full?)"
+                      : path + ": " + juce::String (why);
+                return false;
+            }
+            ++files;
+            done += bytes;
+            if (progress)
+                progress ((float) juce::jlimit (0.0, 1.0, (double) done / (double) juce::jmax<juce::int64> (1, total)));
+        }
+        if (files == 0)
+        {
+            error = archive.getFileName() + " holds no files";
+            return false;
+        }
+        return true;
+    }
+
     //==========================================================================
     Download::Download() : juce::Thread ("PR7-K library download") {}
 
@@ -491,7 +588,8 @@ namespace libraries
         }
 
         destination.createDirectory();
-        const auto archive = destination.getChildFile (library.folder + ".tar.gz.download");
+        const auto isRar = library.archive == Library::Archive::rar;
+        const auto archive = destination.getChildFile (library.folder + (isRar ? ".rar.download" : ".tar.gz.download"));
         archive.deleteFile();
 
         // 1. The archive, read in pieces (so it can be cancelled and its progress shown).
@@ -533,6 +631,21 @@ namespace libraries
                 progress = (float) juce::jlimit (0.0, 1.0, (double) got / (double) juce::jmax<juce::int64> (1, expected));
             }
             out.reset();
+            // (1.2.0) Google Drive answers with a web page, not the file, when too many people fetched it lately.
+            if (isRar)
+            {
+                juce::FileInputStream head (archive);
+                char magic[4] {};
+                if (head.read (magic, 4) != 4 || std::memcmp (magic, "Rar!", 4) != 0)
+                {
+                    const auto page = archive.getSize() < 1000000 ? archive.loadFileAsString() : juce::String();
+                    archive.deleteFile();
+                    return fail (page.containsIgnoreCase ("quota") || page.containsIgnoreCase ("too many users")
+                                     ? juce::String ("Google Drive, where its maker keeps it, is holding back downloads of this file: too many "
+                                                     "people fetched it lately. Try again later (it can take up to a day).")
+                                     : juce::String ("The download wasn't the library (its maker's link may have changed). Try again later."));
+                }
+            }
             if (library.exactSize && library.bytes > 0 && got != library.bytes && sourceUrl == library.url)
             {
                 archive.deleteFile();
@@ -552,7 +665,7 @@ namespace libraries
         partial.deleteRecursively();
         juce::String error;
         const auto& lib = library;
-        const auto ok = extractTarGz (archive, destination, [this] (float p) { progress = p; }, &cancelled, error,
+        const auto ok = (isRar ? extractRar : extractTarGz) (archive, destination, [this] (float p) { progress = p; }, &cancelled, error,
                                       [&lib] (const juce::String& path)
                                       {
                                           // Only the library's own folder (anything else in the archive is left out).
