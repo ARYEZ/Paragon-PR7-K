@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/NeonKeyboard.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
@@ -123,6 +124,9 @@ private:
     juce::TextButton rackButton;
     bool rackShown = false;
     void showRack (bool, bool remember = true);
+    bool isFullFace() const noexcept;   // 0.98.0: the SYNTH page with the rack hidden (the faceplate to the window's foot)
+    juce::Rectangle<int> keyStrip() const noexcept;   // 1.1.0: the keyboard's strip (shorter under the full faceplate: no mod sources row)
+    void layoutSynthPage();
     EnvelopePanel filterEnvelope, ampEnvelope;
     AmpPanel amp;
     PlayPanel play;
@@ -130,7 +134,7 @@ private:
     std::vector<juce::Component*> synthPage;
 
     ModSourceStrip sources;
-    juce::MidiKeyboardComponent keyboard;
+    NeonKeyboard keyboard;   // 1.1.0: in THE GRID's neon
     // What the knobs show (routes, links, learning), as last drawn: a change repaints them.
     std::vector<ModRouteData> shownRoutes;
     MidiLinks shownLinks;

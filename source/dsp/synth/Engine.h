@@ -9,6 +9,9 @@
 #include "VoiceFilter.h"
 #include "Sfz.h"
 
+#include <atomic>
+#include <limits>
+
 #include <array>
 #include <vector>
 
@@ -82,6 +85,9 @@ namespace synth
         // 0.57.0, for DOWNPOUR: the pitches (MIDI notes, glides and all) of the notes sounding now, releasing ones too,
         // up to `capacity`; how many.
         int getSoundingNotes (float* pitches, int capacity, bool* isAnswer = nullptr) const noexcept;   // 0.58.0: and which are SIROCCO's answers
+        // 0.93.0, SORT: the newest note held (a key or an arp, held now: not a release, nor SIROCCO's answers), with
+        // any begun within 30 ms of it (a chord); none when nothing is held.
+        int getNewestNotes (float* pitches, int capacity) const noexcept;
 
         // 0.64.0, for PROXIMITY: the touches of playing, on the sample they happened (`clock`, on the samples rendered
         // since the start: compare with getSampleClock()): a note starting (keys and arps; SIROCCO's answers aren't
@@ -95,6 +101,14 @@ namespace synth
         };
         static constexpr int maxTouches = 32;
         int takeTouches (Touch* out, int capacity) noexcept;
+        // (0.82.1) Marks every SFZ instrument a note is reading (playing, ringing on, or waiting to ring as a release
+        // tail) with this check's number, then moves the count on. Called after each block; a retired instrument
+        // whose mark is older than the last check is read by nothing and may be freed (`isSfzInUse`).
+        void markSfzInUse() noexcept;
+        bool isSfzInUse (const sfz::Instrument& instrument) const noexcept
+        {
+            return instrument.lastUsedCheck.load (std::memory_order_acquire) + 1 >= sfzChecks.load (std::memory_order_acquire);
+        }
         std::int64_t getSampleClock() const noexcept { return sampleClock; }
 
         // Oscillators running now, every unison and chord copy counted (as Avenger's
@@ -134,6 +148,7 @@ namespace synth
         struct SfzPlayer
         {
             const sfz::Region* region = nullptr;   // null: free
+            const sfz::Instrument* instrument = nullptr;   // (0.82.1) whose region: kept in memory while this plays
             const sfz::Sample* sample = nullptr;
             double position = 0.0;                 // frames into the file
             float gain = 0.0f;                     // the region's level, velocity and RT_DECAY, panned
@@ -142,8 +157,20 @@ namespace synth
             float decay = 1.0f;                    // x each sample: AMPEG_RELEASE's fall, once its key has let go
             int stream = -1;                       // the disk stream reading the rest (-1: the head only)
             bool looping = false;                  // (0.73.0) going round its region's loop (loop_sustain: until released)
+            float wheel = -1.0f;                   // (0.75.0) the mod wheel's part in its level as of the last block (-1: not yet)
+            float filterA[2] {}, filterB[2] {};    // (0.75.0) its FILTER's state, each side
         };
         static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
+        struct CheckCount   // (0.82.1) markSfzInUse's count, the next check's number: an atomic the engine can be moved with
+        {
+            std::atomic<std::uint64_t> value { 1 };
+            CheckCount() = default;
+            CheckCount (const CheckCount& other) noexcept : value (other.value.load()) {}
+            CheckCount& operator= (const CheckCount& other) noexcept { value.store (other.value.load()); return *this; }
+            std::uint64_t load (std::memory_order order = std::memory_order_seq_cst) const noexcept { return value.load (order); }
+            void store (std::uint64_t v, std::memory_order order = std::memory_order_seq_cst) noexcept { value.store (v, order); }
+        };
+        CheckCount sfzChecks;
 
         struct OscState
         {
@@ -168,10 +195,17 @@ namespace synth
             std::array<SfzPlayer, maxSfzPlayers> players {};
             const sfz::Instrument* instrument = nullptr;
             int sfzKey = 60;                                 // the key the regions were chosen for
+            int sfzPlayed = 60;                              // the key played (0.81.0: SFZ KEY may choose another)
             double heldSamples = 0.0;                        // since the note started (RT_DECAY)
         };
 
         // A route through the note: the FILTER (or not) and which SHAPERs, with their state.
+        // Each filter's target coefficients for this interval (0: FILTER, 1: FILTER 2), and their LOW CUTs'.
+        struct FilterTargets
+        {
+            std::array<FilterChannel::Coefficients, 2> main, lowCut;
+        };
+
         struct Path
         {
             int key = -1;               // bit 0: the FILTER; bits 1 to 4: SHAPERs 1 to 4 (-1: not in use);
@@ -181,6 +215,9 @@ namespace synth
             Saturator driveLeft, driveRight;
             FilterChannel::Coefficients coefficients;   // the filter's now (glided to each update)
             bool coefficientsFresh = true;
+            FilterChannel lowCutLeft, lowCutRight;               // (0.96.0) the filter's LOW CUT
+            FilterChannel::Coefficients lowCutCoefficients;
+            bool lowCutActive = false;
             std::array<shaper::Channel, numShapers> shapeLeft, shapeRight;
             std::array<float, numShapers> shapeGain {}, shapeMakeUp {};   // as of the last update, glided from (0: not yet)
             vocal::Channel vocalLeft, vocalRight;          // the VOICE filter (0.39.0)
@@ -195,6 +232,9 @@ namespace synth
                 driveLeft.reset();
                 driveRight.reset();
                 coefficientsFresh = true;
+                lowCutLeft.reset();
+                lowCutRight.reset();
+                lowCutActive = false;
                 vocalLeft.reset();
                 vocalRight.reset();
                 vocalFresh = true;
@@ -220,7 +260,7 @@ namespace synth
             bool killing = false;       // stolen: fading out fast
             float killGain = 1.0f;
 
-            Envelope amp, filter;
+            Envelope amp, filter, filter2;
             // One per route its oscillators take (stage 3e): oscillators going
             // through the same FILTER and SHAPERs share one; one set to its own
             // route gets its own filter and shapers. With no shapers on, every
@@ -233,6 +273,12 @@ namespace synth
             float pitchEnvelopeValue = 0.0f, pitchSemitones = 0.0f;          // ...-1 to 1, and as semitones on the oscillators
             double seqPosition = 0.0, seqAge = 0.0;                          // the STEP SEQUENCER (stage 4d): steps since the note started (VOICE), and seconds
             float seqValue = 0.0f;                                           // ...as the matrix source, this interval
+            float naviSemis = 0.0f;                                          // NAVICOMPUTER (0.86.0): this note moved, semitones (glided)
+            bool naviFresh = true;                                           // ...a new note takes its move at once
+            float crossSemis = 0.0f;                                         // CROSSROADS (0.90.0): this note pulled, semitones (glided)
+            bool crossFresh = true;                                          // ...a new note takes its pull at once
+            float ragVelocity = 1.0f;                                        // RAGTIME (0.92.0): the velocity it was played at
+            float ragGain = 1.0f;                                            // ...the damper's lift (1: none)
             float panLeft = 1.0f, panRight = 1.0f;      // the AMP's PAN, KEYTRACK and SPREAD for this note
             float notePan = 0.0f;                       // ...as a position, -1 to 1 (modulation moves it from here)
 
@@ -267,13 +313,16 @@ namespace synth
         void startLfos (Voice&, const Settings&) noexcept;
         void renderOscillators (Voice&, int numSamples, const Settings&, float bendSemitones) noexcept;
         void assignPaths (Voice&, const Settings&) noexcept;   // each oscillator's route, and a path for each
-        void processPath (Voice&, Path&, float* left, float* right, int n, const Settings&,
-                          const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget, float vocalLevel) noexcept;
+        void processPath (Voice&, Path&, float* left, float* right, int n, const Settings&, const FilterTargets&,
+                          const vocal::Coefficients& vocalTarget, float vocalLevel) noexcept;
         void processShaper (Path&, int shaper, float* left, float* right, int n, const Settings&, float velocityDown) noexcept;
         float vibratoValue (VibratoWave, float& phase, float& held, float advance) noexcept;   // -1 to 1, then moves on
 
         void startVoice (Voice&, int note, float velocity, float fromPitch, const Settings&, int source = 0, std::uint8_t mask = 0xff) noexcept;
         void retrigger (Voice&, int note, float velocity, bool restartEnvelopes, bool glide, const Settings&) noexcept;
+        // RAGTIME (0.92.0): a held note struck again, as a hammer would: its envelopes start again from where they are, a
+        // sampled oscillator starts a fresh recording; its LFOs, vibrato, pitch and who holds it are left alone.
+        void restrike (Voice&, float velocity, const Settings&) noexcept;
         void releaseVoice (Voice&) noexcept;
         void kill (Voice&) noexcept;
         void free (Voice&) noexcept;
@@ -343,6 +392,7 @@ namespace synth
         static constexpr int busShift = 19;
         static int busOf (int key) noexcept { return (key >> busShift) & 7; }
         static constexpr int voiceBit = 1 << 22;   // 0.39.0: the path goes through the VOICE filter
+        static constexpr int filter2Bit = 1 << 23; // 0.96.0: with bit 0, the path's filter is FILTER 2
         float* outputBase = nullptr;   // `process`'s left output (renderVoice finds its place in the sends from it)
         bool sendsWanted (const Settings& s, int send) const noexcept { return s.sendOn[(size_t) send] && sendBaseLeft[(size_t) send] != nullptr; }
         static float sendGainOf (int key, int send) noexcept
@@ -367,6 +417,11 @@ namespace synth
         // counts as 0 until it comes, so the wheel isn't pushed up by a pedal that isn't there.)
         bool expressionHeard = false;
         float expressionSource() const noexcept { return expressionHeard ? expression : 1.0f; }
+        // SFZ (0.75.0): whether the mod wheel has moved since the reset (until it has, a sampled instrument's
+        // SET_CC1 stands for it), and what's sent to the wheel, as of this block.
+        bool modWheelHeard = false;
+        std::array<bool, 4> sfzToWheel {};
+        float sfzWheel127 (const sfz::Instrument* inst) const noexcept;
         std::array<mod::LfoState, mod::numLfos> globalLfos {};
         static constexpr int maxIntervals = 64;   // render() works in pieces of up to 64 intervals (1024 samples)
         std::array<std::array<float, maxIntervals>, mod::numLfos> globalLfoValues {};
@@ -457,6 +512,70 @@ namespace synth
         void startSfz (Voice&, OscState&, size_t index, const OscSettings&, bool release) noexcept;
         void renderSfz (Voice&, OscState&, const OscSettings&, float semitones, float* left, float* right, int n) noexcept;
         std::array<std::array<std::uint8_t, 128>, numOscillators> sfzTurns {};   // round-robins: each key's turn
+        // KEY SWITCHES (0.75.0): each oscillator's last switch key, and the instrument it was for (a new one starts
+        // at its SW_DEFAULT); `switchShown` for the oscillator panel.
+        std::array<int, numOscillators> sfzSwitch {};
+        std::array<const sfz::Instrument*, numOscillators> sfzSwitchFor {};
+        struct SharedInt   // an atomic the engine can still be moved with
+        {
+            std::atomic<int> value { -1 };
+            SharedInt() = default;
+            SharedInt (const SharedInt& other) noexcept : value (other.value.load()) {}
+            SharedInt& operator= (const SharedInt& other) noexcept { value.store (other.value.load()); return *this; }
+            int load() const noexcept { return value.load(); }
+            void store (int v) noexcept { value.store (v); }
+        };
+        std::array<SharedInt, numOscillators> switchShown {};
+        // NAVICOMPUTER (0.86.0): each interval's move (steps of a seven-note scale) in this piece, its own clock while
+        // the song is stopped (beats, started by the first key), whether it moves anything, and the step for the page.
+        std::array<int, maxIntervals> naviMoves {};
+        double naviClock = 0.0;
+        bool naviMoving = false;
+        float naviGlideCoef = 1.0f;
+        SharedInt naviStepShown {};
+        std::array<std::uint8_t, maxIntervals> crossDark {};   // CROSSROADS (0.90.0): the dark side in each interval
+        double crossClock = 0.0;
+        bool crossPulling = false;
+        int crossSteps = 0;
+        float crossGlideCoef = 1.0f;
+        SharedInt crossSideShown {};   // -1 off, 0 light, 1 dark
+        // RAGTIME (0.92.0): each interval's strike (bits ragtime::Who, 4 accented) and lift (who's lifted for the
+        // strike just after it), its own clock while stopped, the lowest key held (the bass), the step for the page.
+        std::array<std::uint8_t, maxIntervals> ragStrikes {}, ragLifts {};
+        double ragClock = 0.0;
+        bool ragPlaying = false;
+        int ragBass = -1, ragChords = 0;
+        std::int64_t ragLastStep = std::numeric_limits<std::int64_t>::min();   // the step last struck (never twice)
+        float ragDown = 1.0f, ragUp = 1.0f;   // the lift's glide per sample, down and back
+        SharedInt ragStepShown {};
+        SharedInt ragStrikeCount {};   // -1 until the first strike
+        // RUNNER (1.0.0): each interval's strike (bit 1 struck, bit 2 on the beat) and lift, its own count while
+        // the song is stopped, the strike last made (never twice), and how many strikes so far for the page.
+        std::array<std::uint8_t, maxIntervals> runStrikes {}, runLifts {};
+        double runClock = 0.0;
+        bool runPlaying = false;
+        std::int64_t runLastStrike = std::numeric_limits<std::int64_t>::min();
+        int runLastSpeed = 0;
+        SharedInt runStrikeCount {}, runBeatShown {};
+        SharedInt ampSparkShown {}, filterSparkShown {};   // THE GRID's spark (0.98.0): see getAmpSpark
+        int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
+    public:
+        // The oscillator's key switch now (-1: none), for the panel.
+        int getSfzSwitch (int oscillator) const noexcept { return switchShown[(size_t) juce::jlimit (0, numOscillators - 1, oscillator)].load(); }
+        // NAVICOMPUTER's step now (0-15; -1: not moving), for its page.
+        int getNaviStep() const noexcept { return naviStepShown.load(); }
+        int getCrossSide() const noexcept { return crossSideShown.load(); }   // CROSSROADS: -1 off, 0 light, 1 dark
+        int getRagtimeStep() const noexcept { return ragStepShown.load(); }   // RAGTIME: the roll's step (0-15; -1 not playing)
+        int getRagtimeStrikes() const noexcept { return ragStrikeCount.load() + 1; }   // ...strikes so far
+        // THE GRID (the front panel's lower half, 0.98.0): where the newest note sounding (a key or an arp; not
+        // SIROCCO's answers or release tails) is in its AMP and FILTER envelopes, as the stage (Envelope::Stage by
+        // number) x 10000 + how far through it x 9999; -1 while none sounds (the filter's: or its envelope isn't running).
+        // RUNNER: strikes made so far (0 until the first), and where in the beat the last one was (0 on the beat, -1 still).
+        int getRunnerStrikes() const noexcept { return runStrikeCount.load() + 1; }
+        int getRunnerBeatPosition() const noexcept { return runBeatShown.load(); }
+        int getAmpSpark() const noexcept { return ampSparkShown.load(); }
+        int getFilterSpark() const noexcept { return filterSparkShown.load(); }
+    private:
         sfz::Streamer* streamer = nullptr;
         bool waitForDisk = false;
         std::array<bool, sfz::Streamer::maxStreams> streamsInUse {};

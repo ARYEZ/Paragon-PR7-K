@@ -308,7 +308,7 @@ TEST_CASE ("Rigs are sorted by bank and number, and < > wrap round", "[rigs]")
     CHECK (library.step (&entries.front(), -1) == &entries.back());
     CHECK (library.step (nullptr, 1) == &entries.front());
 
-    CHECK (library.nextFreeNumber (0) == 48);   // the factory presets fill A01 to A47 (the pianos A41-A47 since 0.71.0)
+    CHECK (library.nextFreeNumber (0) == 60);   // the factory presets fill A01 to A59 (the pianos A41-A47, the Orbit tables A48-A59)
 }
 
 TEST_CASE ("Saving and loading a preset restores the sound but not the global settings", "[rigs]")
@@ -401,10 +401,10 @@ TEST_CASE ("< and > step through the presets in order", "[rigs]")
 {
     RigRig r;
     r.processor.loadRig (r.entryNamed ("Init"));
-    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A48
-    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A49
-    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A48");
-    r.processor.loadRig (r.entryNamed ("Starlight Piano"));   // A47, the last factory preset in bank A
+    REQUIRE (r.processor.saveCurrentRigAs ("Second"));   // filed after bank A's factory presets, at A60
+    REQUIRE (r.processor.saveCurrentRigAs ("Third"));    // A61
+    CHECK (r.entryNamed ("Second").rig.getSlotName() == "A60");
+    r.processor.loadRig (r.entryNamed ("Orbit Arp"));   // A59, the last factory preset in bank A
     r.processor.stepRig (1);
     CHECK (r.processor.getCurrentRig().name == "Second");
     r.processor.stepRig (1);

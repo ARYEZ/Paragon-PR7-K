@@ -122,6 +122,7 @@ void FaceWheel::paint (juce::Graphics& g)
 
 SynthFace::SynthFace (ParagonX1AudioProcessor& processorToUse)
     : processor (processorToUse),
+      grid (processorToUse),
       cutoff (processor.getParameters(), ParamIDs::fltCutoff, "CUTOFF", "The filter's cutoff (the full FILTER panel is in the rack)."),
       resonance (processor.getParameters(), ParamIDs::fltRes, "RESONANCE", "The filter's resonance."),
       attack (processor.getParameters(), ParamIDs::ampAttack, "ATTACK", "How fast each note's loudness rises (the AMP ENVELOPE's ATTACK)."),
@@ -159,8 +160,17 @@ SynthFace::SynthFace (ParagonX1AudioProcessor& processorToUse)
     addAndMakeVisible (exprWheel);
     next.onClick = [this] { if (onNext) onNext(); };
 
+    addChildComponent (grid);
+
     startTimerHz (30);
     Finish::changes().addChangeListener (this);
+}
+
+float SynthFace::topHeight() const noexcept
+{
+    // The top part keeps its proportions; a face more than a third taller than that is the full faceplate (0.98.0).
+    const auto sx = (float) getWidth() / faceWidth;
+    return (float) getHeight() > faceHeight * sx * 1.33f ? faceHeight * sx : (float) getHeight();
 }
 
 SynthFace::~SynthFace()
@@ -217,7 +227,7 @@ void SynthFace::mouseUp (const juce::MouseEvent& e)
 
 void SynthFace::resized()
 {
-    const auto sx = (float) getWidth() / faceWidth, sy = (float) getHeight() / faceHeight;
+    const auto sx = (float) getWidth() / faceWidth, sy = topHeight() / faceHeight;
     const auto at = [&] (float x, float y, float w, float h)
     {
         return juce::Rectangle<float> (x * sx, y * sy, w * sx, h * sy).toNearestInt();
@@ -237,6 +247,12 @@ void SynthFace::resized()
     attack.setBounds (at (1106.0f, heroY, knobW, knobH));
     release.setBounds (at (1276.0f, heroY, knobW, knobH));
 
+    // THE GRID, under the top part, inside the face plate's rim.
+    const auto top = juce::roundToInt (topHeight());
+    grid.setVisible (top < getHeight());
+    grid.setBounds (juce::Rectangle<int> (juce::roundToInt (24.0f * sx), top + 12, getWidth() - juce::roundToInt (48.0f * sx), 0)
+                        .withBottom (getHeight() - 26));
+
     if (getWidth() > 0 && getHeight() > 0)
         grain = Finish::makeSatinGrain (getWidth() * 2, getHeight() * 2, 49);   // twice the size: fine on high-resolution screens, as PR7-G's
 }
@@ -244,7 +260,7 @@ void SynthFace::resized()
 void SynthFace::paint (juce::Graphics& g)
 {
     const auto bounds = getLocalBounds().toFloat();
-    const auto sx = bounds.getWidth() / faceWidth, sy = bounds.getHeight() / faceHeight;
+    const auto sx = bounds.getWidth() / faceWidth, sy = topHeight() / faceHeight;
     const auto at = [&] (float x, float y, float w, float h) { return juce::Rectangle<float> (x * sx, y * sy, w * sx, h * sy); };
 
     // The unit (0.50.0): drawn by PR7-G's own code (PedalBody::paintUnit, ported), so its pearl black is PR7-G's
@@ -276,6 +292,22 @@ void SynthFace::paint (juce::Graphics& g)
     g.fillRect (at (1106.0f, 186.0f, 310.0f, 1.0f));
 
     paintScreen (g);
+
+    // 0.98.0, the full faceplate: a neon seam between the top part and THE GRID (pink to red to orange, as PR7-D's).
+    if (grid.isVisible())
+    {
+        const auto y = topHeight() - 2.0f;
+        const auto line = juce::Rectangle<float> (28.0f * sx, y, bounds.getWidth() - 56.0f * sx, 2.0f);
+        juce::ColourGradient neon (juce::Colour (0xffff2d6e), line.getX(), 0.0f, juce::Colour (0xffff6a24), line.getRight(), 0.0f, false);
+        neon.addColour (0.5, juce::Colour (0xffff2a2e));
+        for (auto [grow, alpha] : { std::pair { 6.0f, 0.06f }, { 3.0f, 0.14f }, { 1.0f, 0.35f }, { 0.0f, 1.0f } })
+        {
+            g.setGradientFill (neon);
+            g.setOpacity (alpha);
+            g.fillRoundedRectangle (line.expanded (grow * 0.3f, grow), 1.0f + grow);
+        }
+        g.setOpacity (1.0f);
+    }
 }
 
 void SynthFace::paintScreen (juce::Graphics& g) const

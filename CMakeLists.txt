@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
 
-project(ParagonX1 VERSION 0.74.1 LANGUAGES C CXX)
+project(ParagonX1 VERSION 1.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -85,8 +85,23 @@ target_sources(ParagonX1
         source/dsp/effects/Spectre.cpp
         source/dsp/effects/Leviathan.cpp
         source/dsp/effects/NuclearSpring.cpp
-        source/dsp/effects/LightSpeed.cpp
         source/dsp/effects/Bloom.cpp
+        source/dsp/effects/Legion.cpp
+        source/dsp/effects/Overcharge.cpp
+        source/dsp/effects/Aftermath.cpp
+        source/dsp/effects/Submerge.cpp
+        source/dsp/effects/Lockstep.cpp
+        source/dsp/effects/Colossus.cpp
+        source/dsp/effects/Canyon.cpp
+        source/dsp/effects/JackIn.cpp
+        source/dsp/effects/HyperJump.cpp
+        source/dsp/effects/Sweep.cpp
+        source/dsp/effects/Redline.cpp
+        source/dsp/effects/FreezeTag.cpp
+        source/dsp/effects/Crossroads.cpp
+        source/dsp/effects/Gearworks.cpp
+        source/dsp/effects/Sort.cpp
+        source/dsp/effects/Wobble.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -132,9 +147,28 @@ target_sources(ParagonX1
         source/ui/SpectrePage.cpp
         source/ui/LeviathanPage.cpp
         source/ui/NuclearSpringPage.cpp
-        source/ui/LightSpeedPage.cpp
         source/ui/BloomPage.cpp
+        source/ui/LegionPage.cpp
+        source/ui/OverchargePage.cpp
+        source/ui/AftermathPage.cpp
+        source/ui/SubmergePage.cpp
+        source/ui/LockstepPage.cpp
+        source/ui/ColossusPage.cpp
+        source/ui/CanyonPage.cpp
+        source/ui/JackInPage.cpp
+        source/ui/HyperJumpPage.cpp
+        source/ui/NaviComputerPage.cpp
+        source/ui/SweepPage.cpp
+        source/ui/RedlinePage.cpp
+        source/ui/FreezeTagPage.cpp
+        source/ui/CrossroadsPage.cpp
+        source/ui/GearworksPage.cpp
+        source/ui/RagtimePage.cpp
+        source/ui/SortPage.cpp
+        source/ui/WobblePage.cpp
+        source/ui/RunnerPage.cpp
         source/ui/SynthFace.cpp
+        source/ui/EnvelopeGrid.cpp
         source/ui/FreeformEditor.cpp
         source/ui/ModPage.cpp
         source/ui/MultiPointEditor.cpp
@@ -159,6 +193,7 @@ target_sources(ParagonX1
         source/ui/LedDisplay.cpp
         source/ui/SpectrumEditor.cpp
         source/ui/MainView.cpp
+        source/ui/NeonKeyboard.cpp
         source/ui/ParagonLookAndFeel.cpp
         source/ui/Finish.cpp)
 

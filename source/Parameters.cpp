@@ -31,7 +31,10 @@ namespace
     // 20 to 23 were THE DRUMS (0.21.0 to 0.23.0), removed in 0.54.0: never reuse them.
     constexpr int stageVoice = 24;   // 0.39.0: the VOICE filter (25, 0.51.0: the WAH, in RackParameters.cpp)
     constexpr int stageExprSwitch = 26;   // 0.52.0: EXPR WHEEL CONTROLS VOLUME
-    constexpr int stageSirocco = 30;      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
+    constexpr int stageSirocco = 30;
+    constexpr int stageFilter2 = 62;      // 0.96.0: FILTER 2, the filters' LOW CUT, each oscillator's FILTER 2 switch
+    constexpr int stageSfzKeyTrack = 51;  // 0.83.0: SFZ KEY TRACK (50: COLOSSUS, in RackParameters.cpp)
+    constexpr int stageSfzKey = 49;       // 0.81.0: SFZ KEY (48: LOCKSTEP, in RackParameters.cpp)      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
     const ToText asPercent = [] (float value, int) { return juce::String (juce::roundToInt (value * 100.0f)) + "%"; };
@@ -188,16 +191,16 @@ namespace
     void addEnvelope (juce::AudioProcessorValueTreeState::ParameterLayout& layout, const juce::String& prefix,
                       const char* attack, const char* hold, const char* decay, const char* sustain, const char* release,
                       const char* attackCurve, const char* decayCurve, const char* releaseCurve,
-                      const synth::EnvelopeSettings& defaults)
+                      const synth::EnvelopeSettings& defaults, int version = 1)
     {
-        add (layout, attack, prefix + " Attack", timeRange (20000.0f), defaults.attackMs, asMs);
-        add (layout, hold, prefix + " Hold", timeRange (10000.0f), defaults.holdMs, asMs);
-        add (layout, decay, prefix + " Decay", timeRange (20000.0f), defaults.decayMs, asMs);
-        add (layout, sustain, prefix + " Sustain", { 0.0f, 1.0f }, defaults.sustain, asPercent);
-        add (layout, release, prefix + " Release", timeRange (20000.0f), defaults.releaseMs, asMs);
-        add (layout, attackCurve, prefix + " Attack Curve", { -1.0f, 1.0f }, defaults.attackCurve, asSignedPercent);
-        add (layout, decayCurve, prefix + " Decay Curve", { -1.0f, 1.0f }, defaults.decayCurve, asSignedPercent);
-        add (layout, releaseCurve, prefix + " Release Curve", { -1.0f, 1.0f }, defaults.releaseCurve, asSignedPercent);
+        add (layout, attack, prefix + " Attack", timeRange (20000.0f), defaults.attackMs, asMs, version);
+        add (layout, hold, prefix + " Hold", timeRange (10000.0f), defaults.holdMs, asMs, version);
+        add (layout, decay, prefix + " Decay", timeRange (20000.0f), defaults.decayMs, asMs, version);
+        add (layout, sustain, prefix + " Sustain", { 0.0f, 1.0f }, defaults.sustain, asPercent, version);
+        add (layout, release, prefix + " Release", timeRange (20000.0f), defaults.releaseMs, asMs, version);
+        add (layout, attackCurve, prefix + " Attack Curve", { -1.0f, 1.0f }, defaults.attackCurve, asSignedPercent, version);
+        add (layout, decayCurve, prefix + " Decay Curve", { -1.0f, 1.0f }, defaults.decayCurve, asSignedPercent, version);
+        add (layout, releaseCurve, prefix + " Release Curve", { -1.0f, 1.0f }, defaults.releaseCurve, asSignedPercent, version);
     }
 }
 
@@ -340,6 +343,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 
         // Whether it goes through the VOICE filter (0.39.0).
         addSwitch (layout, osc (i, "Voice"), name + "Voice", defaults.toVoice, stageVoice);
+
+        // SFZ KEY (0.81.0): which key's samples an SFZ plays (PLAYED: the key you press).
+        add (layout, osc (i, "SfzKey"), name + "Sfz Key", { 0.0f, 128.0f, 1.0f }, (float) (defaults.sfzKey + 1),
+             [] (float value, int) { const auto k = juce::roundToInt (value) - 1;
+                                     return k < 0 ? juce::String ("PLAYED") : juce::MidiMessage::getMidiNoteName (k, true, true, 4); },
+             stageSfzKey);
+        // SFZ KEY TRACK (0.83.0): SFZ KEY's samples follow the key played (off: at their own pitch).
+        addSwitch (layout, osc (i, "SfzKeyTrack"), name + "Sfz Key Track", defaults.sfzKeyTrack, stageSfzKeyTrack);
+        addSwitch (layout, osc (i, "Filter2"), name + "To Filter 2", defaults.toFilter2, stageFilter2);
     }
 
     // The VOICE filter (0.39.0): off in a new sound.
@@ -381,6 +393,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     add (layout, fltEnvVel, "Filter Envelope Velocity", { 0.0f, 1.0f }, filter.envelopeVelocity, asPercent);
     addEnvelope (layout, "Filter", fltAttack, fltHold, fltDecay, fltSustain, fltRelease,
                  fltAttackCurve, fltDecayCurve, fltReleaseCurve, filter.envelope);
+    // 0.96.0: the LOW CUT, then FILTER 2 (the same, its own envelope and LOW CUT too).
+    const auto lowCutRange = logRange (20.0, 8000.0);
+    const auto asLowCut = [] (float value, int) { return value <= synth::FilterSettings::lowCutOffHz ? juce::String ("OFF")
+                                                         : value < 1000.0f ? juce::String (juce::roundToInt (value)) + " Hz"
+                                                                           : juce::String (value / 1000.0f, 2) + " kHz"; };
+    add (layout, fltLowCut, "Filter Low Cut", lowCutRange, filter.lowCutHz, asLowCut, stageFilter2);
+    add (layout, fltLowCutRes, "Filter Low Cut Resonance", { 0.0f, 1.0f }, filter.lowCutResonance, asPercent, stageFilter2);
+    addSwitch (layout, flt2On, "Filter 2 On", filter.on, stageFilter2);
+    addChoice (layout, flt2Type, "Filter 2 Type", synth::filterTypeNames, (int) filter.type, stageFilter2);
+    add (layout, flt2Cutoff, "Filter 2 Cutoff", logRange (20.0, 20000.0), filter.cutoffHz, asFrequency, stageFilter2);
+    add (layout, flt2Res, "Filter 2 Resonance", { 0.0f, 1.0f }, filter.resonance, asPercent, stageFilter2);
+    add (layout, flt2Drive, "Filter 2 Drive", { 0.0f, 1.0f }, filter.drive, asPercent, stageFilter2);
+    add (layout, flt2Key, "Filter 2 Keytrack", { 0.0f, 1.0f }, filter.keytrack, asPercent, stageFilter2);
+    add (layout, flt2Vel, "Filter 2 Velocity", { 0.0f, 1.0f }, filter.velocity, asPercent, stageFilter2);
+    add (layout, flt2ResVel, "Filter 2 Resonance Velocity", { 0.0f, 1.0f }, filter.resonanceVelocity, asPercent, stageFilter2);
+    add (layout, flt2Env, "Filter 2 Envelope", { -1.0f, 1.0f }, filter.envelopeAmount, asSignedPercent, stageFilter2);
+    add (layout, flt2EnvVel, "Filter 2 Envelope Velocity", { 0.0f, 1.0f }, filter.envelopeVelocity, asPercent, stageFilter2);
+    addEnvelope (layout, "Filter 2", flt2Attack, flt2Hold, flt2Decay, flt2Sustain, flt2Release,
+                 flt2AttackCurve, flt2DecayCurve, flt2ReleaseCurve, filter.envelope, stageFilter2);
+    add (layout, flt2LowCut, "Filter 2 Low Cut", lowCutRange, filter.lowCutHz, asLowCut, stageFilter2);
+    add (layout, flt2LowCutRes, "Filter 2 Low Cut Resonance", { 0.0f, 1.0f }, filter.lowCutResonance, asPercent, stageFilter2);
 
     // The SHAPERs (stage 3e): four, off in a new sound.
     const synth::ShaperSettings shaper;
@@ -511,6 +544,46 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         add (layout, siroccoSpread, "Sirocco Spread", { 0.0f, 1.0f }, d.spread, asPercent, stageSirocco);
     }
 
+    // NAVICOMPUTER (0.86.0): every note moved by a pattern in key, in presets. Off and at AMOUNT 0 by default.
+    {
+        constexpr int stageNavi = 54;
+        const synth::navi::Settings d;
+        addSwitch (layout, naviOn, "Navicomputer On", d.on, stageNavi);
+        add (layout, naviAmount, "Navicomputer Amount", { 0.0f, 1.0f }, 0.0f,
+             [] (float v, int) { return juce::String (juce::jlimit (0, synth::navi::numSteps, (int) std::floor (v * synth::navi::numSteps + 1.0e-4f))) + " of 16 steps"; },
+             stageNavi);
+        addChoice (layout, naviPattern, "Navicomputer Pattern", synth::navi::patternNames, d.pattern, stageNavi);
+        addChoice (layout, naviDivision, "Navicomputer Division", synth::navi::divisionNames, d.division, stageNavi);
+        addChoice (layout, naviKey, "Navicomputer Key", synth::sirocco::keyNames, d.key, stageNavi);
+        addChoice (layout, naviScale, "Navicomputer Scale", synth::arp::scaleNames, d.scale, stageNavi);
+        add (layout, naviChaos, "Navicomputer Chaos", { 0.0f, 1.0f }, d.chaos, asPercent, stageNavi);
+        add (layout, naviGlide, "Navicomputer Glide", { 0.0f, 1.0f }, d.glide, asPercent, stageNavi);
+    }
+
+    // RAGTIME (0.92.0): every held note re-struck on a player-piano roll, in presets. Off and at AMOUNT 0 by default.
+    {
+        constexpr int stageRagtime = 60;
+        const synth::ragtime::Settings d;
+        addSwitch (layout, ragtimeOn, "Ragtime On", d.on, stageRagtime);
+        add (layout, ragtimeAmount, "Ragtime Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stageRagtime);
+        addChoice (layout, ragtimePattern, "Ragtime Pattern", synth::ragtime::patternNames, d.pattern, stageRagtime);
+        addChoice (layout, ragtimeDivision, "Ragtime Division", synth::ragtime::divisionNames, d.division, stageRagtime);
+        add (layout, ragtimeSwing, "Ragtime Swing", { 0.0f, 1.0f }, d.swing, asPercent, stageRagtime);
+        add (layout, ragtimeAccent, "Ragtime Accent", { 0.0f, 1.0f }, d.accent, asPercent, stageRagtime);
+        add (layout, ragtimeLift, "Ragtime Lift", { 0.0f, 1.0f }, d.lift, asPercent, stageRagtime);
+        addSwitch (layout, ragtimeStride, "Ragtime Stride", d.stride, stageRagtime);
+    }
+
+    // RUNNER (1.0.0): every held note struck again, faster by fifths of AMOUNT; in presets. Off and at 0 by default.
+    {
+        constexpr int stageRunner = 64;
+        const synth::runner::Settings d;
+        addSwitch (layout, runnerOn, "Runner On", d.on, stageRunner);
+        add (layout, runnerAmount, "Runner Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stageRunner);
+        add (layout, runnerAccent, "Runner Accent", { 0.0f, 1.0f }, d.accent, asPercent, stageRunner);
+        add (layout, runnerLift, "Runner Lift", { 0.0f, 1.0f }, d.lift, asPercent, stageRunner);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);
@@ -564,7 +637,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addSpectreParameters (layout);    // SPECTRE (0.67.0): RackParameters.cpp
     addLeviathanParameters (layout);  // LEVIATHAN (0.68.0): RackParameters.cpp
     addNuclearSpringParameters (layout);   // NUCLEARSPRING (0.69.0): RackParameters.cpp
-    addLightSpeedParameters (layout);      // LIGHTSPEED (0.73.0): RackParameters.cpp
     addBloomParameters (layout);           // BLOOM (0.74.0): RackParameters.cpp
+    addLegionParameters (layout);          // LEGION (0.76.0): RackParameters.cpp
+    addOverchargeParameters (layout);      // OVERCHARGE (0.77.0): RackParameters.cpp
+    addAftermathParameters (layout);       // AFTERMATH (0.79.0): RackParameters.cpp
+    addSubmergeParameters (layout);        // SUBMERGE (0.80.0): RackParameters.cpp
+    addLockstepParameters (layout);        // LOCKSTEP (0.81.0): RackParameters.cpp
+    addColossusParameters (layout);        // COLOSSUS (0.82.0): RackParameters.cpp
+    addCanyonParameters (layout);          // CANYON (0.84.0, version hint 52): RackParameters.cpp
+    addJackInParameters (layout);          // JACK-IN (0.85.0, version hint 53): RackParameters.cpp
+    addHyperJumpParameters (layout);       // HYPERJUMP (0.86.0, version hint 54): RackParameters.cpp
+    addSweepParameters (layout);           // SWEEP (0.87.0, version hint 55): RackParameters.cpp
+    addRedlineParameters (layout);         // REDLINE (0.88.0, version hint 56): RackParameters.cpp
+    addFreezeTagParameters (layout);       // FREEZE TAG (0.89.0, version hint 57): RackParameters.cpp
+    addCrossroadsParameters (layout);      // CROSSROADS (0.90.0, version hint 58): RackParameters.cpp
+    addGearworksParameters (layout);       // GEARWORKS (0.91.0, version hint 59): RackParameters.cpp
+    addSortParameters (layout);            // SORT (0.93.0, version hint 61): RackParameters.cpp
+    addWobbleParameters (layout);          // WOBBLE (0.97.0, version hint 63): RackParameters.cpp
     return layout;
 }

@@ -215,7 +215,16 @@ void SettingsPage::paint (juce::Graphics& g)
                    "The piano presets play the Salamander Grand Piano by Alexander Holm (CC-BY 3.0), "
                    "FreePats edition, downloaded from freepats.zenvoid.org. "
                    "The orchestral presets play the Sonatina Symphonic Orchestra by Mattias Westlund and Peter Eastman "
-                   "(Creative Commons Sampling Plus 1.0), downloaded from github.com/peastman/sso.");
+                   "(Creative Commons Sampling Plus 1.0), downloaded from github.com/peastman/sso. "
+                   "Organs, bells and percussion from the Versilian Community Sample Library by Versilian Studios (CC0; its pipe "
+                   "organ sampled by Simon Dalzell of Ivy Audio), "
+                   "downloaded from github.com/sgossner/VCSL. The drum kit is Sam's Sonor by Sam Greene, SFZ mapping by "
+                   "kinwie (CC BY-SA 4.0), downloaded from github.com/sfzinstruments/SamsSonor. "
+                   "The big drums, hand drums and bagpipes are Big Rusty Drums, Gogodze Phu Vol I and Squidpipes by "
+                   "Karoryfer Samples (CC0), downloaded from github.com/sfzinstruments. "
+                   "The western guitars, upright bass and banjos are Black And Green Guitars, Shinyguitar and Meatbass by "
+                   "Karoryfer Samples (CC0), ganjo by itsclipping (CC0) and the Kay 5-String Banjo by FlameStudios, SFZ by "
+                   "S. Christian Collins (GPL-3.0-or-later), downloaded from github.com/sfzinstruments.");
 }
 
 void SettingsPage::resized()

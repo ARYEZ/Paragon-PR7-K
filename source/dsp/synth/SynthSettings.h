@@ -8,6 +8,10 @@
 #include "WtTravel.h"
 #include "Arpeggiator.h"
 #include "Sirocco.h"
+#include "NaviComputer.h"
+#include "Crossroads.h"
+#include "Ragtime.h"
+#include "Runner.h"
 
 #include <array>
 
@@ -121,7 +125,11 @@ namespace synth
         int subOctave = 1;          // index into subOctaveNames
         bool subInvert = false;
         bool toFilter = true;       // through the FILTER (off: straight to the AMP)
+        bool toFilter2 = false;     // (0.96.0) with toFilter: through FILTER 2 instead of FILTER 1
         bool toVoice = true;        // through the VOICE filter (0.39.0), when it's on
+        int sfzKey = -1;            // 0.81.0: -1 an SFZ plays the key pressed; else this key's samples for every note,
+                                    // at their own pitch (TRANSPOSE and FINE still move it): a drum on any key
+        bool sfzKeyTrack = false;   // 0.83.0: SFZ KEY's samples pitched by the key played, measured from that key
         // Through which SHAPERs (stage 3e), when they're on: all four, unless unticked.
         std::array<bool, numShapers> toShaper { true, true, true, true };
         // Follows the PITCH module's envelope (stage 4c), when it's on.
@@ -230,6 +238,13 @@ namespace synth
         float envelopeAmount = 0.0f; // -1 to 1
         float envelopeVelocity = 0.0f;
         EnvelopeSettings envelope { 0.0f, 0.0f, 500.0f, 0.0f, 300.0f };
+        // LOW CUT (0.96.0): a resonant 12 dB high-pass before the filter, moved with it by the same keytrack, velocity
+        // and envelope (a channel of a vintage polysynth: high-pass into low-pass, one envelope for both). At its
+        // lowest (20 Hz) it isn't there at all.
+        float lowCutHz = 20.0f;
+        float lowCutResonance = 0.0f;
+        static constexpr float lowCutOffHz = 20.5f;
+        bool hasLowCut() const noexcept { return lowCutHz > lowCutOffHz; }
     };
 
     // The VOICE filter (0.39.0, VoiceFilter.h): fixed-frequency vowel formants, after the FILTER.
@@ -285,6 +300,7 @@ namespace synth
     {
         std::array<OscSettings, numOscillators> oscillators {};
         FilterSettings filter;
+        FilterSettings filter2;     // (0.96.0) FILTER 2: a second filter with its own envelope, for oscillators set to it
         VocalSettings voice;
         std::array<ShaperSettings, numShapers> shapers {};
         AmpSettings amp;
@@ -297,6 +313,10 @@ namespace synth
         std::array<bool, numSends> sendOn {};
         bool arpsTogether = false;   // 0.16.0: the first key starts every arp's clock, so arps joining later are in step
         sirocco::Settings sirocco;   // 0.58.0: SIROCCO, the answering harmony
+        navi::Settings navi;         // 0.86.0: NAVICOMPUTER, every note moved by a pattern in key, in time
+        crossroads::Settings cross;  // 0.90.0: CROSSROADS, every note pulled down the scale on the dark side
+        ragtime::Settings ragtime;   // 0.92.0: RAGTIME, every held note re-struck on a player-piano roll, in time
+        runner::Settings runner;     // 1.0.0: RUNNER, every held note struck again, faster by fifths of the knob
         // 0.60.0, AFTERGLOW's voice half: each note its own analog character, as an old polysynth's voice cards.
         // AGE: each note's fixed offsets (tuning, filter, envelope times); DRIFT: each note's slow wander. At 0, nothing.
         struct Afterglow

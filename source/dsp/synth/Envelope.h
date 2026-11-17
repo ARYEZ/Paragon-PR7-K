@@ -109,6 +109,7 @@ namespace synth
 
         Stage getStage() const noexcept { return stage; }
         float getLevel() const noexcept { return level; }
+        float getProgress() const noexcept { return (float) position; }   // how far through its stage, 0 to 1 (THE GRID's spark)
         bool isActive() const noexcept { return stage != Stage::idle; }
         bool isReleasing() const noexcept { return stage == Stage::release; }
         // Reached a sustain of zero: silent from here, until it's retriggered.

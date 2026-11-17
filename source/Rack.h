@@ -23,8 +23,23 @@
 #include "dsp/effects/Spectre.h"
 #include "dsp/effects/Leviathan.h"
 #include "dsp/effects/NuclearSpring.h"
-#include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
+#include "dsp/effects/Legion.h"
+#include "dsp/effects/Overcharge.h"
+#include "dsp/effects/Aftermath.h"
+#include "dsp/effects/Submerge.h"
+#include "dsp/effects/Lockstep.h"
+#include "dsp/effects/Colossus.h"
+#include "dsp/effects/Canyon.h"
+#include "dsp/effects/JackIn.h"
+#include "dsp/effects/HyperJump.h"
+#include "dsp/effects/Sweep.h"
+#include "dsp/effects/Redline.h"
+#include "dsp/effects/FreezeTag.h"
+#include "dsp/effects/Crossroads.h"
+#include "dsp/effects/Gearworks.h"
+#include "dsp/effects/Sort.h"
+#include "dsp/effects/Wobble.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -110,8 +125,23 @@ struct Rack
     effects::Leviathan leviathan;
     // NUCLEARSPRING (0.69.0): the spring tank, after LEVIATHAN.
     effects::NuclearSpring nuclearSpring;
-    effects::LightSpeed lightSpeed;   // 0.73.0
     effects::Bloom bloom;             // 0.74.0
+    effects::Legion legion;           // 0.76.0
+    effects::Overcharge overcharge;   // 0.77.0
+    effects::Aftermath aftermath;     // 0.79.0
+    effects::Submerge submerge;       // 0.80.0
+    effects::Lockstep lockstep;       // 0.81.0
+    effects::Colossus colossus;       // 0.82.0
+    effects::Canyon canyon;           // 0.84.0
+    effects::JackIn jackIn;           // 0.85.0
+    effects::HyperJump hyperJump;     // 0.86.0
+    effects::Sweep sweep;             // 0.87.0
+    effects::Redline redline;         // 0.88.0
+    effects::FreezeTag freezeTag;     // 0.89.0
+    effects::Crossroads crossroads;   // 0.90.0
+    effects::Gearworks gearworks;     // 0.91.0
+    effects::Sort sort;               // 0.93.0
+    effects::Wobble wobble;           // 0.97.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.

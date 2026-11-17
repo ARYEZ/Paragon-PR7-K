@@ -259,6 +259,9 @@ ParagonX1AudioProcessor::ParagonX1AudioProcessor()
 ParagonX1AudioProcessor::~ParagonX1AudioProcessor()
 {
     sfzCancel->store (true);
+    for (auto& stop : sfzJobCancel)
+        if (stop != nullptr)
+            stop->store (true);
     sfzPool.reset();   // waits for a load under way (it stops at the next sample)
     spectralBuilder.reset();
     for (auto* parameter : AudioProcessor::getParameters())
@@ -316,8 +319,23 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->spectre.prepare (sampleRate, preparedBlockSize);
     rack->leviathan.prepare (sampleRate, preparedBlockSize);
     rack->nuclearSpring.prepare (sampleRate, preparedBlockSize);
-    rack->lightSpeed.prepare (sampleRate, preparedBlockSize);
     rack->bloom.prepare (sampleRate, preparedBlockSize);
+    rack->legion.prepare (sampleRate, preparedBlockSize);
+    rack->overcharge.prepare (sampleRate, preparedBlockSize);
+    rack->aftermath.prepare (sampleRate, preparedBlockSize);
+    rack->submerge.prepare (sampleRate, preparedBlockSize);
+    rack->lockstep.prepare (sampleRate, preparedBlockSize);
+    rack->colossus.prepare (sampleRate, preparedBlockSize);
+    rack->canyon.prepare (sampleRate, preparedBlockSize);
+    rack->jackIn.prepare (sampleRate, preparedBlockSize);
+    rack->hyperJump.prepare (sampleRate, preparedBlockSize);
+    rack->sweep.prepare (sampleRate, preparedBlockSize);
+    rack->redline.prepare (sampleRate, preparedBlockSize);
+    rack->freezeTag.prepare (sampleRate, preparedBlockSize);
+    rack->crossroads.prepare (sampleRate, preparedBlockSize);
+    rack->gearworks.prepare (sampleRate, preparedBlockSize);
+    rack->sort.prepare (sampleRate, preparedBlockSize);
+    rack->wobble.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -871,6 +889,9 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         o.subInvert = get (oscSetting ("SubInvert")) > 0.5f;
         o.toFilter = get (oscSetting ("Filter")) > 0.5f;
         o.toVoice = get (oscSetting ("Voice")) > 0.5f;
+        o.sfzKey = juce::roundToInt (get (oscSetting ("SfzKey"))) - 1;
+        o.sfzKeyTrack = get (oscSetting ("SfzKeyTrack")) > 0.5f;
+        o.toFilter2 = get (oscSetting ("Filter2")) > 0.5f;
         o.voiceLimit = juce::jlimit (1, synth::maxVoices, juce::roundToInt (get (oscSetting ("Voices"))));
         for (int k = 0; k < synth::numShapers; ++k)
             o.toShaper[(size_t) k] = get (oscSetting ("Shp1") + k) > 0.5f;
@@ -962,18 +983,24 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         return synth::EnvelopeSettings { param (a), param (h), param (d), param (su), param (r), param (ac), param (dc), param (rc) };
     };
 
-    auto& f = s.filter;
-    f.on = isOn (fltOn);
-    f.type = (synth::FilterType) choice (param (fltType), synth::filterTypeNames.size());
-    f.cutoffHz = param (fltCutoff);
-    f.resonance = param (fltRes);
-    f.drive = param (fltDrive);
-    f.keytrack = param (fltKey);
-    f.velocity = param (fltVel);
-    f.resonanceVelocity = param (fltResVel);
-    f.envelopeAmount = param (fltEnv);
-    f.envelopeVelocity = param (fltEnvVel);
-    f.envelope = envelope (fltAttack, fltHold, fltDecay, fltSustain, fltRelease, fltAttackCurve, fltDecayCurve, fltReleaseCurve);
+    for (int which = 0; which < 2; ++which)   // the FILTER and FILTER 2 (0.96.0), alike
+    {
+        const auto& ids = filterIds[which];
+        auto& f = which == 0 ? s.filter : s.filter2;
+        f.on = isOn (ids.on);
+        f.type = (synth::FilterType) choice (param (ids.type), synth::filterTypeNames.size());
+        f.cutoffHz = param (ids.cutoff);
+        f.resonance = param (ids.res);
+        f.drive = param (ids.drive);
+        f.keytrack = param (ids.key);
+        f.velocity = param (ids.vel);
+        f.resonanceVelocity = param (ids.resVel);
+        f.envelopeAmount = param (ids.env);
+        f.envelopeVelocity = param (ids.envVel);
+        f.envelope = envelope (ids.attack, ids.hold, ids.decay, ids.sustain, ids.release, ids.attackCurve, ids.decayCurve, ids.releaseCurve);
+        f.lowCutHz = param (ids.lowCut);
+        f.lowCutResonance = param (ids.lowCutRes);
+    }
 
     auto& v = s.voice;
     v.on = isOn (voiceOn);
@@ -1052,6 +1079,13 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         h.level = effectParam (ModDestinations::effect ("siroccoLevel"), ParamIDs::siroccoLevel);
         h.detuneCents = effectParam (ModDestinations::effect ("siroccoDetune"), ParamIDs::siroccoDetune);
         h.spread = effectParam (ModDestinations::effect ("siroccoSpread"), ParamIDs::siroccoSpread);
+        // NAVICOMPUTER (0.86.0): AMOUNT, CHAOS and GLIDE as the matrix moves them.
+        s.navi = getNaviSettings();
+        // CROSSROADS (0.90.0): the pull on the dark side, AMOUNT as the matrix moves it.
+        s.cross = getCrossroadsPull();
+        // RAGTIME (0.92.0): AMOUNT, SWING and ACCENT as the matrix moves them.
+        s.ragtime = getRagtimeSettings();
+        s.runner = getRunnerSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1209,6 +1243,7 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // prepareToPlay; work through an oversized block in promised-size pieces.
     for (int start = 0; start < numSamples; start += preparedBlockSize)
         processChunk (buffer, keyboardMidi, start, juce::jmin (preparedBlockSize, numSamples - start));
+    engine.markSfzInUse();   // (0.82.1) which SFZ instruments notes still read: a retired one is freed only when none does
 
     // MIMIC's recording, beside the synth, through the OUTPUT knob as the synth is.
     if (const auto* reference = referenceForAudio.load(); reference != nullptr && referencePosition.load() >= 0)
@@ -1267,16 +1302,273 @@ effects::NuclearSpring::Settings ParagonX1AudioProcessor::getNuclearSpringSettin
     return s;
 }
 
-effects::LightSpeed::Settings ParagonX1AudioProcessor::getLightSpeedSettings() const noexcept
+effects::Legion::Settings ParagonX1AudioProcessor::getLegionSettings() const noexcept
 {
-    effects::LightSpeed::Settings s;
-    s.on = isOn (ParamIDs::jumpOn);
-    s.jump = effectParam (ModDestinations::effect ("jumpAmount"), ParamIDs::jumpAmount);
-    s.rise = effectParam (ModDestinations::effect ("jumpRise"), ParamIDs::jumpRise);
-    s.streak = param (ParamIDs::jumpStreak);
-    s.whoosh = effectParam (ModDestinations::effect ("jumpWhoosh"), ParamIDs::jumpWhoosh);
-    s.width = param (ParamIDs::jumpWidth);
-    s.tone = param (ParamIDs::jumpTone);
+    effects::Legion::Settings s;
+    s.on = isOn (ParamIDs::legionOn);
+    s.size = effectParam (ModDestinations::effect ("legionSize"), ParamIDs::legionSize);
+    s.spread = effectParam (ModDestinations::effect ("legionSpread"), ParamIDs::legionSpread);
+    s.loose = param (ParamIDs::legionLoose);
+    s.detune = effectParam (ModDestinations::effect ("legionDetune"), ParamIDs::legionDetune);
+    s.tone = param (ParamIDs::legionTone);
+    return s;
+}
+
+effects::Overcharge::Settings ParagonX1AudioProcessor::getOverchargeSettings() const noexcept
+{
+    effects::Overcharge::Settings s;
+    s.on = isOn (ParamIDs::overchargeOn);
+    s.charge = effectParam (ModDestinations::effect ("overchargeCharge"), ParamIDs::overchargeCharge);
+    s.glow = effectParam (ModDestinations::effect ("overchargeGlow"), ParamIDs::overchargeGlow);
+    s.chaos = effectParam (ModDestinations::effect ("overchargeChaos"), ParamIDs::overchargeChaos);
+    s.tone = param (ParamIDs::overchargeTone);
+    s.width = param (ParamIDs::overchargeWidth);
+    return s;
+}
+
+effects::Aftermath::Settings ParagonX1AudioProcessor::getAftermathSettings() const noexcept
+{
+    effects::Aftermath::Settings s;
+    s.on = isOn (ParamIDs::aftermathOn);
+    s.seal = effectParam (ModDestinations::effect ("aftermathSeal"), ParamIDs::aftermathSeal);
+    s.room = param (ParamIDs::aftermathRoom);
+    s.ring = effectParam (ModDestinations::effect ("aftermathRing"), ParamIDs::aftermathRing);
+    s.dark = param (ParamIDs::aftermathDark);
+    s.hum = effectParam (ModDestinations::effect ("aftermathHum"), ParamIDs::aftermathHum);
+    s.humHz = (int) param (ParamIDs::aftermathHumHz);
+    s.width = param (ParamIDs::aftermathWidth);
+    return s;
+}
+
+effects::Submerge::Settings ParagonX1AudioProcessor::getSubmergeSettings() const noexcept
+{
+    effects::Submerge::Settings s;
+    s.on = isOn (ParamIDs::submergeOn);
+    s.depth = effectParam (ModDestinations::effect ("submergeDepth"), ParamIDs::submergeDepth);
+    s.murk = param (ParamIDs::submergeMurk);
+    s.current = effectParam (ModDestinations::effect ("submergeCurrent"), ParamIDs::submergeCurrent);
+    s.bubbles = effectParam (ModDestinations::effect ("submergeBubbles"), ParamIDs::submergeBubbles);
+    s.sea = param (ParamIDs::submergeSea);
+    s.width = param (ParamIDs::submergeWidth);
+    return s;
+}
+
+effects::Lockstep::Settings ParagonX1AudioProcessor::getLockstepSettings() const noexcept
+{
+    effects::Lockstep::Settings s;
+    s.on = isOn (ParamIDs::lockstepOn);
+    s.amount = effectParam (ModDestinations::effect ("lockstepAmount"), ParamIDs::lockstepAmount);
+    s.division = juce::roundToInt (param (ParamIDs::lockstepDivision));
+    s.gate = param (ParamIDs::lockstepGate);
+    s.accent = param (ParamIDs::lockstepAccent);
+    s.squeeze = effectParam (ModDestinations::effect ("lockstepSqueeze"), ParamIDs::lockstepSqueeze);
+    s.stamp = effectParam (ModDestinations::effect ("lockstepStamp"), ParamIDs::lockstepStamp);
+    return s;
+}
+
+effects::Canyon::Settings ParagonX1AudioProcessor::getCanyonSettings() const noexcept
+{
+    effects::Canyon::Settings s;
+    s.on = isOn (ParamIDs::canyonOn);
+    s.amount = effectParam (ModDestinations::effect ("canyonAmount"), ParamIDs::canyonAmount);
+    s.size = effectParam (ModDestinations::effect ("canyonSize"), ParamIDs::canyonSize);
+    s.far = juce::jlimit (0, effects::Canyon::farNames.size() - 1, juce::roundToInt (param (ParamIDs::canyonFar)));
+    s.repeats = effectParam (ModDestinations::effect ("canyonRepeats"), ParamIDs::canyonRepeats);
+    s.tone = param (ParamIDs::canyonTone);
+    s.width = param (ParamIDs::canyonWidth);
+    return s;
+}
+
+effects::JackIn::Settings ParagonX1AudioProcessor::getJackInSettings() const noexcept
+{
+    effects::JackIn::Settings s;
+    s.on = isOn (ParamIDs::jackinOn);
+    s.amount = effectParam (ModDestinations::effect ("jackinAmount"), ParamIDs::jackinAmount);
+    s.slice = juce::jlimit (0, effects::JackIn::sliceNames.size() - 1, juce::roundToInt (param (ParamIDs::jackinSlice)));
+    s.reach = juce::jlimit (0, effects::JackIn::reachNames.size() - 1, juce::roundToInt (param (ParamIDs::jackinReach)));
+    s.chaos = effectParam (ModDestinations::effect ("jackinChaos"), ParamIDs::jackinChaos);
+    s.crush = effectParam (ModDestinations::effect ("jackinCrush"), ParamIDs::jackinCrush);
+    s.drops = param (ParamIDs::jackinDrops);
+    return s;
+}
+
+effects::HyperJump::Settings ParagonX1AudioProcessor::getHyperJumpSettings() const noexcept
+{
+    effects::HyperJump::Settings s;
+    s.on = isOn (ParamIDs::hyperjumpOn);
+    s.amount = effectParam (ModDestinations::effect ("hyperjumpAmount"), ParamIDs::hyperjumpAmount);
+    s.length = juce::jlimit (0, effects::HyperJump::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::hyperjumpLength)));
+    s.mode = juce::jlimit (0, effects::HyperJump::modeNames.size() - 1, juce::roundToInt (param (ParamIDs::hyperjumpMode)));
+    s.rise = effectParam (ModDestinations::effect ("hyperjumpRise"), ParamIDs::hyperjumpRise);
+    s.chop = effectParam (ModDestinations::effect ("hyperjumpChop"), ParamIDs::hyperjumpChop);
+    s.hit = param (ParamIDs::hyperjumpHit);
+    return s;
+}
+
+effects::Sweep::Settings ParagonX1AudioProcessor::getSweepSettings() const noexcept
+{
+    effects::Sweep::Settings s;
+    s.on = isOn (ParamIDs::sweepOn);
+    s.amount = effectParam (ModDestinations::effect ("sweepAmount"), ParamIDs::sweepAmount);
+    s.length = juce::jlimit (0, effects::Sweep::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::sweepLength)));
+    s.shape = juce::jlimit (0, effects::Sweep::shapeNames.size() - 1, juce::roundToInt (param (ParamIDs::sweepShape)));
+    s.filter = juce::jlimit (0, effects::Sweep::filterNames.size() - 1, juce::roundToInt (param (ParamIDs::sweepFilter)));
+    s.center = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sweepCenter"), ParamIDs::sweepCenter));
+    s.range = param (ParamIDs::sweepRange);
+    s.resonance = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sweepResonance"), ParamIDs::sweepResonance));
+    s.phaser = param (ParamIDs::sweepPhaser);
+    return s;
+}
+
+effects::Redline::Settings ParagonX1AudioProcessor::getRedlineSettings() const noexcept
+{
+    effects::Redline::Settings s;
+    s.on = isOn (ParamIDs::redlineOn);
+    s.throttle = effectParam (ModDestinations::effect ("redlineThrottle"), ParamIDs::redlineThrottle);
+    s.gear = juce::jlimit (0, effects::Redline::gearNames.size() - 1, juce::roundToInt (param (ParamIDs::redlineGear)));
+    s.throb = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("redlineThrob"), ParamIDs::redlineThrob));
+    s.scream = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("redlineScream"), ParamIDs::redlineScream));
+    s.rise = param (ParamIDs::redlineRise);
+    s.whine = param (ParamIDs::redlineWhine);
+    s.tone = param (ParamIDs::redlineTone);
+    s.shift = param (ParamIDs::redlineShift);
+    return s;
+}
+
+effects::Crossroads::Settings ParagonX1AudioProcessor::getCrossroadsSettings() const noexcept
+{
+    effects::Crossroads::Settings s;
+    s.on = isOn (ParamIDs::crossOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossAmount"), ParamIDs::crossAmount));
+    s.length = juce::jlimit (0, synth::crossroads::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::crossLength)));
+    s.light = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossLight"), ParamIDs::crossLight));
+    s.dark = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossDark"), ParamIDs::crossDark));
+    return s;
+}
+
+effects::Gearworks::Settings ParagonX1AudioProcessor::getGearworksSettings() const noexcept
+{
+    effects::Gearworks::Settings s;
+    s.on = isOn (ParamIDs::gearOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("gearAmount"), ParamIDs::gearAmount));
+    s.ratio = juce::jlimit (0, effects::Gearworks::ratioNames.size() - 1, juce::roundToInt (param (ParamIDs::gearRatio)));
+    s.division = juce::jlimit (0, effects::Gearworks::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::gearDivision)));
+    s.bite = param (ParamIDs::gearBite);
+    s.metal = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("gearMetal"), ParamIDs::gearMetal));
+    s.grind = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("gearGrind"), ParamIDs::gearGrind));
+    s.steam = param (ParamIDs::gearSteam);
+    s.clank = param (ParamIDs::gearClank);
+    return s;
+}
+
+effects::Wobble::Settings ParagonX1AudioProcessor::getWobbleSettings() const noexcept
+{
+    using W = effects::Wobble;
+    W::Settings s;
+    s.on = isOn (ParamIDs::wobbleOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("wobbleAmount"), ParamIDs::wobbleAmount));
+    s.pattern = juce::jlimit (0, W::patternNames.size() - 1, juce::roundToInt (param (ParamIDs::wobblePattern)));
+    s.shape = juce::jlimit (0, W::shapeNames.size() - 1, juce::roundToInt (param (ParamIDs::wobbleShape)));
+    s.low = param (ParamIDs::wobbleLow);
+    s.range = param (ParamIDs::wobbleRange);
+    s.resonance = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("wobbleResonance"), ParamIDs::wobbleResonance));
+    s.talk = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("wobbleTalk"), ParamIDs::wobbleTalk));
+    s.drive = param (ParamIDs::wobbleDrive);
+    return s;
+}
+
+effects::Sort::Settings ParagonX1AudioProcessor::getSortSettings() const noexcept
+{
+    using S = effects::Sort;
+    S::Settings s;
+    s.on = isOn (ParamIDs::sortOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sortAmount"), ParamIDs::sortAmount));
+    s.slice = juce::jlimit (0, S::sliceNames.size() - 1, juce::roundToInt (param (ParamIDs::sortSlice)));
+    s.length = juce::jlimit (0, S::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::sortLength)));
+    s.order = juce::jlimit (0, S::orderNames.size() - 1, juce::roundToInt (param (ParamIDs::sortOrder)));
+    s.gaps = juce::jlimit (0, S::gapNames.size() - 1, juce::roundToInt (param (ParamIDs::sortGaps)));
+    s.edge = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sortEdge"), ParamIDs::sortEdge));
+    s.strike = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("sortStrike"), ParamIDs::sortStrike));
+    return s;
+}
+
+synth::crossroads::Settings ParagonX1AudioProcessor::getCrossroadsPull() const noexcept
+{
+    synth::crossroads::Settings s;
+    s.on = isOn (ParamIDs::crossOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("crossAmount"), ParamIDs::crossAmount));
+    s.length = juce::jlimit (0, synth::crossroads::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::crossLength)));
+    s.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::crossKey)));
+    s.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::crossScale)));
+    s.pull = juce::jlimit (0, synth::crossroads::pullNames.size() - 1, juce::roundToInt (param (ParamIDs::crossPull)));
+    s.bend = param (ParamIDs::crossBend);
+    return s;
+}
+
+effects::FreezeTag::Settings ParagonX1AudioProcessor::getFreezeTagSettings() const noexcept
+{
+    effects::FreezeTag::Settings s;
+    s.on = isOn (ParamIDs::freezeOn);
+    s.amount = effectParam (ModDestinations::effect ("freezeAmount"), ParamIDs::freezeAmount);
+    s.cycle = juce::jlimit (0, effects::FreezeTag::cycleNames.size() - 1, juce::roundToInt (param (ParamIDs::freezeCycle)));
+    s.hold = juce::jlimit (0, effects::FreezeTag::holdNames.size() - 1, juce::roundToInt (param (ParamIDs::freezeHold)));
+    s.slice = param (ParamIDs::freezeSlice);
+    s.tremble = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("freezeTremble"), ParamIDs::freezeTremble));
+    s.frost = param (ParamIDs::freezeFrost);
+    s.caught = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("freezeCaught"), ParamIDs::freezeCaught));
+    s.level = param (ParamIDs::freezeLevel);
+    return s;
+}
+
+synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
+{
+    synth::navi::Settings n;
+    n.on = isOn (ParamIDs::naviOn);
+    n.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviAmount"), ParamIDs::naviAmount));
+    n.pattern = juce::jlimit (0, synth::navi::patternNames.size() - 1, juce::roundToInt (param (ParamIDs::naviPattern)));
+    n.division = juce::jlimit (0, synth::navi::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::naviDivision)));
+    n.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::naviKey)));
+    n.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::naviScale)));
+    n.chaos = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviChaos"), ParamIDs::naviChaos));
+    n.glide = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviGlide"), ParamIDs::naviGlide));
+    return n;
+}
+
+synth::runner::Settings ParagonX1AudioProcessor::getRunnerSettings() const noexcept
+{
+    synth::runner::Settings r;
+    r.on = isOn (ParamIDs::runnerOn);
+    r.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerAmount"), ParamIDs::runnerAmount));
+    r.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerAccent"), ParamIDs::runnerAccent));
+    r.lift = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerLift"), ParamIDs::runnerLift));
+    return r;
+}
+
+synth::ragtime::Settings ParagonX1AudioProcessor::getRagtimeSettings() const noexcept
+{
+    synth::ragtime::Settings r;
+    r.on = isOn (ParamIDs::ragtimeOn);
+    r.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ragtimeAmount"), ParamIDs::ragtimeAmount));
+    r.pattern = juce::jlimit (0, synth::ragtime::patternNames.size() - 1, juce::roundToInt (param (ParamIDs::ragtimePattern)));
+    r.division = juce::jlimit (0, synth::ragtime::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::ragtimeDivision)));
+    r.swing = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ragtimeSwing"), ParamIDs::ragtimeSwing));
+    r.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ragtimeAccent"), ParamIDs::ragtimeAccent));
+    r.lift = juce::jlimit (0.0f, 1.0f, param (ParamIDs::ragtimeLift));
+    r.stride = isOn (ParamIDs::ragtimeStride);
+    return r;
+}
+
+effects::Colossus::Settings ParagonX1AudioProcessor::getColossusSettings() const noexcept
+{
+    effects::Colossus::Settings s;
+    s.on = isOn (ParamIDs::colossusOn);
+    s.size = effectParam (ModDestinations::effect ("colossusSize"), ParamIDs::colossusSize);
+    s.depth = effectParam (ModDestinations::effect ("colossusDepth"), ParamIDs::colossusDepth);
+    s.weight = param (ParamIDs::colossusWeight);
+    s.hall = effectParam (ModDestinations::effect ("colossusHall"), ParamIDs::colossusHall);
+    s.boom = param (ParamIDs::colossusBoom);
+    s.tone = param (ParamIDs::colossusTone);
+    s.width = param (ParamIDs::colossusWidth);
     return s;
 }
 
@@ -1521,8 +1813,12 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         std::array<synth::Engine::Touch, synth::Engine::maxTouches> touches;
         const auto count = engine.takeTouches (touches.data(), (int) touches.size());
         for (int k = 0; k < count; ++k)
-            rack->proximity.addTouch ((int) juce::jlimit<std::int64_t> (0, numSamples - 1, touches[(size_t) k].clock - chunkClock),
-                                      touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
+        {
+            const auto offset = (int) juce::jlimit<std::int64_t> (0, numSamples - 1, touches[(size_t) k].clock - chunkClock);
+            rack->proximity.addTouch (offset, touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
+            if (touches[(size_t) k].kind == synth::Engine::Touch::Kind::press)   // COLOSSUS (0.82.0): a boom under each note
+                rack->colossus.addNote (offset, touches[(size_t) k].velocity);
+        }
     }
     if (sendsReady)
     {
@@ -1593,7 +1889,6 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->leviathan.process (block, deep);
         }
         rack->nuclearSpring.process (block, getNuclearSpringSettings());   // 0.69.0: the spring tank
-        rack->lightSpeed.process (block, getLightSpeedSettings());         // 0.73.0: the jump to lightspeed
         // 0.74.0: the strings ringing along and the hall opening (the notes only worked out while it's on or settling).
         if (const auto bloom = getBloomSettings(); (bloom.on && bloom.amount >= 0.001f) || ! rack->bloom.isResting())
         {
@@ -1601,6 +1896,52 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->bloom.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
             rack->bloom.process (block, bloom);
         }
+        rack->legion.process (block, getLegionSettings());   // 0.76.0: one player to a section
+        // 0.77.0: unstable magic, charging then overloading (the notes only worked out while it's on or settling).
+        if (const auto charge = getOverchargeSettings(); (charge.on && charge.charge >= 0.001f) || ! rack->overcharge.isResting())
+        {
+            std::array<float, effects::Overcharge::maxNotes> sounding {};
+            rack->overcharge.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->overcharge.process (block, charge);
+        }
+        rack->aftermath.process (block, getAftermathSettings());   // 0.79.0: from under the sky into the bunker
+        rack->submerge.process (block, getSubmergeSettings());     // 0.80.0: under the water
+        rack->lockstep.process (block, getLockstepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.81.0: in step
+        rack->colossus.process (block, getColossusSettings());   // 0.82.0: enormous
+        rack->canyon.process (block, getCanyonSettings(), juce::jmax (20.0, hostBpm.load()));   // 0.84.0: the walls answer
+        rack->jackIn.process (block, getJackInSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.85.0: broken into
+        rack->hyperJump.process (block, getHyperJumpSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.86.0: the build and the drop
+        rack->sweep.process (block, getSweepSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.87.0: the sweep
+        // 0.88.0: the engine revving (the notes only worked out while it's on or settling).
+        if (const auto red = getRedlineSettings(); (red.on && red.throttle >= 0.001f) || ! rack->redline.isResting())
+        {
+            std::array<float, effects::Redline::maxNotes> sounding {};
+            rack->redline.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->redline.process (block, red, juce::jmax (20.0, hostBpm.load()), piecePpq);
+        }
+        rack->freezeTag.process (block, getFreezeTagSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.89.0: freeze!
+        rack->crossroads.process (block, getCrossroadsSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.90.0: light and dark
+        // 0.91.0: the machinery (the notes only worked out while it's on or settling).
+        if (const auto gear = getGearworksSettings(); (gear.on && gear.amount >= 0.001f) || ! rack->gearworks.isResting())
+        {
+            std::array<float, effects::Gearworks::maxNotes> sounding {};
+            rack->gearworks.setNotes (sounding.data(), engine.getSoundingNotes (sounding.data(), (int) sounding.size()));
+            rack->gearworks.process (block, gear, juce::jmax (20.0, hostBpm.load()), piecePpq);
+        }
+        else
+            rack->gearworks.process (block, gear, juce::jmax (20.0, hostBpm.load()), piecePpq);   // keeps its own clock
+        // 0.93.0: the phrase re-filed (while it's on it keeps filing, by the newest notes, even at AMOUNT 0).
+        {
+            const auto sorting = getSortSettings();
+            if (sorting.on)
+            {
+                std::array<float, effects::Sort::maxNotes> newest {};
+                rack->sort.setNotes (newest.data(), engine.getNewestNotes (newest.data(), (int) newest.size()));
+            }
+            if (sorting.on || ! rack->sort.isResting())
+                rack->sort.process (block, sorting, juce::jmax (20.0, hostBpm.load()), piecePpq);
+        }
+        rack->wobble.process (block, getWobbleSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.97.0: the wobble
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
     }
@@ -1682,7 +2023,8 @@ void ParagonX1AudioProcessor::updateWavetables()
     }
     updateSpectra();
     std::erase_if (retiredTables, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
-    std::erase_if (retiredSfz, [now] (const auto& retired) { return now > retired.second; });
+    // (0.82.1) Not while a note still reads it: a looped note can be held for ever (it crashed the audio thread on Windows).
+    std::erase_if (retiredSfz, [this, now] (const auto& retired) { return now > retired.second && ! engine.isSfzInUse (*retired.first); });
     std::erase_if (retiredMatrices, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
     std::erase_if (retiredReferences, [now] (const auto& retired) { return now - retired.second > retiredTableMs; });
 }
@@ -1951,6 +2293,8 @@ bool ParagonX1AudioProcessor::loadWavetableFile (int osc, const juce::File& file
         return false;
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
     loadedTables[(size_t) osc] = std::move (table);
+    wavetableRefs[(size_t) osc] = {};   // a file of the user's own choosing: carried in the preset
+    wavetableMissing[(size_t) osc] = false;
     if (auto* wave = parameters.getParameter (ParamIDs::osc (osc, "Wave")))
         wave->setValueNotifyingHost (wave->convertTo0to1 ((float) synth::OscWave::wavetable));
     markModified();
@@ -1959,10 +2303,62 @@ bool ParagonX1AudioProcessor::loadWavetableFile (int osc, const juce::File& file
     return true;
 }
 
+juce::File ParagonX1AudioProcessor::resolveWavetableRef (const juce::String& ref) const
+{
+    if (ref.startsWith ("{wt:"))
+    {
+        const auto folder = ref.fromFirstOccurrenceOf ("{wt:", false, false).upToFirstOccurrenceOf ("}", false, false);
+        const auto inside = ref.fromFirstOccurrenceOf ("}", false, false).trimCharactersAtStart ("/\\");
+        if (folder.isEmpty() || inside.isEmpty() || inside.contains ("..") || folder.contains ("..") || folder.containsAnyOf ("/\\"))
+            return {};
+        return getLibrariesFolder().getChildFile (folder).getChildFile (inside);
+    }
+    return juce::File::isAbsolutePath (ref) ? juce::File (ref) : juce::File();
+}
+
+void ParagonX1AudioProcessor::applyWavetableRef (int osc, const juce::String& ref)
+{
+    const auto o = (size_t) osc;
+    wavetableRefs[o] = ref;
+    wavetableMissing[o] = false;
+    if (ref.isEmpty())
+        return;
+    if (packTables[o].first == ref && packTables[o].second != nullptr)
+    {
+        loadedTables[o] = packTables[o].second;
+        return;
+    }
+    const auto file = resolveWavetableRef (ref);
+    auto table = file.existsAsFile() ? synth::Wavetable::build (synth::wavetableFiles::load (file, {})) : nullptr;
+    if (table == nullptr)
+    {
+        wavetableMissing[o] = true;   // the TABLE parameter's factory table plays instead
+        loadedTables[o] = nullptr;
+        return;
+    }
+    packTables[o] = { ref, table };
+    loadedTables[o] = std::move (table);
+}
+
+bool ParagonX1AudioProcessor::retryWavetableRef (int osc)
+{
+    osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
+    if (! wavetableMissing[(size_t) osc])
+        return loadedTables[(size_t) osc] != nullptr;
+    applyWavetableRef (osc, wavetableRefs[(size_t) osc]);
+    updateWavetables();
+    if (wavetableMissing[(size_t) osc])
+        return false;
+    requestCheckpoint();
+    return true;
+}
+
 void ParagonX1AudioProcessor::chooseFactoryWavetable (int osc, int index)
 {
     osc = juce::jlimit (0, ParamIDs::numOscillators - 1, osc);
     loadedTables[(size_t) osc] = nullptr;
+    wavetableRefs[(size_t) osc] = {};
+    wavetableMissing[(size_t) osc] = false;
     for (const auto& [what, value] : { std::pair { "Table", (float) index }, std::pair { "Wave", (float) synth::OscWave::wavetable } })
         if (auto* parameter = parameters.getParameter (ParamIDs::osc (osc, what)))
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
@@ -2196,6 +2592,9 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     const auto index = (size_t) osc;
     sfzRefs[index] = ref;
     const auto generation = ++sfzGeneration[index];   // an older load still running is dropped when it ends
+    if (sfzJobCancel[index] != nullptr)
+        sfzJobCancel[index]->store (true);            // (0.89.2) ...and told to stop now
+    sfzJobCancel[index] = std::make_shared<std::atomic<bool>> (false);
     sfzProblems[index] = {};
     if (ref.isEmpty())
     {
@@ -2214,12 +2613,14 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     sfzStates[index] = SfzState::loading;
     sfzProgress[index]->store (0.0f);
     ++sfzLoadsRunning;
-    sfzPool->addJob ([this, osc, generation, file, progress = sfzProgress[index], cancel = sfzCancel]
+    sfzPool->addJob ([this, osc, generation, file, progress = sfzProgress[index], cancel = sfzCancel, stop = sfzJobCancel[index]]
     {
-        auto instrument = synth::sfz::load (file, [progress] (float p) { progress->store (p); }, cancel.get());
         if (cancel->load())
             return;
-        SfzLoaded loaded { osc, generation, instrument, {} };
+        auto instrument = stop->load() ? nullptr : synth::sfz::load (file, [progress] (float p) { progress->store (p); }, stop.get());
+        if (cancel->load())
+            return;
+        SfzLoaded loaded { osc, generation, stop->load() ? nullptr : instrument, {} };   // (a stopped one is dropped: an older generation)
         if (instrument == nullptr)
             loaded.problem = "Couldn't read " + file.getFileName() + " (none of the samples it names could be played)";
         const std::scoped_lock lock (sfzLoadedLock);
@@ -2249,6 +2650,8 @@ void ParagonX1AudioProcessor::installSfzLoads()
     {
         libraryStateSeen = state;
         if (state == libraries::Download::State::done)
+            incompleteLibraries.erase (libraryDownload.getLibrary().folder);   // (0.89.2) fetched again: whole
+        if (state == libraries::Download::State::done)
             for (int i = 0; i < ParamIDs::numOscillators; ++i)
                 if (sfzStates[(size_t) i] == SfzState::failed && sfzRefs[(size_t) i].isNotEmpty())
                     startSfzLoad (i, sfzRefs[(size_t) i]);
@@ -2274,6 +2677,20 @@ void ParagonX1AudioProcessor::installSfzLoads()
             continue;   // replaced by a newer choice while it loaded
         sfzStates[index] = loaded.instrument != nullptr ? SfzState::loaded : SfzState::failed;
         sfzProblems[index] = loaded.problem;
+        // (0.89.2) A downloadable library whose instrument is missing samples (its download stopped part way): not
+        // installed. The oscillator fails (so the library is offered again) and a factory preset playing its version on
+        // that library goes back to its synthesized one, rather than playing silence.
+        if (loaded.instrument == nullptr || loaded.instrument->unreadable > 0 || loaded.instrument->regions.empty())
+            if (const auto* library = libraries::libraryFor (sfzRefs[index]))
+            {
+                incompleteLibraries.insert (library->folder);
+                sfzStates[index] = SfzState::failed;
+                sfzProblems[index] = "Its library (" + library->name + ") is incomplete: "
+                                   + (loaded.instrument != nullptr ? juce::String (loaded.instrument->unreadable) + " samples" : juce::String ("its samples"))
+                                   + " couldn't be read. Download it again.";
+                loaded.instrument = nullptr;
+                fellBackForIncomplete = true;
+            }
         if (loaded.instrument != nullptr && loaded.instrument->streamed && sfzStreamer == nullptr)
         {
             sfzStreamer = std::make_unique<synth::sfz::Streamer>();
@@ -2281,6 +2698,12 @@ void ParagonX1AudioProcessor::installSfzLoads()
         }
         setSfzInstrument (loaded.osc, std::move (loaded.instrument));
     }
+    if (std::exchange (fellBackForIncomplete, false) && ! rigModified.load())
+        if (const auto* entry = findCurrentRigEntry(); entry != nullptr && entry->isFactory && entry->rig.sampled != nullptr)
+        {
+            const auto copy = *entry;
+            loadRig (copy);   // its library now counts as missing: the synthesized version, and the offer
+        }
 }
 
 void ParagonX1AudioProcessor::setSfzInstrument (int osc, std::shared_ptr<const synth::sfz::Instrument> instrument)
@@ -2327,6 +2750,8 @@ Rig ParagonX1AudioProcessor::captureRig() const
     {
         if (const auto& table = loadedTables[(size_t) i])
             rig.wavetables[i] = table->getSource();
+        if (wavetableRefs[(size_t) i].isNotEmpty())
+            rig.wavetableRefs[i] = wavetableRefs[(size_t) i];   // still asks for the pack where it's missing
         if (sfzRefs[(size_t) i].isNotEmpty())
             rig.sfz[i] = sfzRefs[(size_t) i];
         if (! spectra[(size_t) i].isFlat())
@@ -2363,6 +2788,16 @@ void ParagonX1AudioProcessor::applyRig (const Rig& rig)
     {
         const auto found = rig.wavetables.find (i);
         loadedTables[(size_t) i] = found != rig.wavetables.end() ? tableFor (found->second) : nullptr;
+        // A pack's table (0.76.0): read from the pack unless the preset carries it (a user preset saved from it).
+        const auto packRef = rig.wavetableRefs.find (i);
+        const auto tableRef = packRef != rig.wavetableRefs.end() ? packRef->second : juce::String();
+        if (found == rig.wavetables.end())
+            applyWavetableRef (i, tableRef);
+        else
+        {
+            wavetableRefs[(size_t) i] = tableRef;
+            wavetableMissing[(size_t) i] = false;
+        }
         // SFZ: loaded again only when the preset names another file (undo and the same preset keep what's loaded).
         const auto sfz = rig.sfz.find (i);
         const auto ref = sfz != rig.sfz.end() ? sfz->second : juce::String();
@@ -2393,8 +2828,9 @@ void ParagonX1AudioProcessor::loadRig (const RigLibrary::Entry& entry)
 {
     // Copy first: applying parameters can't invalidate it, but be safe. A factory preset with a sampled version
     // (0.72.0) plays that when its library is installed, else itself.
-    const auto* needs = entry.rig.sampled != nullptr ? libraryOf (*entry.rig.sampled) : nullptr;
-    const auto rig = needs != nullptr && isLibraryInstalled (*needs) ? *entry.rig.sampled : entry.rig;
+    const auto playsSampled = entry.rig.sampled != nullptr && libraryOf (*entry.rig.sampled) != nullptr
+                           && missingLibraryOf (*entry.rig.sampled) == nullptr;
+    const auto rig = playsSampled ? *entry.rig.sampled : entry.rig;
     currentRig = { rig.name, entry.file, entry.isFactory ? rig.name : juce::String() };
     applyRig (rig);
     requestCheckpoint();
@@ -2536,6 +2972,9 @@ void ParagonX1AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
             tables.appendChild (juce::ValueTree (wavetableKey, { { "osc", i + 1 }, { "name", source.name }, { "frameSize", source.frameSize },
                                                                  { "data", synth::wavetableFiles::encode (source) } }), nullptr);
         }
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+        if (wavetableRefs[(size_t) i].isNotEmpty())
+            tables.appendChild (juce::ValueTree ("WavetableRef", { { "osc", i + 1 }, { "file", wavetableRefs[(size_t) i] } }), nullptr);
     state.appendChild (tables, nullptr);
 
     juce::ValueTree instruments (sfzKey);
@@ -2574,11 +3013,18 @@ void ParagonX1AudioProcessor::setStateInformation (const void* data, int sizeInB
 
     // The wavetables loaded from files come out first: they aren't parameters.
     std::array<std::shared_ptr<const synth::Wavetable>, ParamIDs::numOscillators> tables {};
+    std::array<juce::String, ParamIDs::numOscillators> tableRefs {};
     if (auto saved = state.getChildWithName (wavetablesKey); saved.isValid())
     {
         for (const auto& table : saved)
         {
             const auto osc = (int) table["osc"] - 1;
+            if (table.hasType ("WavetableRef"))
+            {
+                if (osc >= 0 && osc < ParamIDs::numOscillators)
+                    tableRefs[(size_t) osc] = table["file"].toString();
+                continue;
+            }
             if (osc >= 0 && osc < ParamIDs::numOscillators)
                 tables[(size_t) osc] = tableFor (synth::wavetableFiles::decode (table["name"].toString(), table["frameSize"], table["data"].toString()));
         }
@@ -2642,6 +3088,16 @@ void ParagonX1AudioProcessor::setStateInformation (const void* data, int sizeInB
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         buildFreeform (i);
     loadedTables = tables;
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+    {
+        if (tables[(size_t) i] == nullptr)
+            applyWavetableRef (i, tableRefs[(size_t) i]);
+        else
+        {
+            wavetableRefs[(size_t) i] = tableRefs[(size_t) i];
+            wavetableMissing[(size_t) i] = false;
+        }
+    }
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         if (instrumentRefs[(size_t) i] != sfzRefs[(size_t) i] || sfzStates[(size_t) i] == SfzState::failed)
             startSfzLoad (i, instrumentRefs[(size_t) i]);

@@ -32,7 +32,7 @@ private:
     juce::Label label;
     juce::ComboBox box;
     std::unique_ptr<juce::FileChooser> chooser;
-    static constexpr int loadedId = 1000, loadFileId = 1001;
+    static constexpr int loadedId = 1000, loadFileId = 1001, missingId = 1002, retryId = 1003;
 };
 
 // SFZ (0.71.0): the sampled instrument an oscillator plays when its WAVE is SFZ: its name (or LOADING / NOT FOUND),
@@ -153,8 +153,11 @@ public:
     explicit FilterPanel (juce::AudioProcessorValueTreeState&);
     void resized() override;
 
-    // 0: the FILTER; 1 to 4: SHAPER 1 to 4; 5: the VOICE filter (0.39.0).
+    // 0: the FILTER; 1 to 4: SHAPER 1 to 4; 5: the VOICE filter (0.39.0); 6: FILTER 2 (0.96.0).
     static constexpr int voicePage = 5;
+    static constexpr int filter2Page = 6;
+    // Told which filter a filter page shows (0 or 1), so the FILTER ENVELOPE panel can follow it.
+    std::function<void (int)> onFilterShown;
     void showPage (int);
     int getPage() const noexcept { return page; }
 
@@ -175,6 +178,8 @@ private:
 
     FilterDisplay display;
     ParamControl on, type, cutoff, resonance, drive, keytrack, envelope, velocity, resonanceVelocity, envelopeVelocity;
+    ParamControl lowCut, lowCutResonance;                 // 0.96.0
+    std::vector<std::unique_ptr<ParamControl>> filter2Routes;   // which oscillators go through FILTER 2
 
     // The shaper page: one set of controls, pointed at the shaper shown.
     ShaperDisplay shaperDisplay;
@@ -195,6 +200,8 @@ class EnvelopePanel final : public SynthPanel
 public:
     EnvelopePanel (juce::AudioProcessorValueTreeState&, const juce::String& title, std::array<juce::String, 8> ids);
     void resized() override;
+    // Points the panel at another envelope (0.96.0: the FILTER ENVELOPE follows the filter shown).
+    void show (const juce::String& newTitle, std::array<juce::String, 8> ids);
 
 private:
     EnvelopeDisplay display;

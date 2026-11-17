@@ -1,3 +1,4 @@
+#include <cstring>
 #include "dsp/synth/Sfz.h"
 
 #include <algorithm>
@@ -32,31 +33,56 @@ namespace synth::sfz
 
         // The file's text, comments out, #include read in (up to 8 deep), #define put in.
         juce::String preprocess (const juce::File& file, std::map<juce::String, juce::String>& defines, int depth,
-                                 juce::StringArray& problems)
+                                 juce::StringArray& problems, juce::File root = {})
         {
+            if (root == juce::File())
+                root = file.getParentDirectory();
             if (depth > 8 || ! file.existsAsFile())
             {
                 problems.add ("missing: " + file.getFullPathName());
                 return {};
             }
-            const auto text = file.loadFileAsString();
-            juce::String out;
-            out.preallocateBytes ((size_t) text.getNumBytesAsUTF8() + 16);
-            for (int i = 0; i < text.length();)
+            // (0.89.2) Comments stripped in one pass over the bytes ('/', '*' and '\n' are single bytes in UTF-8):
+            // indexing a juce::String by position walks it from the start each time, which made this quadratic in
+            // the file's length (Karoryfer's programs, with large mapping files, took over a minute to load).
+            const auto bytes = file.loadFileAsString().toStdString();
+            std::string stripped;
+            stripped.reserve (bytes.size());
+            for (size_t i = 0; i < bytes.size();)
             {
-                if (text[i] == '/' && i + 1 < text.length() && text[i + 1] == '*')
+                if (bytes[i] == '/' && i + 1 < bytes.size() && bytes[i + 1] == '*')
                 {
-                    const auto end = text.indexOf (i + 2, "*/");
-                    i = end < 0 ? text.length() : end + 2;
+                    const auto end = bytes.find ("*/", i + 2);
+                    i = end == std::string::npos ? bytes.size() : end + 2;
                 }
-                else if (text[i] == '/' && i + 1 < text.length() && text[i + 1] == '/')
+                else if (bytes[i] == '/' && i + 1 < bytes.size() && bytes[i + 1] == '/')
                 {
-                    while (i < text.length() && text[i] != '\n')
+                    while (i < bytes.size() && bytes[i] != '\n')
                         ++i;
                 }
                 else
-                    out << text[i++];
+                    stripped += bytes[i++];
             }
+            const auto out = juce::String::fromUTF8 (stripped.data(), (int) stripped.size());
+            // The defines put into a line: longest names first, so $KIT2 isn't read as $KIT then 2 (sorted again only
+            // when a #define changes them).
+            std::vector<std::pair<juce::String, juce::String>> sorted;
+            auto sortedFor = (size_t) -1;
+            const auto expand = [&defines, &sorted, &sortedFor] (juce::String line)
+            {
+                if (defines.empty() || ! line.containsChar ('$'))
+                    return line;
+                if (sortedFor != defines.size() || sorted.empty())
+                {
+                    sorted.assign (defines.begin(), defines.end());
+                    std::sort (sorted.begin(), sorted.end(), [] (const auto& a, const auto& b) { return a.first.length() > b.first.length(); });
+                    sortedFor = defines.size();
+                }
+                for (const auto& [k, v] : sorted)
+                    if (line.contains (k))
+                        line = line.replace (k, v);
+                return line;
+            };
             juce::String result;
             for (auto line : juce::StringArray::fromLines (out))
             {
@@ -66,37 +92,54 @@ namespace synth::sfz
                     const auto rest = trimmed.substring (7).trim();
                     defines[rest.upToFirstOccurrenceOf (" ", false, false).trim()]
                         = rest.fromFirstOccurrenceOf (" ", false, false).trim();
+                    sorted.clear();
                     continue;
                 }
                 if (trimmed.startsWith ("#include"))
                 {
-                    const auto name = trimmed.fromFirstOccurrenceOf ("\"", false, false).upToLastOccurrenceOf ("\"", false, false);
-                    result << preprocess (file.getParentDirectory().getChildFile (name.replaceCharacter ('\\', '/')),
-                                          defines, depth + 1, problems) << "\n";
+                    // 0.76.0: the name's defines put in too ("$DIR/$DYN.txt": SSO's grand piano includes its velocity
+                    // layers so, and loaded nothing before).
+                    const auto name = expand (trimmed.fromFirstOccurrenceOf ("\"", false, false).upToLastOccurrenceOf ("\"", false, false));
+                    // (0.82.2) An include is found from the main file's folder, as sfizz and ARIA read it (Big Rusty
+                    // Drums' mappings include their own files so, and the kit loaded nothing); else from the including
+                    // file's own folder, where PR7-K looked before.
+                    const auto relative = name.replaceCharacter ('\\', '/');
+                    auto included = root.getChildFile (relative);
+                    if (! included.existsAsFile())
+                        included = file.getParentDirectory().getChildFile (relative);
+                    result << preprocess (included, defines, depth + 1, problems, root) << "\n";
                     continue;
                 }
-                if (! defines.empty() && line.containsChar ('$'))
-                {
-                    // Longest names first, so $KIT2 isn't read as $KIT then 2.
-                    std::vector<std::pair<juce::String, juce::String>> sorted (defines.begin(), defines.end());
-                    std::sort (sorted.begin(), sorted.end(), [] (const auto& a, const auto& b) { return a.first.length() > b.first.length(); });
-                    for (const auto& [k, v] : sorted)
-                        line = line.replace (k, v);
-                }
+                line = expand (line);
                 result << line << "\n";
             }
             return result;
         }
 
         // The headers and their opcodes, each region with everything it inherits.
-        std::vector<Opcodes> parse (const juce::String& text, juce::String& defaultPath)
+        // (0.82.2) A <curve>'s points: v000 to v127, straight between those given.
+        using Curves = std::map<int, std::map<int, float>>;
+
+        std::vector<Opcodes> parse (const juce::String& text, juce::String& defaultPath, Opcodes* controlOut = nullptr,
+                                    Curves* curvesOut = nullptr)
         {
             std::vector<Opcodes> regions;
             Opcodes control, global, master, group, current;
             juce::String header;
             const auto flush = [&]
             {
-                if (header == "region")
+                if (header == "curve" && curvesOut != nullptr)
+                {
+                    if (const auto it = current.find ("curve_index"); it != current.end())
+                    {
+                        auto& points = (*curvesOut)[it->second.getIntValue()];
+                        points.clear();
+                        for (const auto& [k, v] : current)
+                            if (k.length() > 1 && k[0] == 'v' && k.substring (1).containsOnly ("0123456789"))
+                                points[juce::jlimit (0, 127, k.substring (1).getIntValue())] = v.getFloatValue();
+                    }
+                }
+                else if (header == "region")
                 {
                     Opcodes r;
                     for (const auto* level : { &global, &master, &group, &current })
@@ -105,7 +148,8 @@ namespace synth::sfz
                     regions.push_back (std::move (r));
                 }
                 else if (header == "control")
-                    control = current;
+                    for (const auto& [k, v] : current)   // (each included file has its own: keep them all)
+                        control[k] = v;
                 else if (header == "global")
                     global = current;
                 else if (header == "master")
@@ -167,6 +211,8 @@ namespace synth::sfz
             }
             flush();
             defaultPath = control.count ("default_path") ? control["default_path"] : juce::String();
+            if (controlOut != nullptr)
+                *controlOut = control;
             return regions;
         }
 
@@ -183,8 +229,7 @@ namespace synth::sfz
         }
 
         // Opcodes worth telling the user we don't play (their sound is shaped by the synth's own sections instead).
-        const char* const leftOut[] = { "fil_type", "cutoff", "ampeg_attack", "ampeg_decay", "ampeg_sustain", "sw_last",
-                                        "sw_lokey", "off_by", "group", "xfin_locc1", "xfout_locc1", "gain_cc1" };
+        const char* const leftOut[] = { "ampeg_attack", "ampeg_decay", "ampeg_sustain", "off_by", "group", "amplfo_depth" };
 
         // A sample read whole into memory (a looped one: its loop must be there to go back to).
         void readWhole (Sample& s, juce::AudioFormatManager& formats)
@@ -207,7 +252,7 @@ namespace synth::sfz
     }
 
     int Instrument::select (int key, int velocity127, bool release, int seqCount, float chance, int pedal,
-                            const Region** out, int capacity) const noexcept
+                            const Region** out, int capacity, int switchKey) const noexcept
     {
         int n = 0;
         for (const auto& r : regions)
@@ -217,6 +262,8 @@ namespace synth::sfz
             if (r.pedalTrigger || r.release != release || ! r.plays (key, velocity127) || pedal < r.loPedal || pedal > r.hiPedal)
                 continue;
             if (r.crossfade (velocity127) <= 0.0f)   // faded out at this velocity (0.73.0)
+                continue;
+            if (r.switchKey >= 0 && (switchKey < r.switchKey || switchKey > r.switchKeyHi))   // another key switch's (0.75.0; a range 0.84.0)
                 continue;
             if (r.seqLength > 1 && (seqCount % r.seqLength) + 1 != r.seqPosition)
                 continue;
@@ -244,8 +291,66 @@ namespace synth::sfz
         inst->name = sfzFile.getFileNameWithoutExtension();
 
         std::map<juce::String, juce::String> defines;
+        // (0.84.0) A Sforzando bank file (*.bank.xml) beside the program or a folder up can define names the program
+        // uses ("<Define name="$sample_dir" value="../Samples"/>": Karoryfer's Shinyguitar names its samples so).
+        for (const auto& folder : { sfzFile.getParentDirectory(), sfzFile.getParentDirectory().getParentDirectory() })
+            for (const auto& bank : folder.findChildFiles (juce::File::findFiles, false, "*.bank.xml"))
+            {
+                // Read as text: these files hold two top-level elements (a signature key and the bank), not one.
+                auto text = bank.loadFileAsString();
+                for (auto at = text.indexOfIgnoreCase ("<Define"); at >= 0; at = text.indexOfIgnoreCase (at + 1, "<Define"))
+                {
+                    const auto tag = text.substring (at, text.indexOfChar (at, '>') + 1);
+                    const auto attribute = [&tag] (const char* key)
+                    {
+                        const auto from = tag.indexOf (juce::String (key) + "=\"");
+                        return from < 0 ? juce::String() : tag.substring (from + (int) std::strlen (key) + 2).upToFirstOccurrenceOf ("\"", false, false);
+                    };
+                    if (const auto name = attribute ("name"); name.startsWithChar ('$') && ! defines.count (name))
+                        defines[name] = attribute ("value");
+                }
+            }
         juce::String defaultPath;
-        const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath);
+        Opcodes control;
+        Curves curves;
+        const auto opcodes = parse (preprocess (sfzFile, defines, 0, inst->problems), defaultPath, &control, &curves);
+        // A controller's place through a curve (0.82.2): the file's own (<curve>), else the standard ones (0: 0 to 1,
+        // 1: -1 to 1, 2: 1 to 0, 3: 1 to -1, 4: squared, 5: square root, 6: square root falling); 0 when none is named.
+        const auto throughCurve = [&curves] (int index, int cc127) -> float
+        {
+            const auto x = (float) juce::jlimit (0, 127, cc127) / 127.0f;
+            if (const auto it = curves.find (index); it != curves.end() && ! it->second.empty())
+            {
+                const auto& points = it->second;
+                const auto above = points.lower_bound (cc127);
+                if (above == points.end())
+                    return std::prev (above)->second;
+                if (above->first == cc127 || above == points.begin())
+                    return above->second;
+                const auto below = std::prev (above);
+                const auto t = (float) (cc127 - below->first) / (float) (above->first - below->first);
+                return below->second + t * (above->second - below->second);
+            }
+            switch (index)
+            {
+                case 1:  return 2.0f * x - 1.0f;
+                case 2:  return 1.0f - x;
+                case 3:  return 1.0f - 2.0f * x;
+                case 4:  return x * x;
+                case 5:  return std::sqrt (x);
+                case 6:  return std::sqrt (1.0f - x);
+                default: return x;
+            }
+        };
+        if (const auto it = control.find ("set_cc1"); it != control.end())
+            inst->setCc1 = juce::jlimit (0, 127, it->second.getIntValue());
+        // Every other controller's starting value (0.82.0): SET_CCn, 0 where not given. Only the mod wheel and the pedal
+        // move live; the rest stay where the file sets them, and the regions are chosen and levelled by those values.
+        std::array<int, 128> ccStart {};
+        for (const auto& [name, value] : control)
+            if (name.startsWith ("set_cc"))
+                if (const auto cc = name.fromFirstOccurrenceOf ("set_cc", false, false).getIntValue(); cc >= 0 && cc < 128)
+                    ccStart[(size_t) cc] = juce::jlimit (0, 127, value.getIntValue());
         const auto folder = sfzFile.getParentDirectory();
 
         juce::AudioFormatManager formats;
@@ -263,6 +368,33 @@ namespace synth::sfz
             const auto samplePath = get (op, "sample");
             if (samplePath.isEmpty() || samplePath.startsWithChar ('*'))   // "*sine" and the like: generated, not read
                 continue;
+            // TRIGGER=LEGATO (0.83.0): a note slurred from another is played as any note here, so these layers (the
+            // same recordings started later) would double it: left out. TRIGGER=FIRST plays as an ordinary note.
+            if (get (op, "trigger").trim().toLowerCase() == "legato")
+            {
+                if (leftOutSeen.insert ("trigger=legato").second)
+                    inst->problems.add ("not played: trigger=legato (slurred notes play their ordinary layers)");
+                continue;
+            }
+            // LOCCn / HICCn for controllers other than the wheel and the pedal (0.82.0): a region outside the range at
+            // the controller's starting value never plays (a mixer's channel turned off, another articulation): left out
+            // before its sample is read.
+            {
+                auto outOfRange = false;
+                for (const auto& [name, value] : op)
+                {
+                    const auto low = name.startsWith ("locc"), high = name.startsWith ("hicc");
+                    if (! low && ! high)
+                        continue;
+                    const auto cc = name.substring (4).getIntValue();
+                    if (cc == 1 || cc == 64 || cc < 0 || cc > 127 || ! name.substring (4).containsOnly ("0123456789"))
+                        continue;
+                    const auto limit = value.getIntValue();
+                    outOfRange = outOfRange || (low ? ccStart[(size_t) cc] < limit : ccStart[(size_t) cc] > limit);
+                }
+                if (outOfRange)
+                    continue;
+            }
             for (const auto* name : leftOut)
                 if (has (op, name) && leftOutSeen.insert (name).second)
                     inst->problems.add ("not played: " + juce::String (name));
@@ -312,7 +444,10 @@ namespace synth::sfz
                     inst->samples.push_back (std::move (s));
                 }
                 else
+                {
                     inst->problems.add ("couldn't read: " + relative);
+                    ++inst->unreadable;
+                }
                 sampleIndex[path] = index;
             }
             if (index < 0)
@@ -347,6 +482,70 @@ namespace synth::sfz
             r.xfoutLo = juce::jlimit (0, 127, get (op, "xfout_lovel", "127").getIntValue());
             r.xfoutHi = juce::jlimit (0, 127, get (op, "xfout_hivel", "127").getIntValue());
             r.xfPower = get (op, "xf_velcurve", "power").trim().toLowerCase() != "gain";
+            // THE MOD WHEEL (0.75.0).
+            r.ccInLo = juce::jlimit (0, 127, get (op, "xfin_locc1", "0").getIntValue());
+            r.ccInHi = juce::jlimit (0, 127, get (op, "xfin_hicc1", "0").getIntValue());
+            r.ccOutLo = juce::jlimit (0, 127, get (op, "xfout_locc1", "127").getIntValue());
+            r.ccOutHi = juce::jlimit (0, 127, get (op, "xfout_hicc1", "127").getIntValue());
+            r.ccPower = get (op, "xf_cccurve", "power").trim().toLowerCase() != "gain";
+            r.gainCcDb = number (op, "gain_cc1", 0.0f);
+            // FILTER (0.75.0): only where a CUTOFF is given (SFZ: no cutoff, no filter).
+            if (has (op, "cutoff"))
+            {
+                const auto type = get (op, "fil_type", "lpf_2p").trim().toLowerCase();
+                using F = Region::Filter;
+                r.filter = type == "lpf_1p" ? F::lowpass1 : type == "hpf_1p" ? F::highpass1
+                         : type == "hpf_2p" ? F::highpass2 : F::lowpass2;
+                if (type != "lpf_1p" && type != "lpf_2p" && type != "hpf_1p" && type != "hpf_2p" && leftOutSeen.insert ("fil_type").second)
+                    inst->problems.add ("filter type " + type + " played as lpf_2p");
+                r.cutoff = juce::jmax (1.0f, number (op, "cutoff", 20000.0f));
+                r.cutoffCcCents = number (op, "cutoff_cc1", number (op, "cutoff_oncc1", 0.0f));
+                // (0.83.0) Other controllers' CUTOFF_CCn / _ONCCn at their starting values (cents at 127, through
+                // FIL_CURVECCn... read as CUTOFF_CURVECCn): Squidpipes opens its 250 Hz filter to 6 kHz on CC120 so.
+                for (const auto& [name, value] : op)
+                {
+                    const auto prefix = name.startsWith ("cutoff_oncc") ? juce::String ("cutoff_oncc")
+                                      : name.startsWith ("cutoff_cc") ? juce::String ("cutoff_cc") : juce::String();
+                    if (prefix.isEmpty())
+                        continue;
+                    const auto digits = name.substring (prefix.length());
+                    const auto cc = digits.containsOnly ("0123456789") && digits.isNotEmpty() ? digits.getIntValue() : -1;
+                    if (cc <= 1 || cc == 64 || cc > 127)
+                        continue;
+                    const auto curve = op.find ("cutoff_curvecc" + digits);
+                    const auto place = throughCurve (curve != op.end() ? curve->second.getIntValue() : 0, ccStart[(size_t) cc]);
+                    r.cutoff *= std::exp2 (value.getFloatValue() * place / 1200.0f);
+                }
+                r.filterKeytrack = number (op, "fil_keytrack", 0.0f);
+                r.filterVeltrack = number (op, "fil_veltrack", 0.0f);
+                if (has (op, "fil_keycenter"))
+                    if (const auto centre = noteNumber (get (op, "fil_keycenter")); centre >= 0)
+                        r.filterKeyCenter = (float) centre;
+                r.filterQ = 0.70710678f * std::pow (10.0f, number (op, "resonance", 0.0f) / 20.0f);
+            }
+            // KEY SWITCHES (0.75.0).
+            // SW_LOLAST / SW_HILAST (0.84.0): the region plays while the last switch pressed is in that range.
+            if (has (op, "sw_last") || has (op, "sw_lolast") || has (op, "sw_hilast"))
+            {
+                if (has (op, "sw_last"))
+                    r.switchKey = r.switchKeyHi = noteNumber (get (op, "sw_last"));
+                else
+                {
+                    r.switchKey = noteNumber (get (op, "sw_lolast", get (op, "sw_hilast")));
+                    r.switchKeyHi = noteNumber (get (op, "sw_hilast", get (op, "sw_lolast")));
+                }
+                if (r.switchKey >= 0)
+                {
+                    const auto lo = has (op, "sw_lokey") ? noteNumber (get (op, "sw_lokey")) : r.switchKey;
+                    const auto hi = has (op, "sw_hikey") ? noteNumber (get (op, "sw_hikey")) : r.switchKey;
+                    inst->switchLo = inst->switchLo < 0 ? juce::jmax (0, lo) : juce::jmin (inst->switchLo, juce::jmax (0, lo));
+                    inst->switchHi = juce::jmax (inst->switchHi, hi);
+                    if (inst->switchDefault < 0 && has (op, "sw_default"))
+                        inst->switchDefault = noteNumber (get (op, "sw_default"));
+                    if (inst->switchLabel (r.switchKey).isEmpty())
+                        inst->switchLabels.push_back ({ r.switchKey, get (op, "sw_label", juce::MidiMessage::getMidiNoteName (r.switchKey, true, true, 4)) });
+                }
+            }
             if (const auto key = noteNumber (get (op, "key")); key >= 0)
             {
                 r.loKey = r.hiKey = key;
@@ -365,15 +564,52 @@ namespace synth::sfz
             r.loVel = juce::jlimit (0, 127, get (op, "lovel", "1").getIntValue());
             r.hiVel = juce::jlimit (0, 127, get (op, "hivel", "127").getIntValue());
             r.keytrack = number (op, "pitch_keytrack", 100.0f) / 100.0f;
-            r.tuneSemitones = number (op, "tune", 0.0f) / 100.0f + number (op, "transpose", 0.0f);
-            r.gain = juce::Decibels::decibelsToGain (number (op, "volume", 0.0f)) * number (op, "amplitude", 100.0f) / 100.0f;
-            r.pan = juce::jlimit (-1.0f, 1.0f, number (op, "pan", 0.0f) / 100.0f);
+            r.tuneSemitones = (number (op, "tune", 0.0f) + number (op, "group_tune", 0.0f)) / 100.0f + number (op, "transpose", 0.0f);
+            // VOLUME, and (0.75.0) the level a <group>, <master> or <global> sets for all of its regions, which adds to it.
+            const auto volumeDb = number (op, "volume", 0.0f) + number (op, "group_volume", 0.0f) + number (op, "master_volume", 0.0f)
+                                + number (op, "global_volume", 0.0f);
+            r.gain = juce::Decibels::decibelsToGain (volumeDb) * number (op, "amplitude", 100.0f) / 100.0f;
+            // Other controllers at their starting values (0.82.0): AMPLITUDE_CCn / _ONCCn (% at 127, multiplying),
+            // GAIN / VOLUME_ONCCn (dB at 127), TUNE_CCn (cents at 127), PAN_CCn (% at 127), each through its curve
+            // (0.82.2: <kind>_CURVECCn, e.g. TUNE_CURVECC75; Big Rusty Drums' tuning is centred on its starting value).
+            auto panPercent = number (op, "pan", 0.0f);
+            for (const auto& [name, value] : op)
+            {
+                const auto ccOf = [&name] (const char* prefix) -> int
+                {
+                    if (! name.startsWith (prefix))
+                        return -1;
+                    const auto digits = name.fromFirstOccurrenceOf (prefix, false, false);
+                    return digits.isNotEmpty() && digits.containsOnly ("0123456789") ? digits.getIntValue() : -1;
+                };
+                const auto amount = value.getFloatValue();
+                const auto placeOf = [&] (const char* curveName, int controller)
+                {
+                    const auto found = op.find (juce::String (curveName) + juce::String (controller));
+                    return throughCurve (found != op.end() ? found->second.getIntValue() : 0, ccStart[(size_t) controller]);
+                };
+                auto cc = -1;
+                if ((cc = juce::jmax (ccOf ("amplitude_cc"), ccOf ("amplitude_oncc"))) > 1 && cc < 128 && cc != 64)
+                    r.gain *= amount / 100.0f * placeOf ("amplitude_curvecc", cc);
+                else if ((cc = juce::jmax (juce::jmax (ccOf ("gain_cc"), ccOf ("gain_oncc")), ccOf ("volume_oncc"))) > 1 && cc < 128 && cc != 64)
+                    r.gain *= juce::Decibels::decibelsToGain (amount * placeOf (name.startsWith ("volume") ? "volume_curvecc" : "gain_curvecc", cc));
+                else if ((cc = juce::jmax (ccOf ("tune_cc"), ccOf ("tune_oncc"))) > 1 && cc < 128 && cc != 64)
+                    r.tuneSemitones += amount * placeOf ("tune_curvecc", cc) / 100.0f;
+                else if ((cc = juce::jmax (ccOf ("pan_cc"), ccOf ("pan_oncc"))) > 1 && cc < 128 && cc != 64)
+                    panPercent += amount * placeOf ("pan_curvecc", cc);
+            }
+            r.pan = juce::jlimit (-1.0f, 1.0f, panPercent / 100.0f);
             const auto& sample = *inst->samples[(size_t) index];
             r.offset = (int) juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, sample.length - 1),
                                                          get (op, "offset", "0").getLargeIntValue());
             r.release = get (op, "trigger", "attack").trim().toLowerCase() == "release";
             r.rtDecayDb = juce::jmax (0.0f, number (op, "rt_decay", 0.0f));
             r.velTrack = number (op, "amp_veltrack", 100.0f) / 100.0f;
+            for (const auto& [name, value] : op)   // AMP_VELCURVE_N (0.81.0)
+                if (name.startsWith ("amp_velcurve_"))
+                    r.velCurve.emplace_back (juce::jlimit (0, 127, name.fromFirstOccurrenceOf ("amp_velcurve_", false, false).getIntValue()),
+                                             juce::jmax (0.0f, value.getFloatValue()));
+            std::sort (r.velCurve.begin(), r.velCurve.end());
             r.seqLength = juce::jmax (1, get (op, "seq_length", "1").getIntValue());
             r.seqPosition = juce::jlimit (1, r.seqLength, get (op, "seq_position", "1").getIntValue());
             r.loRand = number (op, "lorand", 0.0f);
@@ -413,8 +649,19 @@ namespace synth::sfz
                 inst->loKey = juce::jmin (inst->loKey, r.loKey);
                 inst->hiKey = juce::jmax (inst->hiKey, r.hiKey);
             }
+            inst->wheelDynamics = inst->wheelDynamics || r.fadesWithWheel() || r.cutoffCcCents != 0.0f;
             inst->regions.push_back (r);
         }
+        // KEY SWITCHES: the first one down, the default or the lowest; in key order for the menu.
+        std::sort (inst->switchLabels.begin(), inst->switchLabels.end());
+        if (inst->switchDefault < 0 && ! inst->switchLabels.empty())
+            inst->switchDefault = inst->switchLabels.front().first;
+        // Other controllers' crossfades and gains aren't played.
+        for (const auto& op : opcodes)
+            for (const auto& [name, value] : op)
+                if ((name.startsWith ("xfin_locc") || name.startsWith ("xfout_locc"))
+                    && ! name.endsWith ("cc1") && leftOutSeen.insert ("othercc").second)
+                    inst->problems.add ("held at their starting values: controllers other than the mod wheel and the pedal");
         if (progress)
             progress (1.0f);
         // (a sample first read as a head and then kept whole for a loop no longer streams)

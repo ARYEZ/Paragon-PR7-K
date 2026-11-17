@@ -66,10 +66,46 @@ namespace ModDestinations
                                                  "leviathanMix", "leviathanGrowl", "leviathanDrift",
                                                  // 0.69.0: NUCLEARSPRING: how much tank, how drippy, how hard a hit kicks it
                                                  "springMix", "springDrip", "springBoing",
-                                                 // 0.73.0: LIGHTSPEED: how far into the jump, how high the streaks, the rushing air
-                                                 "jumpAmount", "jumpRise", "jumpWhoosh",
+                                                 // 0.86.0: HYPERJUMP (LIGHTSPEED's place): how big, how high the climb, how deep the chop
+                                                 "hyperjumpAmount", "hyperjumpRise", "hyperjumpChop",
                                                  // 0.74.0: BLOOM: how much, the strings' share, the hall's size
-                                                 "bloomAmount", "bloomResonance", "bloomSize" };
+                                                 "bloomAmount", "bloomResonance", "bloomSize",
+                                                 // 0.76.0: LEGION: how many players, how wide, how far out of tune
+                                                 "legionSize", "legionSpread", "legionDetune",
+                                                 // 0.77.0: OVERCHARGE: how charged, the crystals' share, how wild the overload
+                                                 "overchargeCharge", "overchargeGlow", "overchargeChaos",
+                                                 // 0.79.0: AFTERMATH: how sealed in, how long the walls ring, the machinery
+                                                 "aftermathSeal", "aftermathRing", "aftermathHum",
+                                                 // 0.80.0: SUBMERGE: how deep, the bubbles, the pressure's bend
+                                                 "submergeDepth", "submergeBubbles", "submergeCurrent",
+                                                 // 0.81.0: LOCKSTEP: how drilled, how flat, the boots
+                                                 "lockstepAmount", "lockstepSqueeze", "lockstepStamp",
+                                                 // 0.82.0: COLOSSUS: how big, the octave under, the hall
+                                                 "colossusSize", "colossusDepth", "colossusHall",
+                                                 // 0.84.0: CANYON: how much goes in, the near walls, the far wall's replies
+                                                 "canyonAmount", "canyonSize", "canyonRepeats",
+                                                 // 0.85.0: JACK-IN: how much is taken, how wild, how crushed
+                                                 "jackinAmount", "jackinChaos", "jackinCrush",
+                                                 // 0.86.0: NAVICOMPUTER: how many steps move, how wild, how smooth
+                                                 "naviAmount", "naviChaos", "naviGlide",
+                                                 // 0.87.0: SWEEP: how much, how resonant, where it sweeps round
+                                                 "sweepAmount", "sweepResonance", "sweepCenter",
+                                                 // 0.88.0: REDLINE: how far the throttle opens, the throb, the scream
+                                                 "redlineThrottle", "redlineThrob", "redlineScream",
+                                                 // 0.89.0: FREEZE TAG: how frozen, how it trembles, how often caught
+                                                 "freezeAmount", "freezeTremble", "freezeCaught",
+                                                 // 0.90.0: CROSSROADS: how hard each side pulls, how bright, how dark
+                                                 "crossAmount", "crossLight", "crossDark",
+                                                 // 0.91.0: GEARWORKS: how caught, how metal, how ground
+                                                 "gearAmount", "gearMetal", "gearGrind",
+                                                 // 0.92.0: RAGTIME: how much of the roll, its swing, its accents
+                                                 "ragtimeAmount", "ragtimeSwing", "ragtimeAccent",
+                                                 // 0.93.0: SORT: how much is re-filed, its edges, its strikes
+                                                 "sortAmount", "sortEdge", "sortStrike",
+                                                 // 0.97.0: WOBBLE: how much, its vowel, its resonance
+                                                 "wobbleAmount", "wobbleTalk", "wobbleResonance",
+                                                 // 1.0.0: RUNNER: how fast, its accents, its lift
+                                                 "runnerAmount", "runnerAccent", "runnerLift" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

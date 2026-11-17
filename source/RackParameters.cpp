@@ -24,8 +24,23 @@
 #include "dsp/effects/Spectre.h"
 #include "dsp/effects/Leviathan.h"
 #include "dsp/effects/NuclearSpring.h"
-#include "dsp/effects/LightSpeed.h"
 #include "dsp/effects/Bloom.h"
+#include "dsp/effects/Legion.h"
+#include "dsp/effects/Overcharge.h"
+#include "dsp/effects/Aftermath.h"
+#include "dsp/effects/Submerge.h"
+#include "dsp/effects/Lockstep.h"
+#include "dsp/effects/Colossus.h"
+#include "dsp/effects/Canyon.h"
+#include "dsp/effects/JackIn.h"
+#include "dsp/effects/HyperJump.h"
+#include "dsp/effects/Sweep.h"
+#include "dsp/effects/Redline.h"
+#include "dsp/effects/FreezeTag.h"
+#include "dsp/effects/Crossroads.h"
+#include "dsp/effects/Gearworks.h"
+#include "dsp/effects/Sort.h"
+#include "dsp/effects/Wobble.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -737,23 +752,6 @@ void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLa
     layout.add (makeFloat (ParamIDs::springWidth, "Nuclearspring Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
 }
 
-void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
-{
-    // LIGHTSPEED (0.73.0, our own design): off and at JUMP 0 by default, so projects and presets from before are unchanged.
-    constexpr int v = 42;
-    using L = effects::LightSpeed;
-    const L::Settings d;
-    const ToText asRise = [] (float value, int) { return "+" + juce::String (L::riseSemitones (value), 1) + " st"; };
-    const ToText asTone = [] (float value, int) { return juce::String (L::toneHz (value) / 1000.0f, 1) + " kHz"; };
-    layout.add (makeSwitch (ParamIDs::jumpOn, "Lightspeed On", v, false));
-    layout.add (makeFloat (ParamIDs::jumpAmount, "Lightspeed Jump", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpRise, "Lightspeed Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
-    layout.add (makeFloat (ParamIDs::jumpStreak, "Lightspeed Streaks", { 0.0f, 1.0f, 0.01f }, d.streak, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpWhoosh, "Lightspeed Whoosh", { 0.0f, 1.0f, 0.01f }, d.whoosh, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpWidth, "Lightspeed Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
-    layout.add (makeFloat (ParamIDs::jumpTone, "Lightspeed Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
-}
-
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
 {
     // BLOOM (0.74.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
@@ -772,4 +770,340 @@ void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout& la
     layout.add (makeFloat (ParamIDs::bloomSwell, "Bloom Swell", { 0.0f, 1.0f, 0.01f }, d.swell, v, asSwell));
     layout.add (makeFloat (ParamIDs::bloomTone, "Bloom Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
     layout.add (makeFloat (ParamIDs::bloomWidth, "Bloom Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LEGION (0.76.0, our own design): off and at SIZE 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 44;
+    using L = effects::Legion;
+    const L::Settings d;
+    const ToText asPlayers = [] (float value, int) { return juce::String (L::playersAt (value), 1) + " players"; };
+    const ToText asLoose = [] (float value, int) { return juce::String (L::looseMs (value), 0) + " ms"; };
+    const ToText asDetune = [] (float value, int) { return juce::String (L::detuneCents (value), 1) + " ct"; };
+    const ToText asTone = [] (float value, int) { return juce::String (L::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::legionOn, "Legion On", v, false));
+    layout.add (makeFloat (ParamIDs::legionSize, "Legion Size", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPlayers));
+    layout.add (makeFloat (ParamIDs::legionSpread, "Legion Spread", { 0.0f, 1.0f, 0.01f }, d.spread, v, asPercent));
+    layout.add (makeFloat (ParamIDs::legionLoose, "Legion Loose", { 0.0f, 1.0f, 0.01f }, d.loose, v, asLoose));
+    layout.add (makeFloat (ParamIDs::legionDetune, "Legion Detune", { 0.0f, 1.0f, 0.01f }, d.detune, v, asDetune));
+    layout.add (makeFloat (ParamIDs::legionTone, "Legion Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+}
+
+void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // OVERCHARGE (0.77.0, our own design): off and at CHARGE 0 by default, so projects and presets from before are
+    // unchanged.
+    constexpr int v = 45;
+    using O = effects::Overcharge;
+    const O::Settings d;
+    const ToText asCharge = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("At rest")
+             : value <= 0.5f ? juce::String (juce::roundToInt (100.0f * O::chargeOf (value))) + "% charged"
+                             : juce::String (juce::roundToInt (100.0f * O::overloadOf (value))) + "% overload";
+    };
+    const ToText asTone = [] (float value, int) { return juce::String (O::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::overchargeOn, "Overcharge On", v, false));
+    layout.add (makeFloat (ParamIDs::overchargeCharge, "Overcharge Charge", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asCharge));
+    layout.add (makeFloat (ParamIDs::overchargeGlow, "Overcharge Glow", { 0.0f, 1.0f, 0.01f }, d.glow, v, asPercent));
+    layout.add (makeFloat (ParamIDs::overchargeChaos, "Overcharge Chaos", { 0.0f, 1.0f, 0.01f }, d.chaos, v, asPercent));
+    layout.add (makeFloat (ParamIDs::overchargeTone, "Overcharge Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::overchargeWidth, "Overcharge Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // AFTERMATH (0.79.0, our own design): off and at SEAL 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 46;
+    using A = effects::Aftermath;
+    const A::Settings d;
+    const ToText asSeal = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Open sky") : value >= 0.999f ? juce::String ("Sealed")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% sealed";
+    };
+    const ToText asRing = [] (float value, int) { return juce::String (A::ringSeconds (0.4f, value), 2) + " s"; };
+    const ToText asDark = [] (float value, int) { return juce::String (A::darkHz (value) / 1000.0f, 1) + " kHz"; };
+    const ToText asHum = [] (float value, int)
+    {
+        return value <= 0.0f ? juce::String ("None") : juce::String (juce::roundToInt (A::humDb (value))) + " dB";
+    };
+    layout.add (makeSwitch (ParamIDs::aftermathOn, "Aftermath On", v, false));
+    layout.add (makeFloat (ParamIDs::aftermathSeal, "Aftermath Seal", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asSeal));
+    layout.add (makeFloat (ParamIDs::aftermathRoom, "Aftermath Room", { 0.0f, 1.0f, 0.01f }, d.room, v, asPercent));
+    layout.add (makeFloat (ParamIDs::aftermathRing, "Aftermath Ring", { 0.0f, 1.0f, 0.01f }, d.ring, v, asRing));
+    layout.add (makeFloat (ParamIDs::aftermathDark, "Aftermath Dark", { 0.0f, 1.0f, 0.01f }, d.dark, v, asDark));
+    layout.add (makeFloat (ParamIDs::aftermathHum, "Aftermath Hum", { 0.0f, 1.0f, 0.01f }, d.hum, v, asHum));
+    layout.add (makeChoice (ParamIDs::aftermathHumHz, "Aftermath Hum Hz", v, A::humNames, d.humHz));
+    layout.add (makeFloat (ParamIDs::aftermathWidth, "Aftermath Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SUBMERGE (0.80.0, our own design): off and at DEPTH 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 47;
+    using S = effects::Submerge;
+    const S::Settings d;
+    const ToText asDepth = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Dry land") : value >= 0.999f ? juce::String ("Sea floor")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% under";
+    };
+    const ToText asMurk = [] (float value, int)
+    {
+        const auto hz = S::murkHz (value);
+        return hz >= 1000.0f ? juce::String (hz / 1000.0f, 1) + " kHz" : juce::String (juce::roundToInt (hz)) + " Hz";
+    };
+    const ToText asCurrent = [] (float value, int) { return "+-" + juce::String (juce::roundToInt (S::maxCents * value)) + " cents"; };
+    const ToText asBubbles = [] (float value, int) { return juce::String (S::bubbleRate (value, 1.0f), 1) + " a second"; };
+    layout.add (makeSwitch (ParamIDs::submergeOn, "Submerge On", v, false));
+    layout.add (makeFloat (ParamIDs::submergeDepth, "Submerge Depth", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asDepth));
+    layout.add (makeFloat (ParamIDs::submergeMurk, "Submerge Murk", { 0.0f, 1.0f, 0.01f }, d.murk, v, asMurk));
+    layout.add (makeFloat (ParamIDs::submergeCurrent, "Submerge Current", { 0.0f, 1.0f, 0.01f }, d.current, v, asCurrent));
+    layout.add (makeFloat (ParamIDs::submergeBubbles, "Submerge Bubbles", { 0.0f, 1.0f, 0.01f }, d.bubbles, v, asBubbles));
+    layout.add (makeFloat (ParamIDs::submergeSea, "Submerge Sea", { 0.0f, 1.0f, 0.01f }, d.sea, v, asPercent));
+    layout.add (makeFloat (ParamIDs::submergeWidth, "Submerge Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // LOCKSTEP (0.81.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 48;
+    using L = effects::Lockstep;
+    const L::Settings d;
+    const ToText asAmount = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Free") : value >= 0.999f ? juce::String ("Drilled")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% in step";
+    };
+    const ToText asGate = [] (float value, int) { return juce::String (juce::roundToInt (100.0f * L::gateShare (value))) + "% open"; };
+    const ToText asAccent = [] (float value, int)
+    {
+        return "Off-beat " + juce::String (juce::roundToInt (juce::Decibels::gainToDecibels (L::offBeatLevel (value)))) + " dB";
+    };
+    layout.add (makeSwitch (ParamIDs::lockstepOn, "Lockstep On", v, false));
+    layout.add (makeFloat (ParamIDs::lockstepAmount, "Lockstep Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeChoice (ParamIDs::lockstepDivision, "Lockstep Division", v, L::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::lockstepGate, "Lockstep Gate", { 0.0f, 1.0f, 0.01f }, d.gate, v, asGate));
+    layout.add (makeFloat (ParamIDs::lockstepAccent, "Lockstep Accent", { 0.0f, 1.0f, 0.01f }, d.accent, v, asAccent));
+    layout.add (makeFloat (ParamIDs::lockstepSqueeze, "Lockstep Squeeze", { 0.0f, 1.0f, 0.01f }, d.squeeze, v, asPercent));
+    layout.add (makeFloat (ParamIDs::lockstepStamp, "Lockstep Stamp", { 0.0f, 1.0f, 0.01f }, d.stamp, v, asPercent));
+}
+
+void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // COLOSSUS (0.82.0, our own design): off and at SIZE 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 50;
+    using C = effects::Colossus;
+    const C::Settings d;
+    const ToText asSize = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("As It Is") : value >= 0.999f ? juce::String ("Colossal")
+                              : juce::String (juce::roundToInt (100.0f * value)) + "% size";
+    };
+    const ToText asHall = [] (float value, int) { return juce::String (C::hallSeconds (value), 1) + " s"; };
+    layout.add (makeSwitch (ParamIDs::colossusOn, "Colossus On", v, false));
+    layout.add (makeFloat (ParamIDs::colossusSize, "Colossus Size", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asSize));
+    layout.add (makeFloat (ParamIDs::colossusDepth, "Colossus Depth", { 0.0f, 1.0f, 0.01f }, d.depth, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusWeight, "Colossus Weight", { 0.0f, 1.0f, 0.01f }, d.weight, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusHall, "Colossus Hall", { 0.0f, 1.0f, 0.01f }, d.hall, v, asHall));
+    layout.add (makeFloat (ParamIDs::colossusBoom, "Colossus Boom", { 0.0f, 1.0f, 0.01f }, d.boom, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusTone, "Colossus Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
+    layout.add (makeFloat (ParamIDs::colossusWidth, "Colossus Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // CANYON (0.84.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 52;
+    using C = effects::Canyon;
+    const C::Settings d;
+    const ToText asAmount = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Open Plain") : juce::String (juce::roundToInt (100.0f * value)) + "% in";
+    };
+    const ToText asSize = [] (float value, int) { return juce::String (juce::roundToInt (1000.0f * C::nearSeconds (value))) + " ms"; };
+    const ToText asRepeats = [] (float value, int) { return juce::String (juce::roundToInt (100.0f * C::feedbackFor (value))) + "% back"; };
+    const ToText asTone = [] (float value, int)
+    {
+        const auto hz = C::toneHz (value);
+        return hz >= 1000.0f ? juce::String (hz / 1000.0f, 1) + " kHz" : juce::String (juce::roundToInt (hz)) + " Hz";
+    };
+    layout.add (makeSwitch (ParamIDs::canyonOn, "Canyon On", v, false));
+    layout.add (makeFloat (ParamIDs::canyonAmount, "Canyon Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeFloat (ParamIDs::canyonSize, "Canyon Size", { 0.0f, 1.0f, 0.01f }, d.size, v, asSize));
+    layout.add (makeChoice (ParamIDs::canyonFar, "Canyon Far Wall", v, C::farNames, d.far));
+    layout.add (makeFloat (ParamIDs::canyonRepeats, "Canyon Repeats", { 0.0f, 1.0f, 0.01f }, d.repeats, v, asRepeats));
+    layout.add (makeFloat (ParamIDs::canyonTone, "Canyon Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::canyonWidth, "Canyon Width", { 0.0f, 1.0f, 0.01f }, d.width, v, asPercent));
+}
+
+void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // JACK-IN (0.85.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 53;
+    using J = effects::JackIn;
+    const J::Settings d;
+    const ToText asAmount = [] (float value, int)
+    {
+        return value < 0.001f ? juce::String ("Untouched") : juce::String (juce::roundToInt (100.0f * J::takeChance (value))) + "% taken";
+    };
+    layout.add (makeSwitch (ParamIDs::jackinOn, "Jack-In On", v, false));
+    layout.add (makeFloat (ParamIDs::jackinAmount, "Jack-In Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeChoice (ParamIDs::jackinSlice, "Jack-In Slice", v, J::sliceNames, d.slice));
+    layout.add (makeChoice (ParamIDs::jackinReach, "Jack-In Reach", v, J::reachNames, d.reach));
+    layout.add (makeFloat (ParamIDs::jackinChaos, "Jack-In Chaos", { 0.0f, 1.0f, 0.01f }, d.chaos, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jackinCrush, "Jack-In Crush", { 0.0f, 1.0f, 0.01f }, d.crush, v, asPercent));
+    layout.add (makeFloat (ParamIDs::jackinDrops, "Jack-In Drops", { 0.0f, 1.0f, 0.01f }, d.drops, v, asPercent));
+}
+
+void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // HYPERJUMP (0.86.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 54;
+    using H = effects::HyperJump;
+    const H::Settings d;
+    const ToText asRise = [] (float value, int) { return "+" + juce::String (juce::roundToInt (H::maxRiseSemitones * value)) + " st"; };
+    layout.add (makeSwitch (ParamIDs::hyperjumpOn, "Hyperjump On", v, false));
+    layout.add (makeFloat (ParamIDs::hyperjumpAmount, "Hyperjump Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::hyperjumpLength, "Hyperjump Length", v, H::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::hyperjumpMode, "Hyperjump Mode", v, H::modeNames, d.mode));
+    layout.add (makeFloat (ParamIDs::hyperjumpRise, "Hyperjump Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
+    layout.add (makeFloat (ParamIDs::hyperjumpChop, "Hyperjump Chop", { 0.0f, 1.0f, 0.01f }, d.chop, v, asPercent));
+    layout.add (makeFloat (ParamIDs::hyperjumpHit, "Hyperjump Hit", { 0.0f, 1.0f, 0.01f }, d.hit, v, asPercent));
+}
+
+void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SWEEP (0.87.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 55;
+    using W = effects::Sweep;
+    const W::Settings d;
+    const ToText asCenter = [] (float value, int) { return juce::String (juce::roundToInt (W::centerHz (value))) + " Hz"; };
+    const ToText asRange = [] (float value, int) { return juce::String (W::rangeOctaves (value), 1) + " oct"; };
+    layout.add (makeSwitch (ParamIDs::sweepOn, "Sweep On", v, false));
+    layout.add (makeFloat (ParamIDs::sweepAmount, "Sweep Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::sweepLength, "Sweep Length", v, W::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::sweepShape, "Sweep Shape", v, W::shapeNames, d.shape));
+    layout.add (makeChoice (ParamIDs::sweepFilter, "Sweep Filter", v, W::filterNames, d.filter));
+    layout.add (makeFloat (ParamIDs::sweepCenter, "Sweep Center", { 0.0f, 1.0f, 0.01f }, d.center, v, asCenter));
+    layout.add (makeFloat (ParamIDs::sweepRange, "Sweep Range", { 0.0f, 1.0f, 0.01f }, d.range, v, asRange));
+    layout.add (makeFloat (ParamIDs::sweepResonance, "Sweep Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::sweepPhaser, "Sweep Phaser", { 0.0f, 1.0f, 0.01f }, d.phaser, v, asPercent));
+}
+
+void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // REDLINE (0.88.0, our own design): off and at THROTTLE 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 56;
+    using R = effects::Redline;
+    const R::Settings d;
+    const ToText asRise = [] (float value, int) { return "+" + juce::String (R::riseSemitones (value), 1) + " st"; };
+    const ToText asTone = [] (float value, int) { return juce::String (R::toneHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::redlineOn, "Redline On", v, false));
+    layout.add (makeFloat (ParamIDs::redlineThrottle, "Redline Throttle", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::redlineGear, "Redline Gear", v, R::gearNames, d.gear));
+    layout.add (makeFloat (ParamIDs::redlineThrob, "Redline Throb", { 0.0f, 1.0f, 0.01f }, d.throb, v, asPercent));
+    layout.add (makeFloat (ParamIDs::redlineScream, "Redline Scream", { 0.0f, 1.0f, 0.01f }, d.scream, v, asPercent));
+    layout.add (makeFloat (ParamIDs::redlineRise, "Redline Rise", { 0.0f, 1.0f, 0.01f }, d.rise, v, asRise));
+    layout.add (makeFloat (ParamIDs::redlineWhine, "Redline Whine", { 0.0f, 1.0f, 0.01f }, d.whine, v, asPercent));
+    layout.add (makeFloat (ParamIDs::redlineTone, "Redline Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asTone));
+    layout.add (makeFloat (ParamIDs::redlineShift, "Redline Shift", { 0.0f, 1.0f, 0.01f }, d.shift, v, asPercent));
+}
+
+void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // FREEZE TAG (0.89.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 57;
+    using F = effects::FreezeTag;
+    const F::Settings d;
+    const ToText asSlice = [] (float value, int) { return juce::String (juce::roundToInt (1000.0f * F::sliceSeconds (value))) + " ms"; };
+    const ToText asFrost = [] (float value, int) { return juce::String (F::frostHz (value) / 1000.0f, 1) + " kHz"; };
+    layout.add (makeSwitch (ParamIDs::freezeOn, "Freeze Tag On", v, false));
+    layout.add (makeFloat (ParamIDs::freezeAmount, "Freeze Tag Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::freezeCycle, "Freeze Tag Cycle", v, F::cycleNames, d.cycle));
+    layout.add (makeChoice (ParamIDs::freezeHold, "Freeze Tag Hold", v, F::holdNames, d.hold));
+    layout.add (makeFloat (ParamIDs::freezeSlice, "Freeze Tag Slice", { 0.0f, 1.0f, 0.01f }, d.slice, v, asSlice));
+    layout.add (makeFloat (ParamIDs::freezeTremble, "Freeze Tag Tremble", { 0.0f, 1.0f, 0.01f }, d.tremble, v, asPercent));
+    layout.add (makeFloat (ParamIDs::freezeFrost, "Freeze Tag Frost", { 0.0f, 1.0f, 0.01f }, d.frost, v, asFrost));
+    layout.add (makeFloat (ParamIDs::freezeCaught, "Freeze Tag Caught", { 0.0f, 1.0f, 0.01f }, d.caught, v, asPercent));
+    layout.add (makeFloat (ParamIDs::freezeLevel, "Freeze Tag Level", { 0.0f, 1.0f, 0.01f }, d.level, v, asPercent));
+}
+
+void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // CROSSROADS (0.90.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 58;
+    namespace C = synth::crossroads;
+    const C::Settings d;
+    const effects::Crossroads::Settings e;
+    const ToText asAmount = [] (float value, int)
+    {
+        const auto steps = C::stepsFor (value, 2);
+        return juce::String (juce::roundToInt (100.0f * value)) + "%" + (steps > 0 ? " (pulling)" : "");
+    };
+    const ToText asBend = [] (float value, int) { return juce::String (juce::roundToInt (1000.0 * C::bendSeconds (value))) + " ms"; };
+    layout.add (makeSwitch (ParamIDs::crossOn, "Crossroads On", v, false));
+    layout.add (makeFloat (ParamIDs::crossAmount, "Crossroads Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asAmount));
+    layout.add (makeChoice (ParamIDs::crossLength, "Crossroads Length", v, C::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::crossKey, "Crossroads Key", v, synth::sirocco::keyNames, d.key));
+    layout.add (makeChoice (ParamIDs::crossScale, "Crossroads Scale", v, synth::arp::scaleNames, d.scale));
+    layout.add (makeChoice (ParamIDs::crossPull, "Crossroads Pull", v, C::pullNames, d.pull));
+    layout.add (makeFloat (ParamIDs::crossBend, "Crossroads Bend", { 0.0f, 1.0f, 0.01f }, d.bend, v, asBend));
+    layout.add (makeFloat (ParamIDs::crossLight, "Crossroads Light", { 0.0f, 1.0f, 0.01f }, e.light, v, asPercent));
+    layout.add (makeFloat (ParamIDs::crossDark, "Crossroads Dark", { 0.0f, 1.0f, 0.01f }, e.dark, v, asPercent));
+}
+
+void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // GEARWORKS (0.91.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 59;
+    using G = effects::Gearworks;
+    const G::Settings d;
+    layout.add (makeSwitch (ParamIDs::gearOn, "Gearworks On", v, false));
+    layout.add (makeFloat (ParamIDs::gearAmount, "Gearworks Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::gearRatio, "Gearworks Ratio", v, G::ratioNames, d.ratio));
+    layout.add (makeChoice (ParamIDs::gearDivision, "Gearworks Division", v, G::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::gearBite, "Gearworks Bite", { 0.0f, 1.0f, 0.01f }, d.bite, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearMetal, "Gearworks Metal", { 0.0f, 1.0f, 0.01f }, d.metal, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearGrind, "Gearworks Grind", { 0.0f, 1.0f, 0.01f }, d.grind, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearSteam, "Gearworks Steam", { 0.0f, 1.0f, 0.01f }, d.steam, v, asPercent));
+    layout.add (makeFloat (ParamIDs::gearClank, "Gearworks Clank", { 0.0f, 1.0f, 0.01f }, d.clank, v, asPercent));
+}
+
+void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SORT (0.93.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 61;
+    using S = effects::Sort;
+    const S::Settings d;
+    const ToText asEdge = [] (float value, int) { return juce::String (S::edgeMs (value), 1) + " ms"; };
+    layout.add (makeSwitch (ParamIDs::sortOn, "Sort On", v, false));
+    layout.add (makeFloat (ParamIDs::sortAmount, "Sort Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::sortSlice, "Sort Slice", v, S::sliceNames, d.slice));
+    layout.add (makeChoice (ParamIDs::sortLength, "Sort Length", v, S::lengthNames, d.length));
+    layout.add (makeChoice (ParamIDs::sortOrder, "Sort Order", v, S::orderNames, d.order));
+    layout.add (makeChoice (ParamIDs::sortGaps, "Sort Gaps", v, S::gapNames, d.gaps));
+    layout.add (makeFloat (ParamIDs::sortEdge, "Sort Edge", { 0.0f, 1.0f, 0.01f }, d.edge, v, asEdge));
+    layout.add (makeFloat (ParamIDs::sortStrike, "Sort Strike", { 0.0f, 1.0f, 0.01f }, d.strike, v, asPercent));
+}
+
+void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // WOBBLE (0.97.0, our own design): off and at AMOUNT 0 by default, so projects and presets from before are unchanged.
+    constexpr int v = 63;
+    using W = effects::Wobble;
+    const W::Settings d;
+    const ToText asLow = [] (float value, int) { return juce::String (juce::roundToInt (W::lowHz (value))) + " Hz"; };
+    const ToText asRange = [] (float value, int) { return juce::String (W::rangeOctaves (value), 1) + " oct"; };
+    layout.add (makeSwitch (ParamIDs::wobbleOn, "Wobble On", v, false));
+    layout.add (makeFloat (ParamIDs::wobbleAmount, "Wobble Amount", { 0.0f, 1.0f, 0.01f }, 0.0f, v, asPercent));
+    layout.add (makeChoice (ParamIDs::wobblePattern, "Wobble Pattern", v, W::patternNames, d.pattern));
+    layout.add (makeChoice (ParamIDs::wobbleShape, "Wobble Shape", v, W::shapeNames, d.shape));
+    layout.add (makeFloat (ParamIDs::wobbleLow, "Wobble Low", { 0.0f, 1.0f, 0.01f }, d.low, v, asLow));
+    layout.add (makeFloat (ParamIDs::wobbleRange, "Wobble Range", { 0.0f, 1.0f, 0.01f }, d.range, v, asRange));
+    layout.add (makeFloat (ParamIDs::wobbleResonance, "Wobble Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
+    layout.add (makeFloat (ParamIDs::wobbleTalk, "Wobble Talk", { 0.0f, 1.0f, 0.01f }, d.talk, v, asPercent));
+    layout.add (makeFloat (ParamIDs::wobbleDrive, "Wobble Drive", { 0.0f, 1.0f, 0.01f }, d.drive, v, asPercent));
 }

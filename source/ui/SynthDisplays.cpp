@@ -552,9 +552,16 @@ void ShapeDisplay::paint (juce::Graphics& g)
 //==============================================================================
 FilterDisplay::FilterDisplay (juce::AudioProcessorValueTreeState& s) : ParameterDisplay (s) {}
 
+void FilterDisplay::setFilter (int newWhich)
+{
+    which = juce::jlimit (0, 1, newWhich);
+    repaint();
+}
+
 std::vector<float> FilterDisplay::snapshot() const
 {
-    return { value (ParamIDs::fltOn), value (ParamIDs::fltType), value (ParamIDs::fltCutoff), value (ParamIDs::fltRes) };
+    const auto& ids = ParamIDs::filterIds[which];
+    return { (float) which, value (ids.on), value (ids.type), value (ids.cutoff), value (ids.res), value (ids.lowCut), value (ids.lowCutRes) };
 }
 
 double FilterDisplay::responseDb (synth::FilterType type, double cutoffHz, double resonance, double hz)
@@ -611,17 +618,31 @@ void FilterDisplay::paint (juce::Graphics& g)
     g.setColour (ParagonColours::panelEdge);
     g.drawHorizontalLine (juce::roundToInt (yFor (0.0)), area.getX(), area.getRight());
 
-    const auto on = value (ParamIDs::fltOn) > 0.5f;
-    const auto type = (synth::FilterType) juce::jlimit (0, synth::filterTypeNames.size() - 1, juce::roundToInt (value (ParamIDs::fltType)));
-    const auto cutoff = (double) value (ParamIDs::fltCutoff);
-    const auto resonance = (double) value (ParamIDs::fltRes);
+    const auto& ids = ParamIDs::filterIds[which];
+    const auto on = value (ids.on) > 0.5f;
+    const auto type = (synth::FilterType) juce::jlimit (0, synth::filterTypeNames.size() - 1, juce::roundToInt (value (ids.type)));
+    const auto cutoff = (double) value (ids.cutoff);
+    const auto resonance = (double) value (ids.res);
+    // 0.96.0: the LOW CUT in front of it (as steep as the filter: the 24 dB types get a 24 dB low cut).
+    const auto lowCut = (double) value (ids.lowCut);
+    const auto hasLowCut = lowCut > synth::FilterSettings::lowCutOffHz;
+    const auto lowCutResonance = (double) value (ids.lowCutRes);
+    const auto steep = type == synth::FilterType::lp24 || type == synth::FilterType::hp24 || type == synth::FilterType::bp24
+                    || type == synth::FilterType::bs24;
+    const auto totalDb = [&] (double hz)
+    {
+        auto db = responseDb (type, cutoff, resonance, hz);
+        if (hasLowCut)
+            db += responseDb (steep ? synth::FilterType::hp24 : synth::FilterType::hp12, lowCut, lowCutResonance, hz);
+        return db;
+    };
 
     juce::Path path;
     const auto points = juce::jmax (2, (int) area.getWidth());
     for (int i = 0; i < points; ++i)
     {
         const auto hz = minHz * std::pow (maxHz / minHz, (double) i / (points - 1));
-        const auto point = juce::Point<float> (area.getX() + (float) i, yFor (responseDb (type, cutoff, resonance, hz)));
+        const auto point = juce::Point<float> (area.getX() + (float) i, yFor (totalDb (hz)));
         if (i == 0) path.startNewSubPath (point); else path.lineTo (point);
     }
     DisplayStyle::drawCurve (g, path, area, area.getBottom(), on);
@@ -629,7 +650,15 @@ void FilterDisplay::paint (juce::Graphics& g)
     // The cutoff, marked.
     const auto x = xFor (juce::jlimit (minHz, maxHz, cutoff));
     g.setColour (ParagonColours::accent.withAlpha (on ? 0.8f : 0.3f));
-    g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ x, yFor (responseDb (type, cutoff, resonance, cutoff)) }));
+    g.fillEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ x, yFor (totalDb (cutoff)) }));
+    if (hasLowCut)
+    {
+        const auto lx = xFor (juce::jlimit (minHz, maxHz, lowCut));
+        g.drawEllipse (juce::Rectangle<float> (7.0f, 7.0f).withCentre ({ lx, yFor (totalDb (lowCut)) }), 1.5f);
+    }
+    g.setColour (ParagonColours::textDim);
+    g.setFont (juce::FontOptions (11.0f, juce::Font::bold));
+    g.drawText (which == 0 ? "FILTER 1" : "FILTER 2", bounds.reduced (10.0f, 8.0f), juce::Justification::topLeft, false);
 
     if (! on)
     {

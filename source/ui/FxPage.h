@@ -18,8 +18,26 @@
 #include "ui/SpectrePage.h"
 #include "ui/LeviathanPage.h"
 #include "ui/NuclearSpringPage.h"
-#include "ui/LightSpeedPage.h"
 #include "ui/BloomPage.h"
+#include "ui/LegionPage.h"
+#include "ui/OverchargePage.h"
+#include "ui/AftermathPage.h"
+#include "ui/SubmergePage.h"
+#include "ui/LockstepPage.h"
+#include "ui/ColossusPage.h"
+#include "ui/CanyonPage.h"
+#include "ui/JackInPage.h"
+#include "ui/HyperJumpPage.h"
+#include "ui/NaviComputerPage.h"
+#include "ui/SweepPage.h"
+#include "ui/RedlinePage.h"
+#include "ui/FreezeTagPage.h"
+#include "ui/CrossroadsPage.h"
+#include "ui/GearworksPage.h"
+#include "ui/RagtimePage.h"
+#include "ui/SortPage.h"
+#include "ui/WobblePage.h"
+#include "ui/RunnerPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -59,7 +77,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, lightSpeed, bloom };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks, ragtime, sort, wobble, runner };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -86,8 +104,26 @@ public:
     SpectrePage& getSpectrePage() noexcept { return spectrePage; }
     LeviathanPage& getLeviathanPage() noexcept { return leviathanPage; }
     NuclearSpringPage& getNuclearSpringPage() noexcept { return nuclearSpringPage; }
-    LightSpeedPage& getLightSpeedPage() noexcept { return lightSpeedPage; }
+    HyperJumpPage& getHyperJumpPage() noexcept { return hyperJumpPage; }
+    NaviComputerPage& getNaviComputerPage() noexcept { return naviComputerPage; }
+    SweepPage& getSweepPage() noexcept { return sweepPage; }
+    RedlinePage& getRedlinePage() noexcept { return redlinePage; }
+    FreezeTagPage& getFreezeTagPage() noexcept { return freezeTagPage; }
+    CrossroadsPage& getCrossroadsPage() noexcept { return crossroadsPage; }
+    GearworksPage& getGearworksPage() noexcept { return gearworksPage; }
+    RagtimePage& getRagtimePage() noexcept { return ragtimePage; }
+    SortPage& getSortPage() noexcept { return sortPage; }
+    WobblePage& getWobblePage() noexcept { return wobblePage; }
+    RunnerPage& getRunnerPage() noexcept { return runnerPage; }
     BloomPage& getBloomPage() noexcept { return bloomPage; }
+    LegionPage& getLegionPage() noexcept { return legionPage; }
+    OverchargePage& getOverchargePage() noexcept { return overchargePage; }
+    AftermathPage& getAftermathPage() noexcept { return aftermathPage; }
+    SubmergePage& getSubmergePage() noexcept { return submergePage; }
+    LockstepPage& getLockstepPage() noexcept { return lockstepPage; }
+    ColossusPage& getColossusPage() noexcept { return colossusPage; }
+    CanyonPage& getCanyonPage() noexcept { return canyonPage; }
+    JackInPage& getJackInPage() noexcept { return jackInPage; }
     EchoesPage& getEchoesPage() noexcept { return echoesPage; }
     CracklePage& getCracklePage() noexcept { return cracklePage; }
     DownpourPage& getDownpourPage() noexcept { return downpourPage; }
@@ -113,7 +149,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 20> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 38> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -140,8 +176,26 @@ private:
     SpectrePage spectrePage;
     LeviathanPage leviathanPage;
     NuclearSpringPage nuclearSpringPage;
-    LightSpeedPage lightSpeedPage;
+    HyperJumpPage hyperJumpPage;     // 0.86.0 (LIGHTSPEED's place)
     BloomPage bloomPage;
+    LegionPage legionPage;   // 0.76.0
+    OverchargePage overchargePage;   // 0.77.0
+    AftermathPage aftermathPage;     // 0.79.0
+    SubmergePage submergePage;       // 0.80.0
+    LockstepPage lockstepPage;       // 0.81.0
+    ColossusPage colossusPage;       // 0.82.0
+    CanyonPage canyonPage;           // 0.84.0
+    JackInPage jackInPage;           // 0.85.0
+    NaviComputerPage naviComputerPage;   // 0.86.0
+    SweepPage sweepPage;                 // 0.87.0
+    RedlinePage redlinePage;             // 0.88.0
+    FreezeTagPage freezeTagPage;         // 0.89.0
+    CrossroadsPage crossroadsPage;       // 0.90.0
+    GearworksPage gearworksPage;         // 0.91.0
+    RagtimePage ragtimePage;             // 0.92.0
+    SortPage sortPage;                   // 0.93.0
+    WobblePage wobblePage;               // 0.97.0
+    RunnerPage runnerPage;               // 1.0.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

@@ -241,6 +241,13 @@ namespace effects
         const auto sourceVolts = -volts;
         solve (sourceVolts, false, 12);
 
+        // (PR7-K 0.83.0) No node of a 9 V circuit goes anywhere near 45 V. When the solve doesn't settle (loud,
+        // bright input), the start-from-the-trend guess above carried the error on from sample to sample and the
+        // voltages drifted without end: a fuzz test reached +120 dB. A settled sample is never near this bound,
+        // so the sound is unchanged; it only stops the drift.
+        for (auto& node : v)
+            node = std::clamp (node, -5.0 * railVolts, 5.0 * railVolts);
+
         // Each capacitor's history, for the next sample.
         for (auto& cap : junctions)
         {

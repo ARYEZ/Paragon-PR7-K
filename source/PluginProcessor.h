@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
@@ -145,6 +147,27 @@ public:
     // Chooses a factory table instead (forgetting a loaded one), and WAVETABLE.
     void chooseFactoryWavetable (int osc, int index);
 
+    // WAVETABLE PACKS (0.76.0): a preset can name a table in a pack on this computer ("{wt:<pack folder>}/<file>",
+    // `Rig::wavetableRefs`) instead of carrying it, for packs whose licence forbids passing the files on. The pack's
+    // folder goes in the presets folder's "Libraries". Found: it plays (and a project or user preset saved from it
+    // carries it, as any loaded table); missing: the oscillator plays the factory table its TABLE names, and this
+    // says what's missing.
+    juce::String getWavetableRef (int osc) const { return wavetableRefs[(size_t) juce::jlimit (0, 7, osc)]; }
+    bool isWavetableMissing (int osc) const { return wavetableMissing[(size_t) juce::jlimit (0, 7, osc)]; }
+    static juce::String wavetableRefFor (const juce::String& packFolder, const juce::String& fileInPack)
+    {
+        return "{wt:" + packFolder + "}/" + fileInPack;
+    }
+    // Where a reference's file is (it may not exist): the pack folder under Libraries, or a plain path.
+    juce::File resolveWavetableRef (const juce::String& ref) const;
+    static juce::String wavetablePackOf (const juce::String& ref)
+    {
+        return ref.startsWith ("{wt:") ? ref.fromFirstOccurrenceOf ("{wt:", false, false).upToFirstOccurrenceOf ("}", false, false)
+                                       : juce::String ("a wavetable file");
+    }
+    // Reads a missing pack table again (once the pack has been put in place). True if it's found now.
+    bool retryWavetableRef (int osc);
+
     //==========================================================================
     // SFZ INSTRUMENTS (0.71.0, message thread)
 
@@ -155,6 +178,8 @@ public:
     enum class SfzState { none, loading, loaded, failed };
     SfzState getSfzState (int osc) const noexcept { return sfzStates[(size_t) juce::jlimit (0, 7, osc)]; }
     std::shared_ptr<const synth::sfz::Instrument> getSfzInstrument (int osc) const { return sfzInstruments[(size_t) juce::jlimit (0, 7, osc)]; }
+    // KEY SWITCHES (0.75.0): the oscillator's playing style now (its switch key; -1: none).
+    int getSfzSwitch (int osc) const noexcept { return engine.getSfzSwitch (osc); }
     juce::String getSfzRef (int osc) const { return sfzRefs[(size_t) juce::jlimit (0, 7, osc)]; }
     juce::String getSfzName (int osc) const;     // the instrument's name, or the file's while loading
     juce::String getSfzProblem (int osc) const { return sfzProblems[(size_t) juce::jlimit (0, 7, osc)]; }
@@ -178,10 +203,28 @@ public:
     void cancelLibraryDownload() { libraryDownload.cancel(); }
     const libraries::Download& getLibraryDownload() const noexcept { return libraryDownload; }
     libraries::Download& getLibraryDownloadForTest() noexcept { return libraryDownload; }
+    int getRetiredSfzCountForTest() const noexcept { return (int) retiredSfz.size(); }   // (0.82.1) instruments kept for notes still reading them
+    void runTimerForTest() { timerCallback(); }   // (0.82.1) the message thread's tick, where retired instruments are freed
     bool isLibraryInstalled (const libraries::Library& library) const
     {
+        // (0.89.2) Found incomplete when an instrument of it loaded (samples missing): not installed until fetched again.
+        if (incompleteLibraries.count (library.folder) > 0)
+            return false;
+        // (0.89.1) A library whose archive alters its audio counts only once it's been put back as stored (and only
+        // in the Libraries folder, where the download keeps it).
+        if (library.rawBase.isNotEmpty())
+            return libraries::isComplete (library, getLibrariesFolder().getChildFile (library.folder));
         return getLibrariesFolder().getChildFile (library.folder).getChildFile (library.sfz).existsAsFile()
             || resolveSfz (libraries::refFor (library)).existsAsFile();
+    }
+    // 0.81.0: a sampled version may play on more than one library (NEW EDEN's organ and choir): the first it needs
+    // that isn't installed, or nullptr when all are.
+    const libraries::Library* missingLibraryOf (const Rig& rig) const
+    {
+        for (const auto& [osc, ref] : rig.sfz)
+            if (const auto* library = libraries::libraryFor (ref); library != nullptr && ! isLibraryInstalled (*library))
+                return library;
+        return nullptr;
     }
     // The library an oscillator's SFZ couldn't be found for, if it's one PR7-K can download (else null).
     const libraries::Library* missingLibrary (int osc) const;
@@ -253,6 +296,15 @@ public:
         rack->loFi.seedRandom (seed);
         rack->delay.seedRandom (seed);
         rack->crackle.seedRandom ((std::uint32_t) seed);
+        rack->overcharge.seedRandom ((std::uint32_t) seed);
+        rack->aftermath.seedRandom ((std::uint32_t) seed);
+        rack->submerge.seedRandom ((std::uint32_t) seed);
+        rack->lockstep.seedRandom ((std::uint32_t) seed);
+        rack->jackIn.seedRandom ((std::uint32_t) seed);
+        rack->freezeTag.seedRandom ((std::uint32_t) seed);
+        rack->gearworks.seedRandom ((std::uint32_t) seed);
+        rack->sort.seedRandom ((std::uint32_t) seed);
+        rack->colossus.seedRandom ((std::uint32_t) seed);
         rack->downpour.seedRandom ((std::uint32_t) seed);
         rack->infernal.seedRandom ((std::uint32_t) seed);
         rack->blackHole.seedRandom ((std::uint32_t) seed);
@@ -260,7 +312,7 @@ public:
         rack->haze.seedRandom ((std::uint32_t) seed);
         rack->spectre.seedRandom ((std::uint32_t) seed);
         rack->leviathan.seedRandom ((std::uint32_t) seed);
-        rack->lightSpeed.seedRandom ((std::uint32_t) seed);
+        rack->hyperJump.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -386,10 +438,53 @@ public:
     // NUCLEARSPRING (0.69.0): its settings (MIX, DRIP, BOING as the matrix moves them).
     effects::NuclearSpring::Settings getNuclearSpringSettings() const noexcept;
     const effects::NuclearSpring& getNuclearSpring() const noexcept { return rack->nuclearSpring; }
-    effects::LightSpeed::Settings getLightSpeedSettings() const noexcept;
-    const effects::LightSpeed& getLightSpeed() const noexcept { return rack->lightSpeed; }
     effects::Bloom::Settings getBloomSettings() const noexcept;
     const effects::Bloom& getBloom() const noexcept { return rack->bloom; }
+    effects::Legion::Settings getLegionSettings() const noexcept;                // LEGION (0.76.0)
+    const effects::Legion& getLegion() const noexcept { return rack->legion; }
+    effects::Overcharge::Settings getOverchargeSettings() const noexcept;        // OVERCHARGE (0.77.0)
+    const effects::Overcharge& getOvercharge() const noexcept { return rack->overcharge; }
+    effects::Aftermath::Settings getAftermathSettings() const noexcept;          // AFTERMATH (0.79.0)
+    const effects::Aftermath& getAftermath() const noexcept { return rack->aftermath; }
+    effects::Submerge::Settings getSubmergeSettings() const noexcept;            // SUBMERGE (0.80.0)
+    const effects::Submerge& getSubmerge() const noexcept { return rack->submerge; }
+    effects::Lockstep::Settings getLockstepSettings() const noexcept;            // LOCKSTEP (0.81.0)
+    effects::Colossus::Settings getColossusSettings() const noexcept;            // COLOSSUS (0.82.0)
+    effects::Canyon::Settings getCanyonSettings() const noexcept;                // CANYON (0.84.0)
+    const effects::Canyon& getCanyon() const noexcept { return rack->canyon; }
+    effects::JackIn::Settings getJackInSettings() const noexcept;                // JACK-IN (0.85.0)
+    const effects::JackIn& getJackIn() const noexcept { return rack->jackIn; }
+    effects::HyperJump::Settings getHyperJumpSettings() const noexcept;          // HYPERJUMP (0.86.0)
+    const effects::HyperJump& getHyperJump() const noexcept { return rack->hyperJump; }
+    effects::Sweep::Settings getSweepSettings() const noexcept;                  // SWEEP (0.87.0)
+    const effects::Sweep& getSweep() const noexcept { return rack->sweep; }
+    effects::Redline::Settings getRedlineSettings() const noexcept;              // REDLINE (0.88.0)
+    const effects::Redline& getRedline() const noexcept { return rack->redline; }
+    effects::FreezeTag::Settings getFreezeTagSettings() const noexcept;          // FREEZE TAG (0.89.0)
+    effects::Crossroads::Settings getCrossroadsSettings() const noexcept;        // CROSSROADS (0.90.0): the effect half
+    synth::crossroads::Settings getCrossroadsPull() const noexcept;              // ...and the engine half
+    const effects::FreezeTag& getFreezeTag() const noexcept { return rack->freezeTag; }
+    const effects::Crossroads& getCrossroads() const noexcept { return rack->crossroads; }
+    int getCrossroadsSide() const noexcept { return engine.getCrossSide(); }   // CROSSROADS: -1 off, 0 light, 1 dark
+    effects::Gearworks::Settings getGearworksSettings() const noexcept;          // GEARWORKS (0.91.0)
+    const effects::Gearworks& getGearworks() const noexcept { return rack->gearworks; }
+    effects::Sort::Settings getSortSettings() const noexcept;                    // SORT (0.93.0)
+    const effects::Sort& getSort() const noexcept { return rack->sort; }
+    effects::Wobble::Settings getWobbleSettings() const noexcept;                // WOBBLE (0.97.0)
+    const effects::Wobble& getWobble() const noexcept { return rack->wobble; }
+    // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
+    synth::navi::Settings getNaviSettings() const noexcept;
+    int getNaviStep() const noexcept { return engine.getNaviStep(); }
+    int getAmpSpark() const noexcept { return engine.getAmpSpark(); }       // THE GRID's spark (0.98.0): Engine::getAmpSpark
+    int getFilterSpark() const noexcept { return engine.getFilterSpark(); }
+    synth::ragtime::Settings getRagtimeSettings() const noexcept;                // RAGTIME (0.92.0)
+    int getRagtimeStep() const noexcept { return engine.getRagtimeStep(); }
+    int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }
+    synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (1.0.0)
+    int getRunnerStrikes() const noexcept { return engine.getRunnerStrikes(); }
+    int getRunnerBeatPosition() const noexcept { return engine.getRunnerBeatPosition(); }
+    const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
+    const effects::Colossus& getColossus() const noexcept { return rack->colossus; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).
     std::array<std::uint8_t, 128> getSoundingNoteFlags() const noexcept
     {
@@ -427,6 +522,8 @@ public:
     }
 
 private:
+    std::set<juce::String> incompleteLibraries;   // (0.89.2) library folders found missing samples (message thread)
+    bool fellBackForIncomplete = false;
     std::array<std::atomic<std::uint8_t>, 128> soundingNotes {};   // for SIROCCO's page (getSoundingNoteFlags)
     void processChunk (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, int start, int numSamples);
     void processModFx (juce::dsp::AudioBlock<float> block);
@@ -471,7 +568,7 @@ private:
         bool operator== (const Snapshot& other) const
         {
             return rig.parameters == other.rig.parameters && rig.wavetables == other.rig.wavetables && rig.spectra == other.rig.spectra
-                && rig.sfz == other.rig.sfz
+                && rig.sfz == other.rig.sfz && rig.wavetableRefs == other.rig.wavetableRefs
                 && rig.drawings == other.rig.drawings && rig.modulation == other.rig.modulation && current == other.current;
         }
     };
@@ -515,6 +612,13 @@ private:
     std::array<std::atomic<const synth::Wavetable*>, ParamIDs::numOscillators> tablesForAudio {};
     std::array<int, ParamIDs::numOscillators> playingFactoryTable {};   // which factory table each plays (-1: none, or a loaded one)
     std::vector<std::pair<std::shared_ptr<const synth::Wavetable>, double>> retiredTables;
+    // Wavetable packs (0.76.0): each oscillator's reference, whether it's missing, and the table last read for it
+    // (kept so undo, the same preset again or a project don't read the file again).
+    std::array<juce::String, ParamIDs::numOscillators> wavetableRefs;
+    std::array<bool, ParamIDs::numOscillators> wavetableMissing {};
+    std::array<std::pair<juce::String, std::shared_ptr<const synth::Wavetable>>, ParamIDs::numOscillators> packTables;
+    // Sets oscillator `osc` from a reference: its table if the pack has it (loadedTables), else none (the fallback).
+    void applyWavetableRef (int osc, const juce::String& ref);
 
     // SFZ (0.71.0): each oscillator's instrument (its reference, what's loaded, handed to the audio thread as a plain
     // pointer); replaced ones kept until no note can still be reading them (their longest sample + 2 s).
@@ -533,6 +637,10 @@ private:
     std::vector<SfzLoaded> sfzLoaded;
     std::atomic<int> sfzLoadsRunning { 0 };
     std::shared_ptr<std::atomic<bool>> sfzCancel = std::make_shared<std::atomic<bool>> (false);
+    // (0.89.2) Each oscillator's load under way, told to stop when a newer choice replaces it: loads ran to the end
+    // after a preset change, one at a time, so stepping through presets queued the big libraries and the preset chosen
+    // waited silent behind them (the owner's GUNSLINGER report).
+    std::array<std::shared_ptr<std::atomic<bool>>, ParamIDs::numOscillators> sfzJobCancel {};
     void startSfzLoad (int osc, const juce::String& ref);
     libraries::Download libraryDownload;
     libraries::Download::State libraryStateSeen = libraries::Download::State::idle;

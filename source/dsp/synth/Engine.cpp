@@ -343,11 +343,14 @@ namespace synth
         sampleRate = newSampleRate;
         killStep = (float) (1.0 / juce::jmax (1.0, killMs * 0.001 * sampleRate));
         dcPole = (float) (1.0 - juce::MathConstants<double>::twoPi * 5.0 / sampleRate);
+        ragDown = (float) (1.0 - std::exp (-1.0 / (0.0012 * sampleRate)));   // RAGTIME: the damper lifts in about 1 ms...
+        ragUp = (float) (1.0 - std::exp (-1.0 / (0.002 * sampleRate)));      // ...and the strike comes back in about 2
         (void) tables::get (tables::Wave::saw, 0);   // builds the tables now, not on the first note
         for (auto& voice : voices)
         {
             voice.amp.setSampleRate (sampleRate);
             voice.filter.setSampleRate (sampleRate);
+            voice.filter2.setSampleRate (sampleRate);
         }
         reset();
     }
@@ -363,8 +366,15 @@ namespace synth
         lastPitch = -1.0f;
         modWheel = breath = expression = channelPressure = 0.0f;
         expressionHeard = false;
+        modWheelHeard = false;
         smoothedBend = 0.0f;
         seqClock = 0.0;
+        naviClock = 0.0;
+        crossClock = 0.0;
+        ragClock = 0.0;
+        ragLastStep = std::numeric_limits<std::int64_t>::min();
+        runClock = 0.0;
+        runLastStrike = std::numeric_limits<std::int64_t>::min();
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
@@ -398,12 +408,27 @@ namespace synth
         return count;
     }
 
+    int Engine::getNewestNotes (float* pitches, int capacity) const noexcept
+    {
+        const auto counts = [] (const Voice& v) { return v.playing && ! v.killing && v.held && v.source != answerSource && v.source != tailSource; };
+        auto newest = 1.0e30;
+        for (const auto& v : voices)
+            if (counts (v))
+                newest = juce::jmin (newest, v.seqAge);
+        int count = 0;
+        for (const auto& v : voices)
+            if (counts (v) && v.seqAge <= newest + 0.03 && count < capacity)
+                pitches[count++] = v.pitch;
+        return count;
+    }
+
     //==========================================================================
     void Engine::process (float* left, float* right, int numSamples,
                           const juce::MidiBuffer& midi, int midiStart, const Settings& settings) noexcept
     {
         followMode (settings);
         ampReleaseSeconds = settings.amp.envelope.releaseMs * 0.001f;
+        sfzToWheel = settings.modulation.toModWheel;
 
         // The SHAPERs' EQ bands: the same for every note, so worked out once here.
         for (int k = 0; k < numShapers; ++k)
@@ -488,6 +513,19 @@ namespace synth
                             streamsInUse[(size_t) player.stream] = true;
             streamer->release (streamsInUse);
         }
+
+        // THE GRID's spark: the newest note sounding, where it is in its envelopes (read by the front panel).
+        const Voice* newest = nullptr;
+        for (const auto& v : voices)
+            if (v.playing && ! v.killing && v.amp.isActive() && v.source != answerSource && v.source != tailSource
+                && (newest == nullptr || v.seqAge < newest->seqAge))
+                newest = &v;
+        const auto spark = [] (const Envelope& e)
+        {
+            return (int) e.getStage() * 10000 + juce::jlimit (0, 9999, (int) (e.getProgress() * 9999.0f));
+        };
+        ampSparkShown.store (newest != nullptr ? spark (newest->amp) : -1);
+        filterSparkShown.store (newest != nullptr && newest->filter.isActive() ? spark (newest->filter) : -1);
     }
 
     void Engine::handle (const juce::MidiMessage& message, const Settings& settings) noexcept
@@ -499,7 +537,10 @@ namespace synth
         else if (message.isPitchWheel())
             bend = juce::jlimit (-1.0f, 1.0f, (float) (message.getPitchWheelValue() - 8192) / 8192.0f);
         else if (message.isController() && message.getControllerNumber() == 1)
+        {
             modWheel = (float) message.getControllerValue() / 127.0f;
+            modWheelHeard = true;
+        }
         else if (message.isController() && message.getControllerNumber() == 2)
             breath = (float) message.getControllerValue() / 127.0f;
         else if (message.isController() && message.getControllerNumber() == 11)
@@ -545,6 +586,22 @@ namespace synth
             noteOff (note, settings);
             return;
         }
+        // KEY SWITCHES (0.75.0): a sampled instrument's switch key picks how it's played and plays nothing itself
+        // (nor do the other oscillators: it isn't a note).
+        auto switched = false;
+        for (size_t i = 0; i < settings.oscillators.size(); ++i)
+        {
+            const auto& s = settings.oscillators[i];
+            if (s.on && s.wave == OscWave::sfz && s.instrument != nullptr && s.instrument->isSwitch (note))
+            {
+                switchFor (i, s.instrument);
+                sfzSwitch[i] = note;
+                switchShown[i].store (note);
+                switched = true;
+            }
+        }
+        if (switched)
+            return;
         // LFOs set to FIRST NOTE start with a note when none is held; LAST NOTE with every note.
         const auto anyHeld = std::any_of (voices.begin(), voices.end(), [] (const Voice& v) { return v.playing && v.held && ! v.killing; });
         for (int k = 0; k < mod::numLfos; ++k)
@@ -564,6 +621,20 @@ namespace synth
         const auto seqTrigger = settings.stepSeq.trigger;
         if (seqTrigger == seq::Trigger::lastNote || ((seqTrigger == seq::Trigger::firstNote || seqTrigger == seq::Trigger::song) && ! anyHeld))
             seqClock = 0.0;
+        // NAVICOMPUTER's own clock (the song stopped) starts with the first key down.
+        if (! anyHeld)
+            naviClock = 0.0;
+        // ...and CROSSROADS' (the first stretch is light).
+        if (! anyHeld)
+            crossClock = 0.0;
+        // ...and RAGTIME's (the roll starts with the first key).
+        if (! anyHeld)
+        {
+            ragClock = 0.0;
+            ragLastStep = std::numeric_limits<std::int64_t>::min();
+            runClock = 0.0;   // ...and RUNNER's
+            runLastStrike = std::numeric_limits<std::int64_t>::min();
+        }
         // ...and each oscillator's TRAVEL set to FIRST NOTE or LAST NOTE.
         for (size_t i = 0; i < travelClock.size(); ++i)
         {
@@ -851,6 +922,11 @@ namespace synth
         voice.velocity = velocity;
         voice.age = ++noteCounter;
         voice.pitch = fromPitch;
+        voice.naviSemis = 0.0f;   // NAVICOMPUTER: a new note takes its move at once
+        voice.naviFresh = true;
+        voice.crossSemis = 0.0f;  // CROSSROADS: a new note takes its pull at once
+        voice.crossFresh = true;
+        voice.ragGain = 1.0f;     // RAGTIME: no lift on a new note
         // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
         voice.glowTune = nextGlow();
         voice.glowCutoff = nextGlow();
@@ -867,10 +943,31 @@ namespace synth
         retrigger (voice, note, velocity, true, ! juce::approximatelyEqual (fromPitch, (float) note), settings);
     }
 
+    void Engine::restrike (Voice& voice, float velocity, const Settings& settings) noexcept
+    {
+        voice.velocity = velocity;
+        voice.amp.trigger (settings.amp.envelope);
+        voice.filter.trigger (settings.filter.envelope);
+        voice.filter2.trigger (settings.filter2.envelope);
+        voice.spikePosition = 0.0f;
+        for (auto& envelope : voice.envelopes)
+            envelope.start();
+        voice.pitchEnvelope.start();
+        for (size_t i = 0; i < voice.oscillators.size(); ++i)
+        {
+            const auto& s = settings.oscillators[i];
+            auto& osc = voice.oscillators[i];
+            if (s.wave != OscWave::sfz || ! osc.active || osc.fadingOut)
+                continue;
+            startSfz (voice, osc, i, s, false);   // a fresh recording (the last fades out over 5 ms)
+        }
+    }
+
     void Engine::retrigger (Voice& voice, int note, float velocity, bool restartEnvelopes, bool glide, const Settings& settings) noexcept
     {
         voice.note = note;
         voice.velocity = velocity;
+        voice.ragVelocity = velocity;   // RAGTIME strikes at the velocity the note was played
         voice.held = true;
         voice.sustained = false;
         setGlide (voice, (float) note, glide, settings);
@@ -883,6 +980,7 @@ namespace synth
 
         voice.amp.trigger (settings.amp.envelope);
         voice.filter.trigger (settings.filter.envelope);
+        voice.filter2.trigger (settings.filter2.envelope);
         startLfos (voice, settings);
         voice.spikePosition = 0.0f;
 
@@ -1078,11 +1176,46 @@ namespace synth
             touch (Touch::Kind::release, (float) voice.note, voice.velocity);
         voice.amp.release();
         voice.filter.release();
+        voice.filter2.release();
         for (auto& envelope : voice.envelopes)
             envelope.release();
         voice.pitchEnvelope.release();
         if (voice.source != answerSource)
             releaseAnswers (voice);   // SIROCCO: its answers let go with it
+    }
+
+    void Engine::markSfzInUse() noexcept
+    {
+        // (0.82.1) Each instrument a note is reading gets this check's number. A preset change retires the old
+        // instrument; the processor frees it only once a check has found nothing reading it, so a held looped note,
+        // a long release or a waiting release tail never reads freed memory (Windows reported a crash on Sanctuary
+        // Organ, whose choir loops).
+        const auto check = sfzChecks.load (std::memory_order_relaxed);
+        const auto mark = [check] (const sfz::Instrument* instrument)
+        {
+            if (instrument != nullptr)
+                instrument->lastUsedCheck.store (check, std::memory_order_release);
+        };
+        for (const auto& voice : voices)
+            for (const auto& osc : voice.oscillators)
+            {
+                mark (osc.instrument);
+                for (const auto& player : osc.players)
+                    if (player.region != nullptr)
+                        mark (player.instrument);
+            }
+        for (int t = 0; t < numPendingTails; ++t)
+        {
+            const auto& tail = pendingTails[(size_t) t];
+            for (size_t i = 0; i < tail.instruments.size(); ++i)
+            {
+                mark (tail.instruments[i]);
+                for (const auto& player : tail.handed[i])
+                    if (player.region != nullptr)
+                        mark (player.instrument);
+            }
+        }
+        sfzChecks.store (check + 1, std::memory_order_release);
     }
 
     void Engine::releaseGlobalEnvelopesIfNoneHeld() noexcept
@@ -1114,6 +1247,7 @@ namespace synth
         voice.note = -1;
         voice.amp.reset();
         voice.filter.reset();
+        voice.filter2.reset();
         for (auto& osc : voice.oscillators)
         {
             osc.active = osc.fadingOut = false;
@@ -1206,6 +1340,151 @@ namespace synth
                 }
                 if (! followSong)
                     seqClock = std::fmod (seqClock + length * seqStepsPerSample, (double) seqPrepared.getLength() * 1024.0);
+            }
+            // NAVICOMPUTER (0.86.0): the move for each interval, in time with the song (or its own count).
+            naviMoving = settings.navi.moving();
+            {
+                const auto& nv = settings.navi;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (naviMoving)
+                {
+                    const auto beatsPerStep = nv.beatsPerStep();
+                    std::int64_t songStep = 0;
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto beats = followSong ? modulation.ppq + (samplesIntoBlock + start + at) * beatsPerSample : naviClock + at * beatsPerSample;
+                        songStep = (std::int64_t) std::floor (beats / beatsPerStep + 1.0e-9);
+                        naviMoves[(size_t) i] = navi::moveAt (nv, songStep);
+                    }
+                    naviStepShown.store ((int) (((songStep % navi::numSteps) + navi::numSteps) % navi::numSteps));
+                    // GLIDE: a slide over up to 40% of a step (a time constant a tenth of that share).
+                    const auto tau = 0.1 * juce::jlimit (0.0f, 1.0f, nv.glide) * beatsPerStep * 60.0 / juce::jmax (1.0, modulation.bpm);
+                    naviGlideCoef = tau <= 0.0 ? 1.0f : (float) (1.0 - std::exp (-(double) controlInterval / (tau * sampleRate)));
+                }
+                else
+                {
+                    naviStepShown.store (-1);
+                    naviGlideCoef = 1.0f;
+                }
+                naviClock += length * beatsPerSample;
+            }
+            // CROSSROADS (0.90.0): which side each interval is on, in time with the song (or its own count).
+            {
+                const auto& cr = settings.cross;
+                crossSteps = cr.on ? crossroads::stepsFor (cr.amount, cr.pull) : 0;
+                crossPulling = crossSteps > 0;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                auto dark = false;
+                for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                {
+                    const auto beats = followSong ? modulation.ppq + (samplesIntoBlock + start + at) * beatsPerSample : crossClock + at * beatsPerSample;
+                    dark = crossroads::darkAt (beats, cr.length);
+                    crossDark[(size_t) i] = dark ? 1 : 0;
+                }
+                crossSideShown.store (cr.on ? (dark ? 1 : 0) : -1);
+                const auto tau = crossroads::bendSeconds (cr.bend);
+                crossGlideCoef = (float) (1.0 - std::exp (-(double) controlInterval / (tau * sampleRate)));
+                crossClock += length * beatsPerSample;
+            }
+            // RAGTIME (0.92.0): which interval each strike of the roll falls in, and the ones its damper lifts in
+            // (about 4 ms before it), in time with the song (or its own count); the bass is the lowest key held.
+            ragPlaying = settings.ragtime.playing();
+            {
+                const auto& rt = settings.ragtime;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (ragPlaying)
+                {
+                    const auto beatsPerStep = rt.beatsPerStep();
+                    const auto liftSteps = 0.004 * juce::jmax (1.0, modulation.bpm) / 60.0 / beatsPerStep;
+                    ragBass = -1;
+                    for (const auto& v : voices)
+                        if (v.playing && ! v.killing && v.source == 0 && (v.held || v.sustained) && (ragBass < 0 || v.note < ragBass))
+                            ragBass = v.note;
+                    ragChords = 0;   // the notes over the bass (a lone note plays both hands' steps)
+                    for (const auto& v : voices)
+                        if (v.playing && ! v.killing && v.source == 0 && (v.held || v.sustained) && v.note != ragBass)
+                            ++ragChords;
+                    std::int64_t lastStep = 0;
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto n = juce::jmin (controlInterval, length - at);
+                        const auto beatsAt = [&] (int offset) { return followSong ? modulation.ppq + (samplesIntoBlock + start + offset) * beatsPerSample
+                                                                                  : ragClock + offset * beatsPerSample; };
+                        const auto from = beatsAt (at) / beatsPerStep, to = beatsAt (at + n) / beatsPerStep;
+                        std::uint8_t strike = 0, lift = 0;
+                        const auto k = ragtime::nextStrike (from, rt.swing);
+                        if (ragtime::strikeTime (k, rt.swing) < to && k != ragLastStep)
+                        {
+                            ragLastStep = k;   // (a step on a piece's edge can fall in both: strike it once)
+                            const auto hit = ragtime::strikeAt (rt, k);
+                            strike = (std::uint8_t) (hit.who | (hit.accent ? 4 : 0));
+                        }
+                        // A strike just ahead: the damper lifts for it now.
+                        const auto ahead = ragtime::nextStrike (to, rt.swing);
+                        if (ragtime::strikeTime (ahead, rt.swing) - to < liftSteps)
+                            lift = (std::uint8_t) ragtime::strikeAt (rt, ahead).who;
+                        ragStrikes[(size_t) i] = strike;
+                        ragLifts[(size_t) i] = lift;
+                        lastStep = (std::int64_t) std::floor (from + 1.0e-9);
+                    }
+                    ragStepShown.store ((int) (((lastStep % ragtime::numSteps) + ragtime::numSteps) % ragtime::numSteps));
+                }
+                else
+                    ragStepShown.store (-1);
+                ragClock += length * beatsPerSample;
+            }
+            // RUNNER (1.0.0): which interval each strike falls in (every strike on the grid of its speed, a power of
+            // two of a beat), and the ones its damper lifts in, about 4 ms before (never more than a third of a strike).
+            runPlaying = settings.runner.playing();
+            {
+                const auto& rn = settings.runner;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (runPlaying)
+                {
+                    const auto speed = rn.speed();
+                    const auto perStrike = runner::beatsPerStrike (speed);
+                    if (speed != runLastSpeed)
+                    {
+                        // A new speed: strikes counted on its grid (the beat the last one fell on, in its units).
+                        if (runLastStrike != std::numeric_limits<std::int64_t>::min() && runLastSpeed > 0)
+                            runLastStrike = (std::int64_t) std::floor ((double) runLastStrike * runner::beatsPerStrike (runLastSpeed) / perStrike + 1.0e-9);
+                        runLastSpeed = speed;
+                    }
+                    const auto liftBeats = juce::jmin (perStrike / 3.0, 0.004 * juce::jmax (1.0, modulation.bpm) / 60.0);
+                    const auto perBeat = (std::int64_t) std::llround (1.0 / perStrike);
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto n = juce::jmin (controlInterval, length - at);
+                        const auto beatsAt = [&] (int offset) { return followSong ? modulation.ppq + (samplesIntoBlock + start + offset) * beatsPerSample
+                                                                                  : runClock + offset * beatsPerSample; };
+                        const auto from = beatsAt (at), to = beatsAt (at + n);
+                        std::uint8_t strike = 0, lift = 0;
+                        const auto k = runner::nextStrike (from, perStrike);
+                        if ((double) k * perStrike < to - 1.0e-12 && (runLastStrike == std::numeric_limits<std::int64_t>::min() || k > runLastStrike))
+                        {
+                            runLastStrike = k;   // (a strike on a piece's edge can fall in both: strike it once)
+                            const auto onBeat = perBeat <= 1 || k % perBeat == 0;
+                            strike = (std::uint8_t) (1 | (onBeat ? 2 : 0));
+                            runBeatShown.store ((int) (((k % perBeat) + perBeat) % perBeat));
+                        }
+                        const auto ahead = runner::nextStrike (to, perStrike);
+                        if ((double) ahead * perStrike - to < liftBeats)
+                            lift = 1;
+                        runStrikes[(size_t) i] = strike;
+                        runLifts[(size_t) i] = lift;
+                    }
+                }
+                else
+                {
+                    runBeatShown.store (-1);
+                    runLastSpeed = 0;
+                    runLastStrike = std::numeric_limits<std::int64_t>::min();
+                }
+                runClock += length * beatsPerSample;
             }
             for (auto& voice : voices)
             {
@@ -1356,6 +1635,36 @@ namespace synth
 
     void Engine::renderVoice (Voice& voice, float* left, float* right, int n, const Settings& unmodulated, int interval) noexcept
     {
+        // RAGTIME (0.92.0): a key's note struck again on the roll's step (unless it has only just started: its own
+        // attack is the strike), the damper lifting it just before; nothing at all while it's off.
+        auto ragTarget = 1.0f;
+        if (ragPlaying && voice.source == 0 && (voice.held || voice.sustained) && ! voice.killing)
+        {
+            const auto slot = (size_t) juce::jlimit (0, maxIntervals - 1, interval);
+            const int mine = voice.note != ragBass ? ragtime::chord : ragChords > 0 ? ragtime::bass : ragtime::both;
+            const auto strike = ragStrikes[slot];
+            if ((strike & mine) != 0 && voice.seqAge > 0.01)
+            {
+                const auto& rt = unmodulated.ragtime;
+                restrike (voice, rt.strikeVelocity (voice.ragVelocity, (strike & 4) != 0), unmodulated);
+                ragStrikeCount.store (ragStrikeCount.load() + 1);   // (RUNNER counts its own)
+            }
+            else if ((ragLifts[slot] & mine) != 0)
+                ragTarget = 1.0f - unmodulated.ragtime.liftDepth();
+        }
+        // RUNNER (1.0.0): the same, at the knob's speed, every held key's note.
+        if (runPlaying && voice.source == 0 && (voice.held || voice.sustained) && ! voice.killing)
+        {
+            const auto slot = (size_t) juce::jlimit (0, maxIntervals - 1, interval);
+            const auto strike = runStrikes[slot];
+            if (strike != 0 && voice.seqAge > 0.01)
+            {
+                restrike (voice, unmodulated.runner.strikeVelocity (voice.ragVelocity, (strike & 2) != 0), unmodulated);
+                runStrikeCount.store (runStrikeCount.load() + 1);
+            }
+            else if (runLifts[slot] != 0)
+                ragTarget = juce::jmin (ragTarget, 1.0f - unmodulated.runner.liftDepth());
+        }
         // The PITCH module's envelope (also a source for the matrix).
         const auto& pitchModule = unmodulated.pitch;
         if (pitchModule.shape != nullptr
@@ -1398,6 +1707,37 @@ namespace synth
         const auto& settings = modulated ? modulate (voice, n, unmodulated, interval) : unmodulated;
         // The PITCH envelope in semitones (RANGE can be moved by the matrix).
         voice.pitchSemitones = pitchModule.envelopeOn && pitchModule.shape != nullptr ? voice.pitchEnvelopeValue * settings.pitch.rangeSemitones : 0.0f;
+        // NAVICOMPUTER: this note's move now (in its own steps of the scale), glided; nothing at all while it's off.
+        if (naviMoving || voice.naviSemis != 0.0f)
+        {
+            const auto target = naviMoving ? (float) navi::semitonesFor (voice.note, naviMoves[(size_t) juce::jlimit (0, maxIntervals - 1, interval)], unmodulated.navi)
+                                           : 0.0f;
+            if (voice.naviFresh || naviGlideCoef >= 1.0f)
+                voice.naviSemis = target;
+            else
+            {
+                voice.naviSemis += (target - voice.naviSemis) * naviGlideCoef;
+                if (std::abs (target - voice.naviSemis) < 1.0e-4f)
+                    voice.naviSemis = target;
+            }
+        }
+        voice.naviFresh = false;
+        // CROSSROADS: on the dark side this note pulled down the scale (in key), slid into; nothing at all while it's off.
+        if (crossPulling || voice.crossSemis != 0.0f)
+        {
+            const auto& cr = unmodulated.cross;
+            const auto dark = crossPulling && crossDark[(size_t) juce::jlimit (0, maxIntervals - 1, interval)] != 0;
+            const auto target = dark ? (float) crossroads::semitonesFor (voice.note, crossSteps, cr.key, cr.scale) : 0.0f;
+            if (voice.crossFresh)
+                voice.crossSemis = target;
+            else
+            {
+                voice.crossSemis += (target - voice.crossSemis) * crossGlideCoef;
+                if (std::abs (target - voice.crossSemis) < 1.0e-4f)
+                    voice.crossSemis = target;
+            }
+        }
+        voice.crossFresh = false;
         if (modulated)
             balance (voice.notePan + settings.amp.pan - unmodulated.amp.pan, voice.panLeft, voice.panRight);
 
@@ -1421,7 +1761,8 @@ namespace synth
             const auto scale = std::exp2 (glow.age * Settings::Afterglow::ageTimeOctaves * voice.glowTime);
             auto amp = ampSettings.envelope;
             auto filt = filterSettings.envelope;
-            for (auto* e : { &amp, &filt })
+            auto filt2 = settings.filter2.envelope;
+            for (auto* e : { &amp, &filt, &filt2 })
             {
                 e->attackMs *= scale;
                 e->decayMs *= scale;
@@ -1429,11 +1770,13 @@ namespace synth
             }
             voice.amp.update (amp);
             voice.filter.update (filt);
+            voice.filter2.update (filt2);
         }
         else
         {
             voice.amp.update (ampSettings.envelope);
             voice.filter.update (filterSettings.envelope);
+            voice.filter2.update (settings.filter2.envelope);
         }
 
         // Glide, once per interval: straight, or along GLIDE CURVE's path.
@@ -1483,19 +1826,29 @@ namespace synth
         // The FILTER's cutoff for the end of this interval (each path glides to it from where it was).
         const auto velocityDown = 1.0f - voice.velocity;
         const auto filterEnvelope = voice.filter.step (n);
-        FilterChannel::Coefficients filterTarget;
-        if (filterSettings.on)
+        const auto filter2Envelope = voice.filter2.step (n);
+        // Each filter's targets (0.96.0: FILTER 2 the same way, from its own envelope; the LOW CUT moved with its filter).
+        FilterTargets targets;
+        const auto makeTargets = [&] (const FilterSettings& fs, float envelopeValue, FilterChannel::Coefficients& main,
+                                      FilterChannel::Coefficients& lowCut)
         {
-            auto octaves = filterSettings.keytrack * (voice.pitch - 60.0f) / 12.0f
-                         - filterSettings.velocity * filterVelocityOctaves * velocityDown
-                         + filterSettings.envelopeAmount * filterEnvelopeOctaves * filterEnvelope
-                               * (1.0f - filterSettings.envelopeVelocity * velocityDown);
+            auto octaves = fs.keytrack * (voice.pitch - 60.0f) / 12.0f
+                         - fs.velocity * filterVelocityOctaves * velocityDown
+                         + fs.envelopeAmount * filterEnvelopeOctaves * envelopeValue
+                               * (1.0f - fs.envelopeVelocity * velocityDown);
             if (glowing)
                 octaves += glowOctaves;
-            const auto cutoff = (double) filterSettings.cutoffHz * std::exp2 ((double) octaves);
-            const auto resonance = filterSettings.resonance * (1.0f - filterSettings.resonanceVelocity * velocityDown);
-            filterTarget = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
-        }
+            const auto shift = std::exp2 ((double) octaves);
+            const auto cutoff = (double) fs.cutoffHz * shift;
+            const auto resonance = fs.resonance * (1.0f - fs.resonanceVelocity * velocityDown);
+            main = FilterChannel::Coefficients::make (cutoff, resonance, sampleRate);
+            if (fs.hasLowCut())
+                lowCut = FilterChannel::Coefficients::make ((double) fs.lowCutHz * shift, fs.lowCutResonance, sampleRate);
+        };
+        if (filterSettings.on)
+            makeTargets (filterSettings, filterEnvelope, targets.main[0], targets.lowCut[0]);
+        if (settings.filter2.on)
+            makeTargets (settings.filter2, filter2Envelope, targets.main[1], targets.lowCut[1]);
 
         // The VOICE filter's resonators for this note and its LEVELLING, worked out again when the note has moved
         // a quarter tone or its VOWEL, SIZE or SHARP have changed (by the knobs or the matrix).
@@ -1539,7 +1892,7 @@ namespace synth
         {
             if (! pathUsed[p])
                 continue;
-            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, filterTarget, vocalTarget, voice.vocalLevel);
+            processPath (voice, voice.paths[p], pathLeft[p].data(), pathRight[p].data(), n, settings, targets, vocalTarget, voice.vocalLevel);
             if (const auto bus = busOf (voice.paths[p].key); bus > 0)
             {
                 for (int i = 0; i < n; ++i)
@@ -1576,6 +1929,14 @@ namespace synth
         for (int i = 0; i < n; ++i)
         {
             auto gain = tail ? volume : voice.amp.next() * volume;
+            if (ragTarget != 1.0f || voice.ragGain != 1.0f)
+            {
+                // RAGTIME's damper: down for the strike, back with it.
+                voice.ragGain += (ragTarget - voice.ragGain) * (ragTarget < voice.ragGain ? ragDown : ragUp);
+                if (ragTarget == 1.0f && voice.ragGain > 0.9999f)
+                    voice.ragGain = 1.0f;
+                gain *= voice.ragGain;
+            }
             if (voice.spikePosition < 1.0f && ! tail)
             {
                 gain *= 1.0f + spike * (1.0f - synth::bend (voice.spikePosition, ampSettings.spikeCurve));
@@ -2175,6 +2536,13 @@ namespace synth
             case Field::voiceSize: s.voice.size = value; break;
             case Field::voiceSharp: s.voice.sharp = value; break;
             case Field::voiceMix: s.voice.mix = value; break;
+            case Field::filter2Cutoff: s.filter2.cutoffHz = value; break;
+            case Field::filter2Resonance: s.filter2.resonance = value; break;
+            case Field::filter2Drive: s.filter2.drive = value; break;
+            case Field::filter2Keytrack: s.filter2.keytrack = value; break;
+            case Field::filter2Envelope: s.filter2.envelopeAmount = value; break;
+            case Field::filterLowCut: s.filter.lowCutHz = value; break;
+            case Field::filter2LowCut: s.filter2.lowCutHz = value; break;
         }
     }
 
@@ -2190,7 +2558,11 @@ namespace synth
             keys[i] = -1;
             if (! s.on || ! voice.oscillators[i].active)
                 continue;
-            auto key = s.toFilter && settings.filter.on ? 1 : 0;
+            auto key = 0;
+            if (s.toFilter && s.toFilter2)   // (0.96.0) FILTER 2 instead (none while it's off)
+                key = settings.filter2.on ? (1 | filter2Bit) : 0;
+            else if (s.toFilter && settings.filter.on)
+                key = 1;
             if (s.toVoice && settings.voice.on)
                 key |= voiceBit;
             for (int k = 0; k < numShapers; ++k)
@@ -2250,7 +2622,7 @@ namespace synth
     }
 
     void Engine::processPath (Voice& voice, Path& path, float* left, float* right, int n, const Settings& settings,
-                              const FilterChannel::Coefficients& filterTarget, const vocal::Coefficients& vocalTarget,
+                              const FilterTargets& targets, const vocal::Coefficients& vocalTarget,
                               float vocalLevel) noexcept
     {
         const auto velocityDown = 1.0f - voice.velocity;
@@ -2259,11 +2631,27 @@ namespace synth
             if ((path.key & (2 << k)) != 0 && ! settings.shapers[(size_t) k].afterFilter)
                 processShaper (path, k, left, right, n, settings, velocityDown);
 
-        // ...the FILTER...
+        // ...the FILTER (or FILTER 2: 0.96.0)...
         if ((path.key & 1) != 0)
         {
-            const auto& filterSettings = settings.filter;
+            const auto second = (path.key & filter2Bit) != 0;
+            const auto& filterSettings = second ? settings.filter2 : settings.filter;
+            const auto& filterTarget = targets.main[second ? 1 : 0];
             const auto from = path.coefficientsFresh ? filterTarget : path.coefficients;
+            // LOW CUT: a 12 dB high-pass first, its cutoff moved with the filter's (glided the same way).
+            const auto lowCut = filterSettings.hasLowCut();
+            // ...as steep as its filter (as a vintage polysynth's one 12 / 24 dB switch sets both).
+            const auto ft = filterSettings.type;
+            const auto lowCutType = ft == FilterType::lp24 || ft == FilterType::hp24 || ft == FilterType::bp24 || ft == FilterType::bs24
+                                      ? FilterType::hp24 : FilterType::hp12;
+            const auto& lowCutTarget = targets.lowCut[second ? 1 : 0];
+            const auto lowCutFrom = path.coefficientsFresh || ! path.lowCutActive ? lowCutTarget : path.lowCutCoefficients;
+            if (lowCut && ! path.lowCutActive)
+            {
+                path.lowCutLeft.reset();
+                path.lowCutRight.reset();
+            }
+            path.lowCutActive = lowCut;
             path.coefficientsFresh = false;
 
             // DRIVE: up to +24 dB into the saturation, scaled back so a full-scale
@@ -2282,10 +2670,18 @@ namespace synth
                     l = path.driveLeft.process (l, driveGain, makeUp);
                     r = path.driveRight.process (r, driveGain, makeUp);
                 }
+                if (lowCut)
+                {
+                    const auto lc = FilterChannel::Coefficients::lerp (lowCutFrom, lowCutTarget, (float) (i + 1) / (float) n);
+                    l = path.lowCutLeft.process (l, lowCutType, lc);
+                    r = path.lowCutRight.process (r, lowCutType, lc);
+                }
                 left[i] = path.filterLeft.process (l, type, c);
                 right[i] = path.filterRight.process (r, type, c);
             }
             path.coefficients = filterTarget;
+            if (lowCut)
+                path.lowCutCoefficients = lowCutTarget;
         }
 
         // ...the VOICE filter (0.39.0): the vowel's formants at fixed frequencies, MIX against what went in...
@@ -2548,7 +2944,7 @@ namespace synth
             // KEYTRACK (from middle C; at 100% the note as played) and the PITCH envelope, if it follows it.
             const auto keyPitch = juce::exactlyEqual (settings.pitch.keytrack, 1.0f) ? voice.pitch : 60.0f + (voice.pitch - 60.0f) * settings.pitch.keytrack;
             const auto basePitch = keyPitch + (s.pitchEnvelope ? voice.pitchSemitones : 0.0f) + bendSemitones + s.transpose + s.fineCents * 0.01f + osc.randomOffset
-                                 + settings.play.tuneCents * 0.01f;
+                                 + settings.play.tuneCents * 0.01f + voice.naviSemis + voice.crossSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
             const auto independent = vibratoDepth > 0.0f && s.vibratoMode == VibratoMode::independent;
             const auto ownVibrato = independent ? vibratoValue (s.vibratoWave, osc.copies[0].vibratoPhase, osc.copies[0].vibratoHeld,
                                                                 vibratoAdvance * osc.copies[0].vibratoRate) * vibratoDepth
@@ -2849,15 +3245,19 @@ namespace synth
         if (inst == nullptr)
             return;
 
-        const auto key = juce::jlimit (0, 127, voice.note);
+        // SFZ KEY (0.81.0): another key's samples, played at their own pitch (`sfzPlayed` cancels the note's).
+        const auto key = juce::jlimit (0, 127, s.sfzKey >= 0 ? s.sfzKey : voice.note);
         osc.sfzKey = key;
+        // SFZ KEY TRACK (0.83.0): the chosen key's samples pitched by how far the played key is from it.
+        osc.sfzPlayed = s.sfzKey >= 0 && ! s.sfzKeyTrack ? juce::jlimit (0, 127, voice.note) : key;
         const auto velocity127 = juce::jlimit (1, 127, juce::roundToInt (voice.velocity * 127.0f));
         auto& turn = sfzTurns[index][(size_t) key];
         std::array<const sfz::Region*, sfz::maxPlayers> chosen {};
         const auto pedalSounds = release && startingTail != nullptr && startingTail->pedal >= 0;
+        const auto switchKey = switchFor (index, inst);
         const auto count = pedalSounds ? inst->selectPedal (startingTail->pedal, random.nextFloat(), chosen.data(), (int) chosen.size())
                                        : inst->select (key, velocity127, release, turn, random.nextFloat(), pedalDown ? 127 : 0,
-                                                       chosen.data(), (int) chosen.size());
+                                                       chosen.data(), (int) chosen.size(), switchKey);
         if (! release)
             turn = (std::uint8_t) (turn + 1);
         // RT_DECAY: a release sample quieter the longer its note was held.
@@ -2881,11 +3281,15 @@ namespace synth
                 break;
             const auto& sample = *inst->samples[(size_t) region.sample];
             player->region = &region;
+            player->instrument = inst;
             player->sample = &sample;
             player->position = (double) region.offset;
             player->fade = 1.0f;
             player->fadeStep = 0.0f;
             player->decay = 1.0f;
+            player->wheel = -1.0f;
+            std::fill (std::begin (player->filterA), std::end (player->filterA), 0.0f);
+            std::fill (std::begin (player->filterB), std::end (player->filterB), 0.0f);
             auto gain = region.gain * region.velocityGain (voice.velocity) * region.crossfade (velocity127);
             // A loop needs the sample whole in memory (the reader keeps a looped one so).
             player->looping = region.loops() && region.loopEnd < (juce::int64) sample.headFrames;   // (reads past LOOP_END wrap round)
@@ -2909,9 +3313,38 @@ namespace synth
                         }
     }
 
+    int Engine::switchFor (size_t index, const sfz::Instrument* inst) noexcept
+    {
+        if (inst == nullptr)
+            return -1;
+        if (sfzSwitchFor[index] != inst)
+        {
+            sfzSwitchFor[index] = inst;
+            sfzSwitch[index] = inst->switchDefault;
+            switchShown[index].store (inst->switchDefault);
+        }
+        return sfzSwitch[index];
+    }
+
+    float Engine::sfzWheel127 (const sfz::Instrument* inst) const noexcept
+    {
+        // The wheel as the matrix hears it (the controllers sent to it too)...
+        auto wheel = modWheel;
+        if (sfzToWheel[0]) wheel = juce::jmax (wheel, breath);
+        if (sfzToWheel[1]) wheel = juce::jmax (wheel, expression);
+        if (sfzToWheel[2]) wheel = juce::jmax (wheel, channelPressure);
+        if (sfzToWheel[3] && pedalDown) wheel = 1.0f;
+        // ...or, until it's touched, where the instrument says it stands (SET_CC1).
+        if (! modWheelHeard && wheel <= 0.0f && inst != nullptr && inst->setCc1 >= 0)
+            return (float) inst->setCc1;
+        return wheel * 127.0f;
+    }
+
     void Engine::renderSfz (Voice& voice, OscState& osc, const OscSettings& s, float semitones, float* left, float* right, int n) noexcept
     {
-        juce::ignoreUnused (voice, s);
+        juce::ignoreUnused (s);
+        const auto cc127 = sfzWheel127 (osc.instrument);
+        const auto nyquistish = 0.45f * (float) sampleRate;
         std::fill (left, left + n, 0.0f);
         std::fill (right, right + n, 0.0f);
         osc.heldSamples += n;
@@ -2923,7 +3356,7 @@ namespace synth
             const auto& sample = *player.sample;
             // Its speed: the key played against the region's PITCH_KEYCENTER (PITCH_KEYTRACK cents a key), its TUNE,
             // and the oscillator's pitch against the key (TRANSPOSE, FINE, bend, glide, vibrato...).
-            const auto offset = (semitones - (float) osc.sfzKey) + ((float) osc.sfzKey - region.keyCenter) * region.keytrack + region.tuneSemitones;
+            const auto offset = (semitones - (float) osc.sfzPlayed) + ((float) osc.sfzKey - region.keyCenter) * region.keytrack + region.tuneSemitones;
             const auto step = sample.sampleRate / sampleRate * std::exp2 ((double) offset / 12.0);
             const auto length = sample.length;
             const auto readable = player.stream >= 0 ? length : (juce::int64) sample.headFrames;
@@ -2946,6 +3379,25 @@ namespace synth
             // Heads only (no stream free): a 5 ms fade before the head runs out.
             const auto endFade = player.stream < 0 && readable < length ? 0.005 * sample.sampleRate : 0.0;
             auto pos = player.position;
+            // THE MOD WHEEL (0.75.0): its level glides across the block from where the last one left it.
+            const auto wheelTarget = region.wheelLevel (cc127);
+            if (player.wheel < 0.0f)
+                player.wheel = wheelTarget;
+            auto wheel = player.wheel;
+            const auto wheelStep = (wheelTarget - wheel) / (float) juce::jmax (1, n);
+            // THE FILTER (0.75.0): its cutoff for this note, velocity and wheel, set once a block (TPT: zero-delay feedback).
+            using F = sfz::Region::Filter;
+            const auto filter = region.filter;
+            float g = 0.0f, k = 0.0f, a1 = 0.0f, a2 = 0.0f, a3 = 0.0f;
+            if (filter != F::none)
+            {
+                const auto fc = juce::jlimit (10.0f, nyquistish, region.cutoffFor (osc.sfzKey, voice.velocity, cc127));
+                g = std::tan (juce::MathConstants<float>::pi * fc / (float) sampleRate);
+                k = 1.0f / region.filterQ;
+                a1 = 1.0f / (1.0f + g * (g + k));
+                a2 = g * a1;
+                a3 = g * a2;
+            }
             for (int i = 0; i < n; ++i)
             {
                 const auto frame = (juce::int64) pos;
@@ -2974,12 +3426,32 @@ namespace synth
                     const auto c2 = y0 - 2.5f * y1 + 2.0f * y2 - 0.5f * y3;
                     const auto c3 = 0.5f * (y3 - y0) + 1.5f * (y1 - y2);
                     out[c] = ((c3 * t + c2) * t + c1) * t + y1;
+                    if (filter == F::lowpass1 || filter == F::highpass1)
+                    {
+                        auto& z = player.filterA[c];
+                        const auto v = (out[c] - z) * g / (1.0f + g);
+                        const auto lp = v + z;
+                        z = lp + v;
+                        out[c] = filter == F::lowpass1 ? lp : out[c] - lp;
+                    }
+                    else if (filter != F::none)
+                    {
+                        auto& ic1 = player.filterA[c];
+                        auto& ic2 = player.filterB[c];
+                        const auto v3 = out[c] - ic2;
+                        const auto v1 = a1 * ic1 + a2 * v3;
+                        const auto v2 = ic2 + a2 * ic1 + a3 * v3;
+                        ic1 = 2.0f * v1 - ic1;
+                        ic2 = 2.0f * v2 - ic2;
+                        out[c] = filter == F::lowpass2 ? v2 : out[c] - k * v1 - v2;
+                    }
                 }
-                auto g = player.fade;
+                wheel += wheelStep;
+                auto gain = player.fade * wheel;
                 if (endFade > 0.0 && (double) readable - pos < endFade)
-                    g *= (float) (((double) readable - pos) / endFade);
-                left[i] += out[0] * player.gainLeft * g;
-                right[i] += out[1] * player.gainRight * g;
+                    gain *= (float) (((double) readable - pos) / endFade);
+                left[i] += out[0] * player.gainLeft * gain;
+                right[i] += out[1] * player.gainRight * gain;
                 if (player.fadeStep < 0.0f)
                     player.fade += player.fadeStep;
                 if (player.decay < 1.0f && (player.fade *= player.decay) < 1.0e-4f)
@@ -2989,6 +3461,7 @@ namespace synth
                     pos -= (double) loopLength * std::floor ((pos - (double) loopStart) / (double) loopLength);
             }
             player.position = pos;
+            player.wheel = wheelTarget;
             if (player.region != nullptr && player.stream >= 0)
                 streamer->consumed (player.stream, juce::jmax ((juce::int64) 0, (juce::int64) pos - 2));
         }

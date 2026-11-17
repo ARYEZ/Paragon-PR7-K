@@ -14,3 +14,17 @@ TEST_CASE ("Stack: presets, the mod matrix, the settings and the engine stay sma
     CHECK (sizeof (synth::Engine) < 64 * 1024);
     CHECK (sizeof (ParagonX1AudioProcessor) < 128 * 1024);
 }
+
+// 0.78.0: the factory presets' function held 59 preset builders at once, each a whole Rig on the stack (418 KB on
+// Linux, more with Microsoft's compiler); one test crashed on Windows. A builder now keeps its preset on the heap.
+#include "rigs/RigBuilder.h"
+TEST_CASE ("Stack: a preset builder keeps its preset on the heap", "[stack]")
+{
+    CHECK (sizeof (rigbuilder::Builder) <= 64);
+    rigbuilder::Builder a ("A", 1, { "Test" }, "notes");
+    a.set ("patchLevel", 2.0f);
+    rigbuilder::Builder b = a;   // a copy is its own preset
+    b.rig.name = "B";
+    CHECK (a.rig.name == "A");
+    CHECK (b.rig.parameters.at ("patchLevel") == 2.0f);
+}

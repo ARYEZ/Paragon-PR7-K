@@ -34,7 +34,9 @@
 //   PARAGON_SNAPSHOT_PAGE=fx         THE RACK (PARAGON_SNAPSHOT_RACK=1: at work on a chord, the sends too; PARAGON_SNAPSHOT_FX=eq|dominion|comp|limiter|sends|delay|reverb|modfx|mod|mod2|lofi|inserts|insdrive|insglitch|insmod|inslofi: that view, the inserts' on bus PARAGON_SNAPSHOT_BUS=1-4)
 //   PARAGON_SNAPSHOT_LIBRARIES=<folder>  the sample libraries (the Salamander's folder in it) for the piano presets
 //   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
-//   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, and keys light)
+//   PARAGON_SNAPSHOT_WTREF=<ref>     a preset whose oscillator 1 names that pack table ("{wt:<pack>}/<file>"; 0.76.0)
+//   PARAGON_SNAPSHOT_SORT=1          with RACK=1: a melody played instead of the chord, for SORT's page (0.93.0)
+//   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, keys light and THE GRID's sparks run)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
 {
     const auto env = [] (const char* name) { return juce::SystemStats::getEnvironmentVariable (name, {}); };
@@ -90,6 +92,15 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         processor.waitForSfz();
     }
 
+    if (const auto ref = env ("PARAGON_SNAPSHOT_WTREF"); ref.isNotEmpty())
+    {
+        RigLibrary::Entry entry;
+        entry.rig.name = "Pack Table";
+        entry.rig.parameters[ParamIDs::osc (0, "Wave")] = (float) synth::OscWave::wavetable;
+        entry.rig.wavetableRefs[0] = ref;
+        processor.loadRig (entry);
+    }
+
     for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))
     {
         const auto id = pair.upToFirstOccurrenceOf ("=", false, false).trim();
@@ -129,6 +140,9 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                 REQUIRE (parameter != nullptr);
                 parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
             };
+            // (PARAGON_SNAPSHOT_PARAMS again: loading the preset undid them.)
+            for (const auto& pair : juce::StringArray::fromTokens (env ("PARAGON_SNAPSHOT_PARAMS"), ",", {}))
+                set (pair.upToFirstOccurrenceOf ("=", false, false).trim(), pair.fromFirstOccurrenceOf ("=", false, false).getFloatValue());
             struct Band { eq::Shape shape; float hz, db, q, dynamic; };
             const Band bands[] = { { eq::Shape::lowCut, 40.0f, 0.0f, 0.7f, 0.0f }, { eq::Shape::bell, 280.0f, -3.0f, 1.2f, 0.0f },
                                    { eq::Shape::bell, 3200.0f, 1.5f, 1.5f, -4.0f }, { eq::Shape::highShelf, 11000.0f, 2.0f, 0.7f, 0.0f } };
@@ -249,12 +263,26 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             set (ParamIDs::ins (0, "WahPosition"), 0.15f);
             set (ParamIDs::ins (0, "WahDepth"), 0.7f);
             set (ParamIDs::ins (0, "WahResonance"), 7.0f);
-            for (const auto note : { 48, 55, 60, 64, 67 })
-                processor.getKeyboardState().noteOn (1, note, 0.85f);
+            // PARAGON_SNAPSHOT_SORT=1 (0.93.0): a melody an eighth a note instead of the chord, SORT re-filing it.
+            const auto melody = env ("PARAGON_SNAPSHOT_SORT") == "1";
+            const int tune[] = { 67, 60, 72, 64, 69, 62, 71, 65 };
+            if (! melody)
+                for (const auto note : { 48, 55, 60, 64, 67 })
+                    processor.getKeyboardState().noteOn (1, note, 0.85f);
             juce::AudioBuffer<float> buffer (2, 256);
             juce::MidiBuffer midi;
             for (int block = 0; block < 700; ++block)
             {
+                if (melody)
+                {
+                    const auto slice = block * 256 / 12000, before = (block - 1) * 256 / 12000;
+                    if (block == 0 || slice != before)
+                    {
+                        if (block > 0)
+                            processor.getKeyboardState().noteOff (1, tune[before % 8], 0.0f);
+                        processor.getKeyboardState().noteOn (1, tune[slice % 8], 0.85f);
+                    }
+                }
                 processor.processBlock (buffer, midi);
                 if (block > 600 && block % 10 == 0)   // the timers fire only when they're due
                 {
@@ -273,7 +301,7 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : fx == "proximity" ? FxPage::View::proximity : fx == "haze" ? FxPage::View::haze : fx == "spectre" ? FxPage::View::spectre : fx == "leviathan" ? FxPage::View::leviathan : fx == "nuclearspring" ? FxPage::View::nuclearSpring : fx == "lightspeed" ? FxPage::View::lightSpeed : fx == "bloom" ? FxPage::View::bloom : FxPage::View::rack);
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : fx == "proximity" ? FxPage::View::proximity : fx == "haze" ? FxPage::View::haze : fx == "spectre" ? FxPage::View::spectre : fx == "leviathan" ? FxPage::View::leviathan : fx == "nuclearspring" ? FxPage::View::nuclearSpring : fx == "hyperjump" ? FxPage::View::hyperJump : fx == "bloom" ? FxPage::View::bloom : fx == "legion" ? FxPage::View::legion : fx == "overcharge" ? FxPage::View::overcharge : fx == "aftermath" ? FxPage::View::aftermath : fx == "submerge" ? FxPage::View::submerge : fx == "lockstep" ? FxPage::View::lockstep : fx == "colossus" ? FxPage::View::colossus : fx == "canyon" ? FxPage::View::canyon : fx == "jackin" ? FxPage::View::jackIn : fx == "navicomputer" ? FxPage::View::naviComputer : fx == "sweep" ? FxPage::View::sweep : fx == "redline" ? FxPage::View::redline : fx == "freezetag" ? FxPage::View::freezeTag : fx == "crossroads" ? FxPage::View::crossroads : fx == "gearworks" ? FxPage::View::gearworks : fx == "ragtime" ? FxPage::View::ragtime : fx == "sort" ? FxPage::View::sort : fx == "wobble" ? FxPage::View::wobble : fx == "runner" ? FxPage::View::runner : FxPage::View::rack);
         // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW, 6 LIGHTTRAIL, 7 BLACKHOLE, 8 DILATION, 9 REMNANT, 10 PROXIMITY, 11 HAZE, 12 SPECTRE, 13 LEVIATHAN, 14 NUCLEARSPRING).
         if (const auto signature = env ("PARAGON_SNAPSHOT_SIGNATURE"); signature.isNotEmpty())
             fxPage.showSignature (signature.getIntValue());
@@ -531,6 +559,18 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
     const auto width = juce::jmax (960, juce::SystemStats::getEnvironmentVariable ("PARAGON_SNAPSHOT_WIDTH", "1600").getIntValue());
     editor->setSize (width, width * 9 / 16);
     editor->resized();
+    // THE GRID's sparks (0.98.0): a few ticks, so a held note's spark and its trail are drawn.
+    for (int tick = 0; tick < 6; ++tick)
+    {
+        if (env ("PARAGON_SNAPSHOT_NOTES") == "1")
+        {
+            juce::AudioBuffer<float> buffer (2, 256);
+            juce::MidiBuffer midi;
+            processor.processBlock (buffer, midi);
+            processor.processBlock (buffer, midi);
+        }
+        view->getFace().getGrid().updateForTest();
+    }
 
     const auto image = editor->createComponentSnapshot (editor->getLocalBounds());
     juce::File file (juce::File::getCurrentWorkingDirectory().getChildFile (path));

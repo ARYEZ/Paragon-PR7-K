@@ -38,6 +38,14 @@ namespace ModDestinations
             d.push_back ({ ParamIDs::fltDrive, "Filter", "Drive", { Field::filterDrive, 0 } });
             d.push_back ({ ParamIDs::fltKey, "Filter", "Keytrack", { Field::filterKeytrack, 0 } });
             d.push_back ({ ParamIDs::fltEnv, "Filter", "Envelope", { Field::filterEnvelope, 0 } });
+            d.push_back ({ ParamIDs::fltLowCut, "Filter", "Low Cut", { Field::filterLowCut, 0 } });
+            // 0.96.0: FILTER 2
+            d.push_back ({ ParamIDs::flt2Cutoff, "Filter 2", "Cutoff", { Field::filter2Cutoff, 0 } });
+            d.push_back ({ ParamIDs::flt2Res, "Filter 2", "Resonance", { Field::filter2Resonance, 0 } });
+            d.push_back ({ ParamIDs::flt2Drive, "Filter 2", "Drive", { Field::filter2Drive, 0 } });
+            d.push_back ({ ParamIDs::flt2Key, "Filter 2", "Keytrack", { Field::filter2Keytrack, 0 } });
+            d.push_back ({ ParamIDs::flt2Env, "Filter 2", "Envelope", { Field::filter2Envelope, 0 } });
+            d.push_back ({ ParamIDs::flt2LowCut, "Filter 2", "Low Cut", { Field::filter2LowCut, 0 } });
 
             for (int k = 0; k < ParamIDs::numShapers; ++k)
             {
@@ -84,8 +92,26 @@ namespace ModDestinations
                 { "FX Spectre", "Mix" }, { "FX Spectre", "Linger" }, { "FX Spectre", "Shift" },
                 { "FX Leviathan", "Mix" }, { "FX Leviathan", "Growl" }, { "FX Leviathan", "Drift" },
                 { "FX Nuclearspring", "Mix" }, { "FX Nuclearspring", "Drip" }, { "FX Nuclearspring", "Boing" },
-                { "FX Lightspeed", "Jump" }, { "FX Lightspeed", "Rise" }, { "FX Lightspeed", "Whoosh" },
-                { "FX Bloom", "Amount" }, { "FX Bloom", "Resonance" }, { "FX Bloom", "Size" } };
+                { "FX Hyperjump", "Amount" }, { "FX Hyperjump", "Rise" }, { "FX Hyperjump", "Chop" },
+                { "FX Bloom", "Amount" }, { "FX Bloom", "Resonance" }, { "FX Bloom", "Size" },
+                { "FX Legion", "Size" }, { "FX Legion", "Spread" }, { "FX Legion", "Detune" },
+                { "FX Overcharge", "Charge" }, { "FX Overcharge", "Glow" }, { "FX Overcharge", "Chaos" },
+                { "FX Aftermath", "Seal" }, { "FX Aftermath", "Ring" }, { "FX Aftermath", "Hum" },
+                { "FX Submerge", "Depth" }, { "FX Submerge", "Bubbles" }, { "FX Submerge", "Current" },
+                { "FX Lockstep", "Amount" }, { "FX Lockstep", "Squeeze" }, { "FX Lockstep", "Stamp" },
+                { "FX Colossus", "Size" }, { "FX Colossus", "Depth" }, { "FX Colossus", "Hall" },
+                { "FX Canyon", "Amount" }, { "FX Canyon", "Size" }, { "FX Canyon", "Repeats" },
+                { "FX Jack-In", "Amount" }, { "FX Jack-In", "Chaos" }, { "FX Jack-In", "Crush" },
+                { "FX Navicomputer", "Amount" }, { "FX Navicomputer", "Chaos" }, { "FX Navicomputer", "Glide" },
+                { "FX Sweep", "Amount" }, { "FX Sweep", "Resonance" }, { "FX Sweep", "Center" },
+                { "FX Redline", "Throttle" }, { "FX Redline", "Throb" }, { "FX Redline", "Scream" },
+                { "FX Freeze Tag", "Amount" }, { "FX Freeze Tag", "Tremble" }, { "FX Freeze Tag", "Caught" },
+                { "FX Crossroads", "Amount" }, { "FX Crossroads", "Light" }, { "FX Crossroads", "Dark" },
+                { "FX Gearworks", "Amount" }, { "FX Gearworks", "Metal" }, { "FX Gearworks", "Grind" },
+                { "FX Ragtime", "Amount" }, { "FX Ragtime", "Swing" }, { "FX Ragtime", "Accent" },
+                { "FX Sort", "Amount" }, { "FX Sort", "Edge" }, { "FX Sort", "Strike" },
+                { "FX Wobble", "Amount" }, { "FX Wobble", "Talk" }, { "FX Wobble", "Resonance" },
+                { "FX Runner", "Amount" }, { "FX Runner", "Accent" }, { "FX Runner", "Lift" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

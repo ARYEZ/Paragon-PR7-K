@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 27> list
+    inline constexpr std::array<Expansion, 43> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -30,10 +30,11 @@ namespace expansions
           "chords, string-machine and polysynth pads, haunting leads, eighth-note basses. Built round AFTERGLOW (0.60.0), "
           "an old polysynth's glow, and MACRO 3, GLOW. Our own sounds." },
         { "SANDSEA", "SS",
-          "Inspired by the score of an epic desert science-fiction film: vast low drones, chant, keening voices, "
-          "enormous horn blasts, ritual percussion, wind and sand, melodies in the Phrygian dominant scale. Built round SIROCCO "
-          "(0.58.0), a harmony answering every note in the bank's scale, and MACRO 3, SIROCCO: from one voice to a small "
-          "choir. Our own sounds." },
+          "Inspired by the score of an epic desert science-fiction film, in three columns: the deep desert (the sand "
+          "sea, a keening voice, what moves under it), the desert people (chant, reed, didgeridoo, hand drums, zither, oud) "
+          "and the invaders (colossal horns, pipes, engines, war drums). Melodies in the Phrygian dominant scale. Built "
+          "round COLOSSUS (0.82.0) and MACRO 3, COLOSSUS: the sound made enormous. Many play free sample libraries (VCSL, "
+          "the orchestra, Big Rusty Drums, Gogodze Phu, Squidpipes) when downloaded. Our own sounds." },
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
           "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Built round "
@@ -76,9 +77,12 @@ namespace expansions
           "in deep space: echoing woodwinds, primitive horns, trembling string harmonics, low brass clusters, the "
           "ship's hum, hiss, chatter and alarms, and dread that never resolves. Our own sounds." },
         { "CHROMEFURY", "CF",
-          "Inspired by the score of a 2015 post-apocalyptic chase film: relentless drive, sawing string ostinatos, "
-          "guitar-like screaming leads stacked with distortion over growling low synths, engines, speed, dust and "
-          "fire. Lead-heavy: 6 leads. Our own sounds." },
+          "Inspired by the score of a 2015 post-apocalyptic chase film: war drums, sawing string ostinatos, brass blasts, "
+          "a screaming guitar on a truck of speakers, a war-chant choir, engines, dust and fire. Three columns: the war "
+          "convoy, the fortress and the wasteland. Rebuilt in 0.88.0 round REDLINE and MACRO 3, REDLINE: the sound as a "
+          "revving engine in time with the song. Its guitar plays Black And Green Guitars, its drums Big Rusty Drums, "
+          "its organ VCSL and its brass, choir and strings the Sonatina Symphonic Orchestra, once downloaded (free). Our "
+          "own sounds." },
         { "ASCENSION", "AS",
           "Inspired by the score of a 2001 science-fiction game about an ancient ring-shaped world: a monks' chant "
           "growing into a vast, epic choir, heroic strings and brass, mystery and awe. Built on the VOICE "
@@ -105,15 +109,16 @@ namespace expansions
           "(copies drifting apart, notes never the same twice, patterns that never repeat), and under it the warm "
           "thread of home. Our own sounds." },
         { "SEVERED", "SV",
-          "Inspired by the score of a 2022 series about office workers whose work memories are split from their home "
-          "lives: a cheerful, sterile corporate surface (muzak, chimes, retro screens, humming lights, long white "
-          "corridors) over quiet dread and a melancholy piano. Our own sounds." },
+          "Inspired by a series about office workers whose work memories are split from their home lives, in three "
+          "columns: the floor (bright and sterile), outside (the cold, grieving town in winter) and the founder's "
+          "church (the company as a religion). Built round SORT (0.93.0) and MACRO 3 SORT: the phrase you played, "
+          "re-filed in order a window later. Our own sounds." },
         { "SLINGBLADE", "SB",
-          "Inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling class: in "
-          "three acts, the brutal heaviness of the mines below (drills, machinery, a fragile song in the dark), the "
-          "opulence of a gilded court at war (brass fanfares, glass, a harpsichord), and the soaring dawn of a "
-          "rebellion (anthems, a rising choir, victory bells). Built round the WAH: work it with the EXPR wheel. Our own "
-          "sounds." },
+          "Inspired by a trilogy of science-fiction novels about a miner who rises against a gilded ruling class, and "
+          "its violence, in heavy 1990s industrial: machine-tight sequenced basses, distorted power-chord stabs, "
+          "screaming leads, broken pianos, dark choirs and cold machines. The mines (brutal and grinding), the war "
+          "games (violent and chaotic) and the gilded (cold and cruel). Every sound runs through the WAH into a drive; "
+          "MACRO 3, WAH, rocks the pedal from heel to toe and drives it harder. Our own sounds." },
         { "PARADOX", "PX",
           "Inspired by the score of a German series about four families in a small town where time runs in a loop, and "
           "past, present and future are tied together: crushing sub drones, walls of noise, bowed strings, a choir, "
@@ -133,8 +138,9 @@ namespace expansions
         { "HYPERDRIVE", "HD",
           "Inspired by the late-'70s and early-'80s space-opera film scores: heroic brass fanfares, a lonely horn over a "
           "desert horizon, a men's choir, shimmering strings, a marching low-brass ostinato, a smoky spaceport dance band, "
-          "harps, racing strings and beeping computers. Built round LIGHTSPEED (0.73.0) and MACRO 3, LIGHTSPEED: the jump "
-          "from rest to streaking stars. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
+          "harps, racing strings and beeping computers. MACRO 3 (0.86.0) is NAVICOMPUTER on the held sounds (the notes "
+          "moved by a pattern in key, in time: a held chord becomes a riff) and HYPERJUMP on the rhythmic ones (a build "
+          "and a drop in time with the song). Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
           "(free), and PR7-K's own synthesized orchestra until then. Our own sounds." },
         { "GRAND CINEMA", "GC",
           "The modern film and trailer piano: intimate felt pianos heard up close, vast halls where the notes bloom into "
@@ -142,5 +148,143 @@ namespace expansions
           "swell. Built round BLOOM (0.74.0), the strings ringing along and a hall opening out, and MACRO 3, BLOOM. Every "
           "preset plays the Salamander Grand once it's downloaded (free), and PR7-K's own synthesized piano until then. "
           "Our own sounds." },
+        { "MAESTRO", "MA",
+          "The epic film-trailer orchestra: heroic horns, soaring violins, a lone trumpet, trembling strings, a vast "
+          "choir, brass hits, driving cello ostinatos, timpani, celesta, harps and ticking strings. The mod wheel is the "
+          "dynamics on every preset. Built round LEGION (0.76.0) and MACRO 3, LEGION: from one player to a full section. "
+          "Every preset plays the Sonatina Symphonic Orchestra once it's downloaded (free), and PR7-K's own synthesized "
+          "orchestra until then. Our own sounds." },
+        { "TWIN SPIRES", "TS",
+          "Inspired by an animated series about two sister cities, a gilded one of inventors above and a grimy, chemical "
+          "one below: polished brass, strings, a harpsichord and clockwork for the city above; distorted machine basses, "
+          "punk leads, toxic haze and a broken music box for the one below; crystal tones, a heartbroken piano and neon "
+          "pulses where they meet. Built round OVERCHARGE (0.77.0) and MACRO 3, OVERCHARGE: unstable magic, charging the "
+          "sound then breaking it apart. Its orchestral presets play the Sonatina Symphonic Orchestra once downloaded "
+          "(free). Our own sounds." },
+        { "STOLEN SKY", "SK",
+          "Inspired by a series about a hidden town built inside a mountain after the world ended, a perfect suburb under "
+          "a false sky: sweet whistles, warm pads, clean basses and a gentle piano for the town; concrete drones, "
+          "machine basses, cold arps and steel drips for the truth underneath; grieving strings, a lonely lead, urgent "
+          "arps and cold, emotional pianos for the end of the world. Built round AFTERMATH (0.79.0) and MACRO 3, "
+          "AFTERMATH: from under the open sky into a sealed concrete bunker. Its pianos play the Salamander Grand, and its "
+          "strings, solo violin, flute and low strings the Sonatina Symphonic Orchestra, once downloaded (free). Our own "
+          "sounds." },
+        { "DROWNED DECO", "DD",
+          "Inspired by a city built under the sea in the 1940s and its fall: its gilded jazz age, already warped (a "
+          "clarinet, chandelier strings, an upright bass, a cocktail piano, a vibraphone), its fall into madness (a "
+          "theremin, flooding clusters, groaning steel, a skipping record, frantic pizzicato) and the silence of the sea "
+          "after (a drowned trumpet, an abyssal choir, a trench drone, a sunken celesta, sonar). Built round SUBMERGE "
+          "(0.80.0) and MACRO 3, SUBMERGE: the sound sinking under water. Its pianos play the Salamander Grand, and its "
+          "clarinet, strings, choir, bass, celesta, vibraphone and pizzicato the Sonatina Symphonic Orchestra, once "
+          "downloaded (free). Our own sounds." },
+        { "NEW EDEN", "NE",
+          "Inspired by a series about a near-future theocracy that took power by force: the church (a cantor, a "
+          "sanctuary organ, pedal bourdon, chapel bells, psalm chimes, handbells), the regime (command brass, a state "
+          "anthem, iron boots marching, a tolling bell, a snare roll, a drill snare) and the women who keep their own "
+          "voice (a lone hymn, glass prayer, an undertone, a hidden piano, hidden letters, a thread of harp). Built round "
+          "LOCKSTEP (0.81.0) and MACRO 3, LOCKSTEP: the sound drilled into a march. Its organ, bells, chimes, glockenspiel and "
+          "snare play the Versilian Community Sample Library, its snare roll Sam's Sonor, its brass, choir, strings and "
+          "harp the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
+          "sounds." },
+        { "GUNSLINGER", "GS",
+          "Inspired by the spaghetti-western sound: a lonesome whistle, a high-noon trumpet, a harmonica, the plain at "
+          "dusk, men chanting, heat shimmer, an upright bass, a baritone twang, a galloping bass, a saloon piano, mission "
+          "bells, a jaw harp, hoofbeats, a banjo roll, twang guitars, an archtop and spurs. Built round CANYON (0.84.0) "
+          "and MACRO 3, CANYON: the sound's echoes off rock walls, the far wall replying in time with the song. Its "
+          "guitars play Black And Green Guitars and Shinyguitar, its bass Meatbass, its banjos the Kay 5-String Banjo "
+          "and ganjo, its harmonica, bells and woodblocks the Versilian Community Sample Library, its trumpet, strings "
+          "and choir the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our "
+          "own sounds and phrases." },
+        { "MACHINE SUPREMACY", "MS",
+          "Inspired by the sound of a neon megacity's future: a street lead's sneer, a cold corporate sync lead, a signal "
+          "breaking up in the wires; smog, penthouse glass and a corrupted choir; a pumping club bass, a smooth reese and "
+          "an FM growl; a punk guitar, glass-elevator keys and dead-pixel keys; a street beat, a boardroom sequence and a "
+          "packet storm. Three columns: the street, the towers and the net. Built round JACK-IN (0.85.0) and MACRO 3, "
+          "JACK-IN: something breaks into the sound and takes the phrase over, slice by slice in time with the song. Its "
+          "guitar plays Black And Green Guitars, its beat Big Rusty Drums and its choir the Sonatina Symphonic "
+          "Orchestra, once downloaded (free). Our own sounds and phrases." },
+        { "LAST DAY", "LD",
+          "Inspired by the 1970s science-fiction films of sealed, perfect cities: a golden gliding lead, a hunter's sync "
+          "scream and a theremin's wind; a string machine, a choir played back from tape and a sunrise outside; a pulsing "
+          "sequencer bass, a dark enforcer and a pedal drone; a phaser piano, ring-modulated bells and a rusted organ; "
+          "sample-and-hold bleeps, a mainframe's chatter and a Berlin-school run. Three columns: the sealed city, the "
+          "system that runs it, and outside. Built round SWEEP (0.87.0) and MACRO 3, SWEEP: a huge resonant analogue sweep "
+          "locked to the song. Its strings, choir and harp play the Sonatina Symphonic Orchestra once downloaded (free). "
+          "Our own sounds." },
+        { "PLAYGROUND", "PG",
+          "Inspired by a survival drama played as children's games: a child's recorder, a cold masked trumpet and a "
+          "lonely harmonica; a pastel toy organ, sterile dormitory rows and a warm night market; an oompah toy tuba, a "
+          "guards' march and a debt collector's sub; a music box, a salon waltz on harpsichord and a pawn-shop piano; a "
+          "clapping game, marching numbers and a countdown clock. Sweet sing-song tunes with dread underneath. Three "
+          "columns: the playground, the masked staff and the debt outside. Built round FREEZE TAG (0.89.0) and MACRO 3, "
+          "FREEZE TAG: in time with the song the sound plays, then freezes, a trembling ghost of the moment holding the "
+          "silence. Its recorders, glockenspiel, xylophone, claps and harmonica play VCSL, its trumpet, harpsichord and "
+          "strings the Sonatina Symphonic Orchestra and its piano the Salamander Grand, once downloaded (free). Our own "
+          "sounds." },
+        { "FINAL DIVIDE", "FD",
+          "Inspired by a story of a plague and the survivors who split into two camps: a lonely tone on a dying radio, a "
+          "porch slide guitar and a smoky desert-lounge reed; wind in an empty city, a gospel choir and a neon mirage; a "
+          "respirator's drone, a walking church bass and a velvet menace; hospital intercom bells, a revival organ and "
+          "casino electric piano; a fever's clock, a hand-clap revival and a slot machine; a broken radio, a front-porch "
+          "banjo and a rattlesnake. Three columns: the plague, the free side and the dark side. Built round CROSSROADS "
+          "(0.90.0) and MACRO 3, CROSSROADS: the sound pulled between light and dark in time with the song, the dark "
+          "side pulling every note down the scale, in key. Its guitar, choir, bass, claps and banjo play Shinyguitar, the "
+          "Sonatina Symphonic Orchestra, Meatbass, VCSL and the Kay banjo once downloaded (free). Our own sounds." },
+        { "DARK DESCENT", "DK",
+          "Inspired by a story of the last people living in a buried tower a hundred levels deep: a pressure valve's "
+          "screaming sync lead, a whistle up the stairwell and a voice on a suit's helmet radio; the generator hall, the "
+          "people of the levels singing and the grey horizon outside; a piston bass, a bass walking down the levels and "
+          "an airlock sealing; foundry bells, a worn piano on a landing and the great wall screen; an assembly line, "
+          "footsteps down the spiral stairs and a suit's telemetry; a bolt driver, mended strings and frost on the "
+          "glass. Three columns: the machine depths, the stairs and the outside. Built round GEARWORKS (0.91.0) and "
+          "MACRO 3, GEARWORKS: the sound caught in the machinery, two gears in time with the song cutting it, ringing it "
+          "as metal, steam and clanks on every tooth. Its choir, bass, bells, piano and guitar play the Sonatina "
+          "Symphonic Orchestra, Meatbass, VCSL, the Salamander Grand and Black And Green Guitars once downloaded (free). "
+          "Our own sounds." },
+        { "HIGHNOON", "HN",
+          "Inspired by a story of a frontier theme park run by machines and the hosts who wake inside it: a fiddle at "
+          "the saloon door, the pure voice of the machine and a lonely cello slipping out of tune; dawn over the town, "
+          "a choir that's human but not quite and a memory on warped tape; the saloon's upright, a servo bass and the "
+          "ground giving way; the saloon's player piano, calibration bells and a piano coming apart; a galloping banjo, "
+          "a body being made and a loop breaking; a dusty guitar, a wind-up music box and a string giving out. Three "
+          "columns: the park, under the park and waking up. Built round RAGTIME (0.92.0) and MACRO 3, RAGTIME: the "
+          "park's player piano striking every note you hold on a roll in time with the song, stride bass and all. Its "
+          "fiddle, cello, strings, choir, bass, pianos, banjo, guitar and music box play the Sonatina Symphonic "
+          "Orchestra, Meatbass, the Salamander Grand, the Kay banjo, Shinyguitar and VCSL once downloaded (free). Our "
+          "own sounds." },
+        { "ORIGIN", "OG",
+          "Back to where it started: a bank in the spirit of bank A's Supersaw Lead and Unison Strings. One oscillator, "
+          "one idea, plain waves (saw, pulse, triangle, sine); the movement from the oscillator itself, unison detune "
+          "and spread, vibrato that fades in, each copy drifting on its own like a player in a section; one filter and "
+          "one amp envelope, tuned with care; no effects stacked on top. A wide supersaw lead, a singing pulse lead and "
+          "a soft triangle solo; a low cello section, a warm square pad and a vast pad stacked in octaves; a wide saw "
+          "bass, a punchy square bass and a pure sine sub; saw keys that bloom, a pulse organ and soft tines; supersaw, "
+          "pulse and glass arps; supersaw, pulse and bell plucks. MACRO 3, WIDTH: the unison opened up, from focused to "
+          "huge. Our own sounds." },
+        { "OFFWORLD", "OW",
+          "Our emulation of a famous 1970s two-line polysynth: in every voice two complete lines of synthesis, each "
+          "its own oscillator, a resonant high-pass into a resonant low-pass moved by one envelope, rising from below "
+          "and settling; line II detuned against line I; key pressure brightening the filters and bringing in "
+          "vibrato; a ribbon (the pitch wheel) that bends two up and falls octaves down. The cinematic brass lead, a "
+          "singing lead for ribbon dives and a breathy flute; the big two-line brass pad, lush strings through the "
+          "chorus and a slow dark pad; a round brass bass, a hollow high-pass bass and a soft plucked one; an electric "
+          "piano, ring-modulator bells and a bright clav; brass stabs, a ring-mod arp and glassy lines; a koto, a wood "
+          "mallet and a harp. Built on FILTER 2 (0.96.0). MACRO 3, LINES: line II detuned further and brought up, the "
+          "instrument's own thickening. Our own sounds; no product named." },
+        { "STEEL TITANS", "ST",
+          "Giant machines and the drop: dubstep and festival anthems in one bank. The heroes: a huge supersaw anthem "
+          "lead, chords pumping on every beat, a bright house piano and chopped vocals. The villains: a screeching FM "
+          "lead, a talking growl bass, distorted brass stabs and stuttering arps. The machines: a servo's whine, a "
+          "reese that drops a gear on every note, ring-modulated sparks, cockpit bleeps and lasers. MACRO 3, WOBBLE: "
+          "the dubstep wobble locked to your song, changing speed beat by beat, from a gentle pulse to talking filth. "
+          "Our own sounds; no film, artist or song named." },
+        { "WICKED GAME", "WG",
+          "Trapped in a glade inside a giant maze whose walls move every night, the run through it, and the cold "
+          "laboratory behind it all. The camp: a lonely flute, warm strings by the fire, a drum and a bass struck on the "
+          "earth, a felt piano, a woody ostinato, a plucked rope. The maze: a driving lead, grinding stone walls, a "
+          "reese like machinery, a ticking clock, the chase's string ostinato, a trap snapping shut. The lab: a clinical "
+          "tone, a glass room, a cold pulse, glassy keys, data trickling, a needle. MACRO 3, RUNNER: every note you hold "
+          "struck again in time with your song, each fifth of the knob the next speed: quarters, eighths, sixteenths, "
+          "32nds, 64ths. Our own sounds; no film, book or music named." },
     }};
 }

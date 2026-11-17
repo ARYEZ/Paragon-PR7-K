@@ -18,6 +18,7 @@ namespace
     const juce::Identifier wavetableTag { "Wavetable" };
     const juce::Identifier spectrumTag { "Spectrum" };
     const juce::Identifier sfzTag { "Sfz" };
+    const juce::Identifier wavetableRefTag { "WavetableRef" };
     const juce::Identifier freeformTag { "Freeform" };
 }
 
@@ -70,6 +71,14 @@ std::unique_ptr<juce::XmlElement> Rig::toXml() const
         element->setAttribute ("name", table.name);
         element->setAttribute ("frameSize", table.frameSize);
         element->addTextElement (synth::wavetableFiles::encode (table));
+    }
+    for (const auto& [oscillator, ref] : wavetableRefs)
+    {
+        if (ref.isEmpty())
+            continue;
+        auto* element = xml->createNewChildElement (wavetableRefTag);
+        element->setAttribute ("osc", oscillator + 1);
+        element->setAttribute ("file", ref);
     }
     for (const auto& [oscillator, ref] : sfz)
     {
@@ -130,6 +139,12 @@ std::optional<Rig> Rig::fromXml (const juce::XmlElement& xml)
                                                     element->getAllSubText());
         if (oscillator >= 0 && oscillator < 8 && table.isValid())
             rig.wavetables[oscillator] = std::move (table);
+    }
+    for (const auto* element : xml.getChildWithTagNameIterator (wavetableRefTag))
+    {
+        const auto oscillator = element->getIntAttribute ("osc") - 1;
+        if (const auto ref = element->getStringAttribute ("file"); oscillator >= 0 && oscillator < 8 && ref.isNotEmpty())
+            rig.wavetableRefs[oscillator] = ref;
     }
     for (const auto* element : xml.getChildWithTagNameIterator (sfzTag))
     {

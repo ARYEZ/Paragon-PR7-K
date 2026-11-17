@@ -42,6 +42,13 @@ struct Rig
     // nothing here: its oscillator's TABLE parameter names it.)
     std::map<int, synth::WavetableSource> wavetables;
 
+    // 0.76.0: wavetables a preset names in a pack on the user's computer instead of carrying them, by oscillator:
+    // "{wt:<the pack's folder>}/<the file inside it>", found in the presets folder's "Libraries". For packs whose
+    // licence forbids passing the files on (the repository and releases are public). A table carried in
+    // `wavetables` wins; without one and with the pack missing, the oscillator plays the factory table its TABLE
+    // names (the preset's fallback).
+    std::map<int, juce::String> wavetableRefs;
+
     // The FFT editor's curves, by oscillator (only the ones drawn on).
     std::map<int, synth::SpectrumEdit> spectra;
 

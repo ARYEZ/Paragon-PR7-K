@@ -8,6 +8,7 @@ add_executable(ParagonX1Tests
     TestMain.cpp
     SynthTests.cpp
     WavetableTests.cpp
+    WavetablePackTests.cpp
     ShapeTests.cpp
     ModulationTests.cpp
     FftTests.cpp
@@ -72,10 +73,37 @@ add_executable(ParagonX1Tests
     LeviathanPluginTests.cpp
     NuclearSpringTests.cpp
     NuclearSpringPluginTests.cpp
-    LightSpeedTests.cpp
-    LightSpeedPluginTests.cpp
     BloomTests.cpp
     BloomPluginTests.cpp
+    LegionTests.cpp
+    LegionPluginTests.cpp
+    OverchargeTests.cpp
+    OverchargePluginTests.cpp
+    AftermathTests.cpp
+    AftermathPluginTests.cpp
+    SubmergeTests.cpp
+    SubmergePluginTests.cpp
+    LockstepTests.cpp
+    LockstepPluginTests.cpp
+    ColossusTests.cpp
+    ColossusPluginTests.cpp
+    CanyonTests.cpp
+    CanyonPluginTests.cpp
+    JackInTests.cpp
+    JackInPluginTests.cpp
+    HyperJumpTests.cpp
+    NaviComputerTests.cpp
+    SweepTests.cpp
+    WobbleTests.cpp
+    RunnerTests.cpp
+    RedlineTests.cpp
+    FreezeTagTests.cpp
+    CrossroadsTests.cpp
+    GearworksTests.cpp
+    RagtimeTests.cpp
+    SortTests.cpp
+    Filter2Tests.cpp
+    SortPluginTests.cpp
     SpeedTests.cpp
     EchoesPluginTests.cpp
     DriveGlitchTests.cpp

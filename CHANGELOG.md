@@ -2,6 +2,492 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.1.0
+
+**The neon keyboard: the on-screen keys in THE GRID's colours, and back under the full faceplate.**
+
+- **Neon keys.** The white keys glow in the pink -> red -> orange gradient across the keyboard, dim at the back and bright at the front; the black keys are black with a thin neon rim. Keys being played glow nearly white-hot, so you can see the chord. Playing it works exactly as before. The same keyboard shows on every page.
+- **Back under the full faceplate.** With the rack hidden, the keyboard sits in its own strip at the bottom, the full width of the window; the faceplate and OUTPUT end just above it. THE GRID redraws itself at its new height, so the envelope walls keep their shape.
+- **The mod sources' row stays with the rack** (SHOW RACK), above the same keys.
+
+## 1.0.0
+
+**Version 1.0: WICKED GAME, a new expansion, and RUNNER, every note you hold struck again in time with your song, faster with every fifth of the knob.**
+
+- **RUNNER** (a new signature effect, on the FX page's MOD / LO-FI view): every note you hold is struck again in time with the song. AMOUNT is off at 0, then each fifth of the knob is the next speed: 1/4, 1/8, 1/16, 1/32, 1/64 (about 34 strikes a second at 128 BPM: a roll).
+  - Each strike is a real new hit: the note's envelopes start again, and a sampled instrument plays its recording again from the start.
+  - Every speed is a whole division of the beat, so moving the knob mid-phrase lands straight on the new grid.
+  - ACCENT softens the strikes between the beats; LIFT dips the sound just before each strike, so held pads are struck too.
+  - It strikes the keys you hold, not the arpeggiator's notes. AMOUNT, ACCENT and LIFT can be moved by the mod matrix (FX Runner).
+  - Its page: a stone corridor flashing with each strike, the five speeds as gates, the beat cut into its strikes.
+- **WICKED GAME** (WG01-WG18), 18 new presets, our own sounds: trapped in a glade inside a giant maze whose walls move every night, the run through it, and the cold laboratory behind it. Three columns in every category:
+  - The camp: Lonely Flute, Firelight Dusk, Earth Drum Bass, Campfire Piano, Woodcut Ostinato, Rope Pluck.
+  - The maze: Runner Lead, Shifting Walls, Stone Grinder, Wall Clock, Chase Ostinato, Steel Trap.
+  - The lab: Clinical Signal, Observation Room, Cold Pulse Bass, Glass Lab Keys, Data Trickle, Needle Pluck.
+- **MACRO 3 RUNNER** on every preset: the macro is RUNNER's AMOUNT, so its fifths are the speeds. MACRO 1 BRIGHT, MACRO 2 SPACE.
+- Every WICKED GAME preset keeps a little sustain (a note that fades to silence can't be struck again), and each arp holds a sound on the keys for RUNNER to strike.
+- Eight presets have a version on a sample library, played when it's installed: the orchestra's solo flute (with the synth's flute under it: a recorded flute speaks too slowly for the fastest strikes), strings, choir, and short cellos and basses; the Salamander piano; a plucked double bass.
+- Levels measured: about -17 loudness, the percussive by their peaks. At full RUNNER the short, percussive presets come up as much as 7 dB (struck 64 times a bar, they never decay: Wall Clock most); every clip stays under -1 dBFS.
+
+## 0.99.0
+
+**THE GRID: the front panel becomes one full faceplate, its lower half a glowing grid where your envelopes stand as walls of light, with a spark that follows every note.**
+
+- **One faceplate, top to bottom.** With the rack hidden, the front panel now runs from the header to the bottom of the window. Its top half is as before; under a glowing seam is THE GRID, in the look of PR7-D's kit: a red grid floor running to a glowing horizon.
+- **Your envelopes as walls of light.** The filter envelope (pink) and the amp envelope (orange) stand on the floor in the preset's real shape: a pluck's sharp spike, a pad's slow rise. Over them, their values and the play mode, voices and notes playing.
+- **The spark.** While a note sounds, a spark runs along each wall exactly where that envelope is: up the attack, down the decay, breathing on the sustain, sliding down the release when you let go, with a short light trail. It follows the newest note (keys or arps).
+- **SHOW RACK holds the controls.** The envelopes, AMP and PLAY panels and the on-screen keyboard now come with the rack, so the faceplate is all picture. Play from your keyboard or DAW; SHOW RACK brings the on-screen keyboard back.
+- The sound is unchanged: THE GRID only shows what the synth is doing.
+
+## 0.98.0
+
+**SLINGBLADE, rebuilt from the ground up: violent, aggressive, heavy 1990s industrial, with the WAH at its centre.**
+
+- **SLINGBLADE** (SB01-SB18), 18 new presets in place of the old 18, our own sounds. Three columns in every category:
+  - The mines: Wah Scream, Rust Choir, Piston Sequence, Broken Piano, Pit Sequence, Shrapnel Pluck.
+  - The war games: Razor Wire, Smoke Over Ash, Bonegrinder, Hammer Stab, War March, Wire Pluck.
+  - The gilded: Gilded Knife, Cold Throne, Slaughter Reese, Steel Organ, Static Arp, Blade Pluck.
+- Every preset runs through the WAH on insert bus A, each set its own way: a pedal parked half down, an auto-wah following your playing, or a wah moving in time with the song.
+- **MACRO 3 WAH** on every preset: rocks the pedal from heel to toe, drives it harder and makes the filter sing. MACRO 1 BRIGHT, MACRO 2 SPACE.
+- Levels measured: about -17 loudness, the stabs and plucks by their peaks; full WAH keeps the loudness within about 1.5 dB on most (Wire Pluck about 3 dB thinner at the toe).
+- Presets saved from the old SLINGBLADE in your own banks keep their sound; the old factory presets are gone.
+
+## 0.97.0
+
+**STEEL TITANS, a new expansion: dubstep and festival anthems, with giant machines, and WOBBLE, the dubstep wobble locked to your song.**
+
+- **WOBBLE** (a new signature effect, in the FX page's SIGNATURE slot): a resonant filter that opens and closes in time with your song, changing speed beat by beat as a dubstep bass does. Our own design.
+  - PATTERN, the speeds over two bars: STEADY eighths, HALF-TIME, TRIPLETS, DROP (eighths into a triplet and sixteenth fill), ROLLS (speeding up to 32nds), TALKER, STUTTER, BOUNCE.
+  - SHAPE: SMOOTH (the classic wub), SNAP (open at once, punchy), RISE (opening across each wobble, the "yoi").
+  - TALK: a vowel moving with the wobble, OO shut to AH open (the "wow"). DRIVE: grit going in. LOW, RANGE and RESONANCE set the filter.
+  - The level is kept as it opens and shuts. At AMOUNT 0 your sound passes untouched. AMOUNT, TALK and RESONANCE can be moved by the mod matrix.
+- **STEEL TITANS** (ST01-ST18), our own sounds, no film, artist or song named. Three columns in every category:
+  - The heroes (the anthem side): Anthem Lead, Rise Of Titans, Titan Drop, Anthem Piano, Pump Saw Arp, Vocal Chop.
+  - The villains (dark and aggressive): Screech Lead, Fallen City, Growl Bass, Metal Stab, Stutter Arp, Metal Pluck.
+  - The machines: Servo Whine, Spark Core, Gearshift Reese, Cockpit Keys, Gear Sequence, Laser Pluck.
+- **MACRO 3 WOBBLE** on every preset, each with its own pattern, shape, vowel and drive: from the preset as built to the full wobble. MACRO 1 BRIGHT, MACRO 2 SPACE.
+- Levels measured: about -17 loudness (the plucks by their peaks); full WOBBLE changes the loudness by under 1 dB on most, Growl Bass 3 dB quieter.
+
+## 0.96.0
+
+**OFFWORLD, a new expansion built on a two-line vintage polysynth, and FILTER 2: a second filter path in the synth.**
+
+- **FILTER 2** (a new tab on the FILTER panel): a second filter with its own envelope (shown in the envelope panel while its tab is open). Each oscillator chooses it with its FILTER 2 switch, so two groups of oscillators can each have their own filter, the way the classic two-line polysynths stack two complete synths. Both filters' cutoff, resonance, drive, keytrack, envelope and LOW CUT can be moved by the mod matrix.
+- **LOW CUT** on both filters: a resonant low cut in front of the filter, following its keytrack and envelope, 12 or 24 dB with the filter's slope. At its lowest setting it reads OFF and does nothing.
+- Your sounds and projects are unchanged: with FILTER 2 off or nothing routed to it, and LOW CUT off, the synth is identical to before, bit for bit.
+- **OFFWORLD** (OW01-OW18), our own sounds, modelled on how the famous two-line polysynth of the late 1970s is built (from its published design; no recordings of one were compared). Every preset is two lines: line I through FILTER 1, line II through FILTER 2, each with its low cut, its own filter envelope and a sine added after the filter. Pressing harder on a held key opens both filters and adds vibrato; the pitch wheel plays like a ribbon (the bend down falls far further than up). Some add ring modulation.
+  - Leads: Offworld Brass, Ribbon Singer, Night Flute.
+  - Pads: Two-Line Brass, Starlight Strings, Slow Horizon.
+  - Basses: Rainy Brass Bass, Hollow Bass, Soft Pluck Bass.
+  - Keys: Velvet Tines, Ring Bells, Bright Clav.
+  - Arps: Brass Stabs, Ring Mod Arp, Glass Lines.
+  - Plucks: Koto Pluck, Wood Mallet, Offworld Harp.
+- **MACRO 3 LINES** on every preset: detunes line II against line I and brings it up, from one clean line to the wide, beating two-line sound. MACRO 1 BRIGHT opens both filters, MACRO 2 SPACE brings in the reverb.
+- Levels measured: about -17 loudness, the plucks, bells and stabs by their peaks; full LINES adds 0.2-3 dB.
+
+## 0.95.0
+
+**ORIGIN, a new expansion: back to where it started, in the spirit of bank A's Supersaw Lead and Unison Strings.**
+
+- **ORIGIN** (OG01-OG18), our own sounds. What makes those two presets so good is how plain they are: one oscillator, one idea, done carefully. Every ORIGIN preset keeps to that:
+  - One or two oscillators of the plain waves: saw, pulse, triangle, sine. No wavetables, FFT editing, sync, FM or shapers.
+  - The movement comes from the oscillator itself: unison detune and spread, and vibrato that fades in as you hold a note. On the pads, the cellos and the flute lead each copy drifts on its own vibrato, like separate players in a section.
+  - One filter and one amp envelope, tuned with care. No effects stacked on top: the reverb and delay come in only with MACRO 2 SPACE.
+- The presets:
+  - Leads: Origin Lead (Supersaw Lead's big brother, every other saw an octave up), Singing Pulse, Glass Flute.
+  - Pads: Cello Section (Unison Strings an octave down), Square Drift, Octave Horizon.
+  - Basses: Wide Saw Bass, Square Punch, Pure Sub.
+  - Keys: Saw Bloom Keys, Pulse Organ, Soft Tines.
+  - Arps: Supersaw Arp, Pulse Run, Glass Ladder (hold chords).
+  - Plucks: Supersaw Pluck, Pulse Pluck, Triangle Bell.
+- **MACRO 3 WIDTH** on every preset: opens up the unison (more detune and spread), from focused to huge. Nothing else moves.
+- Levels measured: about -17 loudness, the plucks by their peaks.
+
+## 0.94.0
+
+**SEVERED, rebuilt from the ground up round SORT: the office's tidy, pointless work done to what you play.**
+
+- **SEVERED** (SV01-SV18), our own sounds and phrases, replacing the 15 presets it had since 0.48.0 (a preset you saved from one of them is kept in your own banks). Three in every category: the floor, outside, the founder's church.
+  - Leads: Desk Whistle, Winter Cello, Founding Brass.
+  - Pads: Drop Ceiling, Snowfall Strings, Portrait Choir.
+  - Basses: Office Walk, Frozen Lake, Procession Pedal.
+  - Keys: Elevator Muzak, Cold Morning Piano, Founder's Organ.
+  - Arps: Number Cascade, Night Commute, Ceremony Bells.
+  - Plucks: Desk Toy, Filing Pizzicato, Music Box Award.
+- **MACRO 3 SORT** on every preset: turned up, what you played comes back a window later re-filed (lowest note first, highest first, rising to a peak, or shuffled), each preset its own way: the pads and drones re-file whole two-bar windows, the basses and keys eighths, the arps and plucks sixteenths. At the macro's left the presets play exactly as they are.
+- **11 have a version on the free libraries**, played once they're downloaded: the orchestra's solo cello, solo trumpet, strings, choir and pizzicato strings; a real upright bass (Meatbass); the Salamander Grand; a real pipe organ, hand chimes, marimba and glockenspiel (VCSL).
+- Levels measured: about -17 loudness, the plucks, piano and bass by their peaks; every version under -3.5 dBFS at full SORT.
+
+## 0.93.0
+
+**SORT, a new signature effect: the phrase you played, re-filed in order.** It's the centrepiece for the coming rebuild of SEVERED; this release has the effect on its own (SEVERED's presets are unchanged for now).
+
+- **SORT** (FX page, SIGNATURE slot), our own design: in time with the song it cuts the sound into pieces and, a window at a time, plays back the window before re-filed. Played G C C E A D B F, the next bar comes back C D E F G A B C.
+  - **ORDER**: UP (lowest note first), DOWN (highest first), PEAK (rising to the top and back), LOUDEST (loudest first), SHUFFLE (a new order every window).
+  - **SLICE** (quarters, eighths, sixteenths, eighth triplets) and **LENGTH** (half a bar, one bar or two bars: how much is re-filed at a time, and how far behind it comes back).
+  - **GAPS**: your rests go to the end, or stay where you played them.
+  - **EDGE**: how cleanly one piece cuts to the next (1 to 30 ms). **STRIKE**: a fresh hit at the start of each piece, since they're cut out of ringing notes.
+  - **AMOUNT**: from the live sound to the re-filed one. At 0 the sound passes exactly untouched. AMOUNT, EDGE and STRIKE can be moved by the mod matrix (FX Sort).
+  - Each piece is filed by the note the synth was playing, not by guessing the pitch from the sound (guessing slipped octaves on a piano). A chord is filed by its average pitch.
+  - It can only re-file what it has already heard, so what you hear is always a window behind what you play.
+- Its page shows two rows of index cards: the last window as played, and the same cards re-filed, the one playing now lit.
+
+## 0.92.0
+
+**HIGHNOON, a new expansion built round a new signature effect, RAGTIME: the park's player piano striking every note you hold.**
+
+- **HIGHNOON** (HN01-HN18), our own sounds and phrases: a story of a frontier theme park run by machines and the hosts who wake inside it. Three in every category: the park, under the park, waking up.
+  - Leads: Frontier Fiddle, Host Signal, Awakening Cello.
+  - Pads: Frontier Dawn, Synthetic Choir, Memory Haze.
+  - Basses: Saloon Upright, Servo Bass, Fault Line.
+  - Keys: Player Piano, Calibration Bells, Unwound Piano.
+  - Arps: Stagecoach, Fabrication, Loop Break (hold chords).
+  - Plucks: Dusty Strum, Wind-Up Box, Broken String.
+- **MACRO 3 RAGTIME** on every preset: turned up, a player piano's roll strikes the notes you hold again, in time with the song: the beats first, then the syncopations, then the pickups. At the macro's left the presets play exactly as they are. On the arps it strikes the layer your keys hold under the arp (the arp's own notes keep their rhythm).
+- **10 have a version on the free libraries**, played once they're downloaded: the orchestra's solo violin, solo cello, strings and choir; a real upright bass (Meatbass); the Salamander Grand twice over for Player Piano (the honky-tonk) and Unwound Piano; a real banjo (the Kay banjo); a real archtop guitar (Shinyguitar); a real glockenspiel for the music box (VCSL).
+- **RAGTIME** (FX page, SIGNATURE slot), our own design, and not an echo: each strike is a real new hammer blow in the synth (the note's envelopes start again, a sampled instrument plays a fresh recording), a quick damper LIFT just before it so even a held pad is struck. PATTERN (STRIDE, RAG, CAKEWALK, MARCH, ROLL), STRIDE (the lowest note you hold as the left hand's "oom", the rest as the right's "pah"), DIVISION, SWING, ACCENT, LIFT. Your vibrato and pitch are left alone, and a note the pedal holds is struck and still lets go when the pedal comes up. Its page shows the paper roll, the holes punched as AMOUNT rises and the step playing lit.
+- Levels measured: about -17 loudness, the pianos, bells and plucks by their peaks; every version under -3.5 dBFS at full RAGTIME.
+
+## 0.91.0
+
+**DARK DESCENT, a new expansion built round a new signature effect, GEARWORKS: industrial and mechanical from the oscillators up.**
+
+- **DARK DESCENT** (DK01-DK18), our own sounds and phrases: a story of the last people living in a buried tower a hundred levels deep. Three in every category: the machine depths, the stairs, the outside.
+  - Leads: Pressure Valve, Stairwell Whistle, Helmet Radio.
+  - Pads: Generator Hall, Hundred Levels, Ash Horizon.
+  - Basses: Piston Bass, Down Deep, Airlock Seal.
+  - Keys: Foundry Bells, Rationed Piano, Wall Screen.
+  - Arps: Assembly Line, Spiral Steps, Suit Telemetry (hold chords).
+  - Plucks: Bolt Driver, Mended Strings, Frost Glass.
+- **MACRO 3 GEARWORKS** on every preset: turned up, the sound is caught in the machinery. Two gears turn in time with the song and cut the sound wherever a tooth comes round, grinding out an interlocking pattern; the sound rings as metal, and steam and clanks hit on every tooth. At the macro's left the presets play exactly as they are.
+- **5 have a version on the free libraries**, played once they're downloaded: the orchestra's choir and strings for Hundred Levels, a real upright bass for Down Deep (Meatbass), real tubular bells for Foundry Bells (VCSL), the Salamander Grand on two strings pulled apart for Rationed Piano, and a real guitar for Mended Strings (the Gretsch of Black And Green Guitars).
+- **GEARWORKS** (FX page, SIGNATURE slot), our own design: AMOUNT, RATIO (the two gears' teeth: 3 : 4, 2 : 3, 3 : 5, 5 : 7), DIVISION (1/16, 1/8, 1/16 T), BITE (how deep a tooth cuts), METAL (ring modulation at 2.76 times the lowest note, a struck bar's first overtone), GRIND (held samples and fewer bits), STEAM (a hiss on every cut) and CLANK (struck metal on every tooth). The cut's loss is made up from the pattern itself, so the level holds; silence stays silent. Its page shows the two gears meshing and a whole turn of steps.
+- Levels measured: about -17 loudness, the bells, piano, plucks and Suit Telemetry by their peaks; every version under -3.5 dBFS at full GEARWORKS.
+
+## 0.90.0
+
+**FINAL DIVIDE, a new expansion built round a new signature effect, CROSSROADS. This release also carries 0.89.2's fixes (GUNSLINGER's sampled presets play again), since 0.89.2 itself was held up by GitHub's Linux build machines.**
+
+- **FINAL DIVIDE** (FD01-FD18), our own sounds and phrases: a story of a plague and the survivors who split into two camps. Three in every category: the plague, the free side, the dark side.
+  - Leads: Dead Air, Porch Slide, Desert Lounge.
+  - Pads: Empty City, Gospel Choir, Neon Mirage.
+  - Basses: Quarantine, Walking Gospel, Velvet Menace.
+  - Keys: Hospital Bells, Revival Organ, Casino Keys.
+  - Arps: Ticking Fever, Hand Clap Revival, Slot Machine (hold chords).
+  - Plucks: Broken Radio, Front-Porch Banjo, Snake Rattle.
+- **MACRO 3 CROSSROADS** on every preset: turned up, the sound is pulled between light and dark in time with the song. On the dark side every note is pulled down the scale but always lands in key (E minor: a bent note never goes flat), with a growl an octave down; the light side shimmers an octave up. At the macro's left the presets play exactly as they are.
+- **5 have a version on the free libraries**, played once they're downloaded: a real archtop guitar for Porch Slide (Shinyguitar), the orchestra's large choir for Gospel Choir, a real upright bass for Walking Gospel (Meatbass), real hand claps for Hand Clap Revival (VCSL) and a real 5-string banjo for Front-Porch Banjo.
+- **CROSSROADS** (FX page, SIGNATURE slot), our own design: AMOUNT (nothing pulled below halfway, then one step up to PULL's STEP / THIRD / FIFTH), LENGTH of each side (1/2 bar to 4 bars), KEY and SCALE, BEND (how fast notes slide), LIGHT and DARK (each side's colour). Its page shows a road forking into the light way and the dark way.
+- Levels measured: about -17 loudness, the bells, claps, plucks and Ticking Fever by their peaks; every preset under -3.5 dBFS at full CROSSROADS (the banjo and archtop recordings touch the -1 dBFS ceiling limiter on hard plucks).
+- **From 0.89.2:** instrument files now load in a fraction of a second (Meatbass took about 70 seconds, the guitars about 77), moving to another preset stops a load still running for the old one, a half-downloaded library plays the synthesized version and offers the download again instead of silence, and downloads unpack beside the library's folder and are renamed into place only when complete (a first try nested them a folder deeper, which passed Windows' 260-character path limit; caught by the Windows tests).
+
+## 0.89.2
+
+**GUNSLINGER's sampled presets play again: the libraries' instruments load in a fraction of a second, and a slow load no longer leaves the next preset silent.**
+
+- **What was wrong:** reading an instrument file, PR7-K stripped its comments one character at a time in a way that grew with the square of the file's length. Karoryfer's libraries have very large instrument files, so loading one took over a minute: Meatbass (Dusty Upright) about 70 seconds, the two guitar libraries about 77 seconds each. Instruments load one at a time, and a load kept going even after you'd moved to another preset, so everything after Dusty Upright (Saloon Piano, Mission Bells, Hoofbeats) sat silent in line behind it.
+- **What changed:** that step now reads the file once, start to finish: Meatbass loads in 0.2 seconds, the guitars in about a quarter of a second, with exactly the same notes as before. And moving to another preset now stops a load still running for the old one at once, so the preset you're on loads straight away.
+- **A library that only half downloaded no longer plays silence.** If a download or its unpacking stopped part way (the DAW closed, a full disk), the library's folder could hold its instrument but not all its samples, and its presets played nothing. Now such a library counts as not installed: its presets play their synthesized versions and offer the library again. New downloads unpack beside the library's folder (as "<its name>.partial") and are renamed into place only when complete. (A first build unpacked them inside a folder of their own, which put the library's long name into every path twice and passed Windows' 260-character limit for Black And Green Guitars' samples; caught by the Windows tests before release.)
+- **CROSSROADS** (FX page, SIGNATURE slot), the next bank's signature effect, is in this build: the sound pulled between light and dark in time with the song, the dark side pulling every note down the scale, in key. Its bank, FINAL DIVIDE, comes in the next release.
+
+## 0.89.1
+
+**Black And Green Guitars now downloads exactly as recorded.**
+
+- **What was wrong:** GitHub builds the library's download with git, and that library's settings tell git to treat every file as text and change its line endings. Git did that to the audio files too, putting an extra byte into each sample wherever one particular byte value appeared. The samples PR7-K downloaded were damaged, so the guitar versions of six presets (Baritone Twang, Twang Picking and Twang Pluck in GUNSLINGER, Punk Riff in MACHINE SUPREMACY, Flame Guitar and Spark Riff in CHROMEFURY) played a damaged copy. The other libraries weren't affected: git leaves their audio alone.
+- **What changed:** after unpacking, PR7-K fetches each of the guitars' samples again from GitHub's original files, checks it against the download (git's change applied to it must give exactly the downloaded copy), and only then puts it in place.
+- **If you already downloaded the guitars:** the plugin now counts that copy as unfinished. Those six presets play their synthesized version and offer the library again. Say yes and it fetches only the samples (about 480 MB, roughly ten minutes), not the whole download.
+- The four GUNSLINGER and MACHINE SUPREMACY guitar versions were re-levelled on the repaired samples (the damage had made them sound louder than they are): Baritone Twang +6.6 dB, Twang Picking +4.4 dB, Twang Pluck +0.8 dB, Punk Riff +1.9 dB. CHROMEFURY's two measured within their targets on the repaired samples and were left as they were.
+
+## 0.89.0
+
+**PLAYGROUND, a new expansion: sweet children's tunes with dread underneath, built round a new signature effect, FREEZE TAG.**
+
+- **PLAYGROUND** (PG01-PG18), our own sounds and phrases: a child's recorder, toy instruments, a music box and clapping games beside a cold masked trumpet, a guards' march and a salon waltz, and outside a lonely harmonica, a warm night market and a pawn-shop piano. Three in every category: the playground, the masked staff, the debt outside. **MACRO 3 FREEZE TAG** on every preset.
+  - Leads: Recorder Tune, Masked Trumpet, Empty Pockets.
+  - Pads: Painted Stairs, Dormitory Rows, Night Market.
+  - Basses: Toy Tuba, Guard March, Debt Collector.
+  - Keys: Music Box, Salon Waltz, Pawn Shop Piano.
+  - Arps: Clapping Game, Marching Numbers, Countdown Clock (hold chords; the drums and ticks keep their own rhythm).
+  - Plucks: Marble Drop, Glass Step, Paper Flip.
+- **11 have a version on the free libraries**, played once they're downloaded: a real recorder, harmonica, marimba and claps, snare and xylophone, woodblock and glockenspiel (VCSL); a real trumpet, strings, tuba, plucked basses and harpsichord (the orchestra); the pawn-shop piano on the Salamander Grand.
+- **FREEZE TAG** (FX page, SIGNATURE slot), our own design: the playground freeze game, in time with the song.
+  - Each CYCLE (1, 2 or 4 bars) plays, then freezes for its last HOLD (1, 2 or 4 beats): the live sound stops and a ghost of the moment it froze hangs in the silence (SLICE: how much of that moment it holds).
+  - TREMBLE: the ghost can't keep still. FROST: it darkens. CAUGHT: the chance a freeze gets caught moving, and the ghost sinks an octave and crumbles. LEVEL: how loud the ghost is.
+  - AMOUNT brings it in; while it plays, your sound is untouched, and at AMOUNT 0 it's untouched throughout.
+  - AMOUNT, TREMBLE and CAUGHT can be moved from the mod matrix (FX Freeze Tag). Its page shows the cycle beat by beat and a figure that runs on green and freezes on red.
+- **CHROMEFURY's description** in the preset browser now describes the rebuilt bank (0.88.0 still showed the old one's).
+
+## 0.88.0
+
+**CHROMEFURY rebuilt from the ground up, round a new signature effect, REDLINE.**
+
+- **CHROMEFURY** (CF01-CF18): all 18 presets are new (the old ones are gone), our own sounds and phrases: war drums, sawing string ostinatos, brass blasts, a screaming guitar on a truck of speakers, a war-chant choir, engines, dust and fire. Three in every category: the war convoy, the fortress, the wasteland. **MACRO 3 REDLINE** on every preset. It now has three of each kind like the other banks (it used to be six leads).
+  - Leads: Flame Guitar, Warlord Brass, Lone Cello.
+  - Pads: Dust Wall, Pale Choir, Salt Flats.
+  - Basses: V8 Growl, Iron Pipes, Sand Engine.
+  - Keys: Speaker Stack (every key a power chord), Fortress Organ, Mirage Bells.
+  - Arps: Convoy Drums (hold any key: war drums), Spiccato Chase, Night Crossing.
+  - Plucks: Spark Riff, Chain Pizzicato, Barbed Wire.
+- **11 have a version on the free libraries**, played once they're downloaded: Flame Guitar and Spark Riff on a real Gretsch (Black And Green Guitars), Warlord Brass, Lone Cello, Pale Choir, Salt Flats, Iron Pipes, Spiccato Chase and Chain Pizzicato on the orchestra, Fortress Organ on VCSL's pipe organ, Convoy Drums on Big Rusty Drums.
+- **REDLINE** (FX page, SIGNATURE slot), our own design: the sound becomes a revving engine, in time with the song.
+  - THROB: the cylinders. The sound pulses at half the pitch of the note you play, so every note growls with a throb an octave down.
+  - The revs climb across each GEAR (half a bar to 4 bars) and drop back on its line: the gear change (SHIFT sets how hard it hits).
+  - SCREAM: the sound an octave up through a hard drive, climbing RISE (up to 12 semitones) as it revs. WHINE: a supercharger's whine rising with the revs. TONE: the scream's top.
+  - THROTTLE brings it all in; the level is kept. At THROTTLE 0 your sound passes untouched.
+  - THROTTLE, THROB and SCREAM can be moved from the mod matrix (FX Redline). Its page is a tachometer: the needle climbs through each gear and drops at the change.
+
+## 0.87.0
+
+**LAST DAY, a new expansion: 1970s dystopian science fiction, built round a new signature effect, SWEEP.**
+
+- **LAST DAY** (LD01-LD18), our own sounds and phrases: huge resonant sweeps, gliding monophonic leads, sync screams, string machines, a choir played back from tape, Berlin-school sequencer basses, ring-modulated bells, sample-and-hold bleeps, phaser and tape echo. Three in every category: the sealed city, the system that runs it, and outside. **MACRO 3 SWEEP** on every preset.
+  - Leads: Golden Glide, Pursuit Sync, Theremin Wind.
+  - Pads: String Machine, Tape Choir, Overgrown Sunrise.
+  - Basses: Pleasure Pulse (hold a note: a sequencer bass runs), Enforcer Bass, Pedal Drone.
+  - Keys: Phaser Piano, Ring Mod Bells, Rusted Organ.
+  - Arps: Sample And Hold, Mainframe Chatter, Berlin Run.
+  - Plucks: Glass Pluck, Tracer Ping, Ruin Harp.
+- **3 have a version on the free orchestra** (the Sonatina Symphonic Orchestra), played once it's downloaded: String Machine (the whole string section over the string machine), Tape Choir (the large choir, worn by tape) and Ruin Harp (the concert harp).
+- **SWEEP** (FX page, SIGNATURE slot), our own design: the 1970s analogue filter sweep as a performance, locked to the song.
+  - SHAPE: UP, DOWN or UP-DOWN, over LENGTH (half a bar to 8 bars). CENTER and RANGE set where it sweeps and how wide (2 to 9 octaves).
+  - RESONANCE rises with the sweep to all of itself at the top: the near-scream at the peak. FILTER: LOW-PASS (24 dB) or BAND-PASS (a narrower, vocal sweep). PHASER: a phaser riding the cutoff.
+  - AMOUNT brings the filter in from fully open; the level is kept, so turning it up sweeps the sound without making it quieter. At AMOUNT 0 your sound passes untouched.
+  - AMOUNT, RESONANCE and CENTER can be moved from the mod matrix (FX Sweep). Its page shows the sweep's path in time with the cutoff now, and the filter's response.
+
+## 0.86.0
+
+**HYPERDRIVE gets two new signature effects, HYPERJUMP and NAVICOMPUTER, in place of LIGHTSPEED, which is gone.**
+
+- **LIGHTSPEED is removed** (your call: it didn't add anything musical). Projects that had it switched on load without it.
+- **HYPERJUMP** (FX page, SIGNATURE slot), our own design: a build and a drop in time with the song, always landing on the bar line.
+  - Through the build (LENGTH: 1, 2 or 4 bars) the sound climbs a step each beat up to RISE (up to +12 semitones), is chopped faster and faster (quarters, eighths, sixteenths, thirty-seconds: CHOP sets how deep), thins out and narrows to the middle.
+  - On the bar line it snaps back, full and wide, with a HIT: a deep boom and a burst of space. The boom follows the music, so silence stays silent.
+  - MODE: LOOP builds in the second half of every 2 x LENGTH bars and drops on the next; ONCE builds once from the next bar line after you turn it up, then stays landed.
+  - AMOUNT, RISE and CHOP can be moved from the mod matrix (FX Hyperjump). Its page shows the build as a warp tunnel closing in, the beats counting to the drop, and a flash as it lands.
+- **NAVICOMPUTER** (FX page, SIGNATURE slot), our own design: every note you play moves through a 16-step pattern, in time with the song and in your KEY and SCALE. A held chord becomes a riff; a held note becomes a computer's line.
+  - Each note moves by its own steps of the scale, so a chord stays in key (in C major, B's fifth is F, not F#).
+  - Eight PATTERNS (ASCEND, DESCEND, FIFTHS, OCTAVES, TRILL, GALLOP, COMPUTER, SIGNAL); DIVISION 1/16, 1/8, 1/16 T or 1/4.
+  - AMOUNT brings the steps in a few at a time (the pickups first, the downbeats last): a little, an occasional jump; all the way, the whole pattern. CHAOS gives steps other moves, a new choice each bar; GLIDE slides between moves.
+  - It moves the synth's notes themselves, not the audio, so nothing smears. AMOUNT, CHAOS and GLIDE can be moved from the mod matrix (FX Navicomputer).
+- **HYPERDRIVE's MACRO 3** is now NAVICOMPUTER on the held sounds (the leads, pads and keys: G minor) and HYPERJUMP on the rhythmic ones (the basses, arps and plucks). At the macro's left every preset sounds as before. Hero's Fanfare, Starbound Choir, Galaxy Strings and Elder Hum carry the LIMITER at -1 dBFS as a ceiling (moving their notes onto their brightest pitches jumped up to 9 dB).
+
+## 0.85.0
+
+**MACHINE SUPREMACY, a new expansion: a neon megacity's street, towers and net, built round a new signature effect, JACK-IN.**
+
+- **MACHINE SUPREMACY** (MS01-MS18), our own sounds and phrases. Three in every category: the street, the towers, the net. **MACRO 3 JACK-IN** on every preset: something breaks into the sound and takes the phrase over.
+  - Leads: Gutter Snarl, Chrome Executive, Ghost Signal.
+  - Pads: Smog Cloud, Penthouse Glass, Corrupted Choir.
+  - Basses: Club Pump (pumping in time with the song), Corporate Reese, Flatline Growl.
+  - Keys: Punk Riff (play power chords), Elevator Bells, Dead Pixel Keys.
+  - Arps: Gang Drums, Boardroom Sequence, Packet Storm.
+  - Plucks: Street Stab, Tower Ping, Bitrot Pluck.
+- **3 have a version on the free libraries**, played once the library is downloaded: Corrupted Choir (the orchestra's choir, crushed), Punk Riff (a Gretsch, Black And Green Guitars) and Gang Drums (Big Rusty Drums).
+- **JACK-IN** (FX page, SIGNATURE slot), our own design: it keeps listening and, in time with the song, takes slices of what you play over.
+  - SLICE: eighths, sixteenths, thirty-seconds or sixteenth triplets. AMOUNT: how many are taken (at full nearly all).
+  - A taken slice comes back from the last beat to two bars (REACH): replayed, reversed, stuttered, an octave up or down; CRUSH grinds some of them; DROPS ends a beat now and then in a tape stop.
+  - CHAOS: low keeps to replays and stutters from whole beats back (the rhythm holds); high brings reverses and octaves from anywhere.
+  - Every change crossfades, so nothing clicks; at AMOUNT 0 your sound passes untouched.
+  - AMOUNT, CHAOS and CRUSH can be moved from the mod matrix (FX Jack-In). Its page shows the phrase as a grid of slices, each lit by what it became.
+
+## 0.84.0
+
+**GUNSLINGER, a new expansion: the spaghetti-western sound, built round a new signature effect, CANYON; five more free libraries to download in the plugin.**
+
+- **GUNSLINGER** (GS01-GS18), our own sounds and phrases. **MACRO 3 CANYON** on every preset: the sound sent into a canyon, its walls answering.
+  - Leads: Lonesome Whistle, Duel Trumpet, Harmonica Wind.
+  - Pads: Prairie Dusk, Men's Chant, Heat Shimmer.
+  - Basses: Dusty Upright, Baritone Twang, Gallop Bass.
+  - Keys: Saloon Piano (a honky-tonk: two strings to every note pulled apart), Mission Bells, Jaw Harp.
+  - Arps: Hoofbeats, Banjo Roll, Twang Picking.
+  - Plucks: Twang Pluck, Archtop Strum, Spur Jangle.
+- **14 have a version on the free libraries**, played once the library is downloaded; until then the synthesized version plays. A Gretsch Anniversary and a Hofner Club (twang), an archtop guitar, a 1958 double bass, a 5-string banjo and a 6-string banjo; VCSL's harmonica, tubular bells, woodblock and claves; the orchestra's trumpet, strings and choir; the Salamander (twice, for the honky-tonk). Lonesome Whistle, Heat Shimmer, Gallop Bass and Jaw Harp are synthesized only (no free whistling or jaw harp could be found).
+- **CANYON** (FX page, SIGNATURE slot), our own design: AMOUNT sends the sound into a canyon.
+  - Three near walls slap it back (SIZE: the first 45 to 200 ms after the sound), each from its own side and darker the further it is.
+  - The far wall replies in time with the song (FAR: a quarter note to two bars), bouncing from side to side, darker each time (REPEATS: how many come back).
+  - TONE (how much top the rock gives back) and WIDTH.
+  - Turned down, the echoes already out there still come back; at 0, once they've died, your sound passes untouched.
+  - AMOUNT, SIZE and REPEATS can be moved from the mod matrix (FX Canyon). Its page shows a canyon at sundown, each wall lighting up as its echo returns.
+- **Five more free libraries to download in the plugin**, credited in ABOUT:
+  - **Black And Green Guitars** (Karoryfer Samples, CC0, about 560 MB): a Gretsch Anniversary and a Hofner Club.
+  - **Shinyguitar** (Karoryfer Samples, CC0, about 440 MB): an archtop guitar.
+  - **Meatbass** (Karoryfer Samples, CC0, about 280 MB): a 1958 double bass.
+  - **ganjo** (itsclipping, CC0, 25 MB): a 6-string banjo.
+  - **Kay 5-String Banjo** (FlameStudios, SFZ by S. Christian Collins, GPL-3.0, about 400 MB to download; the author's editing files in it are skipped, so it takes 20 MB on disk).
+- **SFZ reading:**
+  - Key switches given as a range (`sw_lolast` / `sw_hilast`, used by the Kay banjo) work now.
+  - A library's Sforzando bank file can name its sample folder (Shinyguitar does); PR7-K reads it now. Without it, Shinyguitar found none of its samples.
+
+## 0.83.0
+
+**SANDSEA rebuilt: 18 new presets round COLOSSUS, 15 of them with versions on the free sample libraries.**
+
+- **SANDSEA, rebuilt from the ground up** (SS01-SS18; the old presets are gone). Three columns in every category: the deep desert, the desert people and the invaders. **MACRO 3 COLOSSUS** on every preset: from the sound as it is to enormous (an octave under it, a vast hall, a boom under each new note), keeping its loudness within about 3 dB.
+  - Leads: Keening Voice, Duduk Lament, Colossus Horn.
+  - Pads: Sand Sea, Chant Circle, Pipes of Arrival.
+  - Basses: Worm Rumble, Didgeridoo Bass, Iron Engine.
+  - Keys: Sun Gong, Kanun, Spice Bells.
+  - Arps: Thumper, Hand Drum Rite, War Drums.
+  - Plucks: Mbira Dune, Desert Oud, Frame Drum Strike.
+- **15 have a version on the free libraries**, played automatically once the library is downloaded; until then the synthesized version plays. The libraries: the orchestra's choir and brass, the Versilian collection (ocean drum, didgeridoo, gong, zither, finger cymbals and bell tree, slit drum, darbuka, frame drum, mbira), Squidpipes, Big Rusty Drums and Gogodze Phu. Duduk Lament, Iron Engine and Desert Oud are synthesized only (no free duduk or oud can be downloaded without an account).
+  - The pitches of the untuned instruments (the gong, frame drum, slit drum, didgeridoo and finger cymbals) were measured or estimated here, not given by the libraries: tell us if one sounds out of key.
+- **SFZ KEY TRACK** (per oscillator, set by presets): a sample chosen by SFZ KEY can now follow the keyboard from that key, so one recorded drum, gong or didgeridoo can be played as a tuned instrument.
+- **SFZ reading:**
+  - Fixed: Big Rusty Drums didn't load. Its files include others by a path from the main file's folder; PR7-K now looks there.
+  - Fixed: its kick played about six semitones sharp. Libraries can pass a controller through a curve before it sets tuning or level (`<curve>`); those curves are read now.
+  - A library's filter set by a controller other than the mod wheel (Squidpipes' drones) takes the controller's starting value: it sounded muffled.
+  - Legato layers (played only when one note slides into the next) are left out: they used to sound with every note, doubling it.
+- **Fixed: the HALO drive could become dangerously loud.** On loud, bright sound HALO's circuit model sometimes fails to settle, and when it did, the error carried on from sample to sample and kept growing: one of our random-settings tests reached +120 dB. Now no point in its 9-volt circuit can go past 45 volts, so the worst it can do is distort; the sound whenever it settles (normal playing) is exactly as before, checked sample for sample.
+
+## 0.82.1
+
+**A crash fix for presets on looped samples.**
+
+- **Fixed: the plugin could crash the studio when you changed presets while a looped sampled note was still sounding** (reported on Sanctuary Organ, whose orchestra choir loops). When a preset changes, notes already sounding keep playing from the old preset's samples. PR7-K used to free those samples a fixed time later (the longest sample's length plus 2 seconds), which is safe for a piano but not for a looped sound: a held chord or the sustain pedal can keep it going for ever, and it then read memory that had been freed. Now old samples are kept until no note is reading them. The sound is unchanged.
+
+## 0.82.0
+
+**COLOSSUS, a new signature effect: the sound made enormous; three more free sample libraries.**
+
+- **COLOSSUS** (FX page, SIGNATURE slot): one knob, SIZE, takes your sound from as it is to colossal. It's the centrepiece of the rebuilt SANDSEA expansion, which comes in a later release.
+  - An octave under the sound (DEPTH), darkened by TONE.
+  - The sound and its octave driven heavier (WEIGHT).
+  - A vast hall behind it, ringing 2 to 10 seconds (HALL), as wide as WIDTH.
+  - A deep boom under each new note you play (BOOM): one per chord, and only from notes played, so a held pad never sets one off.
+  - The level is kept as SIZE rises: bigger, not just louder. At SIZE 0 your sound passes through untouched.
+  - Its page shows dunes at dusk, a vast shape rising over the horizon as SIZE grows, the hall's rings spreading behind it and the ground jumping with each boom. Our own design.
+- **Three more free libraries to download in the plugin** (all by Karoryfer Samples, public domain):
+  - **Big Rusty Drums** (about 710 MB): an oversized drum kit, recorded huge.
+  - **Gogodze Phu Vol I** (about 90 MB): Ghanaian bobobo hand drums and a cajon.
+  - **Squidpipes** (about 53 MB): bagpipes.
+  - Credited in ABOUT.
+- **SFZ:** a library's own controller settings are used now. Drum libraries mix their microphones (close, overhead, room) on MIDI controllers with starting values set in the file; PR7-K ignored them, so every microphone layer would have played at once. Controllers other than the mod wheel and the sustain pedal now sit at the library's starting values, which choose the layers and set their level, tuning and pan.
+
+## 0.81.0
+
+**NEW EDEN, an expansion of a theocracy that took power by force, built round LOCKSTEP; two new free sample libraries.**
+
+- **NEW EDEN** (NE01-NE18): a near-future theocracy, its church, its regime and the women who keep their own voice. Every category has three sides. Our own sounds and phrases.
+  - The church: Cantor, Sanctuary Organ, Pedal Bourdon, Chapel Bells, Psalm Chimes, Handbell Choir.
+  - The regime: Command Brass, State Anthem, Iron Boots, Toll, Drum Roll, Drill Snare.
+  - The women: Lone Hymn, Glass Prayer, Undertone Bass, Contraband Piano, Hidden Letters, Thread Pluck.
+  - **MACRO 3 is LOCKSTEP on every preset.** At its left the sound plays as built; turned up, it's drilled into a march. MACRO 2 is SPACE as always.
+  - **The libraries (13 presets):** the organ and pedal stops, tubular bells, hand chimes, glockenspiel and rope-tension snare play the Versilian Community Sample Library; the snare roll plays Sam's Sonor; the brass, choir, strings and horns, low-string ostinato and harp play the orchestra; Contraband Piano plays the Salamander Grand. Sanctuary Organ uses two (the organ with the orchestra's choir under it) and switches once both are in.
+  - Glass Prayer stays on PR7-K's own glasses: the library's wine glasses only go down to D5, too high for its chords.
+  - Until the libraries are downloaded, every preset plays PR7-K's own synthesized version.
+  - Levelled by measurement to sit with the other banks, both versions.
+- **LOCKSTEP**, a new signature effect (FX page, SIGNATURE slot): one knob, AMOUNT, forces your sound into lockstep.
+  - It's cut into steps in time with the song (STEP: 1/4, 1/8, 1/16 or eighth-note triplets), each open for GATE of the step, the steps off the beat lower by ACCENT. The level lost to the cut is made up from the pattern itself, so it doesn't pump.
+  - SQUEEZE flattens it, every note the same, its level kept.
+  - STAMP puts a boot on stone on every step (a crack and a low thud), only while you play, so silence stays silent.
+  - At AMOUNT 0 your sound passes through untouched.
+  - Its page shows a parade ground: the steps of two bars, the one now lit, ranks of figures lining up as AMOUNT rises. Our own design.
+- **Two more free libraries to download in the plugin:**
+  - **The Versilian Community Sample Library** (public domain; about 2.5 GB once unpacked): pipe organ, bells, chimes, mallets, percussion, harps and more. Its pianos, harpsichord, electric instruments and reeds are skipped (the Salamander and the orchestra already cover them).
+  - **Sam's Sonor** (CC BY-SA; about 36 MB): a real drum kit.
+  - Credited in ABOUT.
+- **SFZ:** AMP_VELCURVE_N is played now (a sample's level by velocity, point by point), so the libraries' soft notes are as quiet as their makers set them.
+- **SFZ KEY** (new, per oscillator): play one key's samples from every key, at their recorded pitch. Drum libraries put each drum on one key; with this, a snare plays from any key. PLAYED (the default) is as before.
+- A preset's library version can now use more than one library; it plays once all of them are downloaded.
+
+## 0.80.0
+
+**DROWNED DECO, an expansion of a city under the sea falling into madness, built round SUBMERGE.**
+
+- **DROWNED DECO** (DD01-DD18): a city built under the sea in the 1940s, from its last party to the silence after. Every category has three sides, in time. Our own sounds and phrases.
+  - The last party (1940s jazz, already a little warped): Ballroom Clarinet, Chandelier Strings, Upright Swing Bass, Cocktail Piano, Gin Fizz Swing, Vibraphone Toast.
+  - The fall into madness: Mad Theremin, Flooding Halls, Pressure Groan, Broken Record Piano, Panic Pulse, Snapped Strings.
+  - The silence after: Drowned Trumpet, Abyssal Choir, Trench Drone, Sunken Celesta, Sonar Sweep, Bubble Pluck.
+  - **MACRO 3 is SUBMERGE on every preset.** MACRO 2 is SPACE as always.
+  - **The libraries:** Cocktail Piano and Broken Record Piano play the Salamander Grand once it's downloaded; Ballroom Clarinet (solo clarinet), Chandelier Strings (the string section), Abyssal Choir (the large choir), Upright Swing Bass (solo bass, plucked), Sunken Celesta (celeste), Gin Fizz Swing (vibraphone) and Snapped Strings (the section's pizzicato) play the orchestra once it's downloaded.
+  - Until the libraries are downloaded, every preset plays PR7-K's own synthesized version.
+  - Levelled by measurement to sit with the other banks, both versions.
+- **SUBMERGE**, a new signature effect (FX page, SIGNATURE slot): one knob, DEPTH, sinks your sound from dry land to the sea floor.
+  - The water closes over it: the top goes, as dark as MURK says.
+  - The pressure bends the pitch, unevenly, never in a steady rhythm (CURRENT, up to about 16 cents either way).
+  - Bubbles rise, each a little note climbing as it goes (BUBBLES). They only rise while you play, so silence stays silent.
+  - The sea's dark wash surrounds it (SEA), as wide as WIDTH.
+  - The level is kept, and at DEPTH 0 your sound passes through untouched.
+  - Its page shows a ballroom's arched window going under: the water rising up the glass, the light fading to the sea's, the bubbles rising, the glass swaying with the pressure. Our own design.
+
+## 0.79.0
+
+**STOLEN SKY, an expansion of a perfect town under a false sky, built round AFTERMATH.**
+
+- **STOLEN SKY** (SK01-SK18): a hidden town built inside a mountain after the world ended. Every category has three sides. Our own sounds and phrases.
+  - The perfect town: Picket Fence Whistle, Painted Sky, Cul-de-Sac Bass, Quiet Kitchen Piano, Sprinkler Arp, Lullaby Box.
+  - The truth underneath: Vent Shaft Lead, Concrete Lung, Generator Bass, Underground Piano, Surveillance Arp, Steel Drip.
+  - The end of the world: Last Broadcast, Ash Snow, Countdown Bass, Final Morning Piano, Evacuation Arp, Falling Ash Piano.
+  - **MACRO 3 is AFTERMATH on every preset.** MACRO 2 is SPACE as always.
+  - **Cold, sad pianos at its heart:** Quiet Kitchen Piano, Underground Piano, Final Morning Piano, Sprinkler Arp and Falling Ash Piano play the Salamander Grand once it's downloaded.
+  - **The orchestra:** Picket Fence Whistle on a solo flute, Last Broadcast on a solo violin, Ash Snow on the full string section, Countdown Bass on celli and basses, once the orchestra is downloaded.
+  - Until the libraries are downloaded, every preset plays PR7-K's own synthesized version.
+  - Levelled by measurement to sit with the other banks, both versions.
+- **AFTERMATH**, a new signature effect (FX page, SIGNATURE slot): one knob, SEAL, takes your sound from under an open sky into a sealed concrete room.
+  - The room closes in and its walls ring (ROOM sets its size, RING how long it rings).
+  - The top of the sound darkens (DARK).
+  - A mains hum and a ventilation shaft's air rise underneath (HUM, at 50 or 60 Hz). They only sound while you play, so silence stays silent.
+  - The level is kept, and at SEAL 0 your sound passes through untouched.
+  - Its page shows the sky being sealed over: concrete walls slide in, the ceiling comes down over the stars, the room rings, a vent glows with the hum. Our own design.
+
+## 0.78.0
+
+**ORBIT: 12 presets in bank A (A48-A59) built on your Orbit wavetables.**
+
+- **The presets:** Orbit Lead, Orbit Reed and Comet Lead (leads); Gravity Bass, Ellipse Bass and Hollow Moon Bass (basses); Orbit Pad, Nebula Pad and Halo Pad (pads); Satellite Keys and Moonlight Keys (keys); Orbit Arp.
+- **Every one circles its table.** The Orbit tables come back round to where they started, so TRAVEL loops through each one with no jump, in time with your song: some turn every eighth note, others once every four bars.
+  - On Nebula Pad each note starts its own turn, so a chord's notes drift apart and back.
+  - On Orbit Arp the whole run turns together, once a bar.
+- **Macros:** MACRO 1 BRIGHT, MACRO 2 SPACE, MACRO 3 ORBIT (how far round the table the tone travels).
+- **The tables stay on your computer.** Their licence isn't known, so they're not in the plugin. Put the 17 WAV files in a folder named **Orbit Wavetables** inside the **Libraries** folder in your PR7-K presets folder. Without it, each preset plays one of PR7-K's own tables instead and shows MISSING.
+- **Some of the tables are very thin on their own:** almost nothing at the note's own pitch, their energy high up. So the leads carry a quiet sine at the note's pitch and darker filters.
+- Levelled by measurement to sit with the other presets. Our own settings, not tuned by ear.
+- **Your own presets in bank A** now start from A60, after the factory ones. Any you'd already saved at A48-A59 are all still there: each shares its slot number with the new factory preset and is listed just after it.
+
+## 0.77.0
+
+**TWIN SPIRES, an expansion of two sister cities, built round OVERCHARGE.**
+
+- **TWIN SPIRES** (TS01-TS18): a gilded city of inventors above and a grimy, chemical one below, with sounds for each and for where they meet. Our own sounds and phrases.
+  - The city above: Spire Fanfare (bright brass), Gilded Strings, Clockwork Bass (staccato), Salon Harpsichord, Clockwork Gears (a ticking arp), Gear Pluck.
+  - The city below: Fuse Lead (a punk lead with grit and glide), Toxic Fog (a smoky, chemical haze), Pipe Growl (a distorted machine bass), Broken Music Box, Fuse Countdown (a fizzing randomized arp), Spark Pluck.
+  - Where they meet: Crystal Whistle, Blue Glow Choir, Wobble Drop (a synced wobble bass), Heartbreak Piano, Neon Alley (a gated chord pulse), Glass Shard.
+  - **MACRO 3 is OVERCHARGE on every preset.** MACRO 2 is SPACE as always.
+  - Spire Fanfare, Gilded Strings, Clockwork Bass, Salon Harpsichord and Heartbreak Piano play the free orchestra library's recordings (trumpets and horns, the string section, celli and basses, its harpsichord, its grand piano) once it's downloaded, and PR7-K's own synthesized versions until then.
+  - Levelled by measurement to sit with the other banks; full OVERCHARGE keeps the loudness within about 1 dB.
+- **OVERCHARGE**, a new signature effect (FX page, SIGNATURE slot): unstable magic. One knob, CHARGE:
+  - **Its first half charges the sound:** crystal tones ring above whatever you play (an octave, an octave and a fifth, and two octaves up, always in tune with your notes), and shimmering repeats climb an octave each.
+  - **Its second half overloads it:** the energy breaks up in bursts at random moments (short stutters, crushed digital steps, the pitch jolting up or down), with a burn and crackling sparks, more often and more violently with CHAOS.
+  - GLOW sets how much of the crystal tones, TONE their brightness, WIDTH how far they spread.
+  - The level is kept, so it gets wilder, not louder. At CHARGE 0 your sound passes through untouched.
+  - Its page shows a glowing crystal that cracks and throws arcs of energy as it overloads. Our own design.
+
+## 0.76.0
+
+**MAESTRO, an epic trailer-orchestra expansion, built round LEGION; wavetable packs from your own computer.**
+
+- **MAESTRO** (MA01-MA18): the orchestra of a film trailer's big moments. Leads: Hero Horns, Soaring Violins, Lone Trumpet. Pads: Rising Strings (trembling tremolo), Choir of Thousands, Dark Low Strings. Basses: Brass Hits, Ostinato Cellos (a driving sixteenth-note arp), Tuba Weight. Keys: Trailer Piano, Celesta Wonder, War Drums Hit (timpani). Arps: Racing Spiccato, Pulse Brass (a galloping rhythm), Rising Tension (ticking col legno). Plucks: War Pizzicato, Harp Fall, Clock Strings. Our own sounds and phrases.
+  - **Every preset plays the orchestra library's own recordings** (the free Sonatina Symphonic Orchestra, the one HYPERDRIVE uses) once it's downloaded, and PR7-K's own synthesized orchestra until then.
+  - **The mod wheel is the dynamics on every preset.** On the recordings it fades between their soft and loud playing; on the synthesized versions it makes them brighter and a little louder.
+  - **MACRO 3 is LEGION on every preset**: from one player to a full section. MACRO 2 is SPACE as always.
+  - Levelled by measurement to sit with the other banks; full LEGION keeps the level within about 1 dB, and every preset has the LIMITER at -1 dBFS as a ceiling (a full section's stacked attacks can add up).
+  - The orchestra's section-string recordings fade after about five seconds, so Soaring Violins and Rising Strings keep PR7-K's own strings quietly underneath to hold long notes.
+- **LEGION**, a new signature effect (FX page, SIGNATURE slot): SIZE takes a sound from one player to a section of nine. Each added player plays a little late (LOOSE), drifts slowly in and out of tune (DETUNE), stands at its own place across the stage (SPREAD) and is a touch darker (TONE). The sound stays the same loudness as players join: bigger, not louder. At SIZE 0 your sound passes through untouched. Its page shows the stage from above, each player lighting up as it joins. Our own design.
+- **Wavetable packs.** A preset can now use a wavetable from a pack on your computer without carrying the file itself, for packs whose licence doesn't allow passing their files on. Put the pack's folder in the presets folder's **Libraries** folder. Without the pack, the oscillator plays one of PR7-K's own tables and its TABLE box says which file is missing; its menu names the pack and can look for it again once it's in place. Your own presets and projects still carry any table you've loaded inside them.
+- **Fixed: some SFZ libraries loaded silent.** A library that builds the names of the files it includes from its own shorthand (as the orchestra library's grand piano does for its velocity layers) loaded nothing; it now loads (358 regions for that piano).
+
+## 0.75.0
+
+**Orchestral dynamics on the mod wheel, the libraries' own filters, and key switches.**
+
+- **The mod wheel plays dynamics on sampled instruments.** The orchestra library's "Performance" patches (in its *Brass - Performance*, *Strings - Performance* and other folders) now play as their makers meant: every layer of a note starts together, and the mod wheel fades between the soft, medium and loud recordings while the note holds, and raises the level as it goes. On the violins the wheel spans about 25 dB from bottom to top. Until you first move the wheel, each patch sits where its makers set it (most at about three quarters).
+- **The libraries' own filters now play**, for every SFZ sound: softer notes and a lower wheel are darker, louder ones brighter, as each library's makers set them. A soft trumpet is mellow, a loud one bright, instead of the same recording only quieter.
+- **Key switches.** The orchestra's "KS" patches hold several playing styles in one instrument (for the horns: sustain, marcato, staccato, legato), chosen by keys below or above the playing range (C6-F6 for the horns, C0-A0 for the full strings). Pressing one switches the style and plays nothing, not even the other oscillators. The oscillator's SFZ line shows the style chosen ("Horns KS · MARCATO"), and its menu lists them all, so you can pick one with the mouse too.
+- **Levels the libraries set per group now count** (SFZ's GROUP_VOLUME, MASTER_VOLUME, GLOBAL_VOLUME, GROUP_TUNE).
+- **HYPERDRIVE's orchestra versions**, which use these libraries, are re-levelled to the loudness you approved where the libraries' own levels moved them. Played softly they're now darker, as the library intends.
+- Not played yet: the libraries' own envelopes (PR7-K's AMP shapes every note), legato transitions, and controllers other than the mod wheel and the sustain pedal.
+
 ## 0.74.1
 
 **A new look for the neon finishes, and a FINISH chooser in SETTINGS.**

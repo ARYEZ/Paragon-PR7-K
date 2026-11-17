@@ -701,5 +701,218 @@ std::vector<Rig> makeFactoryRigs()
     space (starlight, 0.3f);
     add (starlight);
 
+    // THE ORBIT TABLES (the owner's, free downloads: their licence isn't known, so they're never in the repository or the
+    // plugin). Each preset names its table in the pack's folder (the presets folder's Libraries/Orbit Wavetables); without
+    // it the oscillator plays the factory table TABLE names. The tables come back round to where they started (the last
+    // frame next to the first), so TRAVEL loops through them with no jump: every preset circles its table. MACRO 1
+    // BRIGHT, MACRO 2 SPACE, MACRO 3 ORBIT (how far round: TRAVEL STRENGTH). Our own settings, not tuned by ear.
+    const juce::String orbitPack = "Orbit Wavetables";
+    const auto orbit = [&] (Builder& b, int osc, const char* file, const char* fallback, float strength, int division,
+                            float smooth = 0.15f)
+    {
+        b.osc (osc, "Wave", wavetable).osc (osc, "Table", table (fallback)).osc (osc, "WtIndex", 0.0f)
+         .osc (osc, "TrOn", 1.0f).osc (osc, "TrMode", (float) synth::travel::Mode::loop)
+         .osc (osc, "TrSync", (float) synth::mod::LfoSync::straight).osc (osc, "TrDivision", (float) division)
+         .osc (osc, "TrStrength", strength).osc (osc, "TrSmooth", smooth);
+        b.rig.wavetableRefs[osc] = "{wt:" + orbitPack + "}/" + juce::String (file);
+        route (b, "macro3", ParamIDs::osc (osc, "TrStrength"), 1.0f - strength);
+        b.rig.modulation.macroNames[2] = "ORBIT";
+    };
+    const auto bright = [&route] (Builder& b, float amount)
+    {
+        route (b, "macro1", ParamIDs::fltCutoff, amount);
+        b.rig.modulation.macroNames[0] = "BRIGHT";
+    };
+    const auto hall = [] (Builder& b, float size, float mix)
+    {
+        b.set (ParamIDs::reverbOn, 1.0f).set (ParamIDs::reverbType, (float) (int) effects::Reverb::Type::hall)
+         .set (ParamIDs::reverbSize, size).set (ParamIDs::reverbMix, mix);
+    };
+    const auto echoes = [] (Builder& b, float sync, float feedback, float mix)
+    {
+        b.set (ParamIDs::delayOn, 1.0f).set (ParamIDs::delaySync, sync).set (ParamIDs::delayPingPong, 1.0f)
+         .set (ParamIDs::delayFeedback, feedback).set (ParamIDs::delayMix, mix).set (ParamIDs::delayTone, 6.0f);
+    };
+    const juce::String needsOrbit = " Plays the Orbit wavetables (in the presets folder's Libraries, \"Orbit Wavetables\"); "
+                                    "without them, one of PR7-K's own tables.";
+    // TRAVEL's divisions (as the LFOs'): 3 a bar, 4 half a bar, 5 a beat, 6 an eighth; 2 two bars, 1 four bars.
+
+    Builder orbitLead ("Orbit Lead", 48, { "Lead", "Wavetable", "Orbit" },
+                       "The brightest table circling once a half bar under each note, so a held note keeps turning; mono "
+                       "with glide and a vibrato that grows in. MACRO 3 ORBIT takes it the whole way round." + needsOrbit);
+    orbit (orbitLead, 0, "orbit_vae_107_dims24_rad_1.3_1_4_46_free.wav", "Analog Morph", 0.6f, 4);
+    orbitLead.osc (0, "Volume", 0.7f).osc (0, "VibAmount", 10.0f).osc (0, "VibRate", 5.5f).osc (0, "VibFade", 500.0f)
+             .osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.12f).osc (0, "UniSpread", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.3f).osc (1, "Filter", 0.0f)   // the table's own fundamental is faint: a sine holds the pitch
+             .filter (FilterType::lp24, 2400.0f, 0.15f, 0.25f).filterEnvelope (5.0f, 500.0f, 0.6f, 300.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (4.0f, 300.0f, 0.9f, 250.0f).mono (70.0f);
+    bright (orbitLead, 0.3f);
+    echoes (orbitLead, 7.0f, 0.3f, 0.18f);
+    hall (orbitLead, 0.5f, 0.15f);
+    space (orbitLead, 0.3f);
+    orbitLead.set (ParamIDs::patchLevel, 1.9f);
+    add (orbitLead);
+
+    Builder reed ("Orbit Reed", 49, { "Lead", "Wavetable", "Orbit" },
+                  "The hollow, reedy table (nearly all odd harmonics, like a clarinet's) circling slowly, a breath of "
+                  "noise and a woodwind vibrato: a wistful lead. MACRO 3 ORBIT opens its circle." + needsOrbit);
+    orbit (reed, 0, "orbit_vae_107_dims24_rad_2.8_8_14_254_free.wav", "Pulse Width", 0.8f, 4);
+    reed.osc (0, "Volume", 0.75f).osc (0, "VibAmount", 14.0f).osc (0, "VibRate", 4.8f).osc (0, "VibFade", 350.0f)
+        .osc (0, "Noise", 0.08f).osc (0, "NoiseColour", 0.1f)
+        .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.25f).osc (1, "Filter", 0.0f)
+        .filter (FilterType::lp24, 3200.0f, 0.1f, 0.25f).filterEnvelope (30.0f, 400.0f, 0.7f, 200.0f).set (ParamIDs::fltKey, 0.3f)
+        .ampEnvelope (35.0f, 300.0f, 0.9f, 220.0f).mono (55.0f);
+    bright (reed, 0.3f);
+    hall (reed, 0.55f, 0.22f);
+    space (reed, 0.3f);
+    reed.set (ParamIDs::patchLevel, 0.9f);
+    add (reed);
+
+    Builder comet ("Comet Lead", 50, { "Lead", "Wavetable", "Orbit" },
+                   "The bright, buzzy odd-harmonic table, five copies wide, circling every beat and driven a little: a "
+                   "cutting lead for big moments. MACRO 3 ORBIT spins it further." + needsOrbit);
+    orbit (comet, 0, "orbit_vae_v1.08_dims26_rad_1.6_21_8_676_free.wav", "Wavefold", 0.7f, 5);
+    comet.osc (0, "Volume", 0.55f).osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.75f).osc (0, "UniDetune", 0.3f).osc (0, "UniSpread", 0.8f)
+         .osc (0, "VibAmount", 6.0f).osc (0, "VibRate", 6.0f).osc (0, "VibFade", 300.0f)
+         .shaper (0, synth::ShaperModel::tube, 0.2f)
+         .filter (FilterType::lp24, 2800.0f, 0.2f, 0.25f).filterEnvelope (3.0f, 350.0f, 0.6f, 250.0f).set (ParamIDs::fltKey, 0.3f)
+         .ampEnvelope (3.0f, 300.0f, 0.9f, 300.0f).mono (40.0f);
+    bright (comet, 0.3f);
+    echoes (comet, 6.0f, 0.25f, 0.15f);
+    hall (comet, 0.6f, 0.18f);
+    space (comet, 0.3f);
+    comet.set (ParamIDs::patchLevel, 3.4f);
+    add (comet);
+
+    Builder gravity ("Gravity Bass", 51, { "Bass", "Wavetable", "Orbit", "Mono" },
+                     "The dark table that moves the most, circling every beat in time with the song over a clean sine sub: "
+                     "a bass that churns. MACRO 3 ORBIT churns it harder." + needsOrbit);
+    orbit (gravity, 0, "orbit_vae_v1.16_dims38_rad3.2_37_4_465_free.wav", "Harmonic Rise", 0.6f, 5, 0.05f);
+    gravity.osc (0, "Volume", 0.8f).osc (0, "Sub", 0.5f).osc (0, "SubOct", 1.0f).osc (0, "SubWave", 0.0f)
+           .filter (FilterType::lp24, 900.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 300.0f, 0.5f, 120.0f).set (ParamIDs::fltKey, 0.4f)
+           .set (ParamIDs::fltDrive, 0.2f)
+           .ampEnvelope (1.0f, 300.0f, 1.0f, 80.0f).mono (25.0f);
+    bright (gravity, 0.35f);
+    space (gravity, 0.15f);
+    gravity.set (ParamIDs::patchLevel, -9.2f);
+    add (gravity);
+
+    Builder ellipse ("Ellipse Bass", 52, { "Bass", "Wavetable", "Orbit", "Mono" },
+                     "The bright, even-harmonic table circling an eighth note at a time, the filter snapping on every note: "
+                     "a plucky, moving bass for lines. MACRO 3 ORBIT widens the circle." + needsOrbit);
+    orbit (ellipse, 0, "orbit_vae_107_dims24_rad_2.7_12_2_846_free.wav", "FM Sweep", 0.5f, 6, 0.05f);
+    ellipse.osc (0, "Volume", 0.8f).osc (0, "Sub", 0.4f).osc (0, "SubOct", 1.0f)
+           .filter (FilterType::lp24, 350.0f, 0.3f, 0.55f).filterEnvelope (0.0f, 220.0f, 0.15f, 100.0f)
+           .set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltEnvVel, 0.4f)
+           .ampEnvelope (1.0f, 400.0f, 0.7f, 70.0f).mono (20.0f);
+    bright (ellipse, 0.35f);
+    space (ellipse, 0.15f);
+    ellipse.set (ParamIDs::patchLevel, 0.4f);
+    add (ellipse);
+
+    Builder moonBass ("Hollow Moon Bass", 53, { "Bass", "Wavetable", "Orbit", "Mono" },
+                    "The soft, moonBass table (square-like, odd harmonics) circling slowly, round and warm under a mix: a "
+                    "retro bass. MACRO 3 ORBIT brings its movement out." + needsOrbit);
+    orbit (moonBass, 0, "orbit_vae_v1.08_dims26_rad_2.5_11_6_548_free.wav", "Pulse Width", 0.6f, 4, 0.1f);
+    moonBass.osc (0, "Volume", 0.85f).osc (0, "Sub", 0.35f).osc (0, "SubOct", 1.0f)
+          .filter (FilterType::lp24, 1200.0f, 0.15f, 0.2f).filterEnvelope (0.0f, 400.0f, 0.6f, 120.0f).set (ParamIDs::fltKey, 0.4f)
+          .ampEnvelope (2.0f, 300.0f, 1.0f, 90.0f).mono (35.0f);
+    bright (moonBass, 0.35f);
+    space (moonBass, 0.15f);
+    moonBass.set (ParamIDs::patchLevel, -4.4f);
+    add (moonBass);
+
+    Builder orbitPad ("Orbit Pad", 54, { "Pad", "Wavetable", "Orbit" },
+                      "The largest, smoothest table (64 frames) circling once every two bars, five copies wide with their own "
+                      "slow vibrato, swelling in: a pad that is always turning. MACRO 3 ORBIT takes it the whole way round." + needsOrbit);
+    orbit (orbitPad, 0, "orbit_vae_V1.07_dims24_rad_1.5_6_3_69_free.wav", "Analog Morph", 0.6f, 2, 0.4f);
+    orbitPad.osc (0, "Volume", 0.5f).osc (0, "UniVoices", 5.0f).osc (0, "UniMix", 0.9f).osc (0, "UniDetune", 0.25f).osc (0, "UniSpread", 1.0f)
+            .osc (0, "VibMode", (float) synth::VibratoMode::independent).osc (0, "VibAmount", 8.0f).osc (0, "VibRate", 4.0f).osc (0, "VibFade", 800.0f)
+            .filter (FilterType::lp24, 2600.0f, 0.1f, 0.15f).filterEnvelope (800.0f, 2000.0f, 0.7f, 1500.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (700.0f, 1000.0f, 0.85f, 1800.0f).set (ParamIDs::ampReleaseCurve, -0.4f).set (ParamIDs::ampSpread, 0.4f);
+    bright (orbitPad, 0.3f);
+    hall (orbitPad, 0.7f, 0.28f);
+    space (orbitPad, 0.25f);
+    orbitPad.set (ParamIDs::patchLevel, -5.5f);
+    add (orbitPad);
+
+    Builder nebula ("Nebula Pad", 55, { "Pad", "Wavetable", "Orbit", "Dark" },
+                    "The darkest table, which changes the most, circling every four bars: each note starts its own turn when "
+                    "played, so a chord's notes drift apart and back. Over a slow hall. MACRO 3 ORBIT stretches it." + needsOrbit);
+    orbit (nebula, 0, "orbit_vae_v1.17_dims30_rad2.7_7_27_211_free.wav", "Comb Sweep", 0.7f, 1, 0.5f);
+    nebula.osc (0, "Volume", 0.6f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.8f).osc (0, "UniDetune", 0.2f).osc (0, "UniSpread", 0.9f)
+          .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+          .filter (FilterType::lp12, 1800.0f, 0.1f, 0.1f).filterEnvelope (1200.0f, 2000.0f, 0.8f, 2000.0f).set (ParamIDs::fltKey, 0.3f)
+          .ampEnvelope (1200.0f, 1500.0f, 0.85f, 2500.0f).set (ParamIDs::ampReleaseCurve, -0.5f);
+    bright (nebula, 0.35f);
+    hall (nebula, 0.85f, 0.35f);
+    space (nebula, 0.2f);
+    nebula.set (ParamIDs::patchLevel, -7.3f);
+    add (nebula);
+
+    Builder halo ("Halo Pad", 56, { "Pad", "Wavetable", "Orbit", "Warm" },
+                  "Two of the gentle, nearly still tables an octave apart, each turning slowly at its own pace, under a soft "
+                  "chorus: a warm bed for under vocals. MACRO 3 ORBIT stirs them." + needsOrbit);
+    orbit (halo, 0, "orbit_vae_v1.16_dims38_rad1.7_31_28_232_free.wav", "Organ Stack", 0.8f, 2, 0.4f);
+    orbit (halo, 1, "orbit_vae_v1.17_dims30_rad1.7_10_12_697_free.wav", "Organ Stack", 0.8f, 1, 0.4f);
+    halo.osc (0, "Volume", 0.55f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.7f).osc (0, "UniDetune", 0.15f).osc (0, "UniSpread", 0.8f)
+        .osc (1, "On", 1.0f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.3f).osc (1, "Pan", 0.2f)
+        .filter (FilterType::lp12, 3000.0f, 0.05f, 0.1f).filterEnvelope (600.0f, 1500.0f, 0.8f, 1500.0f)
+        .ampEnvelope (500.0f, 1000.0f, 0.9f, 1600.0f).set (ParamIDs::ampReleaseCurve, -0.4f)
+        .set (ParamIDs::modOn, 1.0f).set (ParamIDs::modType, 0.0f).set (ParamIDs::modMix, 0.4f);
+    bright (halo, 0.3f);
+    hall (halo, 0.6f, 0.25f);
+    space (halo, 0.25f);
+    halo.set (ParamIDs::patchLevel, -8.8f);
+    add (halo);
+
+    Builder satellite ("Satellite Keys", 57, { "Keys", "Wavetable", "Orbit" },
+                       "The soft, moving table as electric keys: each note bright as it's struck, mellowing as it rings, its "
+                       "tone turning a beat at a time; harder notes brighter. MACRO 3 ORBIT turns it further." + needsOrbit);
+    orbit (satellite, 0, "orbit_vae_v1.10_dims30_rad_3.9_24_18_306_free.wav", "Harmonic Rise", 0.5f, 5, 0.1f);
+    satellite.osc (0, "Volume", 0.75f).osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.15f)
+             .filter (FilterType::lp24, 900.0f, 0.1f, 0.5f).filterEnvelope (0.0f, 900.0f, 0.2f, 400.0f)
+             .set (ParamIDs::fltKey, 0.6f).set (ParamIDs::fltEnvVel, 0.6f)
+             .ampEnvelope (1.0f, 2500.0f, 0.25f, 500.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f)
+             .set (ParamIDs::modOn, 1.0f).set (ParamIDs::modType, 9.0f).set (ParamIDs::modMix, 0.5f);
+    bright (satellite, 0.35f);
+    hall (satellite, 0.45f, 0.18f);
+    space (satellite, 0.3f);
+    satellite.set (ParamIDs::patchLevel, -5.6f);
+    add (satellite);
+
+    Builder moon ("Moonlight Keys", 58, { "Keys", "Wavetable", "Orbit", "Soft" },
+                  "A mellow, moving table as soft mallet keys that die away, an octave of a warm, still table shimmering over it, "
+                  "with echoes: for gentle chords and melodies. MACRO 3 ORBIT wakes the tone." + needsOrbit);
+    orbit (moon, 0, "orbit_vae_v1.08_dims26_rad_3.1_16_10_777_free.wav", "Organ Stack", 0.6f, 4, 0.1f);
+    orbit (moon, 1, "orbit_vae_v1.16_dims38_rad2.6_3_13_341_free.wav", "Organ Stack", 0.6f, 3, 0.1f);
+    moon.osc (0, "Volume", 0.7f).osc (1, "On", 1.0f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.25f)
+        .filter (FilterType::lp24, 1400.0f, 0.05f, 0.4f).filterEnvelope (0.0f, 700.0f, 0.3f, 400.0f)
+        .set (ParamIDs::fltKey, 0.5f).set (ParamIDs::fltEnvVel, 0.5f)
+        .ampEnvelope (1.0f, 1600.0f, 0.0f, 600.0f).set (ParamIDs::ampDecayCurve, -0.7f).set (ParamIDs::ampVel, 0.5f);
+    bright (moon, 0.35f);
+    echoes (moon, 7.0f, 0.3f, 0.2f);
+    hall (moon, 0.6f, 0.2f);
+    space (moon, 0.3f);
+    moon.set (ParamIDs::patchLevel, -3.5f);
+    add (moon);
+
+    Builder orbitArp ("Orbit Arp", 59, { "Arp", "Wavetable", "Orbit" },
+                      "Hold a chord: the warm moving table runs up two octaves in sixteenths through ARP 1, its tone circling "
+                      "once a bar (one turn for the whole arp, not per note), with ping-pong echoes. MACRO 3 ORBIT widens it." + needsOrbit);
+    orbit (orbitArp, 0, "orbit_vae_v1.19_dims30_rad2.4_6_7_10_free.wav", "FM Sweep", 0.7f, 3, 0.05f);
+    orbitArp.osc (0, "TrTrigger", (float) synth::travel::Trigger::firstNote)
+            .osc (0, "Volume", 0.7f).osc (0, "Arp", 1.0f).osc (0, "UniVoices", 3.0f).osc (0, "UniMix", 0.5f).osc (0, "UniDetune", 0.15f)
+            .filter (FilterType::lp24, 1400.0f, 0.25f, 0.45f).filterEnvelope (0.0f, 200.0f, 0.1f, 150.0f).set (ParamIDs::fltKey, 0.5f)
+            .ampEnvelope (1.0f, 260.0f, 0.0f, 150.0f)
+            .set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) synth::arp::Mode::up)
+            .set (ParamIDs::arp (0, "Octaves"), 2.0f).set (ParamIDs::arp (0, "Gate"), 0.5f);
+    bright (orbitArp, 0.35f);
+    echoes (orbitArp, 9.0f, 0.35f, 0.22f);
+    hall (orbitArp, 0.5f, 0.15f);
+    space (orbitArp, 0.3f);
+    orbitArp.set (ParamIDs::patchLevel, 1.5f);
+    add (orbitArp);
+
     return rigs;
 }

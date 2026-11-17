@@ -7,6 +7,8 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 #include "ui/Finish.h"
+#include "ui/ModSourceStrip.h"
+#include "ui/NeonKeyboard.h"
 #include "ui/ParagonLookAndFeel.h"
 
 using Catch::Matchers::WithinAbs;
@@ -144,9 +146,11 @@ TEST_CASE ("The oscillator tabs point one set of controls at the chosen oscillat
 
     // Every setting of the tab is re-pointed, not just some. (ON is the tab's
     // own LED; TABLE is the wavetable chooser, which follows the tab too: its
-    // own test is below. The SHAPER switches are on the shapers' pages, one per oscillator.)
+    // own test is below. The SHAPER switches are on the shapers' pages, one per oscillator.
+    // SFZ KEY (0.81.0) is set by presets and automation; it has no control on the panel yet.)
     for (const auto* what : ParamIDs::oscSettings)
-        if (juce::String (what) != "On" && juce::String (what) != "Table" && ! juce::String (what).startsWith ("Shp"))
+        if (juce::String (what) != "On" && juce::String (what) != "Table" && ! juce::String (what).startsWith ("Shp")
+            && juce::String (what) != "SfzKey" && juce::String (what) != "SfzKeyTrack")
             CHECK (controlFor (*w.view, ParamIDs::osc (2, what)) != nullptr);
 }
 
@@ -548,6 +552,113 @@ TEST_CASE ("The front panel: SHOW RACK swaps it with the OSCILLATORS and FILTER 
     CHECK (face.isVisible());
 }
 
+
+TEST_CASE ("THE GRID: the full faceplate hides the lower panels and the mod sources, the neon keyboard under it; the sparks follow the newest note's envelopes", "[ui]")
+{
+    Window w;
+    w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    w.processor.prepareToPlay (48000.0, 256);
+    auto& face = w.view->getFace();
+    auto& grid = face.getGrid();
+    auto* keyboard = inside<juce::MidiKeyboardComponent> (*w.view);
+    REQUIRE (keyboard != nullptr);
+
+    // The front panel up: the faceplate runs from the header to the window's foot, THE GRID in its lower half;
+    // the envelopes, AMP, PLAY and the mod sources' row are hidden; the keyboard (1.1.0) is under it in its own strip.
+    w.view->setRackShownForTest (false);
+    CHECK (face.isVisible());
+    CHECK (grid.isVisible());
+    CHECK (keyboard->isVisible());
+    CHECK (dynamic_cast<NeonKeyboard*> (keyboard) != nullptr);
+    CHECK (face.getBottom() < keyboard->getY());
+    CHECK (keyboard->getWidth() > face.getWidth());   // the full width, under the OUTPUT column too
+    CHECK (keyboard->getHeight() >= 90);
+    const auto fullKeys = keyboard->getBounds();
+    if (auto* strip = inside<ModSourceStrip> (*w.view))
+        CHECK_FALSE (strip->isVisible());
+    CHECK (grid.getY() > face.getHeight() / 3);
+    for (auto* child : w.view->getChildren())
+        if (dynamic_cast<EnvelopePanel*> (child) != nullptr || dynamic_cast<AmpPanel*> (child) != nullptr || dynamic_cast<PlayPanel*> (child) != nullptr)
+            CHECK_FALSE (child->isVisible());
+    checkLayout (*w.view, "full face");
+
+    // The rack: all of them back, the face hidden.
+    w.view->setRackShownForTest (true);
+    CHECK_FALSE (face.isVisible());
+    CHECK (keyboard->isVisible());
+    if (auto* strip = inside<ModSourceStrip> (*w.view))
+        CHECK (strip->isVisible());
+    CHECK (keyboard->getBottom() == fullKeys.getBottom());   // the same keys, the mod sources' row above them
+    CHECK (keyboard->getHeight() == fullKeys.getHeight());   // the same keys in both
+    int panels = 0;
+    for (auto* child : w.view->getChildren())
+        if (dynamic_cast<EnvelopePanel*> (child) != nullptr || dynamic_cast<AmpPanel*> (child) != nullptr || dynamic_cast<PlayPanel*> (child) != nullptr)
+            panels += child->isVisible() ? 1 : 0;
+    CHECK (panels == 4);
+    w.view->setRackShownForTest (false);
+
+    // The walls are the preset's envelopes: a slow attack is a wider first stage than a fast one.
+    auto set = [&] (const char* id, float value)
+    {
+        auto* parameter = w.processor.getParameters().getParameter (id);
+        parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
+    };
+    set (ParamIDs::ampAttack, 1.0f);
+    set (ParamIDs::ampDecay, 200.0f);
+    set (ParamIDs::ampSustain, 0.5f);
+    set (ParamIDs::ampRelease, 400.0f);
+    grid.updateForTest();
+    const auto fastAttack = grid.getWall (1).xs[1] - grid.getWall (1).xs[0];
+    set (ParamIDs::ampAttack, 900.0f);
+    grid.updateForTest();
+    const auto slowAttack = grid.getWall (1).xs[1] - grid.getWall (1).xs[0];
+    CHECK (slowAttack > fastAttack * 3.0f);
+
+    // No note: no spark.
+    juce::AudioBuffer<float> buffer (2, 256);
+    juce::MidiBuffer midi;
+    auto run = [&] (double seconds)
+    {
+        for (int block = 0; block < (int) (seconds * 48000.0 / 256.0); ++block)
+            w.processor.processBlock (buffer, midi);
+        grid.updateForTest();
+    };
+    run (0.05);
+    CHECK (w.processor.getAmpSpark() == -1);
+    CHECK (grid.getSpark (1).x < 0.0f);
+
+    // A note: the spark climbs the attack (about halfway through 900 ms after 450 ms)...
+    w.processor.getKeyboardState().noteOn (1, 60, 0.9f);
+    run (0.45);
+    const auto attack = w.processor.getAmpSpark();
+    CHECK (attack / 10000 == 1);
+    CHECK ((float) (attack % 10000) / 9999.0f == Catch::Approx (0.5f).margin (0.05f));
+    const auto& wall = grid.getWall (1);
+    CHECK (grid.getSpark (1).x == Catch::Approx (wall.pointAt (1, (float) (attack % 10000) / 9999.0f).x).margin (0.5f));
+    CHECK (grid.getSpark (1).x > wall.xs[0]);
+    CHECK (grid.getSpark (1).x < wall.xs[1]);
+
+    // ...waits on the sustain plateau, at the sustain's height...
+    run (1.0);
+    CHECK (w.processor.getAmpSpark() / 10000 == 4);
+    CHECK (grid.getSpark (1).x > wall.xs[3]);
+    CHECK (grid.getSpark (1).x < wall.xs[4]);
+    CHECK (grid.getSpark (1).y == Catch::Approx (wall.yFor (0.5f)).margin (0.5f));
+
+    // ...slides down the release when the key is let go...
+    w.processor.getKeyboardState().noteOff (1, 60, 0.0f);
+    run (0.2);
+    CHECK (w.processor.getAmpSpark() / 10000 == 5);
+    CHECK (grid.getSpark (1).x > wall.xs[4]);
+    CHECK (grid.getSpark (1).y > wall.yFor (0.5f));
+
+    // ...and is gone once the note has.
+    run (1.0);
+    CHECK (w.processor.getAmpSpark() == -1);
+    for (int tick = 0; tick < 12; ++tick)
+        grid.updateForTest();
+    CHECK (grid.getSpark (1).x < 0.0f);
+}
 
 TEST_CASE ("The front panel's EXPR wheel swells the volume like an expression pedal, unless the preset routes EXPRESSION", "[ui]")
 {

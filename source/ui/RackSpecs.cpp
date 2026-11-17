@@ -1,5 +1,15 @@
 #include "RackSpecs.h"
 
+#include "dsp/synth/NaviComputer.h"
+#include "dsp/effects/Sweep.h"
+#include "dsp/effects/Wobble.h"
+#include "dsp/effects/Redline.h"
+#include "dsp/effects/FreezeTag.h"
+#include "dsp/effects/Crossroads.h"
+#include "dsp/effects/Gearworks.h"
+#include "dsp/synth/Ragtime.h"
+#include "dsp/synth/Runner.h"
+
 #include "ui/DownpourPage.h"
 
 #include "dsp/effects/Wah.h"
@@ -618,19 +628,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "LIGHTSPEED", "BLOOM" };   // never reorder
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::jumpOn, ParamIDs::bloomOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 20> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 38> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 20> specs;
+    std::array<RackUnit::Spec, 38> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -1339,41 +1349,43 @@ std::array<RackUnit::Spec, 20> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
         s.onEdit = [openPage] { openPage (17); };
     }
 
-    // LIGHTSPEED (0.73.0): how far into the jump in big digits (%), the streaks' pitch, the whoosh; the keys set JUMP:
-    // CRUISE (a hint of it), JUMP (half way), PLAID (all the way); the ladder the whoosh's level.
+    // HYPERJUMP (0.86.0, LIGHTSPEED's place): how far into the build in big digits (%), its settings; the keys set
+    // AMOUNT: LIFT (a small build), SURGE (most of the way), HYPERJUMP (all of it); the ladder the build's progress.
     {
         auto& s = specs[18];
-        s.name = "LIGHTSPEED";
-        s.kind = "THE JUMP  STREAKS  WHOOSH";
-        s.onParameterIds = { ParamIDs::jumpOn };
-        s.powerTooltip = "LIGHTSPEED on or off: the jump to lightspeed, streaks and rushing air. Click POWER (the word) or EDIT for its page";
-        struct Stage { const char* name; float jump; const char* tip; };
-        static constexpr Stage stages[] = { { "CRUISE", 0.2f, "A hint of the jump: the streaks just starting" },
-                                            { "JUMP", 0.55f, "Half way into the jump" },
-                                            { "PLAID", 1.0f, "All the way: lightspeed" } };
+        s.name = "HYPERJUMP";
+        s.kind = "BUILD  CLIMB  DROP";
+        s.onParameterIds = { ParamIDs::hyperjumpOn };
+        s.powerTooltip = "HYPERJUMP on or off: a build and a drop in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "LIFT", 0.35f, "A small build: a little climb and chop, a soft landing" },
+                                            { "SURGE", 0.7f, "Most of the way: a real riser into the drop" },
+                                            { "HYPERJUMP", 1.0f, "All of it: the full climb, the fastest chop, the biggest hit" } };
         for (int k = 0; k < 3; ++k)
         {
             const auto& t = stages[k];
             s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
-                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::jumpAmount) - t.jump) < 0.01f; },
-                                                 [&p, t] { setValue (p, ParamIDs::jumpAmount, t.jump); } };
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::hyperjumpAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::hyperjumpAmount, t.amount); } };
         }
-        s.knobs = { RackUnit::Knob { ParamIDs::jumpAmount, "JUMP" }, RackUnit::Knob { ParamIDs::jumpRise, "RISE" } };
-        s.ladderTitle = "RUSH";
-        s.ladderMarks = { -6.0f, -12.0f, -24.0f, -36.0f, -48.0f };
-        s.ladderLabels = { "-6", "-12", "-24", "-36", "-48" };
-        s.ladderReading = [&p] { return p.getLightSpeedSettings().on ? p.getLightSpeed().getWhooshDb() : -100.0f; };
+        s.knobs = { RackUnit::Knob { ParamIDs::hyperjumpAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::hyperjumpRise, "RISE" } };
+        s.ladderTitle = "BUILD";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "DROP", "", "1/2", "", "0" };
+        s.ladderReading = [&p] { return p.getHyperJumpSettings().on ? juce::jmax (0.0f, p.getHyperJump().getProgress()) : 0.0f; };
         s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
         {
             auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
             auto left = content.removeFromLeft (content.getWidth() * 0.5f);
             const auto h = left.getHeight() * 0.56f;
-            const auto on = p.getLightSpeedSettings().on;
-            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * (on ? p.getLightSpeed().getSpool() : 0.0f))), left.getTopLeft(), h);
+            const auto& fx = p.getHyperJump();
+            const auto on = p.getHyperJumpSettings().on;
+            const auto progress = on ? fx.getProgress() : -1.0f;
+            const auto end = drawNumber (g, juce::String (juce::roundToInt (100.0f * juce::jmax (0.0f, progress))), left.getTopLeft(), h);
             line (g, "%", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
-            line (g, "INTO THE JUMP", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
-            column (g, content, { "JUMP " + textOf (p, ParamIDs::jumpAmount), "RISE " + textOf (p, ParamIDs::jumpRise),
-                                  "STREAKS " + textOf (p, ParamIDs::jumpStreak), "WHOOSH " + textOf (p, ParamIDs::jumpWhoosh) },
+            line (g, ! on ? "OFF" : progress >= 0.0f ? "BUILDING" : "LANDED", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::hyperjumpAmount), "LENGTH " + textOf (p, ParamIDs::hyperjumpLength),
+                                  "MODE " + textOf (p, ParamIDs::hyperjumpMode), "RISE " + textOf (p, ParamIDs::hyperjumpRise) },
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (18); };
@@ -1417,6 +1429,808 @@ std::array<RackUnit::Spec, 20> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (19); };
+    }
+
+    // LEGION (0.76.0): how many players in big digits, its settings; the keys set SIZE: QUARTET (a few players), SECTION
+    // (half), LEGION (all nine); the ladder the players.
+    {
+        auto& s = specs[20];
+        s.name = "LEGION";
+        s.kind = "PLAYERS  SPREAD  DRIFT";
+        s.onParameterIds = { ParamIDs::legionOn };
+        s.powerTooltip = "LEGION on or off: one player to a full section. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float size; const char* tip; };
+        static constexpr Stage stages[] = { { "QUARTET", 0.375f, "A few players: four in all" },
+                                            { "SECTION", 0.625f, "A section: six in all" },
+                                            { "LEGION", 1.0f, "All nine" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::legionSize) - t.size) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::legionSize, t.size); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::legionSize, "SIZE" }, RackUnit::Knob { ParamIDs::legionSpread, "SPREAD" } };
+        s.ladderTitle = "PLAYERS";
+        s.ladderMarks = { 9.0f, 7.0f, 5.0f, 3.0f, 1.0f };
+        s.ladderLabels = { "9", "7", "5", "3", "1" };
+        s.ladderReading = [&p] { return p.getLegionSettings().on ? effects::Legion::playersAt (p.getLegion().getSize()) : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto on = p.getLegionSettings().on;
+            const auto players = on ? juce::roundToInt (effects::Legion::playersAt (p.getLegion().getSize())) : 1;
+            drawNumber (g, juce::String (players), left.getTopLeft(), h);
+            line (g, players == 1 ? "PLAYER" : "PLAYERS", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "SIZE " + textOf (p, ParamIDs::legionSize), "SPREAD " + textOf (p, ParamIDs::legionSpread),
+                                  "LOOSE " + textOf (p, ParamIDs::legionLoose), "DETUNE " + textOf (p, ParamIDs::legionDetune) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (20); };
+    }
+
+    // OVERCHARGE (0.77.0): how charged in big digits (or the overload), its settings; the keys set CHARGE: GLOW
+    // (charged, stable), SURGE (breaking up) and BREAK (all the way); the ladder the energy.
+    {
+        auto& s = specs[21];
+        s.name = "OVERCHARGE";
+        s.kind = "CHARGE  GLOW  CHAOS";
+        s.onParameterIds = { ParamIDs::overchargeOn };
+        s.powerTooltip = "OVERCHARGE on or off: unstable magic, charging then overloading. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float charge; const char* tip; };
+        static constexpr Stage stages[] = { { "GLOW", 0.45f, "Charged and still stable: the crystals ring" },
+                                            { "SURGE", 0.72f, "Breaking up: the first bursts" },
+                                            { "BREAK", 1.0f, "All the way: overloading" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::overchargeCharge) - t.charge) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::overchargeCharge, t.charge); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::overchargeCharge, "CHARGE" }, RackUnit::Knob { ParamIDs::overchargeChaos, "CHAOS" } };
+        s.ladderTitle = "ENERGY";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "MAX", "", "1/2", "", "0" };
+        s.ladderReading = [&p] { return p.getOverchargeSettings().on ? 0.5f * (p.getOvercharge().getCharge() + p.getOvercharge().getOverload()) : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto on = p.getOverchargeSettings().on;
+            const auto over = on ? p.getOvercharge().getOverload() : 0.0f;
+            const auto charge = on ? p.getOvercharge().getCharge() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * (over > 0.0f ? over : charge))), left.getTopLeft(), h);
+            line (g, over > 0.0f ? "OVERLOAD" : "CHARGED", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "CHARGE " + textOf (p, ParamIDs::overchargeCharge), "GLOW " + textOf (p, ParamIDs::overchargeGlow),
+                                  "CHAOS " + textOf (p, ParamIDs::overchargeChaos), "TONE " + textOf (p, ParamIDs::overchargeTone) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (21); };
+    }
+
+    // AFTERMATH (0.79.0): how sealed in, in big digits, and its settings; the keys set SEAL: SHELTER (half under), SEALED
+    // (all the way) and back to OPEN SKY; the ladder how sealed.
+    {
+        auto& s = specs[22];
+        s.name = "AFTERMATH";
+        s.kind = "SEAL  ROOM  RING";
+        s.onParameterIds = { ParamIDs::aftermathOn };
+        s.powerTooltip = "AFTERMATH on or off: from under an open sky into a sealed concrete room. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float seal; const char* tip; };
+        static constexpr Stage stages[] = { { "OPEN", 0.0f, "Under the open sky: your sound untouched" },
+                                            { "SHELTER", 0.5f, "Half under: the room closing in" },
+                                            { "SEALED", 1.0f, "Sealed in: concrete, the walls ringing, the machinery humming" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::aftermathSeal) - t.seal) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::aftermathSeal, t.seal); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::aftermathSeal, "SEAL" }, RackUnit::Knob { ParamIDs::aftermathRing, "RING" } };
+        s.ladderTitle = "SEALED";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "1/2", "", "SKY" };
+        s.ladderReading = [&p] { return p.getAftermathSettings().on ? p.getAftermath().getSeal() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto seal = p.getAftermathSettings().on ? p.getAftermath().getSeal() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * seal)), left.getTopLeft(), h);
+            line (g, seal < 0.001f ? "OPEN SKY" : seal >= 0.999f ? "SEALED" : "SEALING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "SEAL " + textOf (p, ParamIDs::aftermathSeal), "ROOM " + textOf (p, ParamIDs::aftermathRoom),
+                                  "RING " + textOf (p, ParamIDs::aftermathRing), "HUM " + textOf (p, ParamIDs::aftermathHum) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (22); };
+    }
+
+    // SUBMERGE (0.80.0): how deep, in big digits, and its settings; the keys set DEPTH: SHALLOWS, UNDER and the
+    // ABYSS; the ladder how deep.
+    {
+        auto& s = specs[23];
+        s.name = "SUBMERGE";
+        s.kind = "DEPTH  MURK  BUBBLES";
+        s.onParameterIds = { ParamIDs::submergeOn };
+        s.powerTooltip = "SUBMERGE on or off: the sound sinking under water. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float depth; const char* tip; };
+        static constexpr Stage stages[] = { { "SHALLOWS", 0.3f, "Just under the surface: the top dulled, the first bubbles" },
+                                            { "UNDER", 0.6f, "Under: the pressure bending the pitch, the sea around it" },
+                                            { "ABYSS", 1.0f, "The sea floor: dark, bent and drowned" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::submergeDepth) - t.depth) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::submergeDepth, t.depth); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::submergeDepth, "DEPTH" }, RackUnit::Knob { ParamIDs::submergeBubbles, "BUBBLES" } };
+        s.ladderTitle = "DEPTH";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "FLOOR", "", "1/2", "", "DRY" };
+        s.ladderReading = [&p] { return p.getSubmergeSettings().on ? p.getSubmerge().getDepth() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto depth = p.getSubmergeSettings().on ? p.getSubmerge().getDepth() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * depth)), left.getTopLeft(), h);
+            line (g, depth < 0.001f ? "DRY LAND" : depth >= 0.999f ? "SEA FLOOR" : "SINKING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "DEPTH " + textOf (p, ParamIDs::submergeDepth), "MURK " + textOf (p, ParamIDs::submergeMurk),
+                                  "BUBBLES " + textOf (p, ParamIDs::submergeBubbles), "SEA " + textOf (p, ParamIDs::submergeSea) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (23); };
+    }
+
+    // LOCKSTEP (0.81.0): how drilled, in big digits, and its settings; the keys set AMOUNT: RANKS, MARCH and DRILLED;
+    // the ladder how drilled.
+    {
+        auto& s = specs[24];
+        s.name = "LOCKSTEP";
+        s.kind = "AMOUNT  GATE  STAMP";
+        s.onParameterIds = { ParamIDs::lockstepOn };
+        s.powerTooltip = "LOCKSTEP on or off: the sound forced into lockstep. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "RANKS", 0.35f, "Falling in: the steps marked, the sound still its own" },
+                                            { "MARCH", 0.7f, "Marching: cut into steps, squeezed, the boots heard" },
+                                            { "DRILLED", 1.0f, "Drilled: every step the same, nothing left between them" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::lockstepAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::lockstepAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::lockstepAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::lockstepStamp, "STAMP" } };
+        s.ladderTitle = "IN STEP";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "1/2", "", "FREE" };
+        s.ladderReading = [&p] { return p.getLockstepSettings().on ? p.getLockstep().getAmount() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto amount = p.getLockstepSettings().on ? p.getLockstep().getAmount() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * amount)), left.getTopLeft(), h);
+            line (g, amount < 0.001f ? "FREE" : amount >= 0.999f ? "DRILLED" : "MARCHING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::lockstepAmount), "STEP " + textOf (p, ParamIDs::lockstepDivision),
+                                  "GATE " + textOf (p, ParamIDs::lockstepGate), "STAMP " + textOf (p, ParamIDs::lockstepStamp) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (24); };
+    }
+    // COLOSSUS (0.82.0): how big, in big digits, and its settings; the keys set SIZE: GIANT, TITAN and COLOSSUS; the
+    // ladder how big.
+    {
+        auto& s = specs[25];
+        s.name = "COLOSSUS";
+        s.kind = "SIZE  DEPTH  HALL";
+        s.onParameterIds = { ParamIDs::colossusOn };
+        s.powerTooltip = "COLOSSUS on or off: the sound made enormous. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float size; const char* tip; };
+        static constexpr Stage stages[] = { { "GIANT", 0.35f, "Giant: the octave under it, a big room behind" },
+                                            { "TITAN", 0.7f, "Titan: heavier, a vast hall, the ground shaking under each note" },
+                                            { "COLOSSUS", 1.0f, "Colossus: as big as it goes" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::colossusSize) - t.size) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::colossusSize, t.size); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::colossusSize, "SIZE" }, RackUnit::Knob { ParamIDs::colossusHall, "HALL" } };
+        s.ladderTitle = "SCALE";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "MAX", "", "1/2", "", "AS IS" };
+        s.ladderReading = [&p] { return p.getColossusSettings().on ? p.getColossus().getSize() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto size = p.getColossusSettings().on ? p.getColossus().getSize() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * size)), left.getTopLeft(), h);
+            line (g, size < 0.001f ? "AS IT IS" : size < 0.5f ? "GIANT" : size < 0.999f ? "TITAN" : "COLOSSUS",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "SIZE " + textOf (p, ParamIDs::colossusSize), "DEPTH " + textOf (p, ParamIDs::colossusDepth),
+                                  "HALL " + textOf (p, ParamIDs::colossusHall), "BOOM " + textOf (p, ParamIDs::colossusBoom) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (25); };
+    }
+    // CANYON (0.84.0): how far in, in big digits, and its settings; the keys set AMOUNT: MESA, CANYON and GORGE; the
+    // ladder the echoes coming back.
+    {
+        auto& s = specs[26];
+        s.name = "CANYON";
+        s.kind = "NEAR  FAR  REPEATS";
+        s.onParameterIds = { ParamIDs::canyonOn };
+        s.powerTooltip = "CANYON on or off: the sound's echoes off rock walls. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "MESA", 0.3f, "Mesa: a slap off the rocks close by" },
+                                            { "CANYON", 0.6f, "Canyon: the walls answer and the far wall replies in time" },
+                                            { "GORGE", 1.0f, "Gorge: deep in, every wall answering" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::canyonAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::canyonAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::canyonAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::canyonRepeats, "REPEATS" } };
+        s.ladderTitle = "ECHO";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "MAX", "", "1/2", "", "NONE" };
+        s.ladderReading = [&p]
+        {
+            if (! p.getCanyonSettings().on)
+                return 0.0f;
+            const auto& c = p.getCanyon();
+            auto level = 0.0f;
+            for (int k = 0; k <= effects::Canyon::numNear; ++k)
+                level = juce::jmax (level, c.getWallLevel (k));
+            return level;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto amount = p.getCanyonSettings().on ? p.getCanyon().getAmount() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * amount)), left.getTopLeft(), h);
+            line (g, amount < 0.001f ? "OPEN" : amount < 0.45f ? "MESA" : amount < 0.8f ? "CANYON" : "GORGE",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::canyonAmount), "NEAR " + textOf (p, ParamIDs::canyonSize),
+                                  "FAR " + textOf (p, ParamIDs::canyonFar), "BACK " + textOf (p, ParamIDs::canyonRepeats) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (26); };
+    }
+    // JACK-IN (0.85.0): how much is taken, in big digits, and its settings; the keys set AMOUNT: PROBE, BREACH and
+    // TAKEOVER; the ladder the share of the last bar's slices taken.
+    {
+        auto& s = specs[27];
+        s.name = "JACK-IN";
+        s.kind = "SLICE  REACH  CHAOS";
+        s.onParameterIds = { ParamIDs::jackinOn };
+        s.powerTooltip = "JACK-IN on or off: something breaks into the sound and takes the phrase over. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "PROBE", 0.3f, "Probe: now and then a slice is taken" },
+                                            { "BREACH", 0.65f, "Breach: most of the phrase is cut up and replayed" },
+                                            { "TAKEOVER", 1.0f, "Takeover: nearly every slice is someone else's" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::jackinAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::jackinAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::jackinAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::jackinChaos, "CHAOS" } };
+        s.ladderTitle = "TAKEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "1/2", "", "NONE" };
+        s.ladderReading = [&p]
+        {
+            if (! p.getJackInSettings().on)
+                return 0.0f;
+            const auto& j = p.getJackIn();
+            const auto count = j.getSliceCount();
+            const auto span = juce::jmin (count, juce::jmin (effects::JackIn::maxHistoryKept, j.getSlicesPerBar()));
+            if (span <= 0)
+                return 0.0f;
+            int taken = 0;
+            for (int k = count - span; k < count; ++k)
+                taken += j.getMove (k) != effects::JackIn::Move::dry ? 1 : 0;
+            return (float) taken / (float) span;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto amount = p.getJackInSettings().on ? p.getJackIn().getAmount() : 0.0f;
+            drawNumber (g, juce::String (juce::roundToInt (100.0f * amount)), left.getTopLeft(), h);
+            line (g, amount < 0.001f ? "CLEAN" : amount < 0.45f ? "PROBE" : amount < 0.8f ? "BREACH" : "TAKEOVER",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::jackinAmount), "SLICE " + textOf (p, ParamIDs::jackinSlice),
+                                  "REACH " + textOf (p, ParamIDs::jackinReach), "CHAOS " + textOf (p, ParamIDs::jackinChaos) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (27); };
+    }
+
+    // NAVICOMPUTER (0.86.0): how many steps move in big digits, the pattern; the keys set AMOUNT: COURSE (four steps),
+    // PLOTTED (half), FULL ROUTE (all sixteen); the ladder the share of steps moving.
+    {
+        auto& s = specs[28];
+        s.name = "NAVICOMPUTER";
+        s.kind = "PATTERN  KEY  STEPS";
+        s.onParameterIds = { ParamIDs::naviOn };
+        s.powerTooltip = "NAVICOMPUTER on or off: every note moved by a pattern in key, in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "COURSE", 0.25f, "Four of the sixteen steps move: an occasional jump" },
+                                            { "PLOTTED", 0.5f, "Half the steps move" },
+                                            { "FULL ROUTE", 1.0f, "Every step moves: the whole pattern" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::naviAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::naviAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::naviAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::naviChaos, "CHAOS" } };
+        s.ladderTitle = "STEPS";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "16", "", "8", "", "0" };
+        s.ladderReading = [&p]
+        {
+            const auto n = p.getNaviSettings();
+            return n.on ? juce::jlimit (0.0f, 1.0f, std::floor (n.amount * synth::navi::numSteps + 1.0e-4f) / (float) synth::navi::numSteps) : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto n = p.getNaviSettings();
+            const auto steps = n.on ? juce::jlimit (0, synth::navi::numSteps, (int) std::floor (n.amount * synth::navi::numSteps + 1.0e-4f)) : 0;
+            const auto end = drawNumber (g, juce::String (steps), left.getTopLeft(), h);
+            line (g, "/16", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, "STEPS MOVING", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "PATTERN " + textOf (p, ParamIDs::naviPattern), "KEY " + textOf (p, ParamIDs::naviKey) + " " + textOf (p, ParamIDs::naviScale),
+                                  "DIVISION " + textOf (p, ParamIDs::naviDivision), "CHAOS " + textOf (p, ParamIDs::naviChaos) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (28); };
+    }
+
+    // SWEEP (0.87.0): where the sweep is in big digits (%), the cutoff, its settings; the keys set AMOUNT: DRIFT (a
+    // gentle sweep), SWEEP (most of the way), SCREAM (all of it); the ladder where the sweep is now.
+    {
+        auto& s = specs[29];
+        s.name = "SWEEP";
+        s.kind = "FILTER  RESONANCE  PHASER";
+        s.onParameterIds = { ParamIDs::sweepOn };
+        s.powerTooltip = "SWEEP on or off: a resonant analogue sweep locked to the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "DRIFT", 0.3f, "A gentle sweep: the filter breathing with the song" },
+                                            { "SWEEP", 0.65f, "Most of the way: the sweep wide and singing at the top" },
+                                            { "SCREAM", 1.0f, "All of it: the widest sweep, the resonance near-screaming at the peak" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::sweepAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::sweepAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::sweepAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::sweepResonance, "RESONANCE" } };
+        s.ladderTitle = "SWEEP";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "TOP", "", "1/2", "", "LOW" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getSweep();
+            return p.getSweepSettings().on && ! fx.isResting() ? fx.getPosition() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getSweep();
+            const auto live = p.getSweepSettings().on && ! fx.isResting();
+            const auto hz = live ? fx.getCutoffHz() : 20000.0f;
+            const auto end = drawNumber (g, hz >= 1000.0f ? juce::String (hz / 1000.0f, 1) : juce::String (juce::roundToInt (hz)), left.getTopLeft(), h);
+            line (g, hz >= 1000.0f ? "kHz" : "Hz", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, live ? "CUTOFF" : "OPEN", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::sweepAmount), "LENGTH " + textOf (p, ParamIDs::sweepLength),
+                                  "SHAPE " + textOf (p, ParamIDs::sweepShape), "RES " + textOf (p, ParamIDs::sweepResonance) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (29); };
+    }
+
+    // REDLINE (0.88.0): the revs in big digits (RPM x 1000), the gear and its settings; the keys set THROTTLE: IDLE,
+    // REV, REDLINE; the ladder the revs now.
+    {
+        auto& s = specs[30];
+        s.name = "REDLINE";
+        s.kind = "THROB  SCREAM  WHINE";
+        s.onParameterIds = { ParamIDs::redlineOn };
+        s.powerTooltip = "REDLINE on or off: the sound as a revving engine in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "IDLE", 0.3f, "Idling: the throb under every note, the engine just turning over" },
+                                            { "REV", 0.65f, "Revving: the scream climbing through every gear" },
+                                            { "REDLINE", 1.0f, "Flat out: the throb, the scream and the whine all the way" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::redlineThrottle) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::redlineThrottle, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::redlineThrottle, "THROTTLE" }, RackUnit::Knob { ParamIDs::redlineScream, "SCREAM" } };
+        s.ladderTitle = "RPM";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "RED", "", "1/2", "", "IDLE" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getRedline();
+            return p.getRedlineSettings().on && ! fx.isResting() ? fx.getRevs() * fx.getThrottle() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getRedline();
+            const auto live = p.getRedlineSettings().on && ! fx.isResting();
+            const auto rpm = live ? 0.8f + 7.2f * fx.getRevs() * fx.getThrottle() : 0.0f;
+            const auto end = drawNumber (g, juce::String (rpm, 1), left.getTopLeft(), h);
+            line (g, "x1000", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, live ? "RPM  GEAR " + juce::String (fx.getGear()) : "ENGINE OFF", left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "THROTTLE " + textOf (p, ParamIDs::redlineThrottle), "GEAR " + textOf (p, ParamIDs::redlineGear),
+                                  "THROB " + textOf (p, ParamIDs::redlineThrob), "SCREAM " + textOf (p, ParamIDs::redlineScream) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (30); };
+    }
+
+    // FREEZE TAG (0.89.0): the beat in the cycle in big digits, GO or FREEZE, its settings; the keys set AMOUNT: PEEK, FREEZE,
+    // STATUE; the ladder how frozen it is now.
+    {
+        auto& s = specs[31];
+        s.name = "FREEZE TAG";
+        s.kind = "FREEZE  TREMBLE  CAUGHT";
+        s.onParameterIds = { ParamIDs::freezeOn };
+        s.powerTooltip = "FREEZE TAG on or off: in time with the song the sound plays, then freezes. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "PEEK", 0.4f, "A light freeze: the sound dips and a ghost of it hangs under" },
+                                            { "FREEZE", 0.75f, "Most of the way: the sound all but stops and its ghost holds the moment" },
+                                            { "STATUE", 1.0f, "All of it: dead still, only the trembling ghost left" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::freezeAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::freezeAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::freezeAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::freezeTremble, "TREMBLE" } };
+        s.ladderTitle = "FROZEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "STILL", "", "1/2", "", "GO" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getFreezeTag();
+            return p.getFreezeTagSettings().on && ! fx.isResting() ? fx.getGate() * fx.getAmount() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getFreezeTag();
+            const auto settings = p.getFreezeTagSettings();
+            const auto live = settings.on && ! fx.isResting();
+            const auto beats = effects::FreezeTag::cycleBeats[(size_t) settings.cycle];
+            const auto beat = live ? 1 + (int) (fx.getPosition() * beats) : 0;
+            const auto end = drawNumber (g, juce::String (beat), left.getTopLeft(), h);
+            line (g, "/" + juce::String ((int) beats), { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! live ? "STILL OFF" : fx.getGate() > 0.5f ? (fx.wasCaught() ? "CAUGHT!" : "FREEZE") : "GO",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::freezeAmount), "CYCLE " + textOf (p, ParamIDs::freezeCycle),
+                                  "HOLD " + textOf (p, ParamIDs::freezeHold), "TREMBLE " + textOf (p, ParamIDs::freezeTremble) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (31); };
+    }
+
+    // CROSSROADS (0.90.0): LIGHT or DARK in big letters, the pull in steps, its settings; the keys set AMOUNT: DOUBT,
+    // TORN, CHOSEN; the ladder how dark it is now.
+    {
+        auto& s = specs[32];
+        s.name = "CROSSROADS";
+        s.kind = "LIGHT  DARK  IN KEY";
+        s.onParameterIds = { ParamIDs::crossOn };
+        s.powerTooltip = "CROSSROADS on or off: the sound pulled between light and dark in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "DOUBT", 0.35f, "A light pull: the sides only colour the sound, light then dark" },
+                                            { "TORN", 0.7f, "Hard: the dark side pulls every note down the scale, in key" },
+                                            { "CHOSEN", 1.0f, "All the way: the dark side pulls the notes as far as PULL goes" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::crossAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::crossAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::crossAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::crossDark, "DARK" } };
+        s.ladderTitle = "SIDE";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "DARK", "", "", "", "LIGHT" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getCrossroads();
+            return p.getCrossroadsSettings().on && ! fx.isResting() ? fx.getDarkness() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getCrossroads();
+            const auto pull = p.getCrossroadsPull();
+            const auto live = pull.on && ! fx.isResting();
+            const auto steps = pull.on ? synth::crossroads::stepsFor (pull.amount, pull.pull) : 0;
+            const auto end = drawNumber (g, juce::String (steps), left.getTopLeft(), h);
+            line (g, steps == 1 ? "STEP" : "STEPS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! live ? "STILL OFF" : fx.getDarkness() > 0.5f ? "DARK" : "LIGHT",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::crossAmount), "LENGTH " + textOf (p, ParamIDs::crossLength),
+                                  "KEY " + textOf (p, ParamIDs::crossKey) + " " + textOf (p, ParamIDs::crossScale).toUpperCase(),
+                                  "PULL " + textOf (p, ParamIDs::crossPull) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (32); };
+    }
+    // GEARWORKS (0.91.0): the step in the turn in big digits, the gears' ratio, its settings; the keys set AMOUNT:
+    // IDLE, GRINDING, FULL STEAM; the ladder how hard the machinery bites now.
+    {
+        auto& s = specs[33];
+        s.name = "GEARWORKS";
+        s.kind = "GEARS  METAL  STEAM";
+        s.onParameterIds = { ParamIDs::gearOn };
+        s.powerTooltip = "GEARWORKS on or off: the sound caught in the machinery, in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "IDLE", 0.35f, "Ticking over: the gears nick the sound and the metal hums" },
+                                            { "GRINDING", 0.7f, "Hard at work: deep cuts, struck metal and steam" },
+                                            { "FULL STEAM", 1.0f, "The whole machine: every tooth bites and clanks" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::gearAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::gearAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::gearAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::gearMetal, "METAL" } };
+        s.ladderTitle = "BITE";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "FULL", "", "", "", "IDLE" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getGearworks();
+            return p.getGearworksSettings().on && ! fx.isResting() ? fx.getAmount() * (fx.getTeeth() != 0 ? 1.0f : 0.4f) : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getGearworks();
+            const auto settings = p.getGearworksSettings();
+            const auto live = settings.on && ! fx.isResting();
+            const auto turn = effects::Gearworks::turnSteps (settings.ratio);
+            const auto end = drawNumber (g, juce::String (live ? fx.getStep() + 1 : 0), left.getTopLeft(), h);
+            line (g, "/" + juce::String (turn), { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! live ? "STILL OFF" : fx.getTeeth() != 0 ? "CLANK" : "TURNING",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::gearAmount), "GEARS " + textOf (p, ParamIDs::gearRatio),
+                                  "STEP " + textOf (p, ParamIDs::gearDivision), "METAL " + textOf (p, ParamIDs::gearMetal) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (33); };
+    }
+    // RAGTIME (0.92.0): the roll's step in big digits, what's playing of it, its settings; the keys set AMOUNT:
+    // BEATS, SYNCOPATED, FULL ROLL (one for each tier); the ladder how much of the roll plays.
+    {
+        auto& s = specs[34];
+        s.name = "RAGTIME";
+        s.kind = "PIANO ROLL  STRIDE";
+        s.onParameterIds = { ParamIDs::ragtimeOn };
+        s.powerTooltip = "RAGTIME on or off: every held note struck again on a player piano's roll, in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "BEATS", 0.3f, "The roll's main beats: an oom-pah under what you hold" },
+                                            { "SYNCOPATED", 0.6f, "The syncopations punched in too" },
+                                            { "FULL ROLL", 1.0f, "The whole roll, pickups and all" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::ragtimeAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::ragtimeAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::ragtimeAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::ragtimeSwing, "SWING" } };
+        s.ladderTitle = "ROLL";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "FULL", "", "", "", "OFF" };
+        s.ladderReading = [&p]
+        {
+            const auto r = p.getRagtimeSettings();
+            return r.on ? (float) synth::ragtime::tiersAt (r.amount) / 3.0f : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto r = p.getRagtimeSettings();
+            const auto step = r.playing() ? p.getRagtimeStep() : -1;
+            const auto end = drawNumber (g, juce::String (step >= 0 ? step + 1 : 0), left.getTopLeft(), h);
+            line (g, "/16", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! r.playing() ? "ROLL STILL" : r.stride ? "STRIDE" : "ALL HANDS",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::ragtimeAmount), "ROLL " + textOf (p, ParamIDs::ragtimePattern),
+                                  "STEP " + textOf (p, ParamIDs::ragtimeDivision), "SWING " + textOf (p, ParamIDs::ragtimeSwing) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (34); };
+    }
+    // SORT (0.93.0): the place playing of the window in big digits, the order, its settings; the keys set AMOUNT:
+    // TIDY, FILED, SORTED; the ladder how much is re-filed.
+    {
+        auto& s = specs[35];
+        s.name = "SORT";
+        s.kind = "PHRASE  RE-FILED";
+        s.onParameterIds = { ParamIDs::sortOn };
+        s.powerTooltip = "SORT on or off: the phrase cut into pieces in time with the song and played back a window later, re-filed in order. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "TIDY", 0.35f, "The re-filed phrase under the live one" },
+                                            { "FILED", 0.7f, "Mostly the re-filed phrase, the live one behind it" },
+                                            { "SORTED", 1.0f, "Only the re-filed phrase" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::sortAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::sortAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::sortAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::sortStrike, "STRIKE" } };
+        s.ladderTitle = "FILED";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "", "", "", "LIVE" };
+        s.ladderReading = [&p] { return p.getSortSettings().on ? p.getSort().getAmount() : 0.0f; };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getSort();
+            const auto on = p.getSortSettings().on && ! fx.isResting();
+            const auto place = on ? fx.getPlace() : -1;
+            const auto end = drawNumber (g, juce::String (place >= 0 ? place + 1 : 0), left.getTopLeft(), h);
+            line (g, "/" + juce::String (juce::jmax (1, fx.getSliceCount())), { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, place >= 0 ? "FILING " + textOf (p, ParamIDs::sortOrder) : on ? "LISTENING" : "LIVE",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::sortAmount), "ORDER " + textOf (p, ParamIDs::sortOrder),
+                                  "SLICE " + textOf (p, ParamIDs::sortSlice), "WINDOW " + textOf (p, ParamIDs::sortLength) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (35); };
+    }
+
+    // WOBBLE (0.97.0): the wobble's speed now in big type, the cutoff, its settings; the keys set AMOUNT: WUB, GROWL,
+    // FILTHY; the ladder how open the wobble is now.
+    {
+        auto& s = specs[36];
+        s.name = "WOBBLE";
+        s.kind = "FILTER  TALK  DRIVE";
+        s.onParameterIds = { ParamIDs::wobbleOn };
+        s.powerTooltip = "WOBBLE on or off: the dubstep wobble, locked to the song and changing speed beat by beat. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "WUB", 0.35f, "A gentle wobble: the filter pulsing with the song" },
+                                            { "GROWL", 0.7f, "Most of the way: the wobble deep, talking where TALK is up" },
+                                            { "FILTHY", 1.0f, "All of it: shut to wide open on every wobble, driven hard" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::wobbleAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::wobbleAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::wobbleAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::wobbleTalk, "TALK" } };
+        s.ladderTitle = "OPEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "OPEN", "", "1/2", "", "SHUT" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getWobble();
+            return p.getWobbleSettings().on && ! fx.isResting() ? fx.getOpen() * fx.getAmount() : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            using W = effects::Wobble;
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getWobbleSettings();
+            const auto& fx = p.getWobble();
+            const auto live = settings.on && ! fx.isResting();
+            const auto rate = W::rateAt (live ? fx.getBeat() : 0.0, settings.pattern);
+            // The speed as a number of wobbles a beat (the digits can't draw "1/8 T").
+            const auto end = drawNumber (g, juce::String (rate < 1.0f ? 0.5f : rate, rate < 1.0f ? 1 : 0), left.getTopLeft(), h);
+            line (g, "/BEAT", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, live ? W::rateName (rate) + "  " + juce::String (juce::roundToInt (fx.getCutoffHz())) + " Hz" : "OPEN",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::wobbleAmount), "PATTERN " + textOf (p, ParamIDs::wobblePattern),
+                                  "TALK " + textOf (p, ParamIDs::wobbleTalk), "DRIVE " + textOf (p, ParamIDs::wobbleDrive) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (36); };
+    }
+    // RUNNER (1.0.0): the strikes a beat in big digits, the speed, its settings; the keys set AMOUNT: JOG, RUN,
+    // SPRINT; the ladder the speed (a step a fifth).
+    {
+        auto& s = specs[37];
+        s.name = "RUNNER";
+        s.kind = "THE CHASE  STRIKES";
+        s.onParameterIds = { ParamIDs::runnerOn };
+        s.powerTooltip = "RUNNER on or off: every held note struck again in time with the song, faster with every fifth of AMOUNT. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "JOG", 0.1f, "Quarter notes: every held note struck on the beat" },
+                                            { "RUN", 0.5f, "Sixteenths: the chase on" },
+                                            { "SPRINT", 0.9f, "64ths: the strikes become a roll" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return synth::runner::speedAt (valueOf (p, ParamIDs::runnerAmount)) == synth::runner::speedAt (t.amount); },
+                                                 [&p, t] { setValue (p, ParamIDs::runnerAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::runnerAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::runnerLift, "LIFT" } };
+        s.ladderTitle = "SPEED";
+        s.ladderMarks = { 1.0f, 0.8f, 0.6f, 0.4f, 0.2f };
+        s.ladderLabels = { "1/64", "1/32", "1/16", "1/8", "1/4" };
+        s.ladderReading = [&p]
+        {
+            const auto r = p.getRunnerSettings();
+            return r.on ? (float) r.speed() / 5.0f : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto r = p.getRunnerSettings();
+            const auto speed = r.on ? r.speed() : 0;
+            const auto perBeat = speed > 0 ? juce::roundToInt (1.0 / synth::runner::beatsPerStrike (speed)) : 0;
+            const auto end = drawNumber (g, juce::String (perBeat), left.getTopLeft(), h);
+            line (g, "/BEAT", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, speed > 0 ? "STRIKING " + synth::runner::speedNames[speed] : "STANDING",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::runnerAmount), "SPEED " + synth::runner::speedNames[speed],
+                                  "ACCENT " + textOf (p, ParamIDs::runnerAccent), "LIFT " + textOf (p, ParamIDs::runnerLift) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (37); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

@@ -54,7 +54,14 @@ namespace ParamIDs
         // Stage 7d: the insert bus it plays into (NONE, A to D).
         "Insert",
         // 0.39.0: whether it goes through the VOICE filter (when that's on).
-        "Voice" };
+        "Voice",
+        // 0.81.0: SFZ KEY (0 the key played; n: every note plays key n - 1's samples, at their own pitch: a drum on any key).
+        "SfzKey",
+        // 0.83.0: SFZ KEY TRACK (on: that key's samples pitched by the key played, from the chosen key: one gong or drone
+        // across the keyboard).
+        "SfzKeyTrack",
+        // 0.96.0: with TO FILTER, through FILTER 2 instead of FILTER 1.
+        "Filter2" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)
@@ -92,6 +99,41 @@ namespace ParamIDs
     inline constexpr auto fltAttackCurve  = "flt1AttackCurve";    // -1 to 1
     inline constexpr auto fltDecayCurve   = "flt1DecayCurve";
     inline constexpr auto fltReleaseCurve = "flt1ReleaseCurve";
+    // 0.96.0: each filter's LOW CUT (a resonant high-pass before it, moved with it; 20 Hz = none), and FILTER 2,
+    // the same settings as the FILTER's (its own envelope too), for the oscillators set to it.
+    inline constexpr auto fltLowCut    = "flt1LowCut";      // Hz
+    inline constexpr auto fltLowCutRes = "flt1LowCutRes";   // 0 to 1
+    inline constexpr auto flt2On       = "flt2On";
+    inline constexpr auto flt2Type     = "flt2Type";
+    inline constexpr auto flt2Cutoff   = "flt2Cutoff";
+    inline constexpr auto flt2Res      = "flt2Res";
+    inline constexpr auto flt2Drive    = "flt2Drive";
+    inline constexpr auto flt2Key      = "flt2Key";
+    inline constexpr auto flt2Vel      = "flt2Vel";
+    inline constexpr auto flt2ResVel   = "flt2ResVel";
+    inline constexpr auto flt2Env      = "flt2Env";
+    inline constexpr auto flt2EnvVel   = "flt2EnvVel";
+    inline constexpr auto flt2Attack   = "flt2Attack";
+    inline constexpr auto flt2Hold     = "flt2Hold";
+    inline constexpr auto flt2Decay    = "flt2Decay";
+    inline constexpr auto flt2Sustain  = "flt2Sustain";
+    inline constexpr auto flt2Release  = "flt2Release";
+    inline constexpr auto flt2AttackCurve  = "flt2AttackCurve";
+    inline constexpr auto flt2DecayCurve   = "flt2DecayCurve";
+    inline constexpr auto flt2ReleaseCurve = "flt2ReleaseCurve";
+    inline constexpr auto flt2LowCut    = "flt2LowCut";
+    inline constexpr auto flt2LowCutRes = "flt2LowCutRes";
+    // Both filters' IDs side by side (0: FILTER, 1: FILTER 2), for the code that treats them alike.
+    struct FilterIds
+    {
+        const char *on, *type, *cutoff, *res, *drive, *key, *vel, *resVel, *env, *envVel,
+                   *attack, *hold, *decay, *sustain, *release, *attackCurve, *decayCurve, *releaseCurve, *lowCut, *lowCutRes;
+    };
+    inline constexpr FilterIds filterIds[2] {
+        { fltOn, fltType, fltCutoff, fltRes, fltDrive, fltKey, fltVel, fltResVel, fltEnv, fltEnvVel,
+          fltAttack, fltHold, fltDecay, fltSustain, fltRelease, fltAttackCurve, fltDecayCurve, fltReleaseCurve, fltLowCut, fltLowCutRes },
+        { flt2On, flt2Type, flt2Cutoff, flt2Res, flt2Drive, flt2Key, flt2Vel, flt2ResVel, flt2Env, flt2EnvVel,
+          flt2Attack, flt2Hold, flt2Decay, flt2Sustain, flt2Release, flt2AttackCurve, flt2DecayCurve, flt2ReleaseCurve, flt2LowCut, flt2LowCutRes } };
 
     inline constexpr auto ampVolume   = "amp1Volume";     // 0 to 2
     inline constexpr auto ampVel      = "amp1Vel";        // 0 to 1
@@ -499,14 +541,8 @@ namespace ParamIDs
     inline constexpr auto springSize  = "springSize";    // 0 to 1: the springs x 0.7 to x 1.4
     inline constexpr auto springBoing = "springBoing";   // 0 to 1
     inline constexpr auto springWidth = "springWidth";   // 0 to 1
-    // LIGHTSPEED (0.73.0, version hint 42, effects::LightSpeed): HYPERDRIVE's signature.
-    inline constexpr auto jumpOn     = "jumpOn";
-    inline constexpr auto jumpAmount = "jumpAmount";   // 0 to 1: JUMP
-    inline constexpr auto jumpRise   = "jumpRise";     // 0 to 1: the top streak 0 to +24 semitones at full JUMP
-    inline constexpr auto jumpStreak = "jumpStreak";   // 0 to 1
-    inline constexpr auto jumpWhoosh = "jumpWhoosh";   // 0 to 1
-    inline constexpr auto jumpWidth  = "jumpWidth";    // 0 to 1
-    inline constexpr auto jumpTone   = "jumpTone";     // 0 to 1: 2 to 16 kHz
+    // LIGHTSPEED (0.73.0-0.85.0, version hint 42) was removed in 0.86.0 at the owner's word: never reuse its IDs
+    // (jumpOn jumpAmount jumpRise jumpStreak jumpWhoosh jumpWidth jumpTone) or version hint 42.
     // BLOOM (0.74.0, version hint 43, effects::Bloom): GRAND CINEMA's signature.
     inline constexpr auto bloomOn        = "bloomOn";
     inline constexpr auto bloomAmount    = "bloomAmount";      // 0 to 1: how much (the macro's)
@@ -516,6 +552,177 @@ namespace ParamIDs
     inline constexpr auto bloomSwell     = "bloomSwell";       // 0 to 1: the hall opening, 0.15 to 4 s
     inline constexpr auto bloomTone      = "bloomTone";        // 0 to 1: 1.5 to 15 kHz
     inline constexpr auto bloomWidth     = "bloomWidth";       // 0 to 1
+    // LEGION (0.76.0, version hint 44, effects::Legion): MAESTRO's signature.
+    inline constexpr auto legionOn     = "legionOn";
+    inline constexpr auto legionSize   = "legionSize";     // 0 to 1: one player to a section of nine (the macro's)
+    inline constexpr auto legionSpread = "legionSpread";   // 0 to 1: how wide the stage
+    inline constexpr auto legionLoose  = "legionLoose";    // 0 to 1: the latest player 6 to 30 ms behind
+    inline constexpr auto legionDetune = "legionDetune";   // 0 to 1: drifting up to 0 to 14 cents
+    inline constexpr auto legionTone   = "legionTone";     // 0 to 1: the players' top, 3 to 16 kHz
+    // OVERCHARGE (0.77.0, version hint 45, effects::Overcharge): TWIN SPIRES' signature.
+    inline constexpr auto overchargeOn     = "overchargeOn";
+    inline constexpr auto overchargeCharge = "overchargeCharge";   // 0 to 1: the first half charges, the second overloads (the macro's)
+    inline constexpr auto overchargeGlow   = "overchargeGlow";     // 0 to 1: the crystal tones' share
+    inline constexpr auto overchargeChaos  = "overchargeChaos";    // 0 to 1: how violent and how often the overload bursts
+    inline constexpr auto overchargeTone   = "overchargeTone";     // 0 to 1: the glow's top, 3 to 16 kHz
+    inline constexpr auto overchargeWidth  = "overchargeWidth";    // 0 to 1: how far the glow spreads
+
+    // AFTERMATH (0.79.0, version hint 46, effects::Aftermath): STOLEN SKY's signature.
+    inline constexpr auto aftermathOn    = "aftermathOn";
+    inline constexpr auto aftermathSeal  = "aftermathSeal";    // 0 to 1: open sky to sealed bunker (the macro's)
+    inline constexpr auto aftermathRoom  = "aftermathRoom";    // 0 to 1: the bunker's size
+    inline constexpr auto aftermathRing  = "aftermathRing";    // 0 to 1: how long the walls ring
+    inline constexpr auto aftermathDark  = "aftermathDark";    // 0 to 1: how dark when sealed, 6 kHz down to 1.2 kHz
+    inline constexpr auto aftermathHum   = "aftermathHum";     // 0 to 1: the machinery, -66 to -30 dB (0 none)
+    inline constexpr auto aftermathHumHz = "aftermathHumHz";   // Aftermath::humNames
+    inline constexpr auto aftermathWidth = "aftermathWidth";   // 0 to 1: the room's width
+    // SUBMERGE (0.80.0, version hint 47, effects::Submerge): DROWNED DECO's signature.
+    inline constexpr auto submergeOn      = "submergeOn";
+    inline constexpr auto submergeDepth   = "submergeDepth";     // 0 to 1: dry land to the sea floor (the macro's)
+    inline constexpr auto submergeMurk    = "submergeMurk";      // 0 to 1: how dark at full depth, 4 kHz down to 400 Hz
+    inline constexpr auto submergeCurrent = "submergeCurrent";   // 0 to 1: the pressure's pitch bend, up to about +-20 cents
+    inline constexpr auto submergeBubbles = "submergeBubbles";   // 0 to 1: how many bubbles rise
+    inline constexpr auto submergeSea     = "submergeSea";       // 0 to 1: the sea's wash
+    inline constexpr auto submergeWidth   = "submergeWidth";     // 0 to 1: how wide the bubbles and the sea
+    // LOCKSTEP (0.81.0, version hint 48, effects::Lockstep): NEW EDEN's signature.
+    inline constexpr auto lockstepOn       = "lockstepOn";
+    inline constexpr auto lockstepAmount   = "lockstepAmount";     // 0 to 1: free to drilled (the macro's)
+    inline constexpr auto lockstepDivision = "lockstepDivision";   // Lockstep::divisionNames
+    inline constexpr auto lockstepGate     = "lockstepGate";       // 0 to 1: each step open 15% to 90%
+    inline constexpr auto lockstepAccent   = "lockstepAccent";     // 0 to 1: the off-beat steps lower
+    inline constexpr auto lockstepSqueeze  = "lockstepSqueeze";    // 0 to 1: how flat
+    inline constexpr auto lockstepStamp    = "lockstepStamp";      // 0 to 1: the boots
+
+    // COLOSSUS (0.82.0, version hint 50, effects::Colossus): SANDSEA's signature.
+    inline constexpr auto colossusOn     = "colossusOn";
+    inline constexpr auto colossusSize   = "colossusSize";     // 0 to 1: as it is to enormous (the macro's)
+    inline constexpr auto colossusDepth  = "colossusDepth";    // 0 to 1: the octave under
+    inline constexpr auto colossusWeight = "colossusWeight";   // 0 to 1: how hard it's driven
+    inline constexpr auto colossusHall   = "colossusHall";     // 0 to 1: the hall, 2 to 10 s
+    inline constexpr auto colossusBoom   = "colossusBoom";     // 0 to 1: the impact under each note
+    inline constexpr auto colossusTone   = "colossusTone";     // 0 to 1: dark to bright
+    inline constexpr auto colossusWidth  = "colossusWidth";    // 0 to 1: the hall's width
+
+    // CANYON (0.84.0, version hint 52, effects::Canyon): the western bank's signature.
+    inline constexpr auto canyonOn      = "canyonOn";
+    inline constexpr auto canyonAmount  = "canyonAmount";    // 0 to 1: how much goes into the canyon (the macro's)
+    inline constexpr auto canyonSize    = "canyonSize";      // 0 to 1: the near walls, 45 to 200 ms
+    inline constexpr auto canyonFar     = "canyonFar";       // effects::Canyon::farNames: the far wall, in time with the song
+    inline constexpr auto canyonRepeats = "canyonRepeats";   // 0 to 1: how many replies come back
+    inline constexpr auto canyonTone    = "canyonTone";      // 0 to 1: dark to bright
+    inline constexpr auto canyonWidth   = "canyonWidth";     // 0 to 1: how far to the sides the walls are
+
+    // JACK-IN (0.85.0, version hint 53, effects::JackIn): MACHINE SUPREMACY's signature.
+    inline constexpr auto jackinOn     = "jackinOn";
+    inline constexpr auto jackinAmount = "jackinAmount";   // 0 to 1: how much is taken over (the macro's)
+    inline constexpr auto jackinSlice  = "jackinSlice";    // effects::JackIn::sliceNames: the slices, in time with the song
+    inline constexpr auto jackinReach  = "jackinReach";    // effects::JackIn::reachNames: how far back the taken slices come from
+    inline constexpr auto jackinChaos  = "jackinChaos";    // 0 to 1: replays and stutters to reverses and octaves
+    inline constexpr auto jackinCrush  = "jackinCrush";    // 0 to 1: how often and how hard taken slices are crushed
+    inline constexpr auto jackinDrops  = "jackinDrops";    // 0 to 1: how often a beat ends in a tape stop
+    // HYPERJUMP (0.86.0, version hint 54, effects::HyperJump): HYPERDRIVE's build and drop.
+    inline constexpr auto hyperjumpOn     = "hyperjumpOn";
+    inline constexpr auto hyperjumpAmount = "hyperjumpAmount";   // 0 to 1: how big (the macro's)
+    inline constexpr auto hyperjumpLength = "hyperjumpLength";   // effects::HyperJump::lengthNames
+    inline constexpr auto hyperjumpMode   = "hyperjumpMode";     // effects::HyperJump::modeNames
+    inline constexpr auto hyperjumpRise   = "hyperjumpRise";     // 0 to 1: the climb's top, 0 to +12 semitones
+    inline constexpr auto hyperjumpChop   = "hyperjumpChop";     // 0 to 1
+    inline constexpr auto hyperjumpHit    = "hyperjumpHit";      // 0 to 1: the drop's boom and space
+    // SWEEP (0.87.0, version hint 55, effects::Sweep): LAST DAY's song-locked resonant sweep.
+    inline constexpr auto sweepOn        = "sweepOn";
+    inline constexpr auto sweepAmount    = "sweepAmount";      // 0 to 1 (the macro's)
+    inline constexpr auto sweepLength    = "sweepLength";      // effects::Sweep::lengthNames
+    inline constexpr auto sweepShape     = "sweepShape";       // effects::Sweep::shapeNames
+    inline constexpr auto sweepFilter    = "sweepFilter";      // effects::Sweep::filterNames
+    inline constexpr auto sweepCenter    = "sweepCenter";      // 0 to 1: 150 Hz to 4 kHz
+    inline constexpr auto sweepRange     = "sweepRange";       // 0 to 1: 2 to 9 octaves
+    inline constexpr auto sweepResonance = "sweepResonance";   // 0 to 1
+    inline constexpr auto sweepPhaser    = "sweepPhaser";      // 0 to 1
+    // REDLINE (0.88.0, version hint 56, effects::Redline): CHROMEFURY's revving engine.
+    inline constexpr auto redlineOn       = "redlineOn";
+    inline constexpr auto redlineThrottle = "redlineThrottle";   // 0 to 1 (the macro's)
+    inline constexpr auto redlineGear     = "redlineGear";       // effects::Redline::gearNames
+    inline constexpr auto redlineThrob    = "redlineThrob";      // 0 to 1
+    inline constexpr auto redlineScream   = "redlineScream";     // 0 to 1
+    inline constexpr auto redlineRise     = "redlineRise";       // 0 to 1: 0 to +12 semitones over a gear
+    inline constexpr auto redlineWhine    = "redlineWhine";      // 0 to 1
+    inline constexpr auto redlineTone     = "redlineTone";       // 0 to 1: 2 to 12 kHz
+    inline constexpr auto redlineShift    = "redlineShift";      // 0 to 1: the gear change's dip
+    // FREEZE TAG (0.89.0, version hint 57, effects::FreezeTag): PLAYGROUND's freeze game.
+    inline constexpr auto freezeOn      = "freezeOn";
+    inline constexpr auto freezeAmount  = "freezeAmount";    // 0 to 1 (the macro's)
+    inline constexpr auto freezeCycle   = "freezeCycle";     // effects::FreezeTag::cycleNames
+    inline constexpr auto freezeHold    = "freezeHold";      // effects::FreezeTag::holdNames
+    inline constexpr auto freezeSlice   = "freezeSlice";     // 0 to 1: 40 to 250 ms
+    inline constexpr auto freezeTremble = "freezeTremble";   // 0 to 1
+    inline constexpr auto freezeFrost   = "freezeFrost";     // 0 to 1: 16 kHz to 1.5 kHz
+    inline constexpr auto freezeCaught  = "freezeCaught";    // 0 to 1: the chance a freeze is caught
+    inline constexpr auto freezeLevel   = "freezeLevel";     // 0 to 1: the ghost's level
+    // CROSSROADS (0.90.0, version hint 58, synth::crossroads + effects::Crossroads): the sound pulled between light and
+    // dark in time with the song, the notes pulled down the scale (in key) on the dark side.
+    inline constexpr auto crossOn     = "crossOn";
+    inline constexpr auto crossAmount = "crossAmount";   // 0 to 1 (the macro's)
+    inline constexpr auto crossLength = "crossLength";   // synth::crossroads::lengthNames
+    inline constexpr auto crossKey    = "crossKey";      // synth::sirocco::keyNames
+    inline constexpr auto crossScale  = "crossScale";    // synth::arp::scaleNames
+    inline constexpr auto crossPull   = "crossPull";     // synth::crossroads::pullNames
+    inline constexpr auto crossBend   = "crossBend";     // 0 to 1: the slide, 15 to 400 ms
+    inline constexpr auto crossLight  = "crossLight";    // 0 to 1
+    inline constexpr auto crossDark   = "crossDark";     // 0 to 1
+
+    // GEARWORKS (0.91.0, version hint 59, effects::Gearworks): the Silo bank's machinery.
+    inline constexpr auto gearOn       = "gearOn";
+    inline constexpr auto gearAmount   = "gearAmount";     // 0 to 1 (the macro's)
+    inline constexpr auto gearRatio    = "gearRatio";      // effects::Gearworks::ratioNames
+    inline constexpr auto gearDivision = "gearDivision";   // effects::Gearworks::divisionNames
+    inline constexpr auto gearBite     = "gearBite";       // 0 to 1: how deep a tooth cuts
+    inline constexpr auto gearMetal    = "gearMetal";      // 0 to 1
+    inline constexpr auto gearGrind    = "gearGrind";      // 0 to 1
+    inline constexpr auto gearSteam    = "gearSteam";      // 0 to 1
+    inline constexpr auto gearClank    = "gearClank";      // 0 to 1
+    // NAVICOMPUTER (0.86.0, version hint 54, synth::navi): every note moved by a pattern in key, in time. In presets.
+    inline constexpr auto naviOn       = "naviOn";
+    inline constexpr auto naviAmount   = "naviAmount";     // 0 to 1: how many steps move (the macro's)
+    inline constexpr auto naviPattern  = "naviPattern";    // synth::navi::patternNames
+    inline constexpr auto naviDivision = "naviDivision";   // synth::navi::divisionNames
+    inline constexpr auto naviKey      = "naviKey";        // synth::sirocco::keyNames
+    inline constexpr auto naviScale    = "naviScale";      // synth::arp::scaleNames
+    inline constexpr auto naviChaos    = "naviChaos";      // 0 to 1
+    inline constexpr auto naviGlide    = "naviGlide";      // 0 to 1
+    // RAGTIME (0.92.0, version hint 60, synth::ragtime): every held note re-struck on a player-piano roll. In presets.
+    inline constexpr auto ragtimeOn       = "ragtimeOn";
+    inline constexpr auto ragtimeAmount   = "ragtimeAmount";     // 0 to 1: how much of the roll plays (the macro's)
+    inline constexpr auto ragtimePattern  = "ragtimePattern";    // synth::ragtime::patternNames
+    inline constexpr auto ragtimeDivision = "ragtimeDivision";   // synth::ragtime::divisionNames
+    inline constexpr auto ragtimeSwing    = "ragtimeSwing";      // 0 to 1
+    inline constexpr auto ragtimeAccent   = "ragtimeAccent";     // 0 to 1
+    inline constexpr auto ragtimeLift     = "ragtimeLift";       // 0 to 1
+    inline constexpr auto ragtimeStride   = "ragtimeStride";     // the bass and the chord apart
+    // RUNNER (1.0.0, version hint 64, synth::runner): WICKED GAME's signature: every held note struck again, faster
+    // with every fifth of AMOUNT (1/4, 1/8, 1/16, 1/32, 1/64). In presets.
+    inline constexpr auto runnerOn     = "runnerOn";
+    inline constexpr auto runnerAmount = "runnerAmount";   // 0 to 1: off at 0, then the speed by fifths (the macro's)
+    inline constexpr auto runnerAccent = "runnerAccent";   // 0 to 1: the strikes off the beat softer
+    inline constexpr auto runnerLift   = "runnerLift";     // 0 to 1: the damper's lift before each strike
+    // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
+    inline constexpr auto sortOn     = "sortOn";
+    inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)
+    inline constexpr auto sortSlice  = "sortSlice";    // effects::Sort::sliceNames
+    inline constexpr auto sortLength = "sortLength";   // effects::Sort::lengthNames: the window re-filed at a time
+    inline constexpr auto sortOrder  = "sortOrder";    // effects::Sort::orderNames
+    inline constexpr auto sortGaps   = "sortGaps";     // effects::Sort::gapNames
+    inline constexpr auto sortEdge   = "sortEdge";     // 0 to 1: the crossfade between pieces, 1 to 30 ms
+    inline constexpr auto sortStrike = "sortStrike";   // 0 to 1: a hit at each piece's start
+    // WOBBLE (0.97.0, version hint 63, effects::Wobble): the dubstep bank's signature: the wobble locked to the song.
+    inline constexpr auto wobbleOn        = "wobbleOn";
+    inline constexpr auto wobbleAmount    = "wobbleAmount";      // 0 to 1 (the macro's)
+    inline constexpr auto wobblePattern   = "wobblePattern";     // effects::Wobble::patternNames
+    inline constexpr auto wobbleShape     = "wobbleShape";       // effects::Wobble::shapeNames
+    inline constexpr auto wobbleLow       = "wobbleLow";         // 0 to 1: 40 Hz to 800 Hz, the cutoff shut
+    inline constexpr auto wobbleRange     = "wobbleRange";       // 0 to 1: 2 to 7 octaves it opens
+    inline constexpr auto wobbleResonance = "wobbleResonance";   // 0 to 1
+    inline constexpr auto wobbleTalk      = "wobbleTalk";        // 0 to 1: the vowel filter blended in
+    inline constexpr auto wobbleDrive     = "wobbleDrive";       // 0 to 1
 
     // THE INSERT BUSES (stage 7d, version hint 19): A to D, each "ins1"... "ins4" plus a setting below: PR7-G's
     // DRIVE and GLITCH (their IDs after the prefix, capitalised), then MOD and LO-FI as above, then the bus's SENDS.
@@ -605,6 +812,21 @@ void addHazeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  
 void addSpectreParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.67.0)
 void addLeviathanParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  // RackParameters.cpp (0.68.0)
 void addNuclearSpringParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.69.0)
-void addLightSpeedParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.73.0)
 void addBloomParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.74.0)
+void addLegionParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.76.0)
+void addOverchargeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.77.0)
+void addAftermathParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.79.0)
+void addSubmergeParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.80.0)
+void addLockstepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.81.0)
+void addColossusParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (0.82.0)
+void addCanyonParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.84.0)
+void addJackInParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.85.0)
+void addHyperJumpParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.86.0)
+void addSweepParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (0.87.0)
+void addRedlineParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);      // RackParameters.cpp (0.88.0)
+void addFreezeTagParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.89.0)
+void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (0.90.0)
+void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.91.0)
+void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);         // RackParameters.cpp (0.93.0)
+void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.97.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

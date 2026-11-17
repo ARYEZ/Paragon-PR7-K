@@ -4,6 +4,7 @@
 // and silent once its notes and tails have ended. "[.render]" (hidden) writes a clip of each for listening.
 #include <catch2/catch_test_macros.hpp>
 #include <map>
+#include <set>
 
 #include "ModDestinations.h"
 #include "Parameters.h"
@@ -146,6 +147,15 @@ namespace
             e.push_back ({ off, juce::MidiMessage::noteOff (1, n) });
         }
     }
+
+    void chord (Events& e, double on, double off, const std::vector<int>& notes, int velocity = 100)
+    {
+        for (const auto n : notes)
+        {
+            e.push_back ({ on, juce::MidiMessage::noteOn (1, n, (juce::uint8) velocity) });
+            e.push_back ({ off, juce::MidiMessage::noteOff (1, n) });
+        }
+    }
 }
 
 TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter slot names", "[rigs][expansions]")
@@ -171,14 +181,13 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
             CHECK (rigs[i].tags.contains (expansions::list[(size_t) x].name));
             ++perType[typeOf (rigs[i])];
         }
-        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps, 3 plucks (0.70.0, slots 16-18); CHROMEFURY is lead-heavy at the
-        // owner's ask: 6, 3, 3, 1, 2, 3.
-        const auto leadHeavy = juce::String (expansions::list[(size_t) x].name) == "CHROMEFURY";
-        CHECK (perType["Lead"] == (leadHeavy ? 6 : 3));
+        // 3 leads, 3 pads, 3 basses, 3 keys, 3 arps, 3 plucks (0.70.0, slots 16-18). (CHROMEFURY was lead-heavy until
+        // its rebuild in 0.88.0.)
+        CHECK (perType["Lead"] == 3);
         CHECK (perType["Pad"] == 3);
         CHECK (perType["Bass"] == 3);
-        CHECK (perType["Keys"] == (leadHeavy ? 1 : 3));
-        CHECK (perType["Arp"] == (leadHeavy ? 2 : 3));
+        CHECK (perType["Keys"] == 3);
+        CHECK (perType["Arp"] == 3);
         CHECK (perType["Pluck"] == 3);
         for (size_t i = 15; i < rigs.size(); ++i)
             CHECK (typeOf (rigs[i]) == "Pluck");
@@ -267,25 +276,67 @@ TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its 
     CHECK (count == 18);
 }
 
-TEST_CASE ("SANDSEA: MACRO 3 is SIROCCO on every preset, no answers at its left", "[rigs][expansions][sirocco]")
+TEST_CASE ("SANDSEA: MACRO 3 is COLOSSUS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][colossus]")
 {
-    int count = 0;
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
     for (const auto& rig : makeExpansionRigs())
     {
-        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion
+        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion (rebuilt in 0.83.0)
             continue;
         ++count;
         INFO (rig.name);
-        CHECK (rig.modulation.macroNames[2] == "SIROCCO");
-        CHECK (rig.notes.contains ("SIROCCO ("));
-        CHECK (rig.parameters.at (ParamIDs::siroccoOn) == 1.0f);
-        CHECK (rig.parameters.at (ParamIDs::siroccoLevel) == 0.0f);   // no answers until the macro brings them: the sound as approved
-        CHECK (rig.parameters.at (ParamIDs::siroccoKey) == 2.0f);     // D
-        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
-                                         { return r.source == "macro3" && r.destination == ParamIDs::siroccoLevel && r.amount > 0.2f; });
-        CHECK (routed);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "COLOSSUS");
+            CHECK (version->notes.contains ("COLOSSUS"));
+            CHECK (version->parameters.at (ParamIDs::colossusOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::colossusSize) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::colossusSize && r.amount >= 0.7f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on the libraries: every setting and route a real one, every instrument known and found.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
     }
     CHECK (count == 18);
+    CHECK (sampled == 15);      // (Duduk Lament, Iron Engine and Desert Oud: synthesized only)
+    CHECK (used.size() == 5);   // VCSL, the orchestra, Big Rusty Drums, Gogodze Phu and Squidpipes
 }
 
 TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
@@ -431,26 +482,43 @@ TEST_CASE ("ATOMIC AGE: MACRO 3 is SPRING on every preset, the tank brought in b
     CHECK (count == 18);
 }
 
-TEST_CASE ("HYPERDRIVE: MACRO 3 is LIGHTSPEED on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][lightspeed]")
+TEST_CASE ("HYPERDRIVE: MACRO 3 is NAVICOMPUTER or HYPERJUMP on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][hyperjump][navicomputer]")
 {
     ParagonX1AudioProcessor processor;
-    int count = 0, sampled = 0;
+    int count = 0, sampled = 0, navigated = 0, jumped = 0;
     for (const auto& rig : makeExpansionRigs())
     {
         if (rig.bank != Rig::numBanks + 25)   // HYPERDRIVE: the twenty-sixth expansion
             continue;
         ++count;
         INFO (rig.name);
+        const auto navi = rig.parameters.count (ParamIDs::naviOn) > 0 && rig.parameters.at (ParamIDs::naviOn) == 1.0f;
+        const auto jump = rig.parameters.count (ParamIDs::hyperjumpOn) > 0 && rig.parameters.at (ParamIDs::hyperjumpOn) == 1.0f;
+        CHECK (navi != jump);   // one or the other
+        navigated += navi ? 1 : 0;
+        jumped += jump ? 1 : 0;
+        // The held sounds navigate, the rhythmic ones jump.
+        const auto held = rig.tags[0] == "Lead" || rig.tags[0] == "Pad" || rig.tags[0] == "Keys";
+        CHECK (navi == held);
         for (const auto* version : { &rig, rig.sampled.get() })
         {
             if (version == nullptr)
                 continue;
-            CHECK (version->modulation.macroNames[2] == "LIGHTSPEED");
-            CHECK (version->notes.contains ("LIGHTSPEED"));
-            CHECK (version->parameters.at (ParamIDs::jumpOn) == 1.0f);
-            CHECK (version->parameters.at (ParamIDs::jumpAmount) == 0.0f);
-            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
-                                { return r.source == "macro3" && r.destination == ParamIDs::jumpAmount && r.amount >= 0.5f; }));
+            const auto* name = navi ? "NAVICOMPUTER" : "HYPERJUMP";
+            const auto* on = navi ? ParamIDs::naviOn : ParamIDs::hyperjumpOn;
+            const auto* amount = navi ? ParamIDs::naviAmount : ParamIDs::hyperjumpAmount;
+            CHECK (version->modulation.macroNames[2] == name);
+            CHECK (version->notes.contains (name));
+            CHECK (! version->notes.contains ("LIGHTSPEED"));
+            CHECK (version->parameters.at (on) == 1.0f);
+            CHECK (version->parameters.at (amount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [amount] (const auto& r)
+                                { return r.source == "macro3" && r.destination == amount && r.amount >= 0.5f; }));
+            if (navi)
+            {
+                CHECK (version->parameters.at (ParamIDs::naviKey) == 7.0f);     // G
+                CHECK (version->parameters.at (ParamIDs::naviScale) == 2.0f);   // minor
+            }
         }
         if (rig.sampled == nullptr)
             continue;
@@ -492,6 +560,1136 @@ TEST_CASE ("HYPERDRIVE: MACRO 3 is LIGHTSPEED on every preset, resting at its le
     }
     CHECK (count == 18);
     CHECK (sampled == 12);
+    CHECK (navigated == 9);
+    CHECK (jumped == 9);
+}
+
+TEST_CASE ("MAESTRO: MACRO 3 is LEGION on every preset, resting at its left; every preset has a real orchestra version", "[rigs][expansions][legion]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 27)   // MAESTRO: the twenty-eighth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "LEGION");
+            CHECK (version->notes.contains ("LEGION"));
+            CHECK (version->parameters.at (ParamIDs::legionOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::legionSize) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::legionSize && r.amount >= 0.5f; }));
+        }
+        CHECK (rig.notes.contains ("MOD WHEEL: dynamics"));
+        CHECK (std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
+                            { return r.source == "modWheel" && r.destination == ParamIDs::ampVolume; }));
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        // The mod wheel is the recordings' own dynamics: nothing else of the synthesized version's left on it.
+        CHECK (std::none_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                             [] (const ModRouteData& r) { return r.source == "modWheel"; }));
+        CHECK (s.notes.contains ("MOD WHEEL: dynamics"));
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 18);
+}
+
+TEST_CASE ("TWIN SPIRES: MACRO 3 is OVERCHARGE on every preset, resting at its left; the orchestra's versions are real", "[rigs][expansions][overcharge]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 28)   // TWIN SPIRES: the twenty-ninth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "OVERCHARGE");
+            CHECK (version->notes.contains ("OVERCHARGE"));
+            CHECK (version->parameters.at (ParamIDs::overchargeOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::overchargeCharge) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::overchargeCharge && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 5);
+}
+
+TEST_CASE ("STOLEN SKY: MACRO 3 is AFTERMATH on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][aftermath]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 29)   // STOLEN SKY: the thirtieth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "AFTERMATH");
+            CHECK (version->notes.contains ("AFTERMATH"));
+            CHECK (version->parameters.at (ParamIDs::aftermathOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::aftermathSeal) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::aftermathSeal && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 9);   // five pianos on the Salamander, four on the orchestra
+}
+
+TEST_CASE ("DROWNED DECO: MACRO 3 is SUBMERGE on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][submerge]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 30)   // DROWNED DECO: the thirty-first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "SUBMERGE");
+            CHECK (version->notes.contains ("SUBMERGE"));
+            CHECK (version->parameters.at (ParamIDs::submergeOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::submergeDepth) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::submergeDepth && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library: every setting and route a real one, every instrument there, nothing past it.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        const auto* library = ParagonX1AudioProcessor::libraryOf (s);
+        REQUIRE (library != nullptr);
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            CHECK (libraries::libraryFor (ref) == library);
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)   // each macro still moves something (a replaced part's routes went with it)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 9);   // two pianos on the Salamander, seven on the orchestra
+}
+
+TEST_CASE ("NEW EDEN: MACRO 3 is LOCKSTEP on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][lockstep]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 31)   // NEW EDEN: the thirty-second expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "LOCKSTEP");
+            CHECK (version->notes.contains ("LOCKSTEP"));
+            CHECK (version->parameters.at (ParamIDs::lockstepOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::lockstepAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::lockstepAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 13);   // (Glass Prayer has none: VCSL's glasses start at D5, under it a chord found nothing)
+    CHECK (used.size() == 4);   // VCSL, Sam's Sonor, the orchestra and the Salamander
+}
+
+TEST_CASE ("GUNSLINGER: MACRO 3 is CANYON on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][canyon]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 32)   // GUNSLINGER: the thirty-third expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "CANYON");
+            CHECK (version->notes.contains ("CANYON"));
+            CHECK (version->parameters.at (ParamIDs::canyonOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::canyonAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::canyonAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 14);   // (the whistle, the heat shimmer, the gallop and the jaw harp are synthesized only)
+    CHECK (used.size() == 8);   // the guitars, the archtop, the bass, both banjos, VCSL, the orchestra and the Salamander
+}
+
+TEST_CASE ("MACHINE SUPREMACY: MACRO 3 is JACK-IN on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][jackin]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 33)   // MACHINE SUPREMACY: the thirty-fourth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "JACK-IN");
+            CHECK (version->notes.contains ("JACK-IN"));
+            CHECK (version->parameters.at (ParamIDs::jackinOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::jackinAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::jackinAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 3);   // the choir, the guitar and the beat
+    CHECK (used.size() == 3);   // the orchestra, the guitars and the drums
+}
+
+TEST_CASE ("LAST DAY: MACRO 3 is SWEEP on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][sweep]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 34)   // LAST DAY: the thirty-fifth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "SWEEP");
+            CHECK (version->notes.contains ("SWEEP"));
+            CHECK (version->parameters.at (ParamIDs::sweepOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::sweepAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::sweepAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 3);   // the strings, the choir and the harp
+    CHECK (used.size() == 1);   // the orchestra
+}
+
+TEST_CASE ("CHROMEFURY: MACRO 3 is REDLINE on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][redline]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 13)   // CHROMEFURY: the fourteenth expansion (rebuilt in 0.88.0)
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "REDLINE");
+            CHECK (version->notes.contains ("REDLINE"));
+            CHECK (version->parameters.at (ParamIDs::redlineOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::redlineThrottle) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::redlineThrottle && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 11);
+    CHECK (used.size() == 4);   // the guitars, the orchestra, the organ (VCSL), the drums
+}
+
+TEST_CASE ("PLAYGROUND: MACRO 3 is FREEZE TAG on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][freezetag]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 35)   // PLAYGROUND: the thirty-sixth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "FREEZE TAG");
+            CHECK (version->notes.contains ("FREEZE TAG"));
+            CHECK (version->parameters.at (ParamIDs::freezeOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::freezeAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::freezeAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 11);
+    CHECK (used.size() == 3);   // VCSL, the orchestra, the Salamander
+}
+
+TEST_CASE ("HIGHNOON: MACRO 3 is RAGTIME on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][ragtime]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 38)   // HIGHNOON: the thirty-ninth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "RAGTIME");
+            CHECK (version->notes.contains ("RAGTIME"));
+            CHECK (version->parameters.at (ParamIDs::ragtimeOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::ragtimeAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::ragtimeAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 10);
+    CHECK (used.size() == 6);   // the orchestra, Meatbass, the Salamander, the Kay banjo, Shinyguitar, VCSL
+}
+
+TEST_CASE ("SEVERED (rebuilt in 0.94.0): MACRO 3 is SORT on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][sort]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 20)   // SEVERED: the twenty-first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "SORT");
+            CHECK (version->notes.contains ("SORT"));
+            CHECK (version->parameters.at (ParamIDs::sortOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::sortAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::sortAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 11);
+    CHECK (used.size() == 4);   // the orchestra, Meatbass, the Salamander, VCSL
+}
+
+TEST_CASE ("SLINGBLADE: industrial, every preset through the WAH, MACRO 3 WAH rocking its pedal", "[rigs][expansions][wah]")
+{
+    // 0.98.0 (rebuilt): bus A's WAH on in every preset and at least one oscillator through it; MACRO 3 named WAH,
+    // moving the pedal heel to toe (and only the pedal, shaper 1's drive, the filter's resonance or the crush).
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 21)   // SLINGBLADE: the twenty-second expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        CHECK (value (ParamIDs::ins (0, "WahOn"), 0.0f) == 1.0f);
+        auto throughBus = false;
+        for (int o = 0; o < ParamIDs::numOscillators; ++o)
+            throughBus = throughBus || (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) > 0.5f && value (ParamIDs::osc (o, "Insert"), 0.0f) == 1.0f);
+        CHECK (throughBus);
+        CHECK (rig.modulation.macroNames[2] == "WAH");
+        CHECK (rig.notes.contains ("WAH"));
+        auto rocks = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                INFO (r.destination);
+                CHECK ((r.destination == ParamIDs::ins (0, "WahPosition") || r.destination == ParamIDs::shp (0, "Drive")
+                        || r.destination == juce::String (ParamIDs::fltRes) || r.destination == juce::String (ParamIDs::lofiMix)));
+                rocks = rocks || (r.destination == ParamIDs::ins (0, "WahPosition") && r.amount > 0.3f);
+            }
+        CHECK (rocks);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("STEEL TITANS: MACRO 3 is WOBBLE on every preset, resting at its left", "[rigs][expansions][wobble]")
+{
+    // 0.97.0: WOBBLE on at AMOUNT 0 (so the macro's left is the preset as built), MACRO 3 only to its AMOUNT.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 41)   // STEEL TITANS: the forty-second expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        CHECK (value (ParamIDs::wobbleOn, 0.0f) == 1.0f);
+        CHECK (value (ParamIDs::wobbleAmount, 1.0f) == 0.0f);
+        CHECK (rig.modulation.macroNames[2] == "WOBBLE");
+        CHECK (rig.notes.contains ("WOBBLE"));
+        auto toAmount = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                CHECK (r.destination == ParamIDs::wobbleAmount);
+                toAmount = toAmount || r.amount >= 0.7f;
+            }
+        CHECK (toAmount);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("WICKED GAME: MACRO 3 is RUNNER on every preset, every note able to be struck again", "[rigs][expansions][runner]")
+{
+    // 1.0.0: RUNNER on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 so its
+    // fifths are the speeds; every preset keeps some sustain (a note at sustain 0 ends and can't be struck), and an
+    // arp keeps an oscillator on the keys for RUNNER to strike.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 42)   // WICKED GAME: the forty-third expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            const auto value = [&] (const juce::String& id, float otherwise)
+            {
+                const auto it = version->parameters.find (id);
+                return it == version->parameters.end() ? otherwise : it->second;
+            };
+            CHECK (value (ParamIDs::runnerOn, 0.0f) == 1.0f);
+            CHECK (value (ParamIDs::runnerAmount, 1.0f) == 0.0f);
+            CHECK (value (ParamIDs::ampSustain, 0.8f) > 0.0f);
+            CHECK (version->modulation.macroNames[2] == "RUNNER");
+            CHECK (version->notes.contains ("RUNNER"));
+            int toAmount = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    CHECK (r.destination == ParamIDs::runnerAmount);
+                    CHECK (r.amount == 1.0f);
+                    ++toAmount;
+                }
+            CHECK (toAmount == 1);
+            if (value (ParamIDs::arp (0, "On"), 0.0f) > 0.5f)
+            {
+                auto keys = false;
+                for (int o = 0; o < synth::numOscillators; ++o)
+                    keys = keys || (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) > 0.5f && value (ParamIDs::osc (o, "Arp"), 0.0f) < 0.5f);
+                CHECK (keys);
+            }
+        }
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("OFFWORLD: two lines in every preset, MACRO 3 LINES moving only line II", "[rigs][expansions][filter2]")
+{
+    // 0.96.0: line I through FILTER 1, line II through FILTER 2 (0.96.0), each with a LOW CUT; LINES detunes line II
+    // further and brings it up, and nothing else.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 40)   // OFFWORLD: the forty-first expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        CHECK (value (ParamIDs::fltOn, 0.0f) == 1.0f);
+        CHECK (value (ParamIDs::flt2On, 0.0f) == 1.0f);
+        CHECK (rig.modulation.macroNames[2] == "LINES");
+        CHECK (rig.notes.contains ("LINES"));
+        std::set<int> lineTwo;
+        for (int o = 0; o < ParamIDs::numOscillators; ++o)
+            if (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) > 0.5f && value (ParamIDs::osc (o, "Filter2"), 0.0f) > 0.5f)
+                lineTwo.insert (o);
+        CHECK_FALSE (lineTwo.empty());
+        bool detunes = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                INFO (r.destination);
+                auto onLineTwo = false;
+                for (const auto o : lineTwo)
+                    onLineTwo = onLineTwo || r.destination == ParamIDs::osc (o, "Fine") || r.destination == ParamIDs::osc (o, "Volume");
+                CHECK (onLineTwo);
+                detunes = detunes || r.destination.endsWith ("Fine");
+            }
+        CHECK (detunes);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("ORIGIN: pure synth in the spirit of Supersaw Lead and Unison Strings, MACRO 3 WIDTH", "[rigs][expansions]")
+{
+    // 0.95.0: one or two oscillators of the plain waves, the movement from unison and vibrato, no effects but the
+    // reverb and delay MACRO 2 brings in, and MACRO 3 only opening the unison up.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 39)   // ORIGIN: the fortieth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        CHECK (rig.sampled == nullptr);
+        CHECK (rig.modulation.macroNames[2] == "WIDTH");
+        CHECK (rig.notes.contains ("WIDTH"));
+        const auto value = [&] (const juce::String& id, float otherwise)
+        {
+            const auto it = rig.parameters.find (id);
+            return it == rig.parameters.end() ? otherwise : it->second;
+        };
+        int oscillators = 0;
+        for (int o = 0; o < ParamIDs::numOscillators; ++o)
+        {
+            if (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) < 0.5f)
+                continue;
+            ++oscillators;
+            const auto wave = (int) value (ParamIDs::osc (o, "Wave"), (float) synth::OscWave::saw);
+            CHECK ((wave == (int) synth::OscWave::saw || wave == (int) synth::OscWave::pulse
+                    || wave == (int) synth::OscWave::triangle || wave == (int) synth::OscWave::sine));
+            for (const auto* setting : { "SyncAmount", "FmAmount", "AmAmount", "Skew", "Pinch", "Formant", "Crush" })
+                CHECK (value (ParamIDs::osc (o, setting), 0.0f) == 0.0f);
+        }
+        CHECK (oscillators >= 1);
+        CHECK (oscillators <= 2);
+        for (int k = 0; k < 4; ++k)
+            CHECK (value (ParamIDs::shp (k, "On"), 0.0f) == 0.0f);
+        // The effects: only the reverb and delay, both at 0 until MACRO 2 SPACE.
+        CHECK (value (ParamIDs::reverbMix, 0.0f) == 0.0f);
+        CHECK (value (ParamIDs::delayMix, 0.0f) == 0.0f);
+        for (const auto* id : { ParamIDs::modOn, ParamIDs::mod2On, ParamIDs::lofiOn, ParamIDs::voiceOn })
+            CHECK (value (id, 0.0f) == 0.0f);
+        bool wide = false;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                CHECK ((r.destination.endsWith ("UniDetune") || r.destination.endsWith ("UniSpread")));
+                wide = wide || r.destination.endsWith ("UniDetune");
+            }
+        CHECK (wide);
+    }
+    CHECK (count == 18);
+}
+
+TEST_CASE ("DARK DESCENT: MACRO 3 is GEARWORKS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][gearworks]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 37)   // DARK DESCENT: the thirty-eighth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "GEARWORKS");
+            CHECK (version->notes.contains ("GEARWORKS"));
+            CHECK (version->parameters.at (ParamIDs::gearOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::gearAmount) == 0.0f);
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::gearAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 5);
+    CHECK (used.size() == 5);   // the orchestra, Meatbass, VCSL, the Salamander, Black And Green Guitars
+}
+
+TEST_CASE ("FINAL DIVIDE: MACRO 3 is CROSSROADS on every preset, resting at its left, in E minor; the libraries' versions are real", "[rigs][expansions][crossroads]")
+{
+    ParagonX1AudioProcessor processor;
+    int count = 0, sampled = 0;
+    std::set<const libraries::Library*> used;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 36)   // FINAL DIVIDE: the thirty-seventh expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            CHECK (version->modulation.macroNames[2] == "CROSSROADS");
+            CHECK (version->notes.contains ("CROSSROADS"));
+            CHECK (version->parameters.at (ParamIDs::crossOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::crossAmount) == 0.0f);
+            CHECK (version->parameters.at (ParamIDs::crossKey) == 4.0f);   // E (minor): the bank's key
+            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
+                                { return r.source == "macro3" && r.destination == ParamIDs::crossAmount && r.amount >= 0.5f; }));
+        }
+        if (rig.sampled == nullptr)
+            continue;
+        // The version on a library (0.81.0: one or more): every setting and route a real one, every instrument known.
+        ++sampled;
+        const auto& s = *rig.sampled;
+        CHECK (s.name == rig.name);
+        CHECK (s.sampled == nullptr);
+        CHECK (s.notes.length() > 100);
+        REQUIRE_FALSE (s.sfz.empty());
+        for (const auto& [osc, ref] : s.sfz)
+        {
+            INFO (ref);
+            const auto* library = libraries::libraryFor (ref);
+            REQUIRE (library != nullptr);
+            used.insert (library);
+            CHECK (s.notes.contains (library->name));
+            CHECK (s.parameters.at (ParamIDs::osc (osc, "Wave")) == (float) synth::OscWave::sfz);
+            if (osc > 0)   // (oscillator 1 is on by default)
+                CHECK (s.parameters.at (ParamIDs::osc (osc, "On")) == 1.0f);
+        }
+        for (const auto& [id, value] : s.parameters)
+        {
+            INFO (id);
+            auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (processor.getParameters().getParameter (id));
+            REQUIRE (parameter != nullptr);
+            const auto range = parameter->getNormalisableRange();
+            CHECK (value >= range.start);
+            CHECK (value <= range.end);
+        }
+        for (const auto& r : s.modulation.routes)
+        {
+            INFO (r.source << " -> " << r.destination);
+            CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+            CHECK (ModDestinations::find (r.destination) != nullptr);
+        }
+        for (int m = 0; m < 3; ++m)
+            CHECK (std::any_of (s.modulation.routes.begin(), s.modulation.routes.end(),
+                                [&] (const ModRouteData& r) { return r.source == "macro" + juce::String (m + 1); }));
+    }
+    CHECK (count == 18);
+    CHECK (sampled == 5);
+    CHECK (used.size() == 5);   // Shinyguitar, the orchestra, Meatbass, VCSL, the Kay banjo
 }
 
 TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left; every preset has a real piano version", "[rigs][expansions][bloom]")
@@ -556,7 +1754,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     REQUIRE (p.processor.saveCurrentRigAs ("My Brass"));
     const auto& saved = p.entryNamed ("My Brass");
     CHECK (saved.rig.bank == 0);
-    CHECK (saved.rig.getSlotName() == "A48");   // after bank A's factory presets (A01-A47)
+    CHECK (saved.rig.getSlotName() == "A60");   // after bank A's factory presets (A01-A59)
 
     Rig details = saved.rig;
     details.bank = Rig::numBanks;   // asked for an expansion's bank
@@ -571,7 +1769,7 @@ TEST_CASE ("Expansion presets come after the user's banks and can't be filed int
     CHECK (back->bank == Rig::numBanks - 1);
 
     // < > step on into the expansions after the last user bank, and round.
-    p.processor.loadRig (p.entryNamed ("Starlight Piano"));
+    p.processor.loadRig (p.entryNamed ("Orbit Arp"));   // A59, the last factory preset in bank A
     p.processor.stepRig (1);
     CHECK (p.processor.getCurrentRig().name == "My Brass");
     p.processor.stepRig (1);
@@ -651,14 +1849,28 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto dust = rig.bank == Rig::numBanks + 18;      // DUSTFALL: 70 BPM in D minor, vast and cold
         const auto super = rig.bank == Rig::numBanks + 19;     // SUPERPOSITION: 90 BPM in C minor, cold and cerebral
         const auto sev = rig.bank == Rig::numBanks + 20;       // SEVERED: 96 BPM, D minor slipping into bright F major
-        const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 90 BPM in C minor, heavy to soaring
+        const auto sling = rig.bank == Rig::numBanks + 21;     // SLINGBLADE: 110 BPM in E minor, Em C D B (industrial)
         const auto para = rig.bank == Rig::numBanks + 22;      // PARADOX: 80 BPM in E minor, with gaps for ECHOES to fill
         const auto melt = rig.bank == Rig::numBanks + 23;      // MELTDOWN: 66 BPM in D minor, slow, with half-step clusters
         const auto atomic = rig.bank == Rig::numBanks + 24;    // ATOMIC AGE: 116 BPM in C major, a cheerful lounge, C6 Fmaj7 Dm7 G7
         const auto hyper = rig.bank == Rig::numBanks + 25;     // HYPERDRIVE: 104 BPM in G minor, heroic and marching
         const auto cinema = rig.bank == Rig::numBanks + 26;    // GRAND CINEMA: 72 BPM in D minor, piano with the pedal
+        const auto maestro = rig.bank == Rig::numBanks + 27;   // MAESTRO: 90 BPM in D minor, the wheel riding the dynamics
+        const auto twin = rig.bank == Rig::numBanks + 28;      // TWIN SPIRES: 95 BPM in E minor, Em C G D
+        const auto stolen = rig.bank == Rig::numBanks + 29;    // STOLEN SKY: 72 BPM in B minor, Bm G D A
+        const auto drowned = rig.bank == Rig::numBanks + 30;   // DROWNED DECO: 92 BPM in F minor, Fm7 Dbmaj7 Bbm7 C7
+        const auto eden = rig.bank == Rig::numBanks + 31;      // NEW EDEN: 108 BPM in D minor, Dm Bb Gm A (a march)
+        const auto gun = rig.bank == Rig::numBanks + 32;       // GUNSLINGER: 96 BPM in A minor, Am G F E
+        const auto machine = rig.bank == Rig::numBanks + 33;   // MACHINE SUPREMACY: 128 BPM in F minor, Fm Db Ab Eb
+        const auto lastday = rig.bank == Rig::numBanks + 34;   // LAST DAY: 100 BPM in A minor, Am F C G
+        const auto play = rig.bank == Rig::numBanks + 35;      // PLAYGROUND: 108 BPM in C, C Am Fm G (sing-song, dread under)
+        const auto divide = rig.bank == Rig::numBanks + 36;    // FINAL DIVIDE: 84 BPM in E minor, Em C Am B (a bar a side)
+        const auto descent = rig.bank == Rig::numBanks + 37;   // DARK DESCENT: 96 BPM in D minor, Dm Bb Gm A
+        const auto noon = rig.bank == Rig::numBanks + 38;      // HIGHNOON: 96 BPM in G major, G Em C D
+        const auto steel = rig.bank == Rig::numBanks + 41;     // STEEL TITANS: 140 BPM in F minor, Fm Db Ab Eb (half-time drops)
+        const auto wicked = rig.bank == Rig::numBanks + 42;    // WICKED GAME: 128 BPM in D minor, Dm Bb Gm A (held, for RUNNER)
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 90.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -697,6 +1909,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             e.push_back ({ at (up), juce::MidiMessage::controllerEvent (1, 64, 0) });
         };
         const auto style = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER_STYLE", {});
+        bool firstHalf = true;
         if (type == "Keys" && style == "velocities")
         {
             // A keys preset's range: A1, A2, A3, A4, A5 and A6, each soft, medium and hard, two beats apart.
@@ -718,9 +1931,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             struct Key { int root; std::vector<int> scale; };
             const std::vector<int> minor { 0, 2, 3, 5, 7, 8, 10 }, major { 0, 2, 4, 5, 7, 9, 11 },
                                    phrygianDominant { 0, 1, 4, 5, 7, 8, 10 }, pelog { 0, 1, 3, 7, 8 };
-            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 0, 4, 2, 0, 7, 2 };
-            const auto root = 57 + ((roots[juce::jlimit (0, 26, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
-            const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 ? major : minor;
+            static const int roots[] { 9, 2, 0, 2, 4, 9, 4, 7, 2, 9, 11, 2, 9, 2, 2, 4, 2, 5, 2, 0, 2, 4, 4, 2, 0, 7, 2, 2, 4, 11, 5, 2, 9, 5, 9, 0, 4, 4, 4, 9, 9, 5 };
+            const auto root = 57 + ((roots[juce::jlimit (0, 41, bankIndex)] - 9 + 12) % 12);   // A3 to G#4
+            const auto& scale = bankIndex == 3 ? phrygianDominant : bankIndex == 16 ? pelog : bankIndex == 24 || bankIndex == 35 ? major : minor;
             const auto degree = [&] (int d)
             {
                 const auto n = (int) scale.size();
@@ -743,100 +1956,69 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sling)
         {
-            // The EXPR wheel rocked heel to toe and back (controller 11), for the presets whose wah it works.
-            const auto rock = [&] (double from, double to)
-            {
-                for (int k = 0; k <= 24; ++k)
-                {
-                    const auto t = from + (to - from) * k / 24.0;
-                    const auto v = (int) std::round (127.0 * std::sin (juce::MathConstants<double>::pi * k / 24.0));
-                    e.push_back ({ at (t), juce::MidiMessage::controllerEvent (1, 11, v) });
-                }
-            };
-            const auto onExpr = rig.name == "Drillbit Scream" || rig.name == "Dawnbreaker" || rig.name == "Fleet Assault";
-            // The pedal at the heel for those; for the rest all the way up (unrouted, controller 11 is the volume swell,
-            // and the clip before may have left it down).
-            e.push_back ({ 0.0, juce::MidiMessage::controllerEvent (1, 11, onExpr ? 0 : 127) });
+            // Our own phrases (none from any book or record): E minor, the chords E minor, C, D and B, hard and in time:
+            // the sequences held so the machine runs, the stabs short, the leads with a slide.
+            const std::vector<std::vector<int>> chords { { 28, 52, 55, 59, 64 }, { 24, 52, 55, 60, 64 },
+                                                         { 26, 54, 57, 62, 66 }, { 23, 51, 54, 59, 63 } };
             if (type == "Lead")
             {
-                // A defiant line in C minor: a riff, its answer climbing, a long held note with the wah rocked.
-                line ({ { 0, 0.5, 60 }, { 0.5, 0.5, 63 }, { 1, 0.5, 65 }, { 1.5, 0.5, 67 }, { 2, 1.5, 70 }, { 3.5, 0.5, 67 },
-                        { 4, 0.5, 68 }, { 4.5, 0.5, 67 }, { 5, 0.5, 65 }, { 5.5, 0.5, 63 }, { 6, 2, 65 },
-                        { 8, 0.5, 67 }, { 8.5, 0.5, 70 }, { 9, 0.5, 72 }, { 9.5, 0.5, 74 }, { 10, 2, 75 }, { 12, 4, 72 } }, 105);
-                if (onExpr)
-                {
-                    rock (0.0, 4.0);
-                    rock (6.0, 8.0);
-                    rock (12.0, 14.0);
-                    rock (14.0, 16.0);
-                }
-                else
-                    wheel (12.0, 16.0, 100);
-                length = 20.0 * beat;
+                line ({ { 0, 0.5, 64 }, { 0.5, 0.5, 64 }, { 1, 0.5, 67 }, { 1.5, 1, 69 }, { 2.5, 1.5, 67 },
+                        { 4, 0.5, 64 }, { 4.5, 0.5, 67 }, { 5, 1, 71 }, { 6, 2, 72 },
+                        { 8, 0.5, 74 }, { 8.5, 0.5, 72 }, { 9, 0.5, 71 }, { 9.5, 0.5, 69 }, { 10, 2, 71 },
+                        { 12, 1, 67 }, { 13, 1, 66 }, { 14, 2, 64 } }, 110);
+                wheel (12.0, 16.0, 90);
+                length = 19.0 * beat;
             }
             else if (type == "Pad")
             {
-                // C minor, A flat, E flat, then G major: the long climb.
-                chord (e, at (0), at (3.9), { 36, 48, 55, 60, 63 }, 90);
-                chord (e, at (4), at (7.9), { 32, 48, 56, 60, 63 }, 90);
-                chord (e, at (8), at (11.9), { 39, 51, 55, 58, 63 }, 90);
-                chord (e, at (12), at (15.8), { 31, 50, 55, 59, 62 }, 90);
-                wheel (8.0, 15.0, 100);
-                length = 22.0 * beat;
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
             }
             else if (type == "Bass")
             {
-                constexpr int roots[] = { 36, 32, 39, 31 };
-                if (rig.name == "Pick And Hammer")   // re-struck eighths, harder on the beat: each opens the auto-wah
+                for (int c = 0; c < 4; ++c)
                 {
-                    for (int k = 0; k < 32; ++k)
-                        if (k % 8 != 7)
-                            line ({ { k * 0.5, 0.4, roots[k / 8] } }, k % 2 == 0 ? 120 : 80);
+                    const auto r = chords[(size_t) c][0] + 12;
+                    if (rig.tags.contains ("Sequence"))   // the root held: the machine hammers it
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 110);
+                    else
+                    {
+                        const int pattern[] { 0, 0, 12, 0, 0, 10, 0, 7 };
+                        for (int k = 0; k < 8; ++k)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + 0.42), { r + pattern[k] }, k % 2 == 0 ? 115 : 90);
+                    }
                 }
-                else
-                    line ({ { 0, 3.9, roots[0] }, { 4, 3.9, roots[1] }, { 8, 3.9, roots[2] }, { 12, 3.9, roots[3] } }, 105);
-                wheel (8.0, 15.0, 90);
-                length = 19.0 * beat;
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
             }
             else if (type == "Keys")
             {
-                const std::initializer_list<int> chords[] = { { 48, 55, 60, 63 }, { 44, 56, 60, 63 }, { 51, 55, 58, 63 }, { 43, 55, 59, 62 } };
-                if (rig.name == "Victory Bells")   // single strikes, then the chord at the end
+                for (int c = 0; c < 4; ++c)
                 {
-                    line ({ { 0, 2, 60 }, { 2, 2, 67 }, { 4, 2, 63 }, { 6, 2, 72 }, { 8, 2, 55 }, { 10, 2, 62 } }, 100);
-                    chord (e, at (12), at (15), { 48, 55, 59, 62 }, 110);
-                }
-                else
-                {
-                    int k = 0;
-                    for (const auto& notes : chords)
+                    const auto& n = chords[(size_t) c];
+                    if (rig.tags.contains ("Guitar"))   // power chords (the root; the fifth and octave from the chorder)
+                        for (const auto h : { 0.0, 0.5, 1.5, 2.0, 2.5, 3.5 })
+                            chord (e, at (c * 4.0 + h), at (c * 4.0 + h + 0.35), { n[0] + 24 }, 115);
+                    else
                     {
-                        chord (e, at (k * 4.0), at (k * 4.0 + 3.0), notes, 90);
-                        ++k;
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.9), std::vector<int> (n.begin() + 1, n.end()), 95);
+                        chord (e, at (c * 4.0 + 2), at (c * 4.0 + 3.8), std::vector<int> (n.begin() + 1, n.end()), 80);
                     }
-                    line ({ { 1, 1, 75 }, { 2, 1, 74 }, { 5, 1, 72 }, { 6, 1, 68 }, { 9, 1, 70 }, { 13, 2, 71 } }, 85);
                 }
-                length = 20.0 * beat;
-            }
-            else
-            {
-                // Arps: a C minor chord, then A flat (Siege Clock holds just the root).
-                if (rig.name == "Siege Clock")
-                {
-                    chord (e, at (0), at (7.9), { 60 }, 100);
-                    chord (e, at (8), at (15.9), { 56 }, 100);
-                }
-                else
-                {
-                    chord (e, at (0), at (7.9), { 60, 63, 67 }, 100);
-                    chord (e, at (8), at (15.9), { 56, 60, 63 }, 100);
-                }
-                if (onExpr)
-                {
-                    rock (0.0, 4.0);
-                    rock (8.0, 12.0);
-                }
+                wheel (8.0, 14.0, 90);
                 length = 19.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1], n[2], n[3] }, 105);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
             }
         }
         else if (cinema)
@@ -894,10 +2076,603 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 length = 19.0 * beat;
             }
         }
+        else if (gun)
+        {
+            // Our own phrases (none from any film): A minor, the chords A minor, G, F and E (the falling cadence of the
+            // southwest), a lonely line with long notes and gaps for CANYON's walls to answer.
+            const std::vector<std::vector<int>> chords { { 33, 45, 52, 57, 60 }, { 31, 43, 50, 55, 59 },
+                                                         { 29, 41, 48, 53, 57 }, { 28, 40, 47, 52, 56 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 69 }, { 1.5, 0.5, 71 }, { 2, 2, 72 }, { 4, 1, 76 }, { 5, 1, 74 }, { 6, 2, 72 },
+                        { 8, 1.5, 71 }, { 9.5, 0.5, 72 }, { 10, 2, 69 }, { 12, 1, 68 }, { 13, 1, 71 }, { 14, 2, 69 } }, 100);
+                wheel (12.0, 16.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 85);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // The walk: A C E G, G B D B, F A C A, E G# B D (quarter notes); the twang a riff on root and fifth an
+                // octave up; the gallop holds each bar's root (its arp rides).
+                const int walk[4][4] { { 33, 36, 40, 43 }, { 31, 35, 38, 35 }, { 29, 33, 36, 33 }, { 28, 32, 35, 38 } };
+                for (int c = 0; c < 4; ++c)
+                    if (rig.tags.contains ("Ostinato"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { chords[(size_t) c][0] + 12 }, 105);
+                    else if (rig.tags.contains ("Twang"))
+                    {
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.4), { chords[(size_t) c][0] + 12 }, 110);
+                        chord (e, at (c * 4.0 + 1.5), at (c * 4.0 + 1.9), { chords[(size_t) c][0] + 12 }, 85);
+                        chord (e, at (c * 4.0 + 2), at (c * 4.0 + 3.8), { chords[(size_t) c][0] + 19 }, 100);
+                    }
+                    else
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { walk[c][k] }, k == 0 ? 110 : 90);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                const int tune[] { 76, 74, 72, 71 };
+                for (int c = 0; c < 4; ++c)
+                {
+                    if (rig.tags.contains ("Piano"))
+                    {
+                        // A rag's left hand (bass on 1 and 3, the chord on 2 and 4) and a tune over it.
+                        for (int k = 0; k < 4; ++k)
+                            if (k % 2 == 0)
+                                chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.8), { chords[(size_t) c][1] }, 90);
+                            else
+                                chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.6), std::vector<int> (chords[(size_t) c].begin() + 2, chords[(size_t) c].end()), 75);
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.8), std::vector<int> { tune[c] }, 90);
+                        chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> { tune[c] - 3 }, 80);
+                    }
+                    else if (rig.tags.contains ("Bells"))   // tolls, slowly
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.0), std::vector<int> { chords[(size_t) c][1] + 24 }, 100);
+                    else   // the jaw harp: a low note plucked on the beat
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.9), { 45 }, k == 0 ? 110 : 90);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+        }
+        else if (machine)
+        {
+            // Our own phrases (none from any game): F minor, the chords F minor, D flat, A flat and E flat, hard and in
+            // time (sixteenths, syncopated) so JACK-IN has a phrase to cut up.
+            const std::vector<std::vector<int>> chords { { 29, 41, 48, 53, 56 }, { 25, 37, 44, 49, 53 },
+                                                         { 32, 44, 51, 56, 60 }, { 27, 39, 46, 51, 55 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.75, 65 }, { 0.75, 0.75, 68 }, { 1.5, 0.5, 72 }, { 2, 1, 70 }, { 3, 0.5, 68 }, { 3.5, 0.5, 67 },
+                        { 4, 1.5, 65 }, { 5.5, 0.5, 63 }, { 6, 2, 65 },
+                        { 8, 0.75, 72 }, { 8.75, 0.75, 75 }, { 9.5, 0.5, 77 }, { 10, 1, 75 }, { 11, 0.5, 72 }, { 11.5, 0.5, 70 },
+                        { 12, 1, 68 }, { 13, 1, 67 }, { 14, 2, 65 } }, 105);
+                wheel (12.0, 16.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 90);
+                wheel (8.0, 15.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // Held roots (the club bass pumps on its own), else a driving eighth-note line with an octave jump.
+                for (int c = 0; c < 4; ++c)
+                    if (rig.tags.contains ("Pump"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { chords[(size_t) c][0] + 12 }, 105);
+                    else
+                    {
+                        const auto r = chords[(size_t) c][0] + 12;
+                        const int pattern[] { 0, 0, 12, 0, 0, 10, 0, 12 };
+                        for (int k = 0; k < 8; ++k)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + 0.42), { r + pattern[k] }, k % 2 == 0 ? 110 : 85);
+                    }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    if (rig.tags.contains ("Guitar"))
+                    {
+                        // Power chords (root, fifth, octave), eighths with a push before the bar.
+                        const std::vector<int> power { n[1], n[1] + 7, n[1] + 12 };
+                        const double hits[] { 0, 0.5, 1.5, 2, 2.5, 3.5 };
+                        for (auto h : hits)
+                            chord (e, at (c * 4.0 + h), at (c * 4.0 + h + 0.4), power, 110);
+                    }
+                    else
+                    {
+                        // Chords on the off-beats with a melody note over them.
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.4), std::vector<int> (n.begin() + 2, n.end()), 90);
+                        chord (e, at (c * 4.0 + 1.5), at (c * 4.0 + 2.4), std::vector<int> (n.begin() + 2, n.end()), 75);
+                        chord (e, at (c * 4.0 + 2.5), at (c * 4.0 + 3.8), std::vector<int> (n.begin() + 2, n.end()), 85);
+                        chord (e, at (c * 4.0 + 2.5), at (c * 4.0 + 3.8), std::vector<int> { n.back() + 12 }, 90);
+                    }
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+        }
+        else if (lastday)
+        {
+            // Our own phrases (none from any film): A minor, the chords A minor, F, C and G, long notes and slow chords so
+            // SWEEP has room to move; the leads glide between long notes.
+            const std::vector<std::vector<int>> chords { { 33, 45, 48, 52, 57 }, { 29, 41, 45, 48, 53 },
+                                                         { 36, 48, 52, 55, 60 }, { 31, 43, 47, 50, 55 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 69 }, { 1.5, 0.5, 72 }, { 2, 2, 76 }, { 4, 1, 77 }, { 5, 1, 76 }, { 6, 2, 72 },
+                        { 8, 3, 79 }, { 11, 1, 76 }, { 12, 1, 74 }, { 13, 1, 72 }, { 14, 2, 71 },
+                        { 16, 4, 69 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 23.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 85);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // Held roots (the sequencer bass runs on its own, the drone swells), else a line on the beat with an
+                // octave jump.
+                for (int c = 0; c < 4; ++c)
+                    if (rig.tags.contains ("Sequence") || rig.tags.contains ("Drone"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { chords[(size_t) c][0] + 12 }, 105);
+                    else
+                    {
+                        const auto r = chords[(size_t) c][0] + 12;
+                        const int pattern[] { 0, 0, 12, 0, 7, 0, 12, 10 };
+                        for (int k = 0; k < 8; ++k)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + 0.42), { r + pattern[k] }, k % 2 == 0 ? 110 : 85);
+                    }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.8), std::vector<int> (n.begin() + 1, n.end()), 95);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> (n.begin() + 2, n.end()), 80);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> { n.back() + 12 }, 90);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (play)
+        {
+            // Our own phrases (none from the show): C major sing-song, the chords C, A minor, F minor (the minor creeping
+            // in) and G; FREEZE TAG freezes the last two beats of every two bars, so notes are held there.
+            const std::vector<std::vector<int>> chords { { 36, 48, 52, 55, 60 }, { 33, 45, 48, 52, 57 },
+                                                         { 29, 41, 44, 48, 53 }, { 31, 43, 47, 50, 55 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1, 67 }, { 1, 1, 64 }, { 2, 0.5, 67 }, { 2.5, 0.5, 67 }, { 3, 1, 69 }, { 4, 1, 67 }, { 5, 1, 64 },
+                        { 6, 2, 60 }, { 8, 1, 67 }, { 9, 1, 63 }, { 10, 0.5, 67 }, { 10.5, 0.5, 67 }, { 11, 1, 68 },
+                        { 12, 1, 67 }, { 13, 1, 63 }, { 14, 2, 60 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 85);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    if (rig.name == "Debt Collector")
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 105);
+                    else   // an oompah: root on the beat, the fifth between
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + (rig.name == "Toy Tuba" ? 0.45 : 0.6)),
+                                   { k % 2 == 0 ? r : r + 7 }, k == 0 ? 110 : 90);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys" && rig.name == "Music Box")
+            {
+                // The tune up high, as a music box plays it.
+                line ({ { 0, 1, 79 }, { 1, 1, 76 }, { 2, 0.5, 79 }, { 2.5, 0.5, 79 }, { 3, 1, 81 }, { 4, 1, 79 }, { 5, 1, 76 },
+                        { 6, 2, 72 }, { 8, 1, 79 }, { 9, 1, 75 }, { 10, 0.5, 79 }, { 10.5, 0.5, 79 }, { 11, 1, 80 },
+                        { 12, 1, 79 }, { 13, 1, 75 }, { 14, 2, 72 } }, 95);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // A waltz-like lilt: the bass on the beat, the chord twice after it.
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    for (int k = 0; k < 4; ++k)
+                        chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.9),
+                               k % 2 == 0 ? std::vector<int> { n[1] } : std::vector<int> (n.begin() + 2, n.end()), k % 2 == 0 ? 100 : 80);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (eden)
+        {
+            // Our own phrases (none from the series): D minor, the chords D minor, B flat, G minor and A (the harmonic
+            // minor's leading tone: a march's cadence); a dotted, commanding line, a bass on the beat, room between for
+            // LOCKSTEP's steps and boots.
+            const std::vector<std::vector<int>> chords { { 38, 50, 53, 57, 62 }, { 34, 46, 53, 58, 62 },
+                                                         { 31, 43, 55, 58, 62 }, { 33, 45, 52, 57, 61 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.75, 62 }, { 0.75, 0.25, 62 }, { 1, 1, 65 }, { 2, 2, 69 }, { 4, 1.5, 70 }, { 5.5, 0.5, 69 },
+                        { 6, 2, 67 }, { 8, 0.75, 67 }, { 8.75, 0.25, 65 }, { 9, 1, 64 }, { 10, 2, 65 }, { 12, 1, 64 },
+                        { 13, 1, 61 }, { 14, 2, 62 } }, 100);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), chords[(size_t) c], 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                    if (rig.tags.contains ("Ostinato") || rig.tags.contains ("Sub"))   // an arp drives it / a held sub
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { chords[(size_t) c][0] }, 105);
+                    else
+                        for (int k = 0; k < 2; ++k)   // the organ's pedals: two half notes a bar, root and fifth
+                            chord (e, at (c * 4.0 + 2 * k), at (c * 4.0 + 2 * k + 1.9), { chords[(size_t) c][0] + (k == 1 ? 7 : 0) }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // A chord each bar with the pedal, then a slow melody over it (the bells play the tune alone, slowly).
+                const int tune[] { 74, 70, 67, 69 };
+                for (int c = 0; c < 4; ++c)
+                {
+                    pedal (c * 4.0 + 0.05, c * 4.0 + 3.9);
+                    if (rig.tags.contains ("Piano"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.8), chords[(size_t) c], 75);
+                    else
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.9), std::vector<int> { chords[(size_t) c][2] + 12 }, 90);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> { tune[c] }, 80);
+                }
+                length = 22.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { notes[0] + 12, notes[1] + 12, notes[2] + 12 }, 100);
+                }
+                length = 19.0 * beat;
+            }
+        }
+        else if (drowned)
+        {
+            // Our own phrases (none from the game or its songs): F minor, the chords F minor 7, D flat major 7, B flat
+            // minor 7 and C7; a 1940s band leader's line ending on the leading tone, a walking bass, gaps for SUBMERGE's
+            // bubbles and sea.
+            const std::vector<std::vector<int>> chords { { 41, 53, 56, 60, 63 }, { 37, 49, 53, 56, 60 },
+                                                         { 34, 46, 49, 53, 56 }, { 36, 48, 52, 55, 58 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1, 72 }, { 1, 0.5, 70 }, { 1.5, 0.5, 68 }, { 2, 2, 65 }, { 4, 1, 73 }, { 5, 1, 72 }, { 6, 2, 68 },
+                        { 8, 1.5, 70 }, { 9.5, 0.5, 68 }, { 10, 2, 65 }, { 12, 4, 64 } }, 95);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), chords[(size_t) c], 85);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // A walking bass, a quarter note at a time (F Ab C Eb, Db F Ab F, Bb Db F Ab, C E G Bb).
+                const int walk[4][4] { { 41, 44, 48, 51 }, { 37, 41, 44, 41 }, { 34, 37, 41, 44 }, { 36, 40, 43, 46 } };
+                for (int c = 0; c < 4; ++c)
+                    if (rig.tags.contains ("Drone"))   // a drone holds each bar's root (it swells in over a second and more)
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { walk[c][0] - 12 }, 100);
+                    else
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { walk[c][k] - 12 }, k == 0 ? 110 : 90);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // A chord each bar with the pedal, then a slow melody over it.
+                const int tune[] { 72, 68, 65, 67 };
+                for (int c = 0; c < 4; ++c)
+                {
+                    pedal (c * 4.0 + 0.05, c * 4.0 + 3.9);
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.8), chords[(size_t) c], 75);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> { tune[c] }, 68);
+                }
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { notes[0] + 12, notes[1] + 12, notes[2] + 12 }, 95);
+                }
+                length = 19.0 * beat;
+            }
+        }
+        else if (stolen)
+        {
+            // Our own phrases (none from the series): B minor, the chords B minor, G, D, A; a lonely, slow line with long
+            // notes and gaps for AFTERMATH's room to ring, the pianos with the sustain pedal.
+            const std::vector<std::vector<int>> chords { { 35, 47, 54, 59, 62 }, { 31, 43, 55, 59, 62 },
+                                                         { 38, 50, 54, 57, 62 }, { 33, 45, 52, 57, 61 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 66 }, { 1.5, 0.5, 69 }, { 2, 2, 71 }, { 4, 1, 74 }, { 5, 1, 73 }, { 6, 2, 71 },
+                        { 8, 1.5, 69 }, { 9.5, 0.5, 66 }, { 10, 2, 64 }, { 12, 4, 66 } }, 95);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), chords[(size_t) c], 85);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                const int roots4[] { 35, 31, 38, 33 };   // B1 G1 D2 A1: steady eighths, a gap at each bar's end
+                for (int c = 0; c < 4; ++c)
+                    for (int k = 0; k < 8; ++k)
+                        if (k != 7)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + 0.4), { roots4[c] }, k % 2 == 0 ? 110 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                // A chord each bar with the pedal, then a slow, sparse melody over it.
+                const int tune[] { 74, 71, 69, 66 };
+                for (int c = 0; c < 4; ++c)
+                {
+                    pedal (c * 4.0 + 0.05, c * 4.0 + 3.9);
+                    auto notes = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.8), notes, 70);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.8), std::vector<int> { tune[c] }, 62);
+                }
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { notes[0] + 12, notes[1] + 12, notes[2] + 12 }, 95);
+                }
+                length = 19.0 * beat;
+            }
+        }
+        else if (twin)
+        {
+            // Our own phrases (none from the series): E minor, the chords E minor, C, G, D; a defiant lead line with a
+            // held note at the end, short notes and gaps where OVERCHARGE's crystals and repeats can be heard.
+            const std::vector<std::vector<int>> chords { { 40, 52, 59, 64, 67 }, { 36, 52, 55, 60, 64 },
+                                                         { 43, 55, 59, 62, 67 }, { 38, 54, 57, 62, 66 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.5, 64 }, { 0.5, 0.5, 67 }, { 1, 1, 71 }, { 2, 0.5, 69 }, { 2.5, 0.5, 67 }, { 3, 1, 66 },
+                        { 4, 1.5, 64 }, { 6, 0.5, 71 }, { 6.5, 0.5, 72 }, { 7, 1, 74 }, { 8, 1, 76 }, { 9, 0.5, 74 },
+                        { 9.5, 0.5, 72 }, { 10, 1, 71 }, { 12, 4, 71 } }, 105);
+                wheel (12.0, 16.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), chords[(size_t) c], 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                const int roots4[] { 40, 36, 43, 38 };   // E2 C2 G2 D2: bouncing eighths, accents on the beat
+                for (int c = 0; c < 4; ++c)
+                    for (int k = 0; k < 8; ++k)
+                        if (k != 3 && k != 7)
+                            chord (e, at (c * 4.0 + k * 0.5), at (c * 4.0 + k * 0.5 + (rig.name == "Wobble Drop" ? 0.48 : 0.35)),
+                                   { roots4[c] - (k % 4 == 0 ? 12 : 0) }, k % 2 == 0 ? 115 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.6), notes, 95);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 2.4), std::vector<int> { notes[2] + 12 }, 80);
+                    chord (e, at (c * 4.0 + 3.0), at (c * 4.0 + 3.4), std::vector<int> { notes[1] + 12 }, 75);
+                }
+                length = 20.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { notes[0] + 12, notes[1] + 12, notes[2] + 12 }, 100);
+                }
+                length = 19.0 * beat;
+            }
+        }
+        else if (maestro)
+        {
+            // Our own phrases (none from any film or trailer): a heroic line of fifths and steps in D minor, the
+            // trailer's chords (D minor, B flat, F, C), low hits and a driving ostinato. The mod wheel is the
+            // dynamics: it starts at a mezzo-forte and rides up to fortissimo and back.
+            const auto dyn = [&] (double from, double to, int a, int b)
+            {
+                for (int k = 0; k <= 16; ++k)
+                    e.push_back ({ at (from + (to - from) * k / 16.0),
+                                   juce::MidiMessage::controllerEvent (1, 1, (int) std::round (a + (b - a) * k / 16.0)) });
+            };
+            e.push_back ({ 0.0, juce::MidiMessage::controllerEvent (1, 1, 80) });
+            const std::vector<std::vector<int>> chords { { 38, 50, 57, 62, 65 }, { 34, 50, 58, 62, 65 },
+                                                         { 41, 53, 57, 60, 65 }, { 36, 52, 55, 60, 64 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1, 62 }, { 1, 0.5, 69 }, { 1.5, 0.5, 67 }, { 2, 2, 69 }, { 4, 1, 65 }, { 5, 1, 67 }, { 6, 2, 62 },
+                        { 8, 1, 70 }, { 9, 1, 69 }, { 10, 1, 67 }, { 11, 1, 65 }, { 12, 4, 69 } }, 100);
+                dyn (6.0, 12.0, 80, 124);
+                dyn (13.0, 16.0, 124, 70);
+                length = 20.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), chords[(size_t) c], 90);
+                dyn (0.0, 12.0, 40, 127);   // the build
+                dyn (12.0, 15.5, 127, 60);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass" && rig.name == "Ostinato Cellos")
+            {
+                const int roots4[] { 38, 34, 41, 36 };   // D2 Bb1 F2 C2: the arp drives each
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { roots4[c], roots4[c] + 7 }, 100);
+                dyn (4.0, 14.0, 70, 127);
+                length = 19.0 * beat;
+            }
+            else if (type == "Bass" && rig.name == "Brass Hits")
+            {
+                const int roots4[] { 38, 34, 41, 36 };
+                for (int c = 0; c < 4; ++c)
+                    for (const auto t : { 0.0, 1.5, 3.0 })
+                        chord (e, at (c * 4.0 + t), at (c * 4.0 + t + 0.6), { roots4[c] - 12, roots4[c] }, t == 0.0 ? 120 : 95);
+                dyn (8.0, 14.0, 80, 127);
+                length = 20.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                line ({ { 0, 3.8, 38 }, { 4, 3.8, 34 }, { 8, 3.8, 41 }, { 12, 3.8, 36 } }, 100);
+                dyn (4.0, 12.0, 60, 124);
+                dyn (12.0, 15.5, 124, 70);
+                length = 19.0 * beat;
+            }
+            else if (type == "Keys" && rig.name == "War Drums Hit")
+            {
+                // Hits on the beat, then a roll building into the last hit.
+                line ({ { 0, 1, 38 }, { 2, 1, 33 }, { 4, 1, 38 }, { 5.5, 0.5, 38 }, { 6, 1, 33 }, { 8, 1, 38 }, { 10, 1, 33 } }, 115);
+                for (int k = 0; k < 16; ++k)
+                    chord (e, at (12.0 + k * 0.125), at (12.0 + k * 0.125 + 0.1), { k % 2 == 0 ? 38 : 33 }, 60 + k * 4);
+                chord (e, at (14.0), at (15.0), { 38 }, 127);
+                dyn (8.0, 14.0, 70, 127);
+                length = 21.0 * beat;
+            }
+            else if (type == "Keys" && rig.name == "Trailer Piano")
+            {
+                line ({ { 0, 3, 26 }, { 0, 3, 38 }, { 4, 3, 22 }, { 4, 3, 34 }, { 8, 3, 29 }, { 8, 3, 41 }, { 12, 4, 24 }, { 12, 4, 36 } }, 110);
+                line ({ { 2, 1, 62 }, { 6, 1, 65 }, { 10, 1, 69 }, { 14, 2, 67 } }, 70);
+                length = 21.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                line ({ { 0, 0.5, 74 }, { 0.5, 0.5, 77 }, { 1, 0.5, 81 }, { 1.5, 0.5, 79 }, { 2, 1, 77 }, { 4, 0.5, 74 },
+                        { 4.5, 0.5, 76 }, { 5, 1, 77 }, { 6, 2, 69 }, { 8, 0.5, 70 }, { 8.5, 0.5, 74 }, { 9, 0.5, 77 },
+                        { 9.5, 0.5, 82 }, { 10, 2, 81 }, { 12, 4, 74 } }, 95);
+                length = 19.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    auto notes = chords[(size_t) c];
+                    notes.erase (notes.begin());   // no bass note: the arp runs the chord
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { notes[0] + 12, notes[1] + 12, notes[2] + 12 }, 100);
+                }
+                dyn (4.0, 14.0, 70, 127);
+                length = 19.0 * beat;
+            }
+        }
         else if (hyper)
         {
             // Our own phrases (none from the films): a fanfare of fourths and fifths in dotted rhythms, a marching
-            // eighth-note ostinato, minor chords moving by thirds, short notes and gaps where LIGHTSPEED can be heard.
+            // eighth-note ostinato, minor chords moving by thirds, short notes and gaps where MACRO 3 can be heard.
             if (type == "Lead")
             {
                 line ({ { 0, 0.75, 62 }, { 0.75, 0.25, 62 }, { 1, 1, 67 }, { 2, 1.5, 74 }, { 3.5, 0.5, 72 }, { 4, 0.75, 70 },
@@ -1084,6 +2859,301 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                 length = 24.0 * beat;
             }
         }
+        else
+            firstHalf = false;
+        if (firstHalf) {}   // MSVC allows only ~128 chained else-ifs: the chain is split in two here
+        else if (noon)
+        {
+            // Our own phrases (none from the series): G major, the chords G, E minor, C and D; held notes so the roll
+            // is heard striking them.
+            const std::vector<std::vector<int>> chords { { 43, 55, 59, 62, 67 }, { 40, 52, 55, 59, 64 },
+                                                         { 36, 48, 52, 55, 60 }, { 38, 50, 54, 57, 62 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 2, 71 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 2, 71 }, { 6, 2, 74 }, { 8, 1, 72 }, { 9, 1, 71 },
+                        { 10, 2, 67 }, { 12, 2, 69 }, { 14, 2, 66 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 88);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    if (rig.tags.contains ("Drone"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 105);
+                    else if (rig.tags.contains ("Walking"))   // a walk: root, third, fifth, a step to the next
+                    {
+                        const int walk[] { 0, 3, 7, 10 };
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { r + walk[k] }, k == 0 ? 110 : 95);
+                    }
+                    else   // two half notes, root and fifth, sliding between
+                        for (int k = 0; k < 2; ++k)
+                            chord (e, at (c * 4.0 + 2 * k), at (c * 4.0 + 2 * k + 2.05), { r + (k == 1 ? 7 : 0) }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                    for (const auto t : { 0.0, 2.5 })
+                        chord (e, at (c * 4.0 + t), at (c * 4.0 + t + (t == 0.0 ? 2.3 : 1.4)),
+                               std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), t == 0.0 ? 100 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (wicked)
+        {
+            // Our own phrases (none from any film): D minor, the chords D minor, B flat, G minor and A at 128 BPM; every
+            // note held a beat or more so RUNNER has something to strike.
+            const std::vector<std::vector<int>> chords { { 38, 50, 53, 57, 62 }, { 34, 46, 50, 53, 58 },
+                                                         { 31, 43, 46, 50, 55 }, { 33, 45, 49, 52, 57 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 2, 74 }, { 2, 1, 72 }, { 3, 1, 69 }, { 4, 2, 70 }, { 6, 2, 74 }, { 8, 1.5, 70 }, { 9.5, 0.5, 69 },
+                        { 10, 2, 67 }, { 12, 2, 69 }, { 14, 2, 73 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    line ({ { c * 4.0, 1.9, r }, { c * 4.0 + 2.0, 1.4, r }, { c * 4.0 + 3.5, 0.45, r + 12 } }, 110);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const std::vector<int> n (chords[(size_t) c].begin() + 1, chords[(size_t) c].end());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.9), n, 100);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.9), n, 85);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pluck")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    line ({ { c * 4.0, 1.0, n[2] + 12 }, { c * 4.0 + 1.0, 1.0, n[3] + 12 }, { c * 4.0 + 2.0, 1.9, n[4] + 12 } }, 105);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else   // the pads and arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 92);
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (steel)
+        {
+            // Our own phrases (none from any film or record): F minor, the chords F minor, D flat, A flat and E flat at
+            // 140 BPM; the basses held in half-time so a wobble has notes to move, the stabs short, the arps held.
+            const std::vector<std::vector<int>> chords { { 29, 53, 56, 60, 65 }, { 25, 49, 53, 56, 61 },
+                                                         { 32, 56, 60, 63, 68 }, { 27, 51, 55, 58, 63 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1, 72 }, { 1, 0.5, 75 }, { 1.5, 1.5, 77 }, { 3, 1, 75 }, { 4, 1, 73 }, { 5, 0.5, 72 }, { 5.5, 2.5, 68 },
+                        { 8, 1, 72 }, { 9, 0.5, 75 }, { 9.5, 1.5, 80 }, { 11, 1, 79 }, { 12, 1, 75 }, { 13, 1, 77 }, { 14, 2, 72 } }, 105);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 90);
+                wheel (8.0, 15.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                // Half-time: the root held for most of two beats, a stab, an octave jump into the next chord.
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0] + 12;
+                    line ({ { c * 4.0, 1.8, r }, { c * 4.0 + 2.0, 0.9, r }, { c * 4.0 + 3.0, 0.45, r + 12 }, { c * 4.0 + 3.5, 0.45, r } }, 110);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const std::vector<int> n (chords[(size_t) c].begin() + 1, chords[(size_t) c].end());
+                    if (rig.tags.contains ("Stab"))
+                        for (const auto h : { 0.0, 0.75, 1.5, 3.0 })
+                            chord (e, at (c * 4.0 + h), at (c * 4.0 + h + 0.35), n, 110);
+                    else
+                    {
+                        chord (e, at (c * 4.0), at (c * 4.0 + 1.4), n, 100);
+                        chord (e, at (c * 4.0 + 1.5), at (c * 4.0 + 1.9), n, 80);
+                        chord (e, at (c * 4.0 + 2.5), at (c * 4.0 + 3.8), n, 95);
+                    }
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1], n[2], n[3] }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+        }
+        else if (descent)
+        {
+            // Our own phrases (none from the series): D minor, the chords D minor, B flat, G minor and A; held notes so
+            // the gears' pattern is heard cutting them.
+            const std::vector<std::vector<int>> chords { { 38, 50, 53, 57, 62 }, { 34, 46, 50, 53, 58 },
+                                                         { 31, 43, 46, 50, 55 }, { 33, 45, 49, 52, 57 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 2, 69 }, { 2, 1, 65 }, { 3, 1, 67 }, { 4, 2, 70 }, { 6, 2, 69 }, { 8, 1, 67 }, { 9, 1, 65 },
+                        { 10, 2, 62 }, { 12, 2, 64 }, { 14, 2, 61 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 88);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    if (rig.tags.contains ("Drone"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 105);
+                    else if (rig.tags.contains ("Walking"))   // a walk: root, third, fifth, a step to the next
+                    {
+                        const int walk[] { 0, 3, 7, 10 };
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { r + walk[k] }, k == 0 ? 110 : 95);
+                    }
+                    else   // two half notes, root and fifth, sliding between
+                        for (int k = 0; k < 2; ++k)
+                            chord (e, at (c * 4.0 + 2 * k), at (c * 4.0 + 2 * k + 2.05), { r + (k == 1 ? 7 : 0) }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                    for (const auto t : { 0.0, 2.5 })
+                        chord (e, at (c * 4.0 + t), at (c * 4.0 + t + (t == 0.0 ? 2.3 : 1.4)),
+                               std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), t == 0.0 ? 100 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (divide)
+        {
+            // Our own phrases (none from the series): E minor, the chords E minor, C, A minor and B (the dominant's D#
+            // pulled into key by CROSSROADS); held notes so each bar's side is heard, light then dark.
+            const std::vector<std::vector<int>> chords { { 40, 52, 55, 59, 64 }, { 36, 48, 52, 55, 60 },
+                                                         { 33, 45, 48, 52, 57 }, { 35, 47, 51, 54, 59 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 2, 71 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 2, 72 }, { 6, 2, 71 }, { 8, 1, 69 }, { 9, 1, 67 },
+                        { 10, 2, 64 }, { 12, 2, 66 }, { 14, 2, 71 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else if (type == "Pad")
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 88);
+                wheel (8.0, 15.0, 90);
+                length = 22.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    if (rig.tags.contains ("Drone"))
+                        chord (e, at (c * 4.0), at (c * 4.0 + 3.9), { r }, 105);
+                    else if (rig.tags.contains ("Walking"))   // a walk: root, third, fifth, a step to the next
+                    {
+                        const int walk[] { 0, 3, 7, 10 };
+                        for (int k = 0; k < 4; ++k)
+                            chord (e, at (c * 4.0 + k), at (c * 4.0 + k + 0.85), { r + walk[k] }, k == 0 ? 110 : 95);
+                    }
+                    else   // two half notes, root and fifth, sliding between
+                        for (int k = 0; k < 2; ++k)
+                            chord (e, at (c * 4.0 + 2 * k), at (c * 4.0 + 2 * k + 2.05), { r + (k == 1 ? 7 : 0) }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                    for (const auto t : { 0.0, 2.5 })
+                        chord (e, at (c * 4.0 + t), at (c * 4.0 + t + (t == 0.0 ? 2.3 : 1.4)),
+                               std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), t == 0.0 ? 100 : 85);
+                wheel (8.0, 14.0, 90);
+                length = 21.0 * beat;
+            }
+            else   // the arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
         else if (sev && type == "Lead")
         {
             // A cheerful phrase in F major, then the same shape turned to D minor, ending on a held note.
@@ -1103,16 +3173,8 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sev && type == "Bass")
         {
-            // Held notes (the step sequencer and GLITCH make the rhythm), then the plain ones re-struck: D, Bb, F, A.
-            if (rig.name == "Break Room Bass")
-            {
-                constexpr int roots[] = { 38, 34, 41, 33 };
-                for (int k = 0; k < 16; ++k)
-                    if (k % 4 != 3)
-                        line ({ { k * 1.0, 0.6, roots[k / 4] } }, k % 2 == 0 ? 110 : 90);
-            }
-            else
-                line ({ { 0, 3.9, 38 }, { 4, 3.9, 34 }, { 8, 3.9, 41 }, { 12, 3.9, 33 } }, 105);
+            // Held roots, a bar each: D, Bb, F, A.
+            line ({ { 0, 3.9, 38 }, { 4, 3.9, 34 }, { 8, 3.9, 41 }, { 12, 3.9, 33 } }, 105);
             wheel (8.0, 15.0, 90);
             length = 19.0 * beat;
         }
@@ -1463,6 +3525,13 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             chord (e, at (8), at (15.9), { 58, 62, 65 }, 100);
             length = 21.0 * beat;
         }
+        else if (fury && type == "Lead" && rig.name == "Lone Cello")
+        {
+            // A slow line over the salt flats, each note bowed long.
+            line ({ { 0, 3, 62 }, { 3, 1, 65 }, { 4, 4, 69 }, { 8, 2, 67 }, { 10, 2, 65 }, { 12, 4, 62 } }, 100);
+            wheel (4.0, 8.0, 100);
+            length = 20.0 * beat;
+        }
         else if (fury && type == "Lead")
         {
             // A screaming riff in D minor: a run up through the flat second, a held high note with the wheel,
@@ -1485,7 +3554,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (fury && type == "Bass")
         {
-            if (rig.name == "Piston Drive")
+            if (rig.name == "Sand Engine")
                 line ({ { 0, 8, 26 }, { 8, 4, 27 }, { 12, 4, 24 } }, 110);
             else
                 line ({ { 0, 0.75, 26 }, { 0.75, 0.75, 26 }, { 1.5, 0.5, 27 }, { 2, 1.5, 26 }, { 4, 0.75, 26 }, { 4.75, 0.75, 26 },
@@ -1493,6 +3562,21 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                         { 12, 2, 24 }, { 14, 2, 27 } }, 110);
             wheel (8.0, 15.0, 110);
             length = 19.0 * beat;
+        }
+        else if (fury && type == "Keys" && rig.name == "Speaker Stack")
+        {
+            // Power chords from single notes (the chorder holds the fifth and octave): a driving riff on the roots.
+            const int roots[] = { 38, 38, 39, 38, 41, 38, 39, 36 };
+            for (int k = 0; k < 8; ++k)
+                for (const auto offset : { 0.0, 0.75, 1.5 })
+                    chord (e, at (k * 2 + offset), at (k * 2 + offset + (offset == 1.5 ? 0.45 : 0.3)), { roots[k] + 12 }, offset == 0.0 ? 120 : 100);
+            length = 19.0 * beat;
+        }
+        else if (fury && type == "Keys" && rig.name != "Mirage Bells")
+        {
+            chord (e, at (0), at (7.8), { 50, 57, 62, 65 }, 100);
+            chord (e, at (8), at (15.8), { 46, 53, 58, 62 }, 100);
+            length = 21.0 * beat;
         }
         else if (fury && type == "Keys")
         {
@@ -2008,57 +4092,63 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sand && type == "Lead")
         {
-            // D Phrygian dominant: D Eb F# G A Bb C.
-            line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
-                    { 8, 1, 69 }, { 9, 1, 67 }, { 10, 1, 66 }, { 11, 1, 63 }, { 12, 4, 62 } }, 100);
-            if (rig.name == "Desert Voice")
+            // D Phrygian dominant: D Eb F# G A Bb C. The horn low and long; the voice and the reed a singing line.
+            if (rig.name == "Colossus Horn")
+                line ({ { 0, 3, 38 }, { 3, 1, 39 }, { 4, 4, 38 }, { 8, 3, 42 }, { 11, 1, 43 }, { 12, 4, 38 } }, 110);
+            else
+                line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
+                        { 8, 1, 69 }, { 9, 1, 67 }, { 10, 1, 66 }, { 11, 1, 63 }, { 12, 4, 62 } }, 100);
+            if (rig.name == "Keening Voice")
                 wheel (6.0, 11.0, 110);
             length = 19.0 * beat;
         }
         else if (sand && type == "Pad")
         {
-            chord (e, at (0), at (7.8), { 38, 45, 50, 54 }, 95);   // D, a low fifth and the major third
-            chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 95);  // E flat: the flat second
+            if (rig.name == "Pipes of Arrival")
+            {
+                chord (e, at (0), at (7.8), { 50, 57, 62 }, 95);   // in the chanter's range (from G2)
+                chord (e, at (8), at (15.8), { 51, 58, 63 }, 95);
+            }
+            else
+            {
+                chord (e, at (0), at (7.8), { 38, 45, 50, 54 }, 95);   // D, a low fifth and the major third
+                chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 95);  // E flat: the flat second
+            }
             length = 22.0 * beat;
         }
         else if (sand && type == "Bass")
         {
-            if (rig.name == "Quake Pulse")
-            {
-                chord (e, at (0), at (3), { 26 }, 120);
-                chord (e, at (8), at (11), { 27 }, 115);
-            }
-            else if (rig.name == "Iron Ritual")
+            if (rig.name == "Iron Engine")
             {
                 const int notes[] = { 38, 38, 39, 38, 42, 38, 39, 38 };
                 for (int bar = 0; bar < 4; ++bar)
                     for (int k = 0; k < 8; ++k)
                         chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.35), { notes[k] }, k % 2 == 0 ? 110 : 90);
             }
+            else if (rig.name == "Didgeridoo Bass")
+                line ({ { 0, 6, 38 }, { 6, 2, 39 }, { 8, 6, 38 }, { 14, 2, 42 } }, 105);
             else
                 line ({ { 0, 6, 26 }, { 6, 2, 27 }, { 8, 6, 26 }, { 14, 2, 30 } }, 105);
             length = 18.0 * beat;
         }
         else if (sand && type == "Keys")
         {
-            if (rig.name == "Ritual Gong")
+            if (rig.name == "Sun Gong")
             {
                 chord (e, at (0), at (3), { 38 }, 115);
-                chord (e, at (8), at (11), { 33 }, 110);
+                chord (e, at (8), at (11), { 38, 45 }, 110);
             }
             else
                 line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 66 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 0.5, 70 }, { 4.5, 0.5, 69 },
-                        { 5, 1, 67 }, { 6, 2, 66 }, { 8, 1, 63 }, { 9, 1, 62 }, { 10, 3, 62 } }, rig.name == "Copper Bells" ? 85 : 100);
+                        { 5, 1, 67 }, { 6, 2, 66 }, { 8, 1, 63 }, { 9, 1, 62 }, { 10, 3, 62 } }, rig.name == "Spice Bells" ? 110 : 100);
             length = 19.0 * beat;
         }
         else if (sand)
         {
-            if (rig.name == "Sand Ripple")
-                chord (e, at (0), at (15.9), { 62 }, 100);
-            else if (rig.name == "War Pulse")
-                chord (e, at (0), at (15.9), { 50, 57 }, 105);
+            if (rig.name == "Thumper")
+                chord (e, at (0), at (15.9), { 38 }, 110);
             else
-                chord (e, at (0), at (15.9), { 50, 54, 57 }, 100);
+                chord (e, at (0), at (15.9), { 50 }, 105);   // the drums: any key
             length = 19.0 * beat;
         }
         else if (star && type == "Lead")

@@ -24,7 +24,33 @@ namespace libraries
         juce::String what;          // what the plugin calls it in short ("PIANO": GET THE PIANO)
         bool exactSize = true;      // `bytes` is exact (a cut-off download is caught by it); else about (progress only)
         int unpackedMb = 0;         // what it takes on disk once unpacked
+        // (0.81.0) Paths in the archive (under `folder`) not unpacked: a prefix, or a part of a name (" - Legacy").
+        // VCSL's pianos and harpsichords are most of its 6 GB and PR7-K has its own.
+        juce::StringArray skipPrefixes, skipContaining;
+        bool keeps (const juce::String& pathInFolder) const
+        {
+            for (const auto& p : skipPrefixes)
+                if (pathInFolder.startsWith (p))
+                    return false;
+            for (const auto& p : skipContaining)
+                if (pathInFolder.contains (p))
+                    return false;
+            return true;
+        }
+        // (0.89.1) Where each file can be fetched as stored ("<base><path in folder>", e.g. GitHub's raw files), for a
+        // library whose archive alters its audio: GitHub makes archives with `git archive`, which applies the
+        // repository's line-ending rules, and Black And Green Guitars' (`* text eol=crlf`) mark every file as text, so
+        // a CR goes in before every lone LF byte of its WAVs. Empty: the archive is as stored.
+        juce::String rawBase;
     };
+
+    // (0.89.1) Written into a library's folder once its audio has been put back as stored (`rawBase`): without it the
+    // library counts as not installed, and the download fetches only the audio again.
+    inline const char* const exactMarker = ".pr7k-exact";
+    // Is the library complete in `folder` (its instrument there, and for a `rawBase` library, put back as stored)?
+    bool isComplete (const Library&, const juce::File& folder);
+    // What git's CRLF conversion does to a file: a CR before every LF not already after one (tests and the check).
+    juce::MemoryBlock withCrlf (const juce::MemoryBlock&);
 
     // The Salamander Grand Piano (Yamaha C5, 16 velocity layers, by Alexander Holm, CC-BY 3.0), the FreePats project's
     // SFZ + FLAC edition (about 740 MB to download, 714 MB unpacked).
@@ -33,6 +59,29 @@ namespace libraries
     // The Sonatina Symphonic Orchestra (0.73.0; Mattias Westlund, Peter Eastman; Creative Commons Sampling Plus 1.0),
     // version 4.0: GitHub's archive of its release (about 1.4 GB; GitHub makes it, so its exact size isn't fixed).
     const Library& sonatinaOrchestra();
+
+    // The Versilian Community Sample Library (0.81.0; Versilian Studios, CC0: public domain), its SFZ edition at a fixed
+    // commit: two pipe organs, tubular bells, handbells, a rope-tension field drum and other snares, timpani, gongs,
+    // a siren, harps, harpsichords, pianos, recorders, wine glasses and more. GitHub makes the archive (no exact size).
+    const Library& versilianCollection();
+
+    // Sam's Sonor (0.81.0; Sam Greene, mapped by kinwie, CC BY-SA 4.0): a Sonor Force 3001 kit, its snare with a left
+    // and a right hand for rolls, at a fixed commit of the SFZ Instruments edition.
+    const Library& samsSonor();
+    // Karoryfer Samples' Big Rusty Drums (an oversized kit), Gogodze Phu Vol I (Ghanaian bobobo drums and a cajon) and
+    // Squidpipes (bagpipes) (0.82.0, CC0), each at a fixed commit.
+    const Library& bigRustyDrums();
+    const Library& gogodzePhu();
+    const Library& squidpipes();
+    // (0.84.0, for the western bank) Karoryfer Samples' Black And Green Guitars (a Gretsch Anniversary and a Hofner
+    // Club, with twang programs), Shinyguitar (an archtop, acoustic and electric) and Meatbass (a 1958 double bass),
+    // CC0; itsclipping's ganjo (a 6-string banjo, CC0); FlameStudios' Kay 5-String Banjo (GPL-3.0-or-later, SFZ by
+    // S. Christian Collins). Each at a fixed commit of its SFZ Instruments repository.
+    const Library& blackAndGreenGuitars();
+    const Library& shinyguitar();
+    const Library& meatbass();
+    const Library& ganjo();
+    const Library& kayBanjo();
 
     // Every library PR7-K can download.
     std::vector<const Library*> all();
@@ -47,8 +96,12 @@ namespace libraries
     // Unpacks a .tar.gz into `destination` (regular files and folders; links and anything naming a place outside it
     // are skipped). `progress` 0-1 by the compressed bytes read. False (and why, in `error`) if it isn't a readable
     // tar.gz or `cancel` was set.
+    // (0.81.0) `keep`, when given, decides per path (as in the archive) whether it's unpacked.
+    // (0.89.2) `place`, when given, maps a path (as in the archive) to where it's written under `destination`.
     bool extractTarGz (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
-                       const std::atomic<bool>* cancel, juce::String& error);
+                       const std::atomic<bool>* cancel, juce::String& error,
+                       std::function<bool (const juce::String&)> keep = {},
+                       std::function<juce::String (const juce::String&)> place = {});
 
     // Fetches and unpacks a library on a thread of its own: `destination` / library.folder once it's done.
     class Download final : private juce::Thread
@@ -60,7 +113,8 @@ namespace libraries
         ~Download() override;
 
         // Starts (if not already running). `url` overrides the library's (tests: a file:// URL).
-        void start (const Library&, const juce::File& destination, const juce::String& url = {});
+        // `rawUrl` overrides the library's `rawBase` (tests).
+        void start (const Library&, const juce::File& destination, const juce::String& url = {}, const juce::String& rawUrl = {});
         void cancel();
 
         State getState() const noexcept { return state.load(); }
@@ -77,7 +131,8 @@ namespace libraries
         void fail (const juce::String&);
         Library library;
         juce::File destination;
-        juce::String sourceUrl;
+        juce::String sourceUrl, rawUrl;
+        bool fetchExact();   // (0.89.1) the `rawBase` step: false (after `fail`) if it couldn't
         std::atomic<State> state { State::idle };
         std::atomic<float> progress { 0.0f };
         std::atomic<bool> cancelled { false };
