@@ -7,6 +7,8 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 #include "ui/Finish.h"
+#include "ui/ModSourceStrip.h"
+#include "ui/NeonKeyboard.h"
 #include "ui/ParagonLookAndFeel.h"
 
 using Catch::Matchers::WithinAbs;
@@ -551,7 +553,7 @@ TEST_CASE ("The front panel: SHOW RACK swaps it with the OSCILLATORS and FILTER 
 }
 
 
-TEST_CASE ("THE GRID: the full faceplate hides the lower panels and the keyboard; the sparks follow the newest note's envelopes", "[ui]")
+TEST_CASE ("THE GRID: the full faceplate hides the lower panels and the mod sources, the neon keyboard under it; the sparks follow the newest note's envelopes", "[ui]")
 {
     Window w;
     w.processor.setPlayConfigDetails (0, 2, 48000.0, 256);
@@ -562,12 +564,18 @@ TEST_CASE ("THE GRID: the full faceplate hides the lower panels and the keyboard
     REQUIRE (keyboard != nullptr);
 
     // The front panel up: the faceplate runs from the header to the window's foot, THE GRID in its lower half;
-    // the envelopes, AMP, PLAY and the keyboard are hidden.
+    // the envelopes, AMP, PLAY and the mod sources' row are hidden; the keyboard (1.1.0) is under it in its own strip.
     w.view->setRackShownForTest (false);
     CHECK (face.isVisible());
     CHECK (grid.isVisible());
-    CHECK_FALSE (keyboard->isVisible());
-    CHECK (face.getBottom() >= keyboard->getBottom());
+    CHECK (keyboard->isVisible());
+    CHECK (dynamic_cast<NeonKeyboard*> (keyboard) != nullptr);
+    CHECK (face.getBottom() < keyboard->getY());
+    CHECK (keyboard->getWidth() > face.getWidth());   // the full width, under the OUTPUT column too
+    CHECK (keyboard->getHeight() >= 90);
+    const auto fullKeys = keyboard->getBounds();
+    if (auto* strip = inside<ModSourceStrip> (*w.view))
+        CHECK_FALSE (strip->isVisible());
     CHECK (grid.getY() > face.getHeight() / 3);
     for (auto* child : w.view->getChildren())
         if (dynamic_cast<EnvelopePanel*> (child) != nullptr || dynamic_cast<AmpPanel*> (child) != nullptr || dynamic_cast<PlayPanel*> (child) != nullptr)
@@ -578,6 +586,10 @@ TEST_CASE ("THE GRID: the full faceplate hides the lower panels and the keyboard
     w.view->setRackShownForTest (true);
     CHECK_FALSE (face.isVisible());
     CHECK (keyboard->isVisible());
+    if (auto* strip = inside<ModSourceStrip> (*w.view))
+        CHECK (strip->isVisible());
+    CHECK (keyboard->getBottom() == fullKeys.getBottom());   // the same keys, the mod sources' row above them
+    CHECK (keyboard->getHeight() == fullKeys.getHeight());   // the same keys in both
     int panels = 0;
     for (auto* child : w.view->getChildren())
         if (dynamic_cast<EnvelopePanel*> (child) != nullptr || dynamic_cast<AmpPanel*> (child) != nullptr || dynamic_cast<PlayPanel*> (child) != nullptr)

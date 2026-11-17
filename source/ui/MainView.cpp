@@ -161,15 +161,7 @@ MainView::MainView (ParagonX1AudioProcessor& processorToShow)
     rackButton.onClick = [this] { showRack (! rackShown); };
     rackShown = Finish::rackShown();
 
-    // The keyboard, in the plugin's colours: dark keys lit red-orange as they're played.
-    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffdcd7da));
-    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff141115));
-    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff6b6569));
-    keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, ParagonColours::accent.withAlpha (0.25f));
-    keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, ParagonColours::glow.withAlpha (0.85f));
-    keyboard.setColour (juce::MidiKeyboardComponent::shadowColourId, juce::Colours::black.withAlpha (0.5f));
-    keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonBackgroundColourId, juce::Colour (0xff151217));
-    keyboard.setColour (juce::MidiKeyboardComponent::upDownButtonArrowColourId, ParagonColours::text);
+    // The keyboard (1.1.0): THE GRID's neon (NeonKeyboard draws its own keys).
     keyboard.setColour (juce::MidiKeyboardComponent::textLabelColourId, ParagonColours::inkDim);
     keyboard.setAvailableRange (24, 107);   // C1 to B7 shown (notes outside it from the DAW still play)
     keyboard.setOctaveForMiddleC (4);
@@ -211,9 +203,9 @@ void MainView::showPage (Page newPage)
     oscillators.setVisible (newPage == Page::synth && rackShown);
     filter.setVisible (newPage == Page::synth && rackShown);
     face.setVisible (newPage == Page::synth && ! rackShown);
-    const auto keysShown = newPage != Page::synth || rackShown;
-    keyboard.setVisible (keysShown);
-    sources.setVisible (keysShown);
+    // 1.1.0: the keyboard is under the full faceplate too (in a strip of its own); the mod sources stay with the rack.
+    keyboard.setVisible (true);
+    sources.setVisible (newPage != Page::synth || rackShown);
     layoutSynthPage();
     repaint();
     rackButton.setButtonText (rackShown ? "HIDE RACK" : "SHOW RACK");
@@ -224,6 +216,11 @@ void MainView::showPage (Page newPage)
     settingsPage.setVisible (newPage == Page::settings);
 }
 
+juce::Rectangle<int> MainView::keyStrip() const noexcept
+{
+    return isFullFace() ? keyboardArea.withTrimmedTop (28) : keyboardArea;
+}
+
 bool MainView::isFullFace() const noexcept
 {
     return page == Page::synth && ! rackShown;
@@ -232,11 +229,23 @@ bool MainView::isFullFace() const noexcept
 void MainView::layoutSynthPage()
 {
     // The front panel: the whole faceplate down to the window's foot while it's up (0.98.0), OUTPUT alongside.
+    // 1.1.0: under the full faceplate, the keyboard in a strip of its own (the mod sources' row stays with the rack),
+    // the faceplate and OUTPUT ending a gap above it.
     const auto full = isFullFace();
-    face.setBounds (full ? oscillatorArea.getUnion (filterArea).withBottom (keyboardArea.getBottom()) : oscillatorArea.getUnion (filterArea));
-    const auto output = full ? outputArea.withBottom (keyboardArea.getBottom()) : outputArea;
+    const auto strip = keyStrip();
+    face.setBounds (full ? oscillatorArea.getUnion (filterArea).withBottom (strip.getY() - 8) : oscillatorArea.getUnion (filterArea));
+    const auto output = full ? outputArea.withBottom (strip.getY() - 8) : outputArea;
     outputColumn.setBounds (output.withTrimmedBottom (44));
     rackButton.setBounds (output.withTop (output.getBottom() - 38));
+
+    // Seven octaves from C1, filling the strip (the width first: changing it moves the view).
+    sources.setBounds (keyboardArea.reduced (8, 6).withHeight (24));   // (hidden under the full faceplate, but laid out)
+    auto keys = strip.reduced (8, 6);
+    if (! full)
+        keys.removeFromTop (28);
+    keyboard.setBounds (keys);
+    keyboard.setKeyWidth ((float) keys.getWidth() / 49.0f);
+    keyboard.setLowestVisibleKey (24);
 }
 
 void MainView::showRack (bool shown, bool remember)
@@ -514,9 +523,8 @@ void MainView::paint (juce::Graphics& g)
     g.setColour (ParagonColours::panelEdge);
     g.drawHorizontalLine (juce::roundToInt (64.0f * mockScale), 0.0f, (float) getWidth());
 
-    // The keyboard's frame (not under the full faceplate, 0.98.0).
-    if (! isFullFace())
-        DockStyle::drawPanel (g, keyboardArea.toFloat().expanded (0.0f, 0.0f));
+    // The keyboard's frame (1.1.0: a shorter strip under the full faceplate).
+    DockStyle::drawPanel (g, keyStrip().toFloat());
 }
 
 void MainView::resized()
@@ -543,14 +551,6 @@ void MainView::resized()
     amp.setBounds (ampArea);
     play.setBounds (playArea);
     layoutSynthPage();
-
-    // Seven octaves from C1, filling the strip (the width first: changing it moves the view).
-    auto keys = keyboardArea.reduced (8, 6);
-    sources.setBounds (keys.removeFromTop (24));
-    keys.removeFromTop (4);
-    keyboard.setBounds (keys);
-    keyboard.setKeyWidth ((float) keys.getWidth() / 49.0f);
-    keyboard.setLowestVisibleKey (24);
 
     modPage.setBounds (pageArea);
     arpPage.setBounds (pageArea);

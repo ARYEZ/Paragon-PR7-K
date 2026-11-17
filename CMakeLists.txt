@@ -193,6 +193,7 @@ target_sources(ParagonX1
         source/ui/LedDisplay.cpp
         source/ui/SpectrumEditor.cpp
         source/ui/MainView.cpp
+        source/ui/NeonKeyboard.cpp
         source/ui/ParagonLookAndFeel.cpp
         source/ui/Finish.cpp)
 
