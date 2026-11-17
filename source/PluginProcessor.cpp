@@ -1223,9 +1223,10 @@ void ParagonX1AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // (1.2.0) The DAW's notes update the keyboard's display; the on-screen keys pressed since the last block all
     // start at its first sample. JUCE would spread them across the block by the millisecond each was pressed, so a
     // chord pressed at once could start up to a block apart (and two identical test renders differ, under load).
-    keyboardState.processNextMidiBuffer (keyboardMidi, 0, numSamples, false);
+    // (The on-screen presses first: every call, JUCE drops the presses it hasn't handed on.)
     onScreenMidi.clear();
     keyboardState.processNextMidiBuffer (onScreenMidi, 0, numSamples, true);
+    keyboardState.processNextMidiBuffer (keyboardMidi, 0, numSamples, false);
     for (const auto metadata : onScreenMidi)
         keyboardMidi.addEvent (metadata.getMessage(), 0);
     if (const auto wheel = pendingModWheel.exchange (-1.0f); wheel >= 0.0f)
