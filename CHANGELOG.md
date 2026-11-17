@@ -2,6 +2,14 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.1.0
+
+**The neon keyboard: the on-screen keys in THE GRID's colours, and back under the full faceplate.**
+
+- **Neon keys.** The white keys glow in the pink -> red -> orange gradient across the keyboard, dim at the back and bright at the front; the black keys are black with a thin neon rim. Keys being played glow nearly white-hot, so you can see the chord. Playing it works exactly as before. The same keyboard shows on every page.
+- **Back under the full faceplate.** With the rack hidden, the keyboard sits in its own strip at the bottom, the full width of the window; the faceplate and OUTPUT end just above it. THE GRID redraws itself at its new height, so the envelope walls keep their shape.
+- **The mod sources' row stays with the rack** (SHOW RACK), above the same keys.
+
 ## 1.0.0
 
 **Version 1.0: WICKED GAME, a new expansion, and RUNNER, every note you hold struck again in time with your song, faster with every fifth of the knob.**
