@@ -121,8 +121,10 @@ TEST_CASE ("RUNNER: each speed strikes on its own grid, at two tempos", "[runner
                 CHECK (riseAt (out[0], k * every, w) > 4.0);
             }
             CHECK (checked >= 1);
-            // Halfway between two strikes nothing new: the level only falls.
-            CHECK (riseAt (out[0], 1.5 * every, w) < 1.5);   // (a 4 ms window reads a steady tone up to 0.7 dB apart)
+            // Halfway between two strikes nothing new: the level only falls. (1.2.0: halfway between the first two
+            // strikes inside the render: at 60 BPM in quarters 1.5 strikes is past its 1.2 s and read past the end.)
+            const auto halfway = 1.5 * every + w + 0.002 < seconds ? 1.5 * every : 0.5 * every;
+            CHECK (riseAt (out[0], halfway, w) < 1.5);   // (a 4 ms window reads a steady tone up to 0.7 dB apart)
             const auto expected = (int) std::floor ((seconds - 1.0e-6) / every - 1.0e-9);   // the key's own strike at 0 isn't counted
             CHECK (std::abs (p.engine.getRunnerStrikes() - expected) <= 1);
         }
