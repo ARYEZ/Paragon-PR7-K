@@ -44,6 +44,7 @@
 //     the wheel at the top) and RESONANCE (dB): soft notes darker, as the library's makers set them.
 //   - KEY SWITCHES (0.75.0): SW_LOKEY..SW_HIKEY are switch keys, not notes; a region with SW_LAST plays only while
 //     its key was the last switch pressed (SW_DEFAULT before any); SW_LABEL names it.
+//   - PITCH MOVEMENT (1.2.0): flex envelopes aimed at pitch (EGn_PITCH), PITCHLFO_* and PITCHEG_*; DELAY.
 // Not read: the other envelope stages, other controllers (crossfades, gains and triggers but the wheel's and the
 // pedal's), OFF_BY / GROUP.
 //
@@ -104,6 +105,30 @@ namespace synth::sfz
         float filterQ = 0.70710678f;            // from RESONANCE (dB)
         int switchKey = -1;                     // SW_LAST (-1: plays whatever switch is down)
         int switchKeyHi = -1;                   // (0.84.0) SW_HILAST: with SW_LOLAST a range of switches (switchKey is its bottom)
+
+        // PITCH MOVEMENT (1.2.0, for the koto's pressed-string bends): what the region's own envelopes and LFO do to
+        // its pitch, in cents, worked out by `pitchCents`.
+        //   - Flex envelopes EGn_PITCH (cents at level 1) with points EGn_TIMEk (seconds from the point before, plus
+        //     EGn_TIMEk_ONCCx seconds x the controller's starting value), EGn_LEVELk (-1 to 1: larger values are held
+        //     there, as the koto's -100 and -200 read sensibly only so) and EGn_CURVEk (the segment into point k:
+        //     4 squared, 5 square root, anything else straight), held at EGn_SUSTAIN until the key lets go.
+        //   - PITCHLFO_DEPTH (cents) at PITCHLFO_FREQ (+ PITCHLFO_FREQCCx Hz x the controller's starting value), after
+        //     PITCHLFO_DELAY, fading in over PITCHLFO_FADE.
+        //   - PITCHEG_DEPTH (cents) through PITCHEG_DELAY / START / ATTACK / HOLD / DECAY / SUSTAIN / RELEASE.
+        enum class Shape : std::uint8_t { straight, squared, root };
+        struct PitchPoint { float seconds = 0.0f, level = 0.0f; Shape shape = Shape::straight; };
+        struct PitchEnvelope { float cents = 0.0f; int sustain = -1; std::vector<PitchPoint> points; };
+        std::vector<PitchEnvelope> pitchEnvelopes;
+        float lfoCents = 0.0f, lfoHz = 0.0f, lfoDelay = 0.0f, lfoFade = 0.0f;
+        float egCents = 0.0f, egDelay = 0.0f, egStart = 0.0f, egAttack = 0.0f, egHold = 0.0f, egDecay = 0.0f,
+              egSustain = 0.0f, egRelease = 0.0f;   // egStart / egSustain 0-1
+        // DELAY (1.2.0): seconds before the sample starts (+ DELAY_CCx x the controller's starting value), and up to
+        // DELAY_RANDOM more at random.
+        float delaySeconds = 0.0f, delayRandom = 0.0f;
+
+        bool movesPitch() const noexcept { return ! pitchEnvelopes.empty() || lfoCents != 0.0f || egCents != 0.0f; }
+        // Cents `seconds` into the note; `releasedAt` when its key let go (negative: still held).
+        float pitchCents (float seconds, float releasedAt) const noexcept;
 
         bool loops() const noexcept { return loop != Loop::none && loopEnd > loopStart; }
         // A crossfade's level for a value: 1 outside both fades, 0 below the fade in or above the fade out.
@@ -214,5 +239,6 @@ namespace synth::sfz
                                             const std::atomic<bool>* cancel = nullptr);
 
     inline constexpr double headSeconds = 0.25;
-    inline constexpr int maxPlayers = 4;        // regions a note plays at once on one oscillator
+    inline constexpr int maxPlayers = 8;        // regions a note plays at once on one oscillator (1.2.0: 8, was 4; a
+                                                // koto note is up to 7: pick, pick noise, body, two microphones)
 }

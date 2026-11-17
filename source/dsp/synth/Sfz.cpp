@@ -216,13 +216,13 @@ namespace synth::sfz
             return regions;
         }
 
-        juce::String get (const Opcodes& op, const char* key, const juce::String& otherwise = {})
+        juce::String get (const Opcodes& op, const juce::String& key, const juce::String& otherwise = {})
         {
             const auto it = op.find (key);
             return it != op.end() ? it->second : otherwise;
         }
-        bool has (const Opcodes& op, const char* key) { return op.find (key) != op.end(); }
-        float number (const Opcodes& op, const char* key, float otherwise)
+        bool has (const Opcodes& op, const juce::String& key) { return op.find (key) != op.end(); }
+        float number (const Opcodes& op, const juce::String& key, float otherwise)
         {
             const auto it = op.find (key);
             return it != op.end() ? it->second.getFloatValue() : otherwise;
@@ -272,6 +272,81 @@ namespace synth::sfz
             out[n++] = &r;
         }
         return n;
+    }
+
+    float Region::pitchCents (float seconds, float releasedAt) const noexcept
+    {
+        auto cents = 0.0f;
+        const auto released = releasedAt >= 0.0f;
+        for (const auto& env : pitchEnvelopes)
+        {
+            const auto& points = env.points;
+            if (points.empty())
+                continue;
+            // Where the envelope is: held at its sustain point until the key lets go, then on from there.
+            auto t = seconds;
+            if (env.sustain >= 0 && env.sustain < (int) points.size())
+            {
+                auto sustainAt = 0.0f;
+                for (int k = 0; k <= env.sustain; ++k)
+                    sustainAt += points[(size_t) k].seconds;
+                if (! released)
+                    t = juce::jmin (t, sustainAt);
+                else if (releasedAt >= sustainAt)
+                    t = sustainAt + (seconds - releasedAt);
+            }
+            auto level = points.back().level;
+            auto start = 0.0f;
+            for (size_t k = 0; k < points.size(); ++k)
+            {
+                const auto& p = points[k];
+                const auto end = start + p.seconds;
+                if (t < end)
+                {
+                    if (k == 0)
+                        level = p.level;
+                    else
+                    {
+                        auto x = (t - start) / p.seconds;   // p.seconds > 0 here (t lies inside the segment)
+                        x = p.shape == Shape::squared ? x * x : p.shape == Shape::root ? std::sqrt (x) : x;
+                        level = points[k - 1].level + (p.level - points[k - 1].level) * x;
+                    }
+                    break;
+                }
+                start = end;
+            }
+            cents += level * env.cents;
+        }
+        if (lfoCents != 0.0f && seconds > lfoDelay)
+        {
+            const auto t = seconds - lfoDelay;
+            const auto fade = lfoFade > 0.0f ? juce::jmin (1.0f, t / lfoFade) : 1.0f;
+            cents += lfoCents * fade * std::sin (juce::MathConstants<float>::twoPi * lfoHz * t);
+        }
+        if (egCents != 0.0f)
+        {
+            // DELAY, ATTACK from START to the top, HOLD, DECAY to SUSTAIN; after release, to nothing over RELEASE.
+            const auto levelAt = [this] (float t)
+            {
+                if (t < egDelay)
+                    return egStart;
+                t -= egDelay;
+                if (t < egAttack)
+                    return egStart + (1.0f - egStart) * t / egAttack;
+                t -= egAttack;
+                if (t < egHold)
+                    return 1.0f;
+                t -= egHold;
+                if (t < egDecay)
+                    return 1.0f + (egSustain - 1.0f) * t / egDecay;
+                return egSustain;
+            };
+            auto level = levelAt (released ? releasedAt : seconds);
+            if (released)
+                level *= egRelease > 0.0f ? juce::jmax (0.0f, 1.0f - (seconds - releasedAt) / egRelease) : 0.0f;
+            cents += egCents * level;
+        }
+        return cents;
     }
 
     int Instrument::selectPedal (int pedal, float chance, const Region** out, int capacity) const noexcept
@@ -599,6 +674,80 @@ namespace synth::sfz
                     panPercent += amount * placeOf ("pan_curvecc", cc);
             }
             r.pan = juce::jlimit (-1.0f, 1.0f, panPercent / 100.0f);
+
+            // PITCH MOVEMENT and DELAY (1.2.0). An opcode plus what its _CCx / _ONCCx forms add at the controllers'
+            // starting values (amount x value / 127; the wheel and the pedal at 0, as they rest).
+            // The region's opcodes ending in "cc" and a number, found once (a koto has 19,000 regions).
+            std::vector<std::pair<juce::String, float>> ccOpcodes;   // the name less its number, the amount x the value / 127
+            for (const auto& [name, amount] : op)
+            {
+                auto digitsAt = name.length();
+                while (digitsAt > 0 && juce::CharacterFunctions::isDigit (name[digitsAt - 1]))
+                    --digitsAt;
+                if (digitsAt == name.length() || digitsAt < 3 || ! name.substring (digitsAt - 2, digitsAt).equalsIgnoreCase ("cc"))
+                    continue;
+                if (const auto cc = name.substring (digitsAt).getIntValue(); cc >= 0 && cc < 128 && cc != 1 && cc != 64)
+                    ccOpcodes.emplace_back (name.substring (0, digitsAt), amount.getFloatValue() * (float) ccStart[(size_t) cc] / 127.0f);
+            }
+            const auto withControllers = [&ccOpcodes] (const juce::String& base, float value)
+            {
+                for (const auto& [stem, add] : ccOpcodes)   // BASE_ONCCn, BASE_CCn, and SFZ 1's BASECCn
+                    if (stem.startsWith (base) && (stem.length() == base.length() + 2
+                                                   || stem.substring (base.length()) == "_cc" || stem.substring (base.length()) == "_oncc"))
+                        value += add;
+                return value;
+            };
+            const auto numberWith = [&] (const char* key, float otherwise) { return withControllers (key, number (op, key, otherwise)); };
+            for (int n = 1; n <= 64; ++n)
+            {
+                const auto eg = "eg" + juce::String (n) + "_";
+                if (! has (op, eg + "pitch") && ! has (op, eg + "pitch_oncc1"))
+                    continue;
+                Region::PitchEnvelope env;
+                env.cents = withControllers (eg + "pitch", number (op, eg + "pitch", 0.0f));
+                env.sustain = has (op, eg + "sustain") ? get (op, eg + "sustain").getIntValue() : -1;
+                for (int k = 0; k < 32; ++k)
+                {
+                    const auto time = eg + "time" + juce::String (k), level = eg + "level" + juce::String (k);
+                    if (! has (op, time) && ! has (op, level))
+                        break;
+                    Region::PitchPoint p;
+                    p.seconds = juce::jmax (0.0f, withControllers (time, number (op, time, 0.0f)));
+                    p.level = juce::jlimit (-1.0f, 1.0f, withControllers (level, number (op, level, 0.0f)));
+                    const auto curve = get (op, eg + "curve" + juce::String (k), "0").getIntValue();
+                    p.shape = curve == 4 ? Region::Shape::squared : curve == 5 ? Region::Shape::root : Region::Shape::straight;
+                    env.points.push_back (p);
+                }
+                if (env.cents != 0.0f && ! env.points.empty())
+                    r.pitchEnvelopes.push_back (std::move (env));
+            }
+            r.lfoCents = numberWith ("pitchlfo_depth", 0.0f);
+            r.lfoHz = juce::jmax (0.0f, numberWith ("pitchlfo_freq", 0.0f));
+            r.lfoDelay = juce::jmax (0.0f, numberWith ("pitchlfo_delay", 0.0f));
+            r.lfoFade = juce::jmax (0.0f, numberWith ("pitchlfo_fade", 0.0f));
+            if (r.lfoHz <= 0.0f)
+                r.lfoCents = 0.0f;
+            r.egCents = numberWith ("pitcheg_depth", 0.0f);
+            r.egDelay = juce::jmax (0.0f, numberWith ("pitcheg_delay", 0.0f));
+            r.egStart = juce::jlimit (0.0f, 1.0f, numberWith ("pitcheg_start", 0.0f) / 100.0f);
+            r.egAttack = juce::jmax (0.0f, numberWith ("pitcheg_attack", 0.0f));
+            r.egHold = juce::jmax (0.0f, numberWith ("pitcheg_hold", 0.0f));
+            r.egDecay = juce::jmax (0.0f, numberWith ("pitcheg_decay", 0.0f));
+            r.egSustain = juce::jlimit (0.0f, 1.0f, numberWith ("pitcheg_sustain", 0.0f) / 100.0f);
+            r.egRelease = juce::jmax (0.0f, numberWith ("pitcheg_release", 0.0f));
+            r.delaySeconds = juce::jmax (0.0f, numberWith ("delay", 0.0f));
+            r.delayRandom = juce::jmax (0.0f, number (op, "delay_random", 0.0f));
+            // A layer silent from the start at its controllers' starting values (1.2.0: the koto's "degree" scrapes,
+            // which a controller left at 0 holds at 0.001% after 1 ms): left out, as the envelopes that silence it
+            // aren't played here. Only one that falls that far within 5 ms (no library before the koto has any).
+            if (has (op, "ampeg_sustain") && numberWith ("ampeg_sustain", 100.0f) <= 0.01f
+                && numberWith ("ampeg_decay", 0.0f) <= 0.005f && numberWith ("ampeg_attack", 0.0f) <= 0.005f
+                && numberWith ("ampeg_hold", 0.0f) <= 0.005f)
+            {
+                if (leftOutSeen.insert ("silent").second)
+                    inst->problems.add ("left out: layers silent at their controllers' starting values");
+                continue;
+            }
             const auto& sample = *inst->samples[(size_t) index];
             r.offset = (int) juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, sample.length - 1),
                                                          get (op, "offset", "0").getLargeIntValue());

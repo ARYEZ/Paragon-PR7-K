@@ -226,6 +226,94 @@ TEST_CASE ("SFZ: each key plays its region at the right pitch, with TUNE, PITCH_
     }
 }
 
+TEST_CASE ("SFZ: flex pitch envelopes bend a note as the koto's presses do; their sustain point waits for the release (1.2.0)", "[sfz]")
+{
+    Folder f;
+    writeSine (f.dir.getChildFile ("tone.wav"), 480.0, 3.0);
+    // Tsuki-iro as Unreal Instruments' koto writes it: two envelopes at levels the file gives as -200 / -100 (read as
+    // -1, the end of the range), +200 cents on the first and -200 on the second, so together they rest at 0, push up a
+    // whole tone after 0.1 s and let go again after 0.3 s. Times on another controller at its starting value.
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<control> set_cc26=127\n"
+        "<group> eg15_pitch=200 eg15_sustain=2 eg15_time0=0 eg15_level0=-200 eg15_curve0=4 eg15_time1=0.05 eg15_time1_oncc26=0.05\n"
+        " eg15_level1=-100 eg15_time2=0.1 eg15_level2=0 eg15_curve2=4\n"
+        " eg16_pitch=-200 eg16_sustain=2 eg16_time0=0 eg16_level0=-200 eg16_time1=0.3 eg16_level1=-100 eg16_time2=0.1 eg16_level2=0\n"
+        "<region> sample=tone.wav key=60 pitch_keycenter=60\n"
+        "<group>\n"
+        "<region> sample=tone.wav key=62 pitch_keycenter=62 eg1_pitch=1200 eg1_sustain=1 eg1_time0=0 eg1_level0=0"
+        " eg1_time1=0.05 eg1_level1=1 eg1_time2=0.1 eg1_level2=0 eg1_curve2=5\n"));
+    REQUIRE (inst != nullptr);
+    const auto at = [] (double seconds) { return (size_t) (seconds * sampleRate); };
+    {
+        SfzPlayer p (inst.get());
+        p.on (60);
+        const auto out = p.render (0.8);
+        const auto cents = [&] (double from, double to) { return 1200.0 * std::log2 (frequency (out[0], at (from), at (to)) / 480.0); };
+        CHECK_THAT (cents (0.01, 0.09), WithinAbs (0.0, 1.0));     // resting on the note
+        CHECK_THAT (cents (0.21, 0.29), WithinAbs (200.0, 1.0));   // pushed up a whole tone
+        CHECK_THAT (cents (0.45, 0.75), WithinAbs (0.0, 1.0));     // let go
+        const auto rising = cents (0.11, 0.19);                    // on the way up: between, held low first (squared)
+        CHECK (rising > 5.0);
+        CHECK (rising < 100.0);
+    }
+    {
+        // Held at the sustain point (an octave up) until the key lets go, then back down over 0.1 s.
+        SfzPlayer p (inst.get());
+        p.settings.amp.envelope.releaseMs = 2000.0f;
+        p.on (62);
+        auto held = p.render (0.6);
+        const auto hz = 480.0 * 2.0;
+        CHECK_THAT (frequency (held[0], at (0.1), at (0.6)), WithinAbs (hz, 0.5));
+        p.off (62);
+        const auto after = p.render (0.4);
+        CHECK_THAT (frequency (after[0], at (0.15), at (0.4)), WithinAbs (480.0, 0.3));
+    }
+}
+
+TEST_CASE ("SFZ: PITCHLFO and PITCHEG move a note; DELAY and DELAY_CCn hold it back (1.2.0)", "[sfz]")
+{
+    Folder f;
+    writeSine (f.dir.getChildFile ("tone.wav"), 480.0, 3.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir,
+        "<control> set_cc24=127 set_cc20=127\n"
+        "<region> sample=tone.wav key=60 pitch_keycenter=60 pitchlfo_depth=100 pitchlfo_freq=1 pitchlfo_freqcc24=3 pitchlfo_delay=0.2\n"
+        "<region> sample=tone.wav key=62 pitch_keycenter=62 pitcheg_depth=1200 pitcheg_delay=0.1 pitcheg_attack=0.1 pitcheg_sustain=100\n"
+        "<region> sample=tone.wav key=64 pitch_keycenter=64 delay=0.1 delay_cc20=0.1\n"));
+    REQUIRE (inst != nullptr);
+    const auto at = [] (double seconds) { return (size_t) (seconds * sampleRate); };
+    {
+        // 4 Hz (1 + 3 x cc24 at 127), +-100 cents, after 0.2 s.
+        SfzPlayer p (inst.get());
+        p.on (60);
+        const auto out = p.render (1.2);
+        CHECK_THAT (frequency (out[0], at (0.01), at (0.19)), WithinAbs (480.0, 0.2));
+        CHECK_THAT (frequency (out[0], at (0.2), at (1.2)), WithinAbs (480.0, 2.0));   // four whole cycles: centred
+        const auto up = 1200.0 * std::log2 (frequency (out[0], at (0.2 + 0.035), at (0.2 + 0.09)) / 480.0);
+        const auto down = 1200.0 * std::log2 (frequency (out[0], at (0.2 + 0.16), at (0.2 + 0.215)) / 480.0);
+        CHECK (up > 80.0);
+        CHECK (up < 101.0);
+        CHECK (down < -80.0);
+        CHECK (down > -101.0);
+    }
+    {
+        // An octave up by 0.2 s, held there (SUSTAIN 100%).
+        SfzPlayer p (inst.get());
+        p.on (62);
+        const auto out = p.render (0.6);
+        CHECK_THAT (frequency (out[0], at (0.01), at (0.09)), WithinAbs (480.0, 0.3));
+        CHECK_THAT (frequency (out[0], at (0.25), at (0.6)), WithinAbs (960.0, 0.5));
+    }
+    {
+        // Silent for 0.2 s (DELAY 0.1 + DELAY_CC20 0.1 at 127), then the sample from its start.
+        SfzPlayer p (inst.get());
+        p.on (64);
+        const auto out = p.render (0.5);
+        CHECK (rms (out[0], 0, at (0.195)) == 0.0);
+        CHECK (rms (out[0], at (0.21), at (0.5)) > 0.2);
+        CHECK_THAT (frequency (out[0], at (0.22), at (0.5)), WithinAbs (480.0, 0.3));
+    }
+}
+
 TEST_CASE ("SFZ: SFZ KEY plays one key's samples, at their own pitch, from every key (0.81.0)", "[sfz]")
 {
     // A drum kit maps each drum to a key; SFZ KEY lets any key play the snare (key 40 here, a C4 "drum").
@@ -1625,5 +1713,62 @@ TEST_CASE ("SFZ: load times of the libraries' instruments", "[.loadtimes]")
         WARN (library->name << " / " << path << ": " << (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 << " s, "
               << (instrument != nullptr ? (int) instrument->regions.size() : -1) << " regions, "
               << (instrument != nullptr ? instrument->unreadable : -1) << " unreadable");
+    }
+}
+
+TEST_CASE ("SFZ: the koto's styles load, and its bends move the pitch as the file says (report)", "[.kotocheck]")
+{
+    // PARAGON_KOTO: the unpacked koto's "#KOTO.sfz". Prints what was left out, the styles, and each bend's pitch
+    // (cents from the note, every 20 ms, by zero crossings of the low-passed sound: it shows the shape, not exact
+    // cents; the koto's D4 has its second harmonic 6.7 dB over its fundamental, so the readings sit near +1200).
+    const juce::File file (juce::SystemStats::getEnvironmentVariable ("PARAGON_KOTO", {}));
+    if (! file.existsAsFile())
+        return;
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    const auto inst = synth::sfz::load (file);
+    REQUIRE (inst != nullptr);
+    WARN ("loaded in " << (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 << " s: " << (int) inst->regions.size()
+          << " regions, " << (int) inst->samples.size() << " samples, " << inst->unreadable << " unreadable, keys "
+          << inst->loKey << "-" << inst->hiKey << "\n" << inst->problems.joinIntoString ("\n"));
+    juce::String styles;
+    for (const auto& [key, label] : inst->switchLabels)
+        styles << key << " " << label << "  ";
+    WARN ("styles: " << styles);
+    for (const auto sw : { 31, 36, 43 })
+    {
+        std::array<const synth::sfz::Region*, 8> chosen {};
+        juce::String names;
+        for (int turn = 0; turn < 2; ++turn)
+        {
+            const auto n = inst->select (62, 127, false, turn, 0.5f, 0, chosen.data(), (int) chosen.size(), sw);
+            names << "turn " << turn << ": " << n << " [";
+            for (int k = 0; k < n; ++k)
+                names << inst->samples[(size_t) chosen[(size_t) k]->sample]->file.getFileName() << " sw" << chosen[(size_t) k]->switchKey
+                      << " v" << chosen[(size_t) k]->loVel << "-" << chosen[(size_t) k]->hiVel << " pe" << (int) chosen[(size_t) k]->pitchEnvelopes.size()
+                      << " d" << chosen[(size_t) k]->delaySeconds << ", ";
+            names << "] ";
+        }
+        WARN ("switch " << sw << ": " << names);
+    }
+    for (const auto& [key, label] : inst->switchLabels)
+    {
+        SfzPlayer p (inst.get());
+        p.on (key);       // the switch
+        p.render (0.01);
+        p.off (key);
+        p.on (62);        // D4
+        auto out = p.render (0.9)[0];
+        // A one-pole low-pass at 600 Hz leaves the fundamental (D4, 294 Hz) to cross zero.
+        auto z = 0.0f;
+        const auto a = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 600.0f / (float) sampleRate);
+        for (auto& x : out)
+            x = (z += a * (x - z));
+        juce::String line;
+        for (double t = 0.02; t + 0.04 <= 0.9; t += 0.02)
+        {
+            const auto hz = frequency (out, (size_t) (t * sampleRate), (size_t) ((t + 0.04) * sampleRate));
+            line << (hz > 0.0 ? juce::String (juce::roundToInt (1200.0 * std::log2 (hz / hzOf (62)))) : juce::String ("-")) << " ";
+        }
+        WARN (label << ": " << line);
     }
 }

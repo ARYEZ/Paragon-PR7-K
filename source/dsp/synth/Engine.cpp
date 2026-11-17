@@ -1128,11 +1128,17 @@ namespace synth
     {
         if (voice.source == tailSource)
             return;
-        // LOOP_SUSTAIN (0.73.0): those samples stop going round and play on past their loop.
+        // LOOP_SUSTAIN (0.73.0): those samples stop going round and play on past their loop; (1.2.0) their pitch
+        // envelopes go on past their sustain point.
         for (auto& osc : voice.oscillators)
             for (auto& player : osc.players)
-                if (player.region != nullptr && player.region->loop == sfz::Region::Loop::sustain)
-                    player.looping = false;
+                if (player.region != nullptr)
+                {
+                    if (player.region->loop == sfz::Region::Loop::sustain)
+                        player.looping = false;
+                    if (player.releasedAt < 0.0f)
+                        player.releasedAt = juce::jmax (0.0f, player.age);
+                }
         // SFZ: the release samples of its sampled oscillators, played in a voice of their own (startTails).
         // Samples whose AMPEG_RELEASE outlasts the AMP's (a piano's undamped top strings) go with them, falling over
         // their own release (60 dB in that time) from the level the AMP had reached.
@@ -3288,6 +3294,9 @@ namespace synth
             player->fadeStep = 0.0f;
             player->decay = 1.0f;
             player->wheel = -1.0f;
+            // DELAY (1.2.0): the player waits this long (its age counts up to 0) before the sample starts.
+            player->age = -(region.delaySeconds + region.delayRandom * random.nextFloat());
+            player->releasedAt = -1.0f;
             std::fill (std::begin (player->filterA), std::end (player->filterA), 0.0f);
             std::fill (std::begin (player->filterB), std::end (player->filterB), 0.0f);
             auto gain = region.gain * region.velocityGain (voice.velocity) * region.crossfade (velocity127);
@@ -3357,7 +3366,30 @@ namespace synth
             // Its speed: the key played against the region's PITCH_KEYCENTER (PITCH_KEYTRACK cents a key), its TUNE,
             // and the oscillator's pitch against the key (TRANSPOSE, FINE, bend, glide, vibrato...).
             const auto offset = (semitones - (float) osc.sfzPlayed) + ((float) osc.sfzKey - region.keyCenter) * region.keytrack + region.tuneSemitones;
-            const auto step = sample.sampleRate / sampleRate * std::exp2 ((double) offset / 12.0);
+            const auto baseStep = sample.sampleRate / sampleRate * std::exp2 ((double) offset / 12.0);
+            auto step = baseStep;
+            // DELAY (1.2.0): nothing until the player's age reaches 0.
+            int first = 0;
+            if (player.age < 0.0f)
+            {
+                if (player.fadeStep < 0.0f)   // replaced before it began: gone
+                {
+                    player.region = nullptr;
+                    continue;
+                }
+                const auto wait = (int) std::ceil (-player.age * (float) sampleRate);
+                if (wait >= n)
+                {
+                    player.age += (float) n / (float) sampleRate;
+                    continue;
+                }
+                first = wait;
+                player.age = 0.0f;
+            }
+            // PITCH MOVEMENT (1.2.0): the region's envelopes and LFO, worked out every 32 samples. Regions without
+            // any keep the step above exactly.
+            const auto moves = region.movesPitch();
+            const auto secondsPerSample = 1.0f / (float) sampleRate;
             const auto length = sample.length;
             const auto readable = player.stream >= 0 ? length : (juce::int64) sample.headFrames;
             const auto* headL = sample.head[0].data();
@@ -3398,8 +3430,11 @@ namespace synth
                 a2 = g * a1;
                 a3 = g * a2;
             }
-            for (int i = 0; i < n; ++i)
+            for (int i = first; i < n; ++i)
             {
+                if (moves && ((i - first) & 31) == 0)
+                    step = baseStep * std::exp2 ((double) region.pitchCents (player.age + (float) (i - first) * secondsPerSample,
+                                                                             player.releasedAt) / 1200.0);
                 const auto frame = (juce::int64) pos;
                 if (frame >= readable || player.fade <= 0.0f)
                 {
@@ -3461,6 +3496,7 @@ namespace synth
                     pos -= (double) loopLength * std::floor ((pos - (double) loopStart) / (double) loopLength);
             }
             player.position = pos;
+            player.age += (float) (n - first) * secondsPerSample;
             player.wheel = wheelTarget;
             if (player.region != nullptr && player.stream >= 0)
                 streamer->consumed (player.stream, juce::jmax ((juce::int64) 0, (juce::int64) pos - 2));

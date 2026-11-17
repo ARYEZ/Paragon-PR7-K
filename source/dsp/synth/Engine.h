@@ -159,6 +159,8 @@ namespace synth
             bool looping = false;                  // (0.73.0) going round its region's loop (loop_sustain: until released)
             float wheel = -1.0f;                   // (0.75.0) the mod wheel's part in its level as of the last block (-1: not yet)
             float filterA[2] {}, filterB[2] {};    // (0.75.0) its FILTER's state, each side
+            float age = 0.0f;                      // (1.2.0) seconds since its sample began (negative: DELAY still to wait)
+            float releasedAt = -1.0f;              // (1.2.0) its age when the key let go (-1: held): its pitch envelopes
         };
         static constexpr int maxSfzPlayers = 2 * sfz::maxPlayers;   // a note's regions, and the last note's fading out
         struct CheckCount   // (0.82.1) markSfzInUse's count, the next check's number: an atomic the engine can be moved with
