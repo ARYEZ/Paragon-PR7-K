@@ -681,6 +681,7 @@ private:
     synth::Engine engine;
     juce::MidiKeyboardState keyboardState;
     juce::MidiBuffer keyboardMidi;   // the DAW's MIDI plus the on-screen keyboard's, per block
+    juce::MidiBuffer onScreenMidi;   // (1.2.0) the on-screen keyboard's, gathered to the block's start
     std::atomic<int> activeVoices { 0 };
 
     // Smoothing stops zipper noise when OUTPUT or the preset's level moves.

@@ -19,6 +19,7 @@ Each version's notes appear on its GitHub Release page.
 - **RAR archives.** The koto is published as a RAR file, so the plugin can now unpack those too, with dmc_unrar, a free RAR reader by Sven Hesse (GPL). Every file is checked as it comes out.
 - **If Google Drive is busy.** The koto lives on Google Drive, which sometimes holds a file back for up to a day when many people have fetched it. The plugin now says so plainly; try again later.
 - Already-released sounds are unchanged: the new SFZ features only act on instruments that use them.
+- **On-screen keys start on time.** Notes played on the plugin's own keyboard now all start at the beginning of the audio block they arrive in. Before, JUCE spread them across the block by the millisecond each was pressed, so notes pressed together could start a few milliseconds apart. MIDI from your DAW is unchanged.
 
 ## 1.1.0
 
