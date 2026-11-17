@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 42> list
+    inline constexpr std::array<Expansion, 43> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -278,5 +278,13 @@ namespace expansions
           "reese that drops a gear on every note, ring-modulated sparks, cockpit bleeps and lasers. MACRO 3, WOBBLE: "
           "the dubstep wobble locked to your song, changing speed beat by beat, from a gentle pulse to talking filth. "
           "Our own sounds; no film, artist or song named." },
+        { "WICKED GAME", "WG",
+          "Trapped in a glade inside a giant maze whose walls move every night, the run through it, and the cold "
+          "laboratory behind it all. The camp: a lonely flute, warm strings by the fire, a drum and a bass struck on the "
+          "earth, a felt piano, a woody ostinato, a plucked rope. The maze: a driving lead, grinding stone walls, a "
+          "reese like machinery, a ticking clock, the chase's string ostinato, a trap snapping shut. The lab: a clinical "
+          "tone, a glass room, a cold pulse, glassy keys, data trickling, a needle. MACRO 3, RUNNER: every note you hold "
+          "struck again in time with your song, each fifth of the knob the next speed: quarters, eighths, sixteenths, "
+          "32nds, 64ths. Our own sounds; no film, book or music named." },
     }};
 }

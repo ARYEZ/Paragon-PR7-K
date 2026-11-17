@@ -15460,6 +15460,481 @@ namespace
                             [tracked] (Builder& s) { tracked (s, 0, 61, 61.0f - 36.0f - 24.0f); } });   // two octaves down: D4 a big drum near D2
         pkAdd (x, frame);
     }
+
+    // WICKED GAME (0.100.0, the owner's theme (a young-adult film series of boys trapped in a glade inside a giant
+    // shifting maze, the chase through it and the cold laboratory behind it) and the owner's name; no film, book,
+    // places, characters, creatures, terms or music on the plugin; our own sounds). Three columns in every category:
+    // the camp (the glade: wood, fire, a lonely flute), the maze (stone walls grinding, the run, the clock), the lab
+    // (clean, cold, clinical). MACRO 3, RUNNER (0.100.0): on at AMOUNT 0 (the preset as built), the macro to AMOUNT, so
+    // each fifth of the knob is the next speed (1/4, 1/8, 1/16, 1/32, 1/64), as the owner designed; each preset its own
+    // ACCENT and LIFT. Every preset keeps some sustain (a note at sustain 0 ends and can't be struck again), attacks
+    // short enough to speak at the fast speeds, and the arps carry a keys layer (RUNNER strikes keys, not arp notes).
+    struct Run
+    {
+        float accent = 0.4f, lift = 0.5f;
+    };
+    void runner (Builder& b, Run r)
+    {
+        b.set (ParamIDs::runnerOn, 1.0f).set (ParamIDs::runnerAmount, 0.0f).set (ParamIDs::runnerAccent, r.accent)
+         .set (ParamIDs::runnerLift, r.lift);
+        route (b, "macro3", ParamIDs::runnerAmount, 1.0f);   // the macro is AMOUNT: its fifths are the speeds
+    }
+
+    void wickedGame (Expansion x)
+    {
+        using DM = effects::Drive::Model;
+        using LW = synth::mod::LfoWave;
+        using AM = synth::arp::Mode;
+        const auto& upright = libraries::meatbass();
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto on = [] (Builder& b, int o, float wave, float volume)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", wave).osc (o, "Volume", volume);
+        };
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto lfo = [] (Builder& b, int l, LW wave, float hz)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Rate"), hz)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        const auto fm = [] (Builder& b, int o, float ratio, float amount)
+        {
+            b.osc (o, "FmSource", 0.0f).osc (o, "FmAmount", amount).osc (o, "ModGrid", 0.0f)
+             .osc (o, "ModRate", 0.5f + std::log2 (ratio) / 8.0f);
+        };
+        const auto finish = [] (Builder& b, RT room, float size, float mix)
+        {
+            macros (b, "BRIGHT", "SPACE", "RUNNER");
+            reverb (b, room, size, mix, 15.0f, 5.0f);
+            space (b);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto flute = x.make ("Lonely Flute", 1, { "Lead", "Camp", "Flute", "Breath" },
+            "A lonely flute over the glade at dusk: a sine and a soft triangle an octave up, breath through the filter, a "
+            "slow vibrato that comes in late, sliding between notes. Turn up RUNNER and every note you hold is tongued "
+            "faster and faster. MOD WHEEL: more breath. MACROS: BRIGHT, SPACE, RUNNER.");
+        flute.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "VibAmount", 14.0f).osc (0, "VibRate", 5.2f).osc (0, "VibFade", 600.0f).osc (0, "VibCurve", 0.5f);
+        on (flute, 1, triangle, 0.12f);
+        flute.osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f).osc (1, "VibAmount", 14.0f).osc (1, "VibRate", 5.2f).osc (1, "VibFade", 600.0f);
+        noiseOsc (flute, 2, 0.05f, 0.05f);
+        flute.filter (FilterType::lp12, 3500.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.6f)
+             .ampEnvelope (25.0f, 400.0f, 0.85f, 250.0f)
+             .mono (60.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        route (flute, "modWheel", ParamIDs::osc (2, "Volume"), 0.08f);
+        route (flute, "macro1", ParamIDs::fltCutoff, 0.18f);
+        delay (flute, "1/4", 0.3f, 0.1f, false, 4.0f);
+        finish (flute, RT::hall, 0.65f, 0.22f);
+        runner (flute, { 0.45f, 0.45f });
+        flute.set (ParamIDs::patchLevel, -4.3f);
+        orchestra (flute, { { { 3, "Woodwinds - Notation/Flute Solo 1 Sustain (looped).sfz", 1.0f, 0.0f } },
+                            {}, -1.0f,
+                            "A lonely flute over the glade at dusk: the orchestra's solo flute, looped so it holds, the "
+                            "synth's flute under it (a recorded flute speaks too slowly for RUNNER's fastest strikes: the "
+                            "synth's keeps them heard).",
+                            -1.0f, 400.0f, 0.85f, 250.0f, -1.0f,
+                            [] (Builder& s) { s.osc (0, "Volume", 0.3f).osc (1, "Volume", 0.06f); } });
+        x.add (flute);
+
+        auto run = x.make ("Runner Lead", 2, { "Lead", "Maze", "Saw", "Drive" },
+            "The run through the corridors: three saws and a square an octave down, driven, a filter that bites on each "
+            "note, quick glides, a short echo off the stone. Turn up RUNNER: the held note pounds like footsteps, then a "
+            "sprint. MOD WHEEL: vibrato. MACROS: BRIGHT, SPACE, RUNNER.");
+        run.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
+           .osc (0, "VibAmount", 0.0f).osc (0, "VibRate", 5.8f);
+        unison (run, 0, 3, 0.7f, 0.18f, 0.7f);
+        on (run, 1, pulse, 0.3f);
+        run.osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Insert", 1.0f);
+        run.filter (FilterType::lp24, 2600.0f, 0.3f, 0.35f).filterEnvelope (1.0f, 220.0f, 0.45f, 150.0f).set (ParamIDs::fltKey, 0.4f)
+           .ampEnvelope (2.0f, 250.0f, 0.85f, 150.0f)
+           .mono (25.0f);
+        drive (run, 0, DM::skyline, 4.0f, 6.0f, -1.0f, 0.2f, 0.2f);
+        pkVelocity (run, 0.5f, 0.2f, 0.4f);
+        route (run, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (run, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (run, "1/8", 0.25f, 0.12f, true, 4.0f);
+        finish (run, RT::room, 0.4f, 0.12f);
+        runner (run, { 0.4f, 0.5f });
+        run.set (ParamIDs::patchLevel, 2.1f);
+        x.add (run);
+
+        auto signal = x.make ("Clinical Signal", 3, { "Lead", "Lab", "Sine", "FM" },
+            "The lab's monitor tone: a pure sine with a cold glass edge of FM at three times its pitch, no vibrato, a "
+            "sine two octaves up just audible, a white digital room. RUNNER makes it beep like an instrument on a bench. "
+            "MOD WHEEL: more glass. MACROS: BRIGHT, SPACE, RUNNER.");
+        signal.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f);
+        fm (signal, 0, 3.0f, 0.05f);
+        on (signal, 1, sine, 0.06f);
+        signal.osc (1, "Transpose", 24.0f).osc (1, "PhaseRand", 0.0f);
+        signal.set (ParamIDs::fltOn, 0.0f)
+              .ampEnvelope (3.0f, 200.0f, 0.9f, 200.0f)
+              .mono (0.0f);
+        route (signal, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (signal, "macro1", ParamIDs::osc (1, "Volume"), 0.12f);
+        delay (signal, "1/8 dotted", 0.3f, 0.12f, true, 6.0f);
+        finish (signal, RT::digital, 0.5f, 0.18f);
+        runner (signal, { 0.3f, 0.7f });
+        signal.set (ParamIDs::patchLevel, -2.4f);
+        x.add (signal);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto dusk = x.make ("Firelight Dusk", 4, { "Pad", "Camp", "Strings", "Warm" },
+            "Evening in the glade: warm strings (five soft saws, each player its own vibrato) and a triangle an octave "
+            "down, the filter low and glowing, a slow chorus, a wide hall. Hold chords; RUNNER makes them pulse, then "
+            "tremble. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, RUNNER.");
+        dusk.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        pkSection (dusk, 0, 5, 0.25f, 10.0f, 5.0f, 400.0f);
+        on (dusk, 1, triangle, 0.35f);
+        dusk.osc (1, "Transpose", -12.0f);
+        dusk.filter (FilterType::lp24, 1600.0f, 0.1f, 0.15f).filterEnvelope (20.0f, 900.0f, 0.7f, 900.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (20.0f, 800.0f, 0.9f, 900.0f);
+        chorus (dusk, ParamIDs::modIds, MT::dimension, 0.25f, 0.5f, 0.4f);
+        route (dusk, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (dusk, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (dusk, RT::hall, 0.8f, 0.25f);
+        runner (dusk, { 0.35f, 0.7f });
+        dusk.set (ParamIDs::patchLevel, -7.5f);
+        orchestra (dusk, { { { 3, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f, true } },
+                           {}, -5.3f,
+                           "Evening in the glade: the orchestra's strings over the synth's own, RUNNER re-bowing both.",
+                           -1.0f, 800.0f, 0.9f, 900.0f, -1.0f,
+                           [] (Builder& s) { s.osc (0, "Volume", 0.25f).osc (1, "Volume", 0.2f); } });
+        x.add (dusk);
+
+        auto walls = x.make ("Shifting Walls", 5, { "Pad", "Maze", "Stone", "Grind" },
+            "The walls moving at night: two banks of saws fifteen cents apart grinding, a tube shaper, grit in the noise, "
+            "a dark filter heaving on its own, a long cold hall. Slow, heavy chords; RUNNER turns the grind into a "
+            "machine. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, RUNNER.");
+        walls.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        unison (walls, 0, 4, 0.8f, 0.2f, 0.9f);
+        on (walls, 1, saw, 0.4f);
+        walls.osc (1, "Fine", -15.0f).osc (1, "Transpose", -12.0f);
+        unison (walls, 1, 3, 0.7f, 0.2f, 0.8f);
+        noiseOsc (walls, 2, 0.06f, 0.35f);
+        walls.filter (FilterType::lp24, 1100.0f, 0.25f, 0.1f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (15.0f, 1000.0f, 0.9f, 1400.0f)
+             .shaper (0, synth::ShaperModel::tube, 0.35f);
+        lfo (walls, 0, LW::smoothRandom, 0.25f);
+        route (walls, "lfo1", ParamIDs::fltCutoff, 0.12f);
+        route (walls, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (walls, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (walls, RT::hall, 0.85f, 0.28f);
+        runner (walls, { 0.45f, 0.75f });
+        walls.set (ParamIDs::patchLevel, -12.1f);
+        orchestra (walls, { { { 3, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f, true } },
+                            {}, -14.3f,
+                            "The walls moving at night, a choir somewhere inside them: the orchestra's large choir under "
+                            "the grinding saws.",
+                            -1.0f, 1000.0f, 0.9f, 1400.0f, -1.0f,
+                            [] (Builder& s) { s.osc (0, "Volume", 0.3f).osc (1, "Volume", 0.25f); } });
+        x.add (walls);
+
+        auto room = x.make ("Observation Room", 6, { "Pad", "Lab", "Glass", "Cold" },
+            "Behind the glass: a cold wavetable pad of soft digital vowels, a sine a twelfth up ring-modulated into a "
+            "faint metal, a slow drift in the table, a white digital room. Hold chords; RUNNER makes it read out like "
+            "data. MOD WHEEL: more metal. MACROS: BRIGHT, SPACE, RUNNER.");
+        room.osc (0, "Wave", wavetable).osc (0, "Table", table ("Vowels")).osc (0, "WtIndex", 0.3f).osc (0, "Volume", 0.5f);
+        unison (room, 0, 4, 0.7f, 0.12f, 1.0f);
+        on (room, 1, sine, 0.1f);
+        room.osc (1, "Transpose", 19.0f).osc (1, "AmAmount", 0.7f).osc (1, "AmShape", 0.0f).osc (1, "ModGrid", 0.0f)
+            .osc (1, "ModRate", 0.683f);
+        room.filter (FilterType::lp12, 4500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+            .ampEnvelope (15.0f, 900.0f, 0.9f, 1200.0f);
+        lfo (room, 0, LW::sine, 0.1f);
+        route (room, "lfo1", ParamIDs::osc (0, "WtIndex"), 0.2f);
+        route (room, "modWheel", ParamIDs::osc (1, "Volume"), 0.12f);
+        route (room, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (room, "1/4 dotted", 0.35f, 0.12f, true, 6.0f);
+        finish (room, RT::digital, 0.75f, 0.25f);
+        runner (room, { 0.3f, 0.65f });
+        room.set (ParamIDs::patchLevel, -5.8f);
+        x.add (room);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto drum = x.make ("Earth Drum Bass", 7, { "Bass", "Camp", "Drum", "Sine" },
+            "A drum and a bass in one, struck on the earth: a sine that thumps in from an octave up, a skin's noise on "
+            "the hit, a triangle for its tone. Hold the root and turn up RUNNER: a drummer by the fire, then a roll. MOD "
+            "WHEEL: harder hits. MACROS: BRIGHT, SPACE, RUNNER.");
+        drum.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f);
+        on (drum, 1, triangle, 0.25f);
+        drum.osc (1, "PhaseRand", 0.0f);
+        pkStrike (drum, 2, 1, 0.35f, 30.0f, 0.4f);
+        pkBend (drum, 12.0f, 0.06f, -0.7f);
+        drum.filter (FilterType::lp12, 700.0f, 0.1f, 0.4f).filterEnvelope (0.0f, 120.0f, 0.2f, 100.0f).set (ParamIDs::fltKey, 0.3f)
+            .ampEnvelope (1.0f, 350.0f, 0.35f, 150.0f).set (ParamIDs::ampDecayCurve, -0.5f)
+            .mono (0.0f);
+        pkVelocity (drum, 0.5f, 0.2f, 0.5f);
+        route (drum, "modWheel", ParamIDs::osc (2, "Volume"), 0.2f);
+        route (drum, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (drum, RT::room, 0.4f, 0.08f);
+        runner (drum, { 0.5f, 0.4f });
+        drum.set (ParamIDs::patchLevel, -0.5f);
+        orchestra (drum, { { { 1, "Strings - Notation/Celli Staccato.sfz", 1.0f, -0.1f },
+                             { 3, "Strings - Notation/Basses Staccato.sfz", 1.0f, 0.1f } },
+                           { 1 }, 3.9f,
+                           "A drum and a bass in one: the orchestra's cellos and basses played short over the synth's "
+                           "thumping sine; RUNNER bows them again on each strike, the chase's ostinato.",
+                           1.0f, 350.0f, 0.35f, 150.0f, -1.0f,
+                           [] (Builder& s) { s.osc (0, "Volume", 0.45f); } });
+        x.add (drum);
+
+        auto grinder = x.make ("Stone Grinder", 8, { "Bass", "Maze", "Reese", "Grind" },
+            "Stone on stone: two saws eighteen cents apart phasing, a diode shaper, a driven bus, a clean sine underneath "
+            "holding the floor. Hold the root; RUNNER turns it into machinery. MOD WHEEL: opens the filter. MACROS: "
+            "BRIGHT, SPACE, RUNNER.");
+        grinder.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f);
+        unison (grinder, 0, 2, 0.6f, 0.15f, 0.6f);
+        on (grinder, 1, saw, 0.45f);
+        grinder.osc (1, "Fine", -18.0f).osc (1, "Insert", 1.0f);
+        on (grinder, 2, sine, 0.45f);
+        grinder.osc (2, "Transpose", -12.0f).osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f);
+        grinder.filter (FilterType::lp24, 800.0f, 0.25f, 0.3f).filterEnvelope (1.0f, 300.0f, 0.5f, 150.0f).set (ParamIDs::fltKey, 0.3f)
+               .ampEnvelope (2.0f, 300.0f, 0.9f, 150.0f)
+               .shaper (0, synth::ShaperModel::diode, 0.35f)
+               .mono (20.0f);
+        drive (grinder, 0, DM::rabid, 3.0f, 5.0f, -4.0f, 0.0f, 0.1f);
+        route (grinder, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (grinder, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (grinder, RT::room, 0.3f, 0.0f);
+        runner (grinder, { 0.4f, 0.55f });
+        grinder.set (ParamIDs::patchLevel, -4.5f);
+        x.add (grinder);
+
+        auto pulseBass = x.make ("Cold Pulse Bass", 9, { "Bass", "Lab", "Square", "Clean" },
+            "The lab's machinery humming: a clean square and a sine an octave down through a tight filter that clicks "
+            "open on each note, nothing warm in it. RUNNER sets it ticking like a pump. MOD WHEEL: opens the filter. "
+            "MACROS: BRIGHT, SPACE, RUNNER.");
+        pulseBass.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.5f);
+        on (pulseBass, 1, sine, 0.45f);
+        pulseBass.osc (1, "Transpose", -12.0f).osc (1, "Filter", 0.0f).osc (1, "PhaseRand", 0.0f);
+        pulseBass.filter (FilterType::lp24, 600.0f, 0.2f, 0.35f).filterEnvelope (1.0f, 180.0f, 0.3f, 100.0f).set (ParamIDs::fltKey, 0.4f)
+                 .ampEnvelope (1.0f, 250.0f, 0.8f, 100.0f)
+                 .mono (0.0f);
+        route (pulseBass, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (pulseBass, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (pulseBass, "1/16", 0.15f, 0.06f, false, 4.0f);
+        finish (pulseBass, RT::room, 0.3f, 0.0f);
+        runner (pulseBass, { 0.35f, 0.6f });
+        pulseBass.set (ParamIDs::patchLevel, -3.9f);
+        x.add (pulseBass);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto campfire = x.make ("Campfire Piano", 10, { "Keys", "Camp", "Piano", "Felt" },
+            "A soft piano by the fire: felt hammers, a warm room, a little sustain so held chords keep ringing. Turn up "
+            "RUNNER and the chords are struck again, steady as a heartbeat, then racing. MOD WHEEL: the felt's noise. "
+            "MACROS: BRIGHT, SPACE, RUNNER.");
+        feltPiano (campfire);
+        dropMacro3 (campfire);
+        campfire.set (ParamIDs::fltCutoff, 1300.0f).set (ParamIDs::ampSustain, 0.12f);
+        macros (campfire, "BRIGHT", "SPACE", "RUNNER");
+        reverb (campfire, RT::room, 0.5f, 0.18f, 10.0f, 4.0f);
+        space (campfire);
+        runner (campfire, { 0.4f, 0.5f });
+        campfire.set (ParamIDs::patchLevel, -8.6f);
+        grand (campfire, { 4, 3500.0f, 0.4f, 0.4f, 4.3f, 1.0f, 0.0f, 300.0f, 1.0f, 600.0f,
+                           "A soft piano by the fire: the Salamander Grand through a gentle felt.", {} });
+        x.add (campfire);
+
+        auto clock = x.make ("Wall Clock", 11, { "Keys", "Maze", "Mallet", "Tick" },
+            "The clock before the doors close: a wooden mallet (a sine struck with FM at 2.76, its overtone dying fast), a "
+            "tick of noise on every strike, a little sustain left ringing. RUNNER is the clock running out. MOD WHEEL: "
+            "harder mallets. MACROS: BRIGHT, SPACE, RUNNER.");
+        clock.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f);
+        fm (clock, 0, 2.76f, 0.04f);
+        pkShot (clock, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.15f, 0.0f, 0.0f } });
+        route (clock, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
+        on (clock, 1, sine, 0.15f);
+        clock.osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f);
+        pkStrike (clock, 2, 1, 0.3f, 6.0f, 0.1f);
+        clock.filter (FilterType::lp12, 5000.0f, 0.1f, 0.2f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (1.0f, 500.0f, 0.15f, 300.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkVelocity (clock, 0.0f, 0.2f, 0.5f);
+        route (clock, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (clock, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (clock, "1/8", 0.25f, 0.1f, true, 5.0f);
+        finish (clock, RT::room, 0.4f, 0.12f);
+        runner (clock, { 0.5f, 0.4f });
+        clock.set (ParamIDs::patchLevel, -5.5f);
+        x.add (clock);
+
+        auto glass = x.make ("Glass Lab Keys", 12, { "Keys", "Lab", "FM", "Glass" },
+            "Clean keys in a clean room: a sine struck by a bright FM tine fourteen times its pitch that fades in a "
+            "quarter of a second, a sine an octave up, a wide chorus. RUNNER makes them chatter like instruments. MOD "
+            "WHEEL: brighter tine. MACROS: BRIGHT, SPACE, RUNNER.");
+        glass.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f);
+        fm (glass, 0, 14.0f, 0.03f);
+        pkShot (glass, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.25f, 0.0f, 0.0f } });
+        route (glass, "env1", ParamIDs::osc (0, "FmAmount"), 0.22f);
+        on (glass, 1, sine, 0.18f);
+        glass.osc (1, "Transpose", 12.0f).osc (1, "PhaseRand", 0.0f);
+        glass.filter (FilterType::lp12, 6000.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (1.0f, 1100.0f, 0.3f, 400.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkVelocity (glass, 0.0f, 0.2f, 0.5f);
+        chorus (glass, ParamIDs::modIds, MT::dimension, 0.35f, 0.5f, 0.4f);
+        route (glass, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (glass, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (glass, RT::digital, 0.5f, 0.18f);
+        runner (glass, { 0.35f, 0.5f });
+        glass.set (ParamIDs::patchLevel, -2.9f);
+        x.add (glass);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto woodcut = x.make ("Woodcut Ostinato", 13, { "Arp", "Camp", "Pluck", "Ostinato" },
+            "Work in the glade: a woody plucked saw arpeggiated up and down in sixteenths, and under it a soft triangle "
+            "holding the chord on the keys (RUNNER strikes that one: the arp keeps its own time). MOD WHEEL: opens the "
+            "filter. MACROS: BRIGHT, SPACE, RUNNER.");
+        woodcut.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        arpOn (woodcut, { 0 }, AM::upDown, "1/16", 1.0f, 0.5f);
+        on (woodcut, 1, triangle, 0.3f);
+        woodcut.osc (1, "Transpose", -12.0f);
+        woodcut.filter (FilterType::lp24, 1800.0f, 0.2f, 0.45f).filterEnvelope (1.0f, 160.0f, 0.15f, 100.0f).set (ParamIDs::fltKey, 0.5f)
+               .ampEnvelope (1.0f, 300.0f, 0.4f, 150.0f);
+        route (woodcut, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (woodcut, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (woodcut, "1/8 dotted", 0.25f, 0.1f, true, 4.0f);
+        finish (woodcut, RT::room, 0.45f, 0.12f);
+        runner (woodcut, { 0.45f, 0.5f });
+        woodcut.set (ParamIDs::patchLevel, 2.3f);
+        orchestra (woodcut, { { { 0, "Strings - Notation/All Strings Staccato.sfz", 1.0f, 0.0f } },
+                              { 0 }, 2.2f,
+                              "Work in the glade: the orchestra's strings playing short on the arp, the synth's triangle "
+                              "holding the chord under it.",
+                              1.0f, 300.0f, 0.4f, 150.0f, -1.0f, {} });
+        x.add (woodcut);
+
+        auto chase = x.make ("Chase Ostinato", 14, { "Arp", "Maze", "Strings", "Ostinato" },
+            "The chase: synth strings bowing short notes up two octaves in sixteenths, accented on the beat, and a low "
+            "saw holding the root on the keys. Turn up RUNNER and the low strings drive faster and faster under the "
+            "arp. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, RUNNER.");
+        chase.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        pkSection (chase, 0, 3, 0.15f, 6.0f, 5.5f, 100.0f);
+        arpOn (chase, { 0 }, AM::up, "1/16", 2.0f, 0.45f);
+        {
+            auto& blocks = chase.rig.modulation.arps[0].patterns[0].blocks;
+            for (int k = 0; k < 16; ++k)
+                blocks[(size_t) k].velocity = k % 4 == 0 ? 1.0f : 0.7f;
+        }
+        on (chase, 1, saw, 0.35f);
+        chase.osc (1, "Transpose", -12.0f);
+        chase.filter (FilterType::lp24, 2400.0f, 0.15f, 0.4f).filterEnvelope (1.0f, 150.0f, 0.3f, 100.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (2.0f, 250.0f, 0.5f, 120.0f);
+        pkVelocity (chase, 0.4f, 0.2f, 0.5f);
+        route (chase, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (chase, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (chase, RT::hall, 0.6f, 0.15f);
+        runner (chase, { 0.5f, 0.5f });
+        chase.set (ParamIDs::patchLevel, -1.4f);
+        orchestra (chase, { { { 0, "Strings - Notation/Celli Staccato.sfz", 1.0f, -0.1f },
+                              { 2, "Strings - Notation/Basses Staccato.sfz", 1.0f, 0.1f } },
+                            { 0 }, 1.0f,
+                            "The chase: the orchestra's cellos and basses playing short on the arp, the synth's low saw "
+                            "on the keys under them.",
+                            1.0f, 250.0f, 0.5f, 120.0f, -1.0f,
+                            [] (Builder& s) { s.osc (2, "Arp", 1.0f); } });
+        x.add (chase);
+
+        auto trickle = x.make ("Data Trickle", 15, { "Arp", "Lab", "Sine", "Random" },
+            "Readouts: sine blips jumping at random over two octaves in sixteenths, each with a tick of FM, and a soft "
+            "sine pad holding the chord on the keys. RUNNER turns the pad into a stream of data. MOD WHEEL: more FM. "
+            "MACROS: BRIGHT, SPACE, RUNNER.");
+        trickle.osc (0, "Wave", sine).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f).osc (0, "Transpose", 12.0f);
+        fm (trickle, 0, 4.0f, 0.04f);
+        arpOn (trickle, { 0 }, AM::random, "1/16", 2.0f, 0.3f);
+        on (trickle, 1, sine, 0.3f);
+        unison (trickle, 1, 3, 0.6f, 0.08f, 0.9f);
+        trickle.set (ParamIDs::fltOn, 0.0f)
+               .ampEnvelope (1.0f, 200.0f, 0.5f, 150.0f);
+        route (trickle, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (trickle, "macro1", ParamIDs::osc (0, "FmAmount"), 0.1f);
+        delay (trickle, "1/16", 0.35f, 0.15f, true, 6.0f);
+        finish (trickle, RT::digital, 0.5f, 0.18f);
+        runner (trickle, { 0.3f, 0.6f });
+        trickle.set (ParamIDs::patchLevel, -2.3f);
+        x.add (trickle);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto rope = x.make ("Rope Pluck", 16, { "Pluck", "Camp", "Wood", "String" },
+            "A rope pulled tight and plucked: a triangle and a soft saw through a filter snapping shut, a thump of wood, a "
+            "little ring left. RUNNER plucks what you hold again and again. MOD WHEEL: opens the filter. MACROS: BRIGHT, "
+            "SPACE, RUNNER.");
+        rope.osc (0, "Wave", triangle).osc (0, "Volume", 0.55f);
+        on (rope, 1, saw, 0.25f);
+        rope.osc (1, "Fine", 5.0f);
+        pkStrike (rope, 2, 0, 0.25f, 15.0f, 0.5f);
+        rope.filter (FilterType::lp24, 900.0f, 0.15f, 0.55f).filterEnvelope (1.0f, 200.0f, 0.05f, 150.0f).set (ParamIDs::fltKey, 0.5f)
+            .ampEnvelope (1.0f, 450.0f, 0.12f, 250.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkVelocity (rope);
+        route (rope, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (rope, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (rope, RT::room, 0.4f, 0.12f);
+        runner (rope, { 0.4f, 0.4f });
+        rope.set (ParamIDs::patchLevel, -0.1f);
+        orchestra (rope, { { { 0, "Programs/04_pizz.sfz", 1.0f, 0.0f, true, &upright } },
+                           { 0, 1, 2 }, 5.5f,
+                           "A rope pulled tight and plucked: a real double bass plucked (Meatbass), RUNNER plucking it again.",
+                           1.0f, 450.0f, 0.3f, 250.0f, -1.0f, {} });
+        x.add (rope);
+
+        auto trap = x.make ("Steel Trap", 17, { "Pluck", "Maze", "FM", "Metal" },
+            "A trap snapping shut: a sine frequency-modulated at 2.76 (a struck bar's overtone) ringing out fast, a sine "
+            "an octave up ring-modulated into metal, a click on the strike, a hard shaper. RUNNER snaps it again and "
+            "again. MOD WHEEL: harder strike. MACROS: BRIGHT, SPACE, RUNNER.");
+        trap.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f);
+        fm (trap, 0, 2.76f, 0.05f);
+        pkShot (trap, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.2f, 0.0f, 0.0f } });
+        route (trap, "env1", ParamIDs::osc (0, "FmAmount"), 0.35f);
+        on (trap, 1, sine, 0.2f);
+        trap.osc (1, "Transpose", 12.0f).osc (1, "AmAmount", 0.8f).osc (1, "AmShape", 0.0f).osc (1, "ModGrid", 0.0f)
+            .osc (1, "ModRate", 0.683f).osc (1, "PhaseRand", 0.0f);
+        pkStrike (trap, 2, 1, 0.3f, 8.0f, 0.1f);
+        trap.filter (FilterType::lp12, 5000.0f, 0.1f, 0.3f).filterEnvelope (1.0f, 250.0f, 0.1f, 200.0f).set (ParamIDs::fltKey, 0.4f)
+            .ampEnvelope (1.0f, 400.0f, 0.1f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f)
+            .shaper (0, synth::ShaperModel::hard, 0.3f);
+        pkVelocity (trap);
+        route (trap, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (trap, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (trap, "1/8", 0.25f, 0.12f, true, 5.0f);
+        finish (trap, RT::room, 0.45f, 0.12f);
+        runner (trap, { 0.45f, 0.4f });
+        trap.set (ParamIDs::patchLevel, -7.0f);
+        x.add (trap);
+
+        auto needle = x.make ("Needle Pluck", 18, { "Pluck", "Lab", "Sine", "Chirp" },
+            "A needle's prick: a high sine chirping down an octave into each note in thirty milliseconds, a square "
+            "an octave up just under it, a filter snapping shut, a ping-pong echo. RUNNER makes it a stream of "
+            "injections. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, RUNNER.");
+        needle.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f);
+        on (needle, 1, pulse, 0.08f);
+        needle.osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f);
+        pkBend (needle, 12.0f, 0.03f, -0.7f);
+        needle.filter (FilterType::lp12, 4000.0f, 0.1f, 0.35f).filterEnvelope (1.0f, 150.0f, 0.1f, 100.0f).set (ParamIDs::fltKey, 0.5f)
+              .ampEnvelope (1.0f, 250.0f, 0.1f, 150.0f);
+        pkVelocity (needle);
+        route (needle, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (needle, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (needle, "1/8", 0.35f, 0.18f, true, 6.0f);
+        finish (needle, RT::digital, 0.45f, 0.12f);
+        runner (needle, { 0.35f, 0.4f });
+        needle.set (ParamIDs::patchLevel, -2.4f);
+        x.add (needle);
+    }
+
 }
 
     // GUNSLINGER (0.84.0, the owner's theme and name: the spaghetti-western sound, our own sounds and phrases; no film,
@@ -21377,5 +21852,6 @@ std::vector<Rig> makeExpansionRigs()
     origin ({ Rig::numBanks + 39, rigs });
     offworld ({ Rig::numBanks + 40, rigs });
     steelTitans ({ Rig::numBanks + 41, rigs });
+    wickedGame ({ Rig::numBanks + 42, rigs });
     return rigs;
 }

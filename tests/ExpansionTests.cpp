@@ -1419,6 +1419,53 @@ TEST_CASE ("STEEL TITANS: MACRO 3 is WOBBLE on every preset, resting at its left
     CHECK (count == 18);
 }
 
+TEST_CASE ("WICKED GAME: MACRO 3 is RUNNER on every preset, every note able to be struck again", "[rigs][expansions][runner]")
+{
+    // 0.100.0: RUNNER on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 so its
+    // fifths are the speeds; every preset keeps some sustain (a note at sustain 0 ends and can't be struck), and an
+    // arp keeps an oscillator on the keys for RUNNER to strike.
+    int count = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 42)   // WICKED GAME: the forty-third expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            const auto value = [&] (const juce::String& id, float otherwise)
+            {
+                const auto it = version->parameters.find (id);
+                return it == version->parameters.end() ? otherwise : it->second;
+            };
+            CHECK (value (ParamIDs::runnerOn, 0.0f) == 1.0f);
+            CHECK (value (ParamIDs::runnerAmount, 1.0f) == 0.0f);
+            CHECK (value (ParamIDs::ampSustain, 0.8f) > 0.0f);
+            CHECK (version->modulation.macroNames[2] == "RUNNER");
+            CHECK (version->notes.contains ("RUNNER"));
+            int toAmount = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    CHECK (r.destination == ParamIDs::runnerAmount);
+                    CHECK (r.amount == 1.0f);
+                    ++toAmount;
+                }
+            CHECK (toAmount == 1);
+            if (value (ParamIDs::arp (0, "On"), 0.0f) > 0.5f)
+            {
+                auto keys = false;
+                for (int o = 0; o < synth::numOscillators; ++o)
+                    keys = keys || (value (ParamIDs::osc (o, "On"), o == 0 ? 1.0f : 0.0f) > 0.5f && value (ParamIDs::osc (o, "Arp"), 0.0f) < 0.5f);
+                CHECK (keys);
+            }
+        }
+    }
+    CHECK (count == 18);
+}
+
 TEST_CASE ("OFFWORLD: two lines in every preset, MACRO 3 LINES moving only line II", "[rigs][expansions][filter2]")
 {
     // 0.96.0: line I through FILTER 1, line II through FILTER 2 (0.96.0), each with a LOW CUT; LINES detunes line II
@@ -1821,8 +1868,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto descent = rig.bank == Rig::numBanks + 37;   // DARK DESCENT: 96 BPM in D minor, Dm Bb Gm A
         const auto noon = rig.bank == Rig::numBanks + 38;      // HIGHNOON: 96 BPM in G major, G Em C D
         const auto steel = rig.bank == Rig::numBanks + 41;     // STEEL TITANS: 140 BPM in F minor, Fm Db Ab Eb (half-time drops)
+        const auto wicked = rig.bank == Rig::numBanks + 42;    // WICKED GAME: 128 BPM in D minor, Dm Bb Gm A (held, for RUNNER)
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -2870,6 +2918,58 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     const auto& n = chords[(size_t) c];
                     chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
                 }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (wicked)
+        {
+            // Our own phrases (none from any film): D minor, the chords D minor, B flat, G minor and A at 128 BPM; every
+            // note held a beat or more so RUNNER has something to strike.
+            const std::vector<std::vector<int>> chords { { 38, 50, 53, 57, 62 }, { 34, 46, 50, 53, 58 },
+                                                         { 31, 43, 46, 50, 55 }, { 33, 45, 49, 52, 57 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 2, 74 }, { 2, 1, 72 }, { 3, 1, 69 }, { 4, 2, 70 }, { 6, 2, 74 }, { 8, 1.5, 70 }, { 9.5, 0.5, 69 },
+                        { 10, 2, 67 }, { 12, 2, 69 }, { 14, 2, 73 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    line ({ { c * 4.0, 1.9, r }, { c * 4.0 + 2.0, 1.4, r }, { c * 4.0 + 3.5, 0.45, r + 12 } }, 110);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const std::vector<int> n (chords[(size_t) c].begin() + 1, chords[(size_t) c].end());
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.9), n, 100);
+                    chord (e, at (c * 4.0 + 2.0), at (c * 4.0 + 3.9), n, 85);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Pluck")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    line ({ { c * 4.0, 1.0, n[2] + 12 }, { c * 4.0 + 1.0, 1.0, n[3] + 12 }, { c * 4.0 + 2.0, 1.9, n[4] + 12 } }, 105);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else   // the pads and arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 92);
                 wheel (8.0, 14.0, 90);
                 length = 20.0 * beat;
             }
