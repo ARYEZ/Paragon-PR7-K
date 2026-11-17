@@ -3,7 +3,7 @@
 #include "PluginProcessor.h"
 #include "ui/SynthControls.h"
 
-// RUNNER's page (0.100.0): a stone corridor running away from you, its walls flashing with every strike; along the
+// RUNNER's page (1.0.0): a stone corridor running away from you, its walls flashing with every strike; along the
 // bottom the five speeds as gates (1/4 to 1/64, the one AMOUNT is at lit, the fifths of the knob marked), over them
 // the beat cut into its strikes, the last one lit; across the top the speed, ACCENT and LIFT; under it ON, AMOUNT,
 // ACCENT and LIFT.

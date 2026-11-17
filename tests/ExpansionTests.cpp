@@ -1421,7 +1421,7 @@ TEST_CASE ("STEEL TITANS: MACRO 3 is WOBBLE on every preset, resting at its left
 
 TEST_CASE ("WICKED GAME: MACRO 3 is RUNNER on every preset, every note able to be struck again", "[rigs][expansions][runner]")
 {
-    // 0.100.0: RUNNER on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 so its
+    // 1.0.0: RUNNER on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 so its
     // fifths are the speeds; every preset keeps some sustain (a note at sustain 0 ends and can't be struck), and an
     // arp keeps an oscillator on the keys for RUNNER to strike.
     int count = 0;

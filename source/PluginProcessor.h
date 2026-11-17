@@ -480,7 +480,7 @@ public:
     synth::ragtime::Settings getRagtimeSettings() const noexcept;                // RAGTIME (0.92.0)
     int getRagtimeStep() const noexcept { return engine.getRagtimeStep(); }
     int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }
-    synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (0.100.0)
+    synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (1.0.0)
     int getRunnerStrikes() const noexcept { return engine.getRunnerStrikes(); }
     int getRunnerBeatPosition() const noexcept { return engine.getRunnerBeatPosition(); }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }

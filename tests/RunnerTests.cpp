@@ -1,4 +1,4 @@
-// RUNNER (0.100.0): every held note struck again in time with the song, the speed stepping up with every fifth of
+// RUNNER (1.0.0): every held note struck again in time with the song, the speed stepping up with every fifth of
 // AMOUNT (1/4, 1/8, 1/16, 1/32, 1/64). Off or AMOUNT 0: bit for bit untouched; the strikes land on each speed's grid
 // (at two tempos, and following the song's position); a change of speed lands on the new grid without a stumble;
 // ACCENT softens the strikes off the beat; a held sound is struck too (the LIFT); a released note isn't; in the

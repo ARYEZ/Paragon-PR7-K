@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstdint>
 
-// RUNNER (0.100.0, WICKED GAME's signature; the owner's choice of two offered (RUNNER over CLOSING) and the owner's
+// RUNNER (1.0.0, WICKED GAME's signature; the owner's choice of two offered (RUNNER over CLOSING) and the owner's
 // design: the speed steps up with every fifth of the knob; our own design otherwise). The chase: every held note
 // struck again in time with the song, faster as AMOUNT turns. Not an audio effect: each strike is a real new hit in
 // the engine, as RAGTIME's (the note's envelopes start again from where they are, an SFZ oscillator starts a fresh

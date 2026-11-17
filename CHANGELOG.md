@@ -2,6 +2,25 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.0.0
+
+**Version 1.0: WICKED GAME, a new expansion, and RUNNER, every note you hold struck again in time with your song, faster with every fifth of the knob.**
+
+- **RUNNER** (a new signature effect, on the FX page's MOD / LO-FI view): every note you hold is struck again in time with the song. AMOUNT is off at 0, then each fifth of the knob is the next speed: 1/4, 1/8, 1/16, 1/32, 1/64 (about 34 strikes a second at 128 BPM: a roll).
+  - Each strike is a real new hit: the note's envelopes start again, and a sampled instrument plays its recording again from the start.
+  - Every speed is a whole division of the beat, so moving the knob mid-phrase lands straight on the new grid.
+  - ACCENT softens the strikes between the beats; LIFT dips the sound just before each strike, so held pads are struck too.
+  - It strikes the keys you hold, not the arpeggiator's notes. AMOUNT, ACCENT and LIFT can be moved by the mod matrix (FX Runner).
+  - Its page: a stone corridor flashing with each strike, the five speeds as gates, the beat cut into its strikes.
+- **WICKED GAME** (WG01-WG18), 18 new presets, our own sounds: trapped in a glade inside a giant maze whose walls move every night, the run through it, and the cold laboratory behind it. Three columns in every category:
+  - The camp: Lonely Flute, Firelight Dusk, Earth Drum Bass, Campfire Piano, Woodcut Ostinato, Rope Pluck.
+  - The maze: Runner Lead, Shifting Walls, Stone Grinder, Wall Clock, Chase Ostinato, Steel Trap.
+  - The lab: Clinical Signal, Observation Room, Cold Pulse Bass, Glass Lab Keys, Data Trickle, Needle Pluck.
+- **MACRO 3 RUNNER** on every preset: the macro is RUNNER's AMOUNT, so its fifths are the speeds. MACRO 1 BRIGHT, MACRO 2 SPACE.
+- Every WICKED GAME preset keeps a little sustain (a note that fades to silence can't be struck again), and each arp holds a sound on the keys for RUNNER to strike.
+- Eight presets have a version on a sample library, played when it's installed: the orchestra's solo flute (with the synth's flute under it: a recorded flute speaks too slowly for the fastest strikes), strings, choir, and short cellos and basses; the Salamander piano; a plucked double bass.
+- Levels measured: about -17 loudness, the percussive by their peaks. At full RUNNER the short, percussive presets come up as much as 7 dB (struck 64 times a bar, they never decay: Wall Clock most); every clip stays under -1 dBFS.
+
 ## 0.99.0
 
 **THE GRID: the front panel becomes one full faceplate, its lower half a glowing grid where your envelopes stand as walls of light, with a spark that follows every note.**

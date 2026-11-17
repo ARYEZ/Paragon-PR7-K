@@ -1436,7 +1436,7 @@ namespace synth
                     ragStepShown.store (-1);
                 ragClock += length * beatsPerSample;
             }
-            // RUNNER (0.100.0): which interval each strike falls in (every strike on the grid of its speed, a power of
+            // RUNNER (1.0.0): which interval each strike falls in (every strike on the grid of its speed, a power of
             // two of a beat), and the ones its damper lifts in, about 4 ms before (never more than a third of a strike).
             runPlaying = settings.runner.playing();
             {
@@ -1652,7 +1652,7 @@ namespace synth
             else if ((ragLifts[slot] & mine) != 0)
                 ragTarget = 1.0f - unmodulated.ragtime.liftDepth();
         }
-        // RUNNER (0.100.0): the same, at the knob's speed, every held key's note.
+        // RUNNER (1.0.0): the same, at the knob's speed, every held key's note.
         if (runPlaying && voice.source == 0 && (voice.held || voice.sustained) && ! voice.killing)
         {
             const auto slot = (size_t) juce::jlimit (0, maxIntervals - 1, interval);

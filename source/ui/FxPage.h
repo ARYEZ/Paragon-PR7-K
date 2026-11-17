@@ -195,7 +195,7 @@ private:
     RagtimePage ragtimePage;             // 0.92.0
     SortPage sortPage;                   // 0.93.0
     WobblePage wobblePage;               // 0.97.0
-    RunnerPage runnerPage;               // 0.100.0
+    RunnerPage runnerPage;               // 1.0.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

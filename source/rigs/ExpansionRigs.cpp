@@ -15461,11 +15461,11 @@ namespace
         pkAdd (x, frame);
     }
 
-    // WICKED GAME (0.100.0, the owner's theme (a young-adult film series of boys trapped in a glade inside a giant
+    // WICKED GAME (1.0.0, the owner's theme (a young-adult film series of boys trapped in a glade inside a giant
     // shifting maze, the chase through it and the cold laboratory behind it) and the owner's name; no film, book,
     // places, characters, creatures, terms or music on the plugin; our own sounds). Three columns in every category:
     // the camp (the glade: wood, fire, a lonely flute), the maze (stone walls grinding, the run, the clock), the lab
-    // (clean, cold, clinical). MACRO 3, RUNNER (0.100.0): on at AMOUNT 0 (the preset as built), the macro to AMOUNT, so
+    // (clean, cold, clinical). MACRO 3, RUNNER (1.0.0): on at AMOUNT 0 (the preset as built), the macro to AMOUNT, so
     // each fifth of the knob is the next speed (1/4, 1/8, 1/16, 1/32, 1/64), as the owner designed; each preset its own
     // ACCENT and LIFT. Every preset keeps some sustain (a note at sustain 0 ends and can't be struck again), attacks
     // short enough to speak at the fast speeds, and the arps carry a keys layer (RUNNER strikes keys, not arp notes).

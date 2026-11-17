@@ -104,7 +104,7 @@ namespace ModDestinations
                                                  "sortAmount", "sortEdge", "sortStrike",
                                                  // 0.97.0: WOBBLE: how much, its vowel, its resonance
                                                  "wobbleAmount", "wobbleTalk", "wobbleResonance",
-                                                 // 0.100.0: RUNNER: how fast, its accents, its lift
+                                                 // 1.0.0: RUNNER: how fast, its accents, its lift
                                                  "runnerAmount", "runnerAccent", "runnerLift" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's

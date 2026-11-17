@@ -698,7 +698,7 @@ namespace ParamIDs
     inline constexpr auto ragtimeAccent   = "ragtimeAccent";     // 0 to 1
     inline constexpr auto ragtimeLift     = "ragtimeLift";       // 0 to 1
     inline constexpr auto ragtimeStride   = "ragtimeStride";     // the bass and the chord apart
-    // RUNNER (0.100.0, version hint 64, synth::runner): WICKED GAME's signature: every held note struck again, faster
+    // RUNNER (1.0.0, version hint 64, synth::runner): WICKED GAME's signature: every held note struck again, faster
     // with every fifth of AMOUNT (1/4, 1/8, 1/16, 1/32, 1/64). In presets.
     inline constexpr auto runnerOn     = "runnerOn";
     inline constexpr auto runnerAmount = "runnerAmount";   // 0 to 1: off at 0, then the speed by fifths (the macro's)

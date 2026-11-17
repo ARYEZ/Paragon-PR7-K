@@ -549,7 +549,7 @@ namespace synth
         float ragDown = 1.0f, ragUp = 1.0f;   // the lift's glide per sample, down and back
         SharedInt ragStepShown {};
         SharedInt ragStrikeCount {};   // -1 until the first strike
-        // RUNNER (0.100.0): each interval's strike (bit 1 struck, bit 2 on the beat) and lift, its own count while
+        // RUNNER (1.0.0): each interval's strike (bit 1 struck, bit 2 on the beat) and lift, its own count while
         // the song is stopped, the strike last made (never twice), and how many strikes so far for the page.
         std::array<std::uint8_t, maxIntervals> runStrikes {}, runLifts {};
         double runClock = 0.0;

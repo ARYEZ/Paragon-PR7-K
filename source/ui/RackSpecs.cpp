@@ -2186,7 +2186,7 @@ std::array<RackUnit::Spec, 38> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
         };
         s.onEdit = [openPage] { openPage (36); };
     }
-    // RUNNER (0.100.0): the strikes a beat in big digits, the speed, its settings; the keys set AMOUNT: JOG, RUN,
+    // RUNNER (1.0.0): the strikes a beat in big digits, the speed, its settings; the keys set AMOUNT: JOG, RUN,
     // SPRINT; the ladder the speed (a step a fifth).
     {
         auto& s = specs[37];

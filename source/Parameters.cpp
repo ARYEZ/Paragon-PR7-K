@@ -574,7 +574,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         addSwitch (layout, ragtimeStride, "Ragtime Stride", d.stride, stageRagtime);
     }
 
-    // RUNNER (0.100.0): every held note struck again, faster by fifths of AMOUNT; in presets. Off and at 0 by default.
+    // RUNNER (1.0.0): every held note struck again, faster by fifths of AMOUNT; in presets. Off and at 0 by default.
     {
         constexpr int stageRunner = 64;
         const synth::runner::Settings d;
