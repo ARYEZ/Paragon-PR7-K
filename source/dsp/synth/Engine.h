@@ -549,6 +549,14 @@ namespace synth
         float ragDown = 1.0f, ragUp = 1.0f;   // the lift's glide per sample, down and back
         SharedInt ragStepShown {};
         SharedInt ragStrikeCount {};   // -1 until the first strike
+        // RUNNER (0.100.0): each interval's strike (bit 1 struck, bit 2 on the beat) and lift, its own count while
+        // the song is stopped, the strike last made (never twice), and how many strikes so far for the page.
+        std::array<std::uint8_t, maxIntervals> runStrikes {}, runLifts {};
+        double runClock = 0.0;
+        bool runPlaying = false;
+        std::int64_t runLastStrike = std::numeric_limits<std::int64_t>::min();
+        int runLastSpeed = 0;
+        SharedInt runStrikeCount {}, runBeatShown {};
         SharedInt ampSparkShown {}, filterSparkShown {};   // THE GRID's spark (0.98.0): see getAmpSpark
         int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
     public:
@@ -562,6 +570,9 @@ namespace synth
         // THE GRID (the front panel's lower half, 0.98.0): where the newest note sounding (a key or an arp; not
         // SIROCCO's answers or release tails) is in its AMP and FILTER envelopes, as the stage (Envelope::Stage by
         // number) x 10000 + how far through it x 9999; -1 while none sounds (the filter's: or its envelope isn't running).
+        // RUNNER: strikes made so far (0 until the first), and where in the beat the last one was (0 on the beat, -1 still).
+        int getRunnerStrikes() const noexcept { return runStrikeCount.load() + 1; }
+        int getRunnerBeatPosition() const noexcept { return runBeatShown.load(); }
         int getAmpSpark() const noexcept { return ampSparkShown.load(); }
         int getFilterSpark() const noexcept { return filterSparkShown.load(); }
     private:

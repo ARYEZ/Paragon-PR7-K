@@ -480,6 +480,9 @@ public:
     synth::ragtime::Settings getRagtimeSettings() const noexcept;                // RAGTIME (0.92.0)
     int getRagtimeStep() const noexcept { return engine.getRagtimeStep(); }
     int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }
+    synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (0.100.0)
+    int getRunnerStrikes() const noexcept { return engine.getRunnerStrikes(); }
+    int getRunnerBeatPosition() const noexcept { return engine.getRunnerBeatPosition(); }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
     const effects::Colossus& getColossus() const noexcept { return rack->colossus; }
     // SIROCCO (0.58.0): each MIDI note sounding now, 0 none, 1 played (keys or arps), 2 one of SIROCCO's answers (both: 3).

@@ -373,6 +373,8 @@ namespace synth
         crossClock = 0.0;
         ragClock = 0.0;
         ragLastStep = std::numeric_limits<std::int64_t>::min();
+        runClock = 0.0;
+        runLastStrike = std::numeric_limits<std::int64_t>::min();
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
@@ -630,6 +632,8 @@ namespace synth
         {
             ragClock = 0.0;
             ragLastStep = std::numeric_limits<std::int64_t>::min();
+            runClock = 0.0;   // ...and RUNNER's
+            runLastStrike = std::numeric_limits<std::int64_t>::min();
         }
         // ...and each oscillator's TRAVEL set to FIRST NOTE or LAST NOTE.
         for (size_t i = 0; i < travelClock.size(); ++i)
@@ -957,7 +961,6 @@ namespace synth
                 continue;
             startSfz (voice, osc, i, s, false);   // a fresh recording (the last fades out over 5 ms)
         }
-        ragStrikeCount.store (ragStrikeCount.load() + 1);
     }
 
     void Engine::retrigger (Voice& voice, int note, float velocity, bool restartEnvelopes, bool glide, const Settings& settings) noexcept
@@ -1433,6 +1436,56 @@ namespace synth
                     ragStepShown.store (-1);
                 ragClock += length * beatsPerSample;
             }
+            // RUNNER (0.100.0): which interval each strike falls in (every strike on the grid of its speed, a power of
+            // two of a beat), and the ones its damper lifts in, about 4 ms before (never more than a third of a strike).
+            runPlaying = settings.runner.playing();
+            {
+                const auto& rn = settings.runner;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (runPlaying)
+                {
+                    const auto speed = rn.speed();
+                    const auto perStrike = runner::beatsPerStrike (speed);
+                    if (speed != runLastSpeed)
+                    {
+                        // A new speed: strikes counted on its grid (the beat the last one fell on, in its units).
+                        if (runLastStrike != std::numeric_limits<std::int64_t>::min() && runLastSpeed > 0)
+                            runLastStrike = (std::int64_t) std::floor ((double) runLastStrike * runner::beatsPerStrike (runLastSpeed) / perStrike + 1.0e-9);
+                        runLastSpeed = speed;
+                    }
+                    const auto liftBeats = juce::jmin (perStrike / 3.0, 0.004 * juce::jmax (1.0, modulation.bpm) / 60.0);
+                    const auto perBeat = (std::int64_t) std::llround (1.0 / perStrike);
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto n = juce::jmin (controlInterval, length - at);
+                        const auto beatsAt = [&] (int offset) { return followSong ? modulation.ppq + (samplesIntoBlock + start + offset) * beatsPerSample
+                                                                                  : runClock + offset * beatsPerSample; };
+                        const auto from = beatsAt (at), to = beatsAt (at + n);
+                        std::uint8_t strike = 0, lift = 0;
+                        const auto k = runner::nextStrike (from, perStrike);
+                        if ((double) k * perStrike < to - 1.0e-12 && (runLastStrike == std::numeric_limits<std::int64_t>::min() || k > runLastStrike))
+                        {
+                            runLastStrike = k;   // (a strike on a piece's edge can fall in both: strike it once)
+                            const auto onBeat = perBeat <= 1 || k % perBeat == 0;
+                            strike = (std::uint8_t) (1 | (onBeat ? 2 : 0));
+                            runBeatShown.store ((int) (((k % perBeat) + perBeat) % perBeat));
+                        }
+                        const auto ahead = runner::nextStrike (to, perStrike);
+                        if ((double) ahead * perStrike - to < liftBeats)
+                            lift = 1;
+                        runStrikes[(size_t) i] = strike;
+                        runLifts[(size_t) i] = lift;
+                    }
+                }
+                else
+                {
+                    runBeatShown.store (-1);
+                    runLastSpeed = 0;
+                    runLastStrike = std::numeric_limits<std::int64_t>::min();
+                }
+                runClock += length * beatsPerSample;
+            }
             for (auto& voice : voices)
             {
                 if (! voice.playing)
@@ -1594,9 +1647,23 @@ namespace synth
             {
                 const auto& rt = unmodulated.ragtime;
                 restrike (voice, rt.strikeVelocity (voice.ragVelocity, (strike & 4) != 0), unmodulated);
+                ragStrikeCount.store (ragStrikeCount.load() + 1);   // (RUNNER counts its own)
             }
             else if ((ragLifts[slot] & mine) != 0)
                 ragTarget = 1.0f - unmodulated.ragtime.liftDepth();
+        }
+        // RUNNER (0.100.0): the same, at the knob's speed, every held key's note.
+        if (runPlaying && voice.source == 0 && (voice.held || voice.sustained) && ! voice.killing)
+        {
+            const auto slot = (size_t) juce::jlimit (0, maxIntervals - 1, interval);
+            const auto strike = runStrikes[slot];
+            if (strike != 0 && voice.seqAge > 0.01)
+            {
+                restrike (voice, unmodulated.runner.strikeVelocity (voice.ragVelocity, (strike & 2) != 0), unmodulated);
+                runStrikeCount.store (runStrikeCount.load() + 1);
+            }
+            else if (runLifts[slot] != 0)
+                ragTarget = juce::jmin (ragTarget, 1.0f - unmodulated.runner.liftDepth());
         }
         // The PITCH module's envelope (also a source for the matrix).
         const auto& pitchModule = unmodulated.pitch;

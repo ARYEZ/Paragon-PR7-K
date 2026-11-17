@@ -698,6 +698,12 @@ namespace ParamIDs
     inline constexpr auto ragtimeAccent   = "ragtimeAccent";     // 0 to 1
     inline constexpr auto ragtimeLift     = "ragtimeLift";       // 0 to 1
     inline constexpr auto ragtimeStride   = "ragtimeStride";     // the bass and the chord apart
+    // RUNNER (0.100.0, version hint 64, synth::runner): WICKED GAME's signature: every held note struck again, faster
+    // with every fifth of AMOUNT (1/4, 1/8, 1/16, 1/32, 1/64). In presets.
+    inline constexpr auto runnerOn     = "runnerOn";
+    inline constexpr auto runnerAmount = "runnerAmount";   // 0 to 1: off at 0, then the speed by fifths (the macro's)
+    inline constexpr auto runnerAccent = "runnerAccent";   // 0 to 1: the strikes off the beat softer
+    inline constexpr auto runnerLift   = "runnerLift";     // 0 to 1: the damper's lift before each strike
     // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
     inline constexpr auto sortOn     = "sortOn";
     inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)

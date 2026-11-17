@@ -1085,6 +1085,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.cross = getCrossroadsPull();
         // RAGTIME (0.92.0): AMOUNT, SWING and ACCENT as the matrix moves them.
         s.ragtime = getRagtimeSettings();
+        s.runner = getRunnerSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1531,6 +1532,16 @@ synth::navi::Settings ParagonX1AudioProcessor::getNaviSettings() const noexcept
     n.chaos = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviChaos"), ParamIDs::naviChaos));
     n.glide = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("naviGlide"), ParamIDs::naviGlide));
     return n;
+}
+
+synth::runner::Settings ParagonX1AudioProcessor::getRunnerSettings() const noexcept
+{
+    synth::runner::Settings r;
+    r.on = isOn (ParamIDs::runnerOn);
+    r.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerAmount"), ParamIDs::runnerAmount));
+    r.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerAccent"), ParamIDs::runnerAccent));
+    r.lift = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerLift"), ParamIDs::runnerLift));
+    return r;
 }
 
 synth::ragtime::Settings ParagonX1AudioProcessor::getRagtimeSettings() const noexcept

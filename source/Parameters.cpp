@@ -574,6 +574,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         addSwitch (layout, ragtimeStride, "Ragtime Stride", d.stride, stageRagtime);
     }
 
+    // RUNNER (0.100.0): every held note struck again, faster by fifths of AMOUNT; in presets. Off and at 0 by default.
+    {
+        constexpr int stageRunner = 64;
+        const synth::runner::Settings d;
+        addSwitch (layout, runnerOn, "Runner On", d.on, stageRunner);
+        add (layout, runnerAmount, "Runner Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stageRunner);
+        add (layout, runnerAccent, "Runner Accent", { 0.0f, 1.0f }, d.accent, asPercent, stageRunner);
+        add (layout, runnerLift, "Runner Lift", { 0.0f, 1.0f }, d.lift, asPercent, stageRunner);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);

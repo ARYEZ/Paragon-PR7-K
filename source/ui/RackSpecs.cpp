@@ -8,6 +8,7 @@
 #include "dsp/effects/Crossroads.h"
 #include "dsp/effects/Gearworks.h"
 #include "dsp/synth/Ragtime.h"
+#include "dsp/synth/Runner.h"
 
 #include "ui/DownpourPage.h"
 
@@ -627,19 +628,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 37> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 38> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 37> specs;
+    std::array<RackUnit::Spec, 38> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -2184,6 +2185,52 @@ std::array<RackUnit::Spec, 37> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (36); };
+    }
+    // RUNNER (0.100.0): the strikes a beat in big digits, the speed, its settings; the keys set AMOUNT: JOG, RUN,
+    // SPRINT; the ladder the speed (a step a fifth).
+    {
+        auto& s = specs[37];
+        s.name = "RUNNER";
+        s.kind = "THE CHASE  STRIKES";
+        s.onParameterIds = { ParamIDs::runnerOn };
+        s.powerTooltip = "RUNNER on or off: every held note struck again in time with the song, faster with every fifth of AMOUNT. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "JOG", 0.1f, "Quarter notes: every held note struck on the beat" },
+                                            { "RUN", 0.5f, "Sixteenths: the chase on" },
+                                            { "SPRINT", 0.9f, "64ths: the strikes become a roll" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return synth::runner::speedAt (valueOf (p, ParamIDs::runnerAmount)) == synth::runner::speedAt (t.amount); },
+                                                 [&p, t] { setValue (p, ParamIDs::runnerAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::runnerAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::runnerLift, "LIFT" } };
+        s.ladderTitle = "SPEED";
+        s.ladderMarks = { 1.0f, 0.8f, 0.6f, 0.4f, 0.2f };
+        s.ladderLabels = { "1/64", "1/32", "1/16", "1/8", "1/4" };
+        s.ladderReading = [&p]
+        {
+            const auto r = p.getRunnerSettings();
+            return r.on ? (float) r.speed() / 5.0f : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto r = p.getRunnerSettings();
+            const auto speed = r.on ? r.speed() : 0;
+            const auto perBeat = speed > 0 ? juce::roundToInt (1.0 / synth::runner::beatsPerStrike (speed)) : 0;
+            const auto end = drawNumber (g, juce::String (perBeat), left.getTopLeft(), h);
+            line (g, "/BEAT", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, speed > 0 ? "STRIKING " + synth::runner::speedNames[speed] : "STANDING",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::runnerAmount), "SPEED " + synth::runner::speedNames[speed],
+                                  "ACCENT " + textOf (p, ParamIDs::runnerAccent), "LIFT " + textOf (p, ParamIDs::runnerLift) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (37); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth
