@@ -262,6 +262,7 @@ namespace
             { "Wet Neon Pluck", -9.8f },
             { "Wire Shamisen", -5.3f },
             { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
+            { "Breath Hit", -4.0f }, { "Struck Sculpture", -6.0f }, { "Fretless Slide", 4.0f },
         };
         const auto found = levels.find (name);
         return found != levels.end() ? found->second : 0.0f;
@@ -14978,7 +14979,7 @@ namespace
         delay (cry, "1/4", 0.35f, 0.14f, true, 3.5f);
         finish (cry, RT::cathedral, 0.85f, 0.28f, 60.0f);
         polymeter (cry, { twoBeats, x1, 0.45f, 0.55f });
-        cry.set (ParamIDs::patchLevel, -4.0f);
+        cry.set (ParamIDs::patchLevel, -2.0f);
         x.add (cry);
 
         auto cello = x.make ("Fuzz Cello", 2, { "Lead", "Cold", "Cello", "Mono" },
@@ -15005,7 +15006,7 @@ namespace
         route (cello, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (cello, RT::hall, 0.65f, 0.2f);
         polymeter (cello, { twoBeats, x1, 0.4f, 0.4f });
-        cello.set (ParamIDs::patchLevel, -2.0f);
+        cello.set (ParamIDs::patchLevel, 2.9f);
         orchestra (cello, { { { 0, "Strings - Notation/Cello Solo Sustain.sfz", 1.0f, 0.0f, true } },
                             { 0, 1 }, 4.0f,
                             "An electric cello held like a sword: the orchestra's solo cello played hard into a fuzz "
@@ -15038,7 +15039,7 @@ namespace
         delay (reed, "1/4 dotted", 0.25f, 0.1f, false, 4.0f);
         finish (reed, RT::hall, 0.7f, 0.25f);
         polymeter (reed, { twoBeats, x1, 0.5f, 0.6f });
-        reed.set (ParamIDs::patchLevel, -4.5f);
+        reed.set (ParamIDs::patchLevel, -5.9f);
         x.add (reed);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -15063,9 +15064,9 @@ namespace
         route (sisters, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (sisters, RT::cathedral, 0.85f, 0.32f, 40.0f);
         polymeter (sisters, { bar, x1, 0.4f, 0.65f });
-        sisters.set (ParamIDs::patchLevel, -6.0f);
+        sisters.set (ParamIDs::patchLevel, -8.0f);
         orchestra (sisters, { { { 3, "Chorus - Notation/Large Chrous.sfz", 0.35f, 0.0f, true } },
-                              {}, -6.0f,
+                              {}, -10.0f,
                               "Four women singing close together in a language no one speaks, the synth's sisters with a "
                               "choir far under them (the orchestra's large choir, through the filter), a whisper inside.",
                               -1.0f, 0.0f, 0.0f, 0.0f, -1.0f, {} });
@@ -15089,7 +15090,7 @@ namespace
         route (ebow, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (ebow, RT::hall, 0.75f, 0.28f);
         polymeter (ebow, { bar, x1, 0.35f, 0.7f });
-        ebow.set (ParamIDs::patchLevel, -6.5f);
+        ebow.set (ParamIDs::patchLevel, -12.8f);
         x.add (ebow);
 
         auto heraldPipes = x.make ("Herald Pipes", 6, { "Pad", "Dream", "Pipes", "Drone" },
@@ -15118,10 +15119,10 @@ namespace
         route (heraldPipes, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (heraldPipes, RT::hall, 0.8f, 0.25f);
         polymeter (heraldPipes, { bar, x1, 0.35f, 0.5f });
-        heraldPipes.set (ParamIDs::patchLevel, -6.5f);
+        heraldPipes.set (ParamIDs::patchLevel, -4.8f);
         orchestra (heraldPipes, { { { 0, "Programs/02-squidotron.sfz", 0.9f, 0.0f, false, &pipes },
                                     { 1, "Programs/03-squynth.sfz", 0.5f, 0.0f, false, &pipes } },
-                                  { 0, 1, 2 }, -7.5f,
+                                  { 0, 1, 2 }, -0.1f,
                                   "Pipes for a noble house's arrival: real bagpipes (Squidpipes' chanter, in chords) with "
                                   "their drone under, and the synth's drone an octave and a fifth down. Hold chords.",
                                   10.0f, 300.0f, 0.9f, 300.0f, -1.0f,
@@ -15193,7 +15194,7 @@ namespace
         route (monks, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (monks, RT::cathedral, 0.8f, 0.3f);
         polymeter (monks, { twoBars, x1, 0.35f, 0.7f });
-        monks.set (ParamIDs::patchLevel, -3.5f);
+        monks.set (ParamIDs::patchLevel, -4.5f);
         x.add (monks);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -15221,11 +15222,11 @@ namespace
         route (bell, "macro1", ParamIDs::osc (3, "Volume"), 0.1f);
         finish (bell, RT::hall, 0.8f, 0.3f);
         polymeter (bell, { bar, x1, 0.4f, 0.0f });
-        bell.set (ParamIDs::patchLevel, -6.0f);
-        orchestra (bell, { { { 0, "Idiophones/Struck Idiophones/Hand Bells, Nepalese.sfz", 1.0f, 0.0f, false, &vcsl } },
-                           { 0, 1, 2, 3, 4 }, -2.0f,
-                           "The small temple bell that starts the dream: real Nepalese hand bells (VCSL's), played "
-                           "across the keyboard, with a soft strike.",
+        bell.set (ParamIDs::patchLevel, -3.5f);
+        orchestra (bell, { { { 0, "Idiophones/Struck Idiophones/Hand Chimes.sfz", 1.0f, 0.0f, false, &vcsl } },
+                           { 0, 1, 2, 3, 4 }, 0.0f,
+                           "The small temple bell that starts the dream: real hand chimes (VCSL's, from middle C up), "
+                           "with a soft strike.",
                            1.0f, 2600.0f, 0.1f, 1800.0f, -1.0f, {} });
         x.add (bell);
 
@@ -15245,12 +15246,12 @@ namespace
         route (plate, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (plate, RT::hall, 0.75f, 0.3f);
         polymeter (plate, { bar, x1, 0.4f, 0.4f });
-        plate.set (ParamIDs::patchLevel, -3.0f);
-        orchestra (plate, { { { 0, "Idiophones/Struck Idiophones/Vibraphone - Bowed.sfz", 1.0f, 0.0f, false, &vcsl } },
-                            { 0, 1 }, 2.0f,
-                            "A metal sculpture bowed and scraped: a real bowed vibraphone (VCSL's, from A3 up), the synth's "
-                            "scrape kept round it, through the metal plate's band-pass.",
-                            120.0f, 1500.0f, 0.6f, 1600.0f, -1.0f, {} });
+        plate.set (ParamIDs::patchLevel, 1.0f);
+        orchestra (plate, { { { 1, "Idiophones/Struck Idiophones/Vibraphone - Bowed.sfz", 1.0f, 0.0f, false, &vcsl } },
+                            { 1 }, 3.0f,
+                            "A metal sculpture bowed and scraped: a real bowed vibraphone (VCSL's, from A3 up) over the "
+                            "synth's ring-modulated metal and its scrape, through the metal plate's band-pass.",
+                            -1.0f, 0.0f, 0.0f, 0.0f, -1.0f, {} });
         x.add (plate);
 
         auto clusters = x.make ("Quarter Clusters", 12, { "Keys", "Dream", "Guitar", "Microtonal" },
@@ -15271,7 +15272,7 @@ namespace
         delay (clusters, "1/8 dotted", 0.35f, 0.15f, true, 4.0f);
         finish (clusters, RT::hall, 0.7f, 0.25f);
         polymeter (clusters, { bar, x1, 0.45f, 0.3f });
-        clusters.set (ParamIDs::patchLevel, -6.0f);
+        clusters.set (ParamIDs::patchLevel, 4.0f);
         x.add (clusters);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -15281,8 +15282,9 @@ namespace
             "breathy hum on the keys. Turn up POLYMETER and the hum is breathed again in 4, 3, 5 and 7 against the "
             "arp's sixteenths: grooves in several meters at once. MOD WHEEL: the breath brighter. MACROS: BRIGHT, "
             "SPACE, POLYMETER.");
-        noiseOsc (grooves, 0, 0.5f, 0.15f);
-        grooves.filter (FilterType::bp12, 2400.0f, 0.4f, 0.4f).set (ParamIDs::fltKey, 0.3f)
+        noiseOsc (grooves, 0, 2.0f, 0.15f);
+        grooves.osc (0, "Noise", 2.0f);
+        grooves.filter (FilterType::bp12, 3000.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.0f)
                .filterEnvelope (0.0f, 70.0f, 0.1f, 60.0f)
                .ampEnvelope (0.5f, 110.0f, 0.06f, 90.0f);
         on (grooves, 1, saw, 0.2f);   // the hum, on the keys
@@ -15324,10 +15326,10 @@ namespace
         compressor (antiGroove, 2, -14.0f, 4.0f, 4.0f);
         finish (antiGroove, RT::room, 0.45f, 0.12f);
         polymeter (antiGroove, { bar, x1, 0.3f, 0.0f });
-        antiGroove.set (ParamIDs::patchLevel, -1.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        antiGroove.set (ParamIDs::patchLevel, -3.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         orchestra (antiGroove, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
                                    { 1, "Programs/01-full.sfz", 0.9f, 0.0f, false, &rusty } },
-                                 { 0, 1 }, -2.0f,
+                                 { 0, 1 }, 0.0f,
                                  "Drums no drummer could play: Big Rusty Drums' kick on the arp on every fifth sixteenth, "
                                  "its floor tom on the keys (POLYMETER strikes it in 4, 3, 5 and 7).",
                                  0.5f, 400.0f, 0.1f, 200.0f, -1.0f,
@@ -15353,7 +15355,7 @@ namespace
         delay (ostinato, "1/8", 0.4f, 0.2f, true, 4.0f);
         finish (ostinato, RT::hall, 0.6f, 0.16f);
         polymeter (ostinato, { bar, x1, 0.4f, 0.5f });
-        ostinato.set (ParamIDs::patchLevel, -5.0f);
+        ostinato.set (ParamIDs::patchLevel, 0.0f);
         x.add (ostinato);
 
         // ---- PLUCKS ------------------------------------------------------------------------------------------
