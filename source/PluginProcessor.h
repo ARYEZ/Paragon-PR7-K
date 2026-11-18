@@ -485,6 +485,11 @@ public:
     int getPressCount() const noexcept { return engine.getPressCount(); }
     int getPressLast() const noexcept { return engine.getPressLast(); }
     int getPressNow() const noexcept { return engine.getPressNow(); }
+    synth::polymeter::Settings getPolymeterSettings() const noexcept;            // POLYMETER (1.4.0)
+    int getPolyPhase() const noexcept { return engine.getPolyPhase(); }
+    int getPolyStrikes() const noexcept { return engine.getPolyStrikes(); }
+    int getPolyMeterHits (int meter) const noexcept { return engine.getPolyMeterHits (meter); }
+    int getPolyMeterNote (int meter) const noexcept { return engine.getPolyMeterNote (meter); }
     int getRunnerStrikes() const noexcept { return engine.getRunnerStrikes(); }
     int getRunnerBeatPosition() const noexcept { return engine.getRunnerBeatPosition(); }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }

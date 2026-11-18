@@ -30,11 +30,12 @@ namespace expansions
           "chords, string-machine and polysynth pads, haunting leads, eighth-note basses. Built round AFTERGLOW (0.60.0), "
           "an old polysynth's glow, and MACRO 3, GLOW. Our own sounds." },
         { "SANDSEA", "SS",
-          "Inspired by the score of an epic desert science-fiction film, in three columns: the deep desert (the sand "
-          "sea, a keening voice, what moves under it), the desert people (chant, reed, didgeridoo, hand drums, zither, oud) "
-          "and the invaders (colossal horns, pipes, engines, war drums). Melodies in the Phrygian dominant scale. Built "
-          "round COLOSSUS (0.82.0) and MACRO 3, COLOSSUS: the sound made enormous. Many play free sample libraries (VCSL, "
-          "the orchestra, Big Rusty Drums, Gogodze Phu, Squidpipes) when downloaded. Our own sounds." },
+          "Inspired by how an epic desert science-fiction film's score was made: no strings-and-brass orchestra, the "
+          "human voice at its heart, real instruments pushed to their extremes (a guitar standing in for the strings, a fuzzed cello, "
+          "magnet-driven bass strings, bowed metal, a giant reed) and inhuman, synthesized rhythms. Three columns: the "
+          "heat, the cold, the dream. Built round POLYMETER (1.4.0) and MACRO 3, POLYMETER: the held notes struck "
+          "again in 4, 3, 5 and 7 at once. Some play free sample libraries (Squidpipes, VCSL, Big Rusty Drums, the "
+          "Sonatina orchestra's cello and choir). Our own sounds." },
         { "DATASTREAM", "DS",
           "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
           "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Built round "

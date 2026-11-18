@@ -107,7 +107,9 @@ namespace ModDestinations
                                                  // 1.0.0: RUNNER: how fast, its accents, its lift
                                                  "runnerAmount", "runnerAccent", "runnerLift",
                                                  // 1.3.0: PRESS: how many notes, how fast
-                                                 "pressAmount", "pressSpeed" };
+                                                 "pressAmount", "pressSpeed",
+                                                 // 1.4.0: POLYMETER: how many meters, the accents, the lift
+                                                 "polyAmount", "polyAccent", "polyLift" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

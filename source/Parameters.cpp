@@ -598,6 +598,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         add (layout, pressSpeed, "Press Speed", { 0.0f, 1.0f }, d.speed,
              [] (float v, int) { return juce::String (juce::roundToInt (synth::press::riseSeconds (v) * 1000.0)) + " ms"; }, stagePress);
     }
+    // POLYMETER (1.4.0): the held notes struck again in several meters at once; in presets. Off and at 0 by default.
+    {
+        constexpr int stagePoly = 66;
+        const synth::polymeter::Settings d;
+        addSwitch (layout, polyOn, "Polymeter On", d.on, stagePoly);
+        add (layout, polyAmount, "Polymeter Amount", { 0.0f, 1.0f }, 0.0f,
+             [] (float v, int) { return v < 0.001f ? juce::String ("OFF") : juce::String (juce::roundToInt (v * 100.0f)) + "%"; }, stagePoly);
+        addChoice (layout, polyCycle, "Polymeter Cycle", synth::polymeter::cycleNames, d.cycle, stagePoly);
+        addChoice (layout, polyDensity, "Polymeter Density", synth::polymeter::densityNames, d.density, stagePoly);
+        add (layout, polyAccent, "Polymeter Accent", { 0.0f, 1.0f }, d.accent, asPercent, stagePoly);
+        add (layout, polyLift, "Polymeter Lift", { 0.0f, 1.0f }, d.lift, asPercent, stagePoly);
+    }
 
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);

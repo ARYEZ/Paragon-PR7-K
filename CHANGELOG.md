@@ -2,6 +2,22 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.4.0
+
+**SANDSEA rebuilt from how the desert film's score was really made, round a new signature: POLYMETER.**
+
+- **POLYMETER** (MACRO 3 on every SANDSEA preset, and in the SIGNATURE slot for any sound). The notes you hold are struck again in several meters at once, in time with your song: 4, 3, 5 and 7 strikes a cycle, all lining up at its start.
+  - **AMOUNT** brings the meters in one at a time: 4 alone (the pulse), then 4 against 3, then 5, then 7. At 0 the sound is exactly as it was.
+  - **Which note plays which meter:** the lowest note you hold takes 4, the next 3, then 5 and 7. A single note plays every meter at once, so even a lead turns into a rhythm no foot can follow.
+  - **CYCLE** (1 beat to 2 bars) is the span the meters share; **DENSITY** strikes every meter 1, 2 or 4 times as often; **ACCENT** softens the in-between strikes; **LIFT** dips the sound just before each strike so held sounds are struck too.
+  - Its page shows the meters as rings on a wheel and as lanes across the cycle, each named with the note playing it.
+- **SANDSEA** (18 presets, all new). Built after researching how the score was made: no strings-and-brass orchestra, the human voice at its heart, real instruments pushed to their extremes, and inhuman, synthesized rhythms. Three columns:
+  - *The heat:* Desert Cry, Sisterhood, Magnet Drone, Temple Bell, Breath Grooves, Breath Hit.
+  - *The cold:* Fuzz Cello, E-Bow Strings, Black Bow, Resonator Plate, Anti-Groove, Struck Sculpture.
+  - *The dream:* Chromatic Reed, Herald Pipes, Monk Drone, Quarter Clusters, Ostinato Engine, Fretless Slide.
+  - Six have versions on the free libraries PR7-K downloads: Fuzz Cello (a real cello into fuzz), Sisterhood (a choir far under the voices), Herald Pipes (real bagpipes), Temple Bell (Nepalese hand bells), Resonator Plate (a bowed vibraphone), Anti-Groove (Big Rusty Drums).
+  - The previous SANDSEA presets (MACRO 3 COLOSSUS) are gone; COLOSSUS itself stays in the SIGNATURE slot.
+
 ## 1.3.0
 
 **RONIN, a feudal Japan bank, and PRESS, its signature: a koto player's left hand on every note.**

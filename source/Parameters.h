@@ -714,6 +714,14 @@ namespace ParamIDs
     inline constexpr auto pressKey      = "pressKey";        // synth::sirocco::keyNames
     inline constexpr auto pressScale    = "pressScale";      // synth::arp::scaleNames
     inline constexpr auto pressSpeed    = "pressSpeed";      // 0 to 1: 40 to 400 ms
+    // POLYMETER (1.4.0, version hint 66, synth::polymeter): SANDSEA's signature: the held notes struck again in several
+    // meters at once (4, 3, 5, 7 a cycle), in time with the song. In presets.
+    inline constexpr auto polyOn      = "polyOn";
+    inline constexpr auto polyAmount  = "polyAmount";    // 0 to 1: the meters come in one a quarter (the macro's)
+    inline constexpr auto polyCycle   = "polyCycle";     // synth::polymeter::cycleNames: the span they share
+    inline constexpr auto polyDensity = "polyDensity";   // synth::polymeter::densityNames
+    inline constexpr auto polyAccent  = "polyAccent";    // 0 to 1: the subdivisions softer
+    inline constexpr auto polyLift    = "polyLift";      // 0 to 1: the damper's lift before each strike
     // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
     inline constexpr auto sortOn     = "sortOn";
     inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)

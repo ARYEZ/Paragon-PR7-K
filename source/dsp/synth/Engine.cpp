@@ -376,6 +376,8 @@ namespace synth
         ragLastStep = std::numeric_limits<std::int64_t>::min();
         runClock = 0.0;
         runLastStrike = std::numeric_limits<std::int64_t>::min();
+        polyClock = 0.0;
+        polyLastBeat.fill (-1.0e30);
         travelClock.fill (0.0);
         arps = {};
         numArpEvents = 0;
@@ -638,6 +640,8 @@ namespace synth
             ragLastStep = std::numeric_limits<std::int64_t>::min();
             runClock = 0.0;   // ...and RUNNER's
             runLastStrike = std::numeric_limits<std::int64_t>::min();
+            polyClock = 0.0;   // ...and POLYMETER's
+            polyLastBeat.fill (-1.0e30);
         }
         // ...and each oscillator's TRAVEL set to FIRST NOTE or LAST NOTE.
         for (size_t i = 0; i < travelClock.size(); ++i)
@@ -948,6 +952,33 @@ namespace synth
         }
         setGlide (voice, (float) note, ! juce::approximatelyEqual (fromPitch, (float) note), settings);
         retrigger (voice, note, velocity, true, ! juce::approximatelyEqual (fromPitch, (float) note), settings);
+    }
+
+    void Engine::assignPolymeters (int active) noexcept
+    {
+        // The held keys' notes from the lowest up (the older first on a tie) take the meters in turn.
+        std::array<Voice*, maxVoices + 16> held {};
+        int count = 0;
+        for (auto& v : voices)
+        {
+            if (v.playing && ! v.killing && v.source == 0 && (v.held || v.sustained) && count < (int) held.size())
+                held[(size_t) count++] = &v;
+            else
+                v.polyMask = 0;
+        }
+        std::sort (held.begin(), held.begin() + count, [] (const Voice* a, const Voice* b)
+                   { return a->note != b->note ? a->note < b->note : a->age < b->age; });
+        std::array<int, polymeter::numMeters> lowest;
+        lowest.fill (-1);
+        for (int r = 0; r < count; ++r)
+        {
+            held[(size_t) r]->polyMask = polymeter::metersFor (r, count, active);
+            for (int j = 0; j < polymeter::numMeters; ++j)
+                if ((held[(size_t) r]->polyMask & (1 << j)) != 0 && lowest[(size_t) j] < 0)
+                    lowest[(size_t) j] = held[(size_t) r]->note;
+        }
+        for (int j = 0; j < polymeter::numMeters; ++j)
+            polyMeterNote[(size_t) j].store (lowest[(size_t) j]);
     }
 
     void Engine::restrike (Voice& voice, float velocity, const Settings& settings) noexcept
@@ -1516,6 +1547,64 @@ namespace synth
                 }
                 runClock += length * beatsPerSample;
             }
+            // POLYMETER (1.4.0): which interval each meter's strikes fall in (all meters lining up at the cycle's
+            // start), and the ones the damper lifts in, about 4 ms before; which meters each held note plays.
+            polyPlaying = settings.polymeter.playing();
+            {
+                const auto& pm = settings.polymeter;
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (polyPlaying)
+                {
+                    const auto active = pm.activeMeters();
+                    assignPolymeters (active);
+                    const auto cycle = pm.beatsPerCycle();
+                    const auto per = pm.timesPerBeat();
+                    const auto liftBeats = 0.004 * juce::jmax (1.0, modulation.bpm) / 60.0;
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        const auto n = juce::jmin (controlInterval, length - at);
+                        const auto beatsAt = [&] (int offset) { return followSong ? modulation.ppq + (samplesIntoBlock + start + offset) * beatsPerSample
+                                                                                  : polyClock + offset * beatsPerSample; };
+                        const auto from = beatsAt (at), to = beatsAt (at + n);
+                        std::uint8_t strike = 0, lift = 0;
+                        for (int j = 0; j < active; ++j)
+                        {
+                            const auto count = pm.strikesPerCycle (j);
+                            const auto k = polymeter::nextStrike (from, count, cycle);
+                            const auto when = polymeter::strikeBeat (k, count, cycle);
+                            if (when < to - 1.0e-12 && when > polyLastBeat[(size_t) j] + 1.0e-9)
+                            {
+                                polyLastBeat[(size_t) j] = when;   // (a strike on a piece's edge can fall in both: strike it once)
+                                const auto main = k % per == 0;
+                                strike = (std::uint8_t) (strike | (1 << j) | (main ? (16 << j) : 0));
+                                polyMeterHits[(size_t) j].store (polyMeterHits[(size_t) j].load() + 1);
+                            }
+                            const auto ahead = polymeter::strikeBeat (polymeter::nextStrike (to, count, cycle), count, cycle);
+                            const auto gapBeats = cycle / (double) count;
+                            if (ahead - to < juce::jmin (liftBeats, gapBeats / 3.0))
+                                lift = (std::uint8_t) (lift | (1 << j));
+                        }
+                        polyStrikes[(size_t) i] = strike;
+                        polyLifts[(size_t) i] = lift;
+                        if (i == 0)
+                        {
+                            const auto phase = from / cycle - std::floor (from / cycle);
+                            polyPhaseShown.store (juce::jlimit (0, 9999, (int) (phase * 10000.0)));
+                        }
+                    }
+                }
+                else
+                {
+                    polyPhaseShown.store (-1);
+                    polyLastBeat.fill (-1.0e30);
+                    for (auto& v : voices)
+                        v.polyMask = 0;
+                    for (auto& note : polyMeterNote)
+                        note.store (-1);
+                }
+                polyClock += length * beatsPerSample;
+            }
             for (auto& voice : voices)
             {
                 if (! voice.playing)
@@ -1541,6 +1630,7 @@ namespace synth
             envelope.start();
         voice.pitchEnvelope.start();
         voice.seqPosition = voice.seqAge = 0.0;
+        voice.polyLastAge = -1.0;   // POLYMETER: not struck yet
         voice.seqValue = 0.0f;
         voice.randomValue = random.nextFloat();
         voice.pressure = 0.0f;
@@ -1749,6 +1839,22 @@ namespace synth
             }
             else if (runLifts[slot] != 0)
                 ragTarget = juce::jmin (ragTarget, 1.0f - unmodulated.runner.liftDepth());
+        }
+        // POLYMETER (1.4.0): the same, on the strikes of the meters this note plays (two that nearly meet: one strike).
+        if (polyPlaying && voice.polyMask != 0 && voice.source == 0 && (voice.held || voice.sustained) && ! voice.killing)
+        {
+            const auto slot = (size_t) juce::jlimit (0, maxIntervals - 1, interval);
+            const auto strike = polyStrikes[slot];
+            const auto mine = (std::uint8_t) (strike & voice.polyMask);
+            if (mine != 0 && voice.seqAge > 0.01 && (voice.polyLastAge < 0.0 || voice.seqAge - voice.polyLastAge >= polymeter::minimumGap))
+            {
+                const auto main = ((strike >> 4) & voice.polyMask) != 0;
+                restrike (voice, unmodulated.polymeter.strikeVelocity (voice.ragVelocity, main), unmodulated);
+                voice.polyLastAge = voice.seqAge;
+                polyStrikeCount.store (polyStrikeCount.load() + 1);
+            }
+            else if ((polyLifts[slot] & voice.polyMask) != 0)
+                ragTarget = juce::jmin (ragTarget, 1.0f - unmodulated.polymeter.liftDepth());
         }
         // The PITCH module's envelope (also a source for the matrix).
         const auto& pitchModule = unmodulated.pitch;

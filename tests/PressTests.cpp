@@ -244,7 +244,7 @@ TEST_CASE ("PRESS in the plugin: parameters, matrix destinations, MACRO 3, the S
         REQUIRE (ModDestinations::find (id) != nullptr);
         CHECK (ModDestinations::find (id)->group == "FX Press");
     }
-    CHECK (signatureNames()[signatureNames().size() - 1] == "PRESS");
+    CHECK (signatureNames().contains ("PRESS"));
     ParagonX1AudioProcessor processor;
     processor.setPlayConfigDetails (0, 2, sampleRate, blockSize);
     processor.prepareToPlay (sampleRate, blockSize);

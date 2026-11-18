@@ -286,6 +286,8 @@ namespace synth
             int pressNote = -1;                                              // ...the note it was judged for (-1: not yet)
             float ragVelocity = 1.0f;                                        // RAGTIME (0.92.0): the velocity it was played at
             float ragGain = 1.0f;                                            // ...the damper's lift (1: none)
+            std::uint8_t polyMask = 0;                                       // POLYMETER (1.4.0): the meters (bits) this note plays
+            double polyLastAge = -1.0;                                       // ...its seqAge when last struck by them
             float panLeft = 1.0f, panRight = 1.0f;      // the AMP's PAN, KEYTRACK and SPREAD for this note
             float notePan = 0.0f;                       // ...as a position, -1 to 1 (modulation moves it from here)
 
@@ -576,6 +578,16 @@ namespace synth
         std::int64_t runLastStrike = std::numeric_limits<std::int64_t>::min();
         int runLastSpeed = 0;
         SharedInt runStrikeCount {}, runBeatShown {};
+        // POLYMETER (1.4.0): each interval's strikes (bits 0-3 by meter, bits 4-7 that meter's own beat or the cycle's
+        // start) and lifts (bits by meter), its own count while stopped, the beat each meter last struck (never twice),
+        // and for the page: where in the cycle, each meter's strikes so far and its lowest note.
+        std::array<std::uint8_t, maxIntervals> polyStrikes {}, polyLifts {};
+        double polyClock = 0.0;
+        bool polyPlaying = false;
+        std::array<double, polymeter::numMeters> polyLastBeat {};
+        SharedInt polyPhaseShown {}, polyStrikeCount {};
+        std::array<SharedInt, polymeter::numMeters> polyMeterHits {}, polyMeterNote {};
+        void assignPolymeters (int active) noexcept;
         SharedInt ampSparkShown {}, filterSparkShown {};   // THE GRID's spark (0.98.0): see getAmpSpark
         int switchFor (size_t index, const sfz::Instrument* inst) noexcept;
     public:
@@ -597,6 +609,12 @@ namespace synth
         // RUNNER: strikes made so far (0 until the first), and where in the beat the last one was (0 on the beat, -1 still).
         int getRunnerStrikes() const noexcept { return runStrikeCount.load() + 1; }
         int getRunnerBeatPosition() const noexcept { return runBeatShown.load(); }
+        // POLYMETER: where in the cycle (0-9999; -1 still), strikes made so far (0 until the first), each meter's
+        // strikes so far, and the lowest note on each meter (-1 none).
+        int getPolyPhase() const noexcept { return polyPhaseShown.load(); }
+        int getPolyStrikes() const noexcept { return polyStrikeCount.load() + 1; }
+        int getPolyMeterHits (int meter) const noexcept { return polyMeterHits[(size_t) juce::jlimit (0, polymeter::numMeters - 1, meter)].load(); }
+        int getPolyMeterNote (int meter) const noexcept { return polyMeterNote[(size_t) juce::jlimit (0, polymeter::numMeters - 1, meter)].load(); }
         int getAmpSpark() const noexcept { return ampSparkShown.load(); }
         int getFilterSpark() const noexcept { return filterSparkShown.load(); }
     private:

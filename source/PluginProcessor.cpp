@@ -1088,6 +1088,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.ragtime = getRagtimeSettings();
         s.runner = getRunnerSettings();
         s.press = getPressSettings();
+        s.polymeter = getPolymeterSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1565,6 +1566,18 @@ synth::press::Settings ParagonX1AudioProcessor::getPressSettings() const noexcep
     s.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::pressKey)));
     s.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::pressScale)));
     s.speed = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("pressSpeed"), ParamIDs::pressSpeed));
+    return s;
+}
+
+synth::polymeter::Settings ParagonX1AudioProcessor::getPolymeterSettings() const noexcept
+{
+    synth::polymeter::Settings s;
+    s.on = isOn (ParamIDs::polyOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("polyAmount"), ParamIDs::polyAmount));
+    s.cycle = juce::jlimit (0, synth::polymeter::cycleNames.size() - 1, juce::roundToInt (param (ParamIDs::polyCycle)));
+    s.density = juce::jlimit (0, synth::polymeter::densityNames.size() - 1, juce::roundToInt (param (ParamIDs::polyDensity)));
+    s.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("polyAccent"), ParamIDs::polyAccent));
+    s.lift = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("polyLift"), ParamIDs::polyLift));
     return s;
 }
 

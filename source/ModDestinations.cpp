@@ -112,7 +112,8 @@ namespace ModDestinations
                 { "FX Sort", "Amount" }, { "FX Sort", "Edge" }, { "FX Sort", "Strike" },
                 { "FX Wobble", "Amount" }, { "FX Wobble", "Talk" }, { "FX Wobble", "Resonance" },
                 { "FX Runner", "Amount" }, { "FX Runner", "Accent" }, { "FX Runner", "Lift" },
-                { "FX Press", "Amount" }, { "FX Press", "Speed" } };
+                { "FX Press", "Amount" }, { "FX Press", "Speed" },
+                { "FX Polymeter", "Amount" }, { "FX Polymeter", "Accent" }, { "FX Polymeter", "Lift" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

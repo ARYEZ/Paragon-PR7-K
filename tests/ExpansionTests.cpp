@@ -276,14 +276,14 @@ TEST_CASE ("NEON RAIN: MACRO 3 is STORM on every preset, DOWNPOUR silent at its 
     CHECK (count == 18);
 }
 
-TEST_CASE ("SANDSEA: MACRO 3 is COLOSSUS on every preset, resting at its left; the libraries' versions are real", "[rigs][expansions][colossus]")
+TEST_CASE ("SANDSEA: MACRO 3 is POLYMETER on every preset, resting at its left; every note can be struck; the libraries' versions are real", "[rigs][expansions][polymeter]")
 {
     ParagonX1AudioProcessor processor;
     int count = 0, sampled = 0;
     std::set<const libraries::Library*> used;
     for (const auto& rig : makeExpansionRigs())
     {
-        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion (rebuilt in 0.83.0)
+        if (rig.bank != Rig::numBanks + 3)   // SANDSEA: the fourth expansion (rebuilt in 0.83.0 and again in 1.4.0)
             continue;
         ++count;
         INFO (rig.name);
@@ -291,12 +291,37 @@ TEST_CASE ("SANDSEA: MACRO 3 is COLOSSUS on every preset, resting at its left; t
         {
             if (version == nullptr)
                 continue;
-            CHECK (version->modulation.macroNames[2] == "COLOSSUS");
-            CHECK (version->notes.contains ("COLOSSUS"));
-            CHECK (version->parameters.at (ParamIDs::colossusOn) == 1.0f);
-            CHECK (version->parameters.at (ParamIDs::colossusSize) == 0.0f);
-            CHECK (std::any_of (version->modulation.routes.begin(), version->modulation.routes.end(), [] (const auto& r)
-                                { return r.source == "macro3" && r.destination == ParamIDs::colossusSize && r.amount >= 0.7f; }));
+            CHECK (version->modulation.macroNames[2] == "POLYMETER");
+            CHECK (version->notes.contains ("POLYMETER"));
+            CHECK (version->parameters.at (ParamIDs::polyOn) == 1.0f);
+            CHECK (version->parameters.at (ParamIDs::polyAmount) == 0.0f);
+            // MACRO 3 is POLYMETER's AMOUNT, at exactly 1 (its quarters are the meters), and nothing else.
+            int macro3 = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    ++macro3;
+                    CHECK (r.destination == ParamIDs::polyAmount);
+                    CHECK (r.amount == 1.0f);
+                }
+            CHECK (macro3 == 1);
+            // Some sustain, so a held note is still there to be struck (at 0 it ends once silent).
+            const auto sustain = version->parameters.find (ParamIDs::ampSustain);
+            CHECK ((sustain == version->parameters.end() || sustain->second > 0.0f));
+            // An arp preset keeps a keys layer (an oscillator on, not on the arp) for POLYMETER to strike.
+            if (rig.tags.contains ("Arp"))
+            {
+                auto keysLayer = false;
+                for (int o = 0; o < synth::numOscillators; ++o)
+                {
+                    const auto onAt = version->parameters.find (ParamIDs::osc (o, "On"));
+                    const auto isOn = o == 0 ? (onAt == version->parameters.end() || onAt->second > 0.5f) : (onAt != version->parameters.end() && onAt->second > 0.5f);
+                    const auto arpAt = version->parameters.find (ParamIDs::osc (o, "Arp"));
+                    if (isOn && (arpAt == version->parameters.end() || arpAt->second < 0.5f))
+                        keysLayer = true;
+                }
+                CHECK (keysLayer);
+            }
         }
         if (rig.sampled == nullptr)
             continue;
@@ -335,8 +360,8 @@ TEST_CASE ("SANDSEA: MACRO 3 is COLOSSUS on every preset, resting at its left; t
         }
     }
     CHECK (count == 18);
-    CHECK (sampled == 15);      // (Duduk Lament, Iron Engine and Desert Oud: synthesized only)
-    CHECK (used.size() == 5);   // VCSL, the orchestra, Big Rusty Drums, Gogodze Phu and Squidpipes
+    CHECK (sampled == 6);       // Fuzz Cello, Sisterhood, Herald Pipes, Temple Bell, Resonator Plate, Anti-Groove
+    CHECK (used.size() == 4);   // the orchestra (its cello and choir), Squidpipes, VCSL and Big Rusty Drums
 }
 
 TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
@@ -1966,6 +1991,15 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     ++k;
                 }
             length = (k * 2.0 + 3.0) * beat;
+        }
+        else if (sand && type == "Pluck")
+        {
+            // SANDSEA's plucks (1.4.0): notes held a beat or two in D Phrygian dominant, so POLYMETER has notes to strike
+            // again, then a three-note chord held a bar.
+            line ({ { 0, 1, 62 }, { 1, 1, 63 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 }, { 8, 1, 69 },
+                    { 9, 1, 67 }, { 10, 2, 66 } }, 105);
+            chord (e, at (12.0), at (15.8), { 62, 66, 69 }, 105);
+            length = 19.0 * beat;
         }
         else if (type == "Pluck")
         {
@@ -4184,63 +4218,57 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sand && type == "Lead")
         {
-            // D Phrygian dominant: D Eb F# G A Bb C. The horn low and long; the voice and the reed a singing line.
-            if (rig.name == "Colossus Horn")
-                line ({ { 0, 3, 38 }, { 3, 1, 39 }, { 4, 4, 38 }, { 8, 3, 42 }, { 11, 1, 43 }, { 12, 4, 38 } }, 110);
+            // D Phrygian dominant: D Eb F# G A Bb C. Long notes (a beat or more), so POLYMETER has held notes to strike.
+            if (rig.name == "Fuzz Cello")
+                line ({ { 0, 3, 50 }, { 3, 1, 51 }, { 4, 4, 50 }, { 8, 2, 54 }, { 10, 2, 55 }, { 12, 4, 50 } }, 110);
             else
-                line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 62 }, { 2, 2, 66 }, { 4, 1, 67 }, { 5, 1, 69 }, { 6, 2, 70 },
-                        { 8, 1, 69 }, { 9, 1, 67 }, { 10, 1, 66 }, { 11, 1, 63 }, { 12, 4, 62 } }, 100);
-            if (rig.name == "Keening Voice")
+                line ({ { 0, 2, 62 }, { 2, 1, 63 }, { 3, 1, 62 }, { 4, 2, 66 }, { 6, 2, 67 }, { 8, 1, 69 }, { 9, 1, 70 },
+                        { 10, 2, 69 }, { 12, 4, 62 } }, 100);
+            if (rig.name == "Desert Cry")
                 wheel (6.0, 11.0, 110);
             length = 19.0 * beat;
         }
         else if (sand && type == "Pad")
         {
-            if (rig.name == "Pipes of Arrival")
+            if (rig.name == "Herald Pipes")
             {
                 chord (e, at (0), at (7.8), { 50, 57, 62 }, 95);   // in the chanter's range (from G2)
                 chord (e, at (8), at (15.8), { 51, 58, 63 }, 95);
             }
             else
             {
-                chord (e, at (0), at (7.8), { 38, 45, 50, 54 }, 95);   // D, a low fifth and the major third
-                chord (e, at (8), at (15.8), { 39, 46, 51, 55 }, 95);  // E flat: the flat second
+                chord (e, at (0), at (7.8), { 50, 57, 62, 66 }, 95);   // D, its fifth, octave and major third
+                chord (e, at (8), at (15.8), { 51, 58, 63, 67 }, 95);  // E flat: the flat second
             }
             length = 22.0 * beat;
         }
         else if (sand && type == "Bass")
         {
-            if (rig.name == "Iron Engine")
-            {
-                const int notes[] = { 38, 38, 39, 38, 42, 38, 39, 38 };
-                for (int bar = 0; bar < 4; ++bar)
-                    for (int k = 0; k < 8; ++k)
-                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.35), { notes[k] }, k % 2 == 0 ? 110 : 90);
-            }
-            else if (rig.name == "Didgeridoo Bass")
-                line ({ { 0, 6, 38 }, { 6, 2, 39 }, { 8, 6, 38 }, { 14, 2, 42 } }, 105);
-            else
-                line ({ { 0, 6, 26 }, { 6, 2, 27 }, { 8, 6, 26 }, { 14, 2, 30 } }, 105);
+            line ({ { 0, 6, 38 }, { 6, 2, 39 }, { 8, 6, 38 }, { 14, 2, 42 } }, 105);
             length = 18.0 * beat;
         }
         else if (sand && type == "Keys")
         {
-            if (rig.name == "Sun Gong")
+            if (rig.name == "Temple Bell")
             {
-                chord (e, at (0), at (3), { 38 }, 115);
-                chord (e, at (8), at (11), { 38, 45 }, 110);
+                chord (e, at (0), at (7.8), { 74 }, 105);
+                chord (e, at (8), at (15.8), { 74, 81 }, 100);
+            }
+            else if (rig.name == "Resonator Plate")
+            {
+                chord (e, at (0), at (7.8), { 62, 69 }, 100);   // the bowed vibraphone's range (from A3)
+                chord (e, at (8), at (15.8), { 63, 70 }, 100);
             }
             else
-                line ({ { 0, 1, 62 }, { 1, 0.5, 63 }, { 1.5, 0.5, 66 }, { 2, 1, 67 }, { 3, 1, 69 }, { 4, 0.5, 70 }, { 4.5, 0.5, 69 },
-                        { 5, 1, 67 }, { 6, 2, 66 }, { 8, 1, 63 }, { 9, 1, 62 }, { 10, 3, 62 } }, rig.name == "Spice Bells" ? 110 : 100);
+            {
+                chord (e, at (0), at (7.8), { 62 }, 100);
+                chord (e, at (8), at (15.8), { 63, 66 }, 100);
+            }
             length = 19.0 * beat;
         }
         else if (sand)
         {
-            if (rig.name == "Thumper")
-                chord (e, at (0), at (15.9), { 38 }, 110);
-            else
-                chord (e, at (0), at (15.9), { 50 }, 105);   // the drums: any key
+            chord (e, at (0), at (15.9), { 38, 45, 50 }, 105);   // D, its fifth and octave: the arp's notes, POLYMETER's keys
             length = 19.0 * beat;
         }
         else if (star && type == "Lead")
