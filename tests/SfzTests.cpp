@@ -1772,3 +1772,44 @@ TEST_CASE ("SFZ: the koto's styles load, and its bends move the pitch as the fil
         WARN (label << ": " << line);
     }
 }
+
+TEST_CASE ("SFZ + PRESS: a pressed note's recording keeps its press when it rings on after the key (its tail)", "[sfz][press]")
+{
+    // 1.3.0: a sample whose AMPEG_RELEASE outlasts the AMP is handed to a tail voice when the key goes up; the tail
+    // carries on with its note's press (it would otherwise jump back to the plain note, or never be pressed).
+    Folder f;
+    writeSine (f.dir.getChildFile ("ring.wav"), hzOf (60), 3.0);
+    const auto inst = synth::sfz::load (writeSfz (f.dir, "<region> sample=ring.wav key=60 ampeg_release=3\n"));
+    REQUIRE (inst != nullptr);
+    SfzPlayer p (inst.get());
+    p.settings.modulation.bpm = 120.0;
+    p.settings.press.on = true;
+    p.settings.press.amount = 1.0f;
+    p.settings.press.style = synth::press::hold;
+    p.settings.press.division = 1;   // 1/8: the line 0.25 s after the strike
+    p.settings.press.key = 9;        // A minor: C4 pressed one step lands on D4
+    p.settings.press.scale = 2;
+    p.settings.press.speed = 0.0f;
+    p.on (60);
+    const auto held = p.render (0.6);
+    const auto semis = [] (const std::vector<float>& x, double from, double to)
+    {
+        return 12.0 * std::log2 (frequencyOf (x, (size_t) (from * sampleRate), (size_t) (to * sampleRate)) / hzOf (60));
+    };
+    CHECK_THAT (semis (held[0], 0.35, 0.58), WithinAbs (2.0, 0.03));
+    p.off (60);
+    const auto after = p.render (0.6);
+    CHECK (rms (after[0], 9600, 24000) > 0.05);                      // it rings on
+    CHECK_THAT (semis (after[0], 0.2, 0.5), WithinAbs (2.0, 0.03));   // still pressed
+
+    // A short note let go before its press arrives: its tail carries on and is pressed on the line all the same.
+    SfzPlayer q (inst.get());
+    q.settings.modulation.bpm = 120.0;
+    q.settings.press = p.settings.press;
+    q.on (60);
+    const auto struck = q.render (0.1);
+    q.off (60);
+    const auto rung = q.render (0.8);   // from 0.1 s: the line is at 0.25 s
+    CHECK_THAT (semis (struck[0], 0.01, 0.09), WithinAbs (0.0, 0.05));
+    CHECK_THAT (semis (rung[0], 0.3, 0.7), WithinAbs (2.0, 0.03));
+}

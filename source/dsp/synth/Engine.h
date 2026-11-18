@@ -507,6 +507,10 @@ namespace synth
             std::uint8_t mask = 0;
             std::array<const sfz::Instrument*, numOscillators> instruments {};
             int pedal = -1;   // 0-127: the sustain pedal moved there (its own sounds), not a key let go
+            // PRESS (1.3.0): the note's press when let go, so its tail carries on with it (pressing, holding, wobbling).
+            float pressSemis = 0.0f, pressTarget = 0.0f;
+            double pressTime = 0.0;
+            int pressStyle = -1;
             // Samples handed over from the released note: those whose AMPEG_RELEASE outlasts the AMP's (undamped strings).
             std::array<std::array<SfzPlayer, maxSfzPlayers>, numOscillators> handed {};
         };

@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 43> list
+    inline constexpr std::array<Expansion, 44> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -286,5 +286,13 @@ namespace expansions
           "tone, a glass room, a cold pulse, glassy keys, data trickling, a needle. MACRO 3, RUNNER: every note you hold "
           "struck again in time with your song, each fifth of the knob the next speed: quarters, eighths, sixteenths, "
           "32nds, 64ths. Our own sounds; no film, book or music named." },
+        { "RONIN", "RN",
+          "Feudal Japan: the court, the battlefield, and the foreign ship wrecked on its coast. The court: a bamboo flute, "
+          "the mouth organ's breathing clusters, a temple drone over a gong, the koto plain and as a running pattern, a soft "
+          "falling touch. The battlefield: a shamisen struck hard, horns in the smoke, a great drum tuned as a bass, a koto "
+          "driven for war, the taiko ensemble, an archer's bow. The foreign ship: a viol, plainchant, the hull groaning, a "
+          "harpsichord brought ashore for mass, the rigging, the ship's bell. MACRO 3, PRESS: a koto player's left hand, "
+          "every note pressed up the old scale after it's struck, in time with your song. The koto presets play a real koto "
+          "when it's downloaded (free, from its maker's own link). Our own sounds; no series, character or music named." },
     }};
 }

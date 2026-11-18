@@ -1153,6 +1153,10 @@ namespace synth
         {
             auto& tail = pendingTails[(size_t) numPendingTails];
             tail = {};
+            tail.pressSemis = voice.pressSemis;
+            tail.pressTarget = voice.pressTarget;
+            tail.pressTime = voice.pressTime;
+            tail.pressStyle = voice.pressStyle;
             for (size_t i = 0; i < voice.oscillators.size(); ++i)
             {
                 auto& osc = voice.oscillators[i];
@@ -1662,8 +1666,10 @@ namespace synth
     // PRESS (1.3.0): see Press.h.
     void Engine::renderPress (Voice& voice, int n, const press::Settings& ps, int interval) noexcept
     {
-        const auto struck = voice.source != answerSource && voice.source != tailSource;
-        if (pressPlaying && struck && voice.pressNote != voice.note)
+        // SIROCCO's answers aren't pressed; a release tail isn't judged, it carries on with its note's press.
+        if (voice.source == answerSource)
+            return;
+        if (pressPlaying && voice.pressNote != voice.note && voice.source != tailSource)
         {
             // Judged now: the grid line its press falls on (at least minimumGap after the strike).
             const auto beat = pressBeats[(size_t) juce::jlimit (0, maxIntervals - 1, interval)];
@@ -3613,6 +3619,12 @@ namespace synth
             startingTail = &tail;
             startVoice (*voice, tail.note, tail.velocity, (float) tail.note, settings, tailSource, tail.mask);
             startingTail = nullptr;
+            // PRESS: the tail carries on with its note's press (never judged afresh: see renderPress).
+            voice->pressSemis = tail.pressSemis;
+            voice->pressTarget = tail.pressTarget;
+            voice->pressTime = tail.pressTime;
+            voice->pressStyle = tail.pressStyle;
+            voice->pressNote = tail.pressStyle >= 0 ? tail.note : -1;
             lastPitch = keysLastPitch;
             voice->held = false;               // nothing lets it go: it ends with its samples
             if (std::none_of (voice->oscillators.begin(), voice->oscillators.end(), [] (const OscState& o) { return o.active; }))

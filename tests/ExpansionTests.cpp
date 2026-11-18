@@ -1466,6 +1466,50 @@ TEST_CASE ("WICKED GAME: MACRO 3 is RUNNER on every preset, every note able to b
     CHECK (count == 18);
 }
 
+TEST_CASE ("RONIN: MACRO 3 is PRESS on every preset, in D in, its versions too", "[rigs][expansions][press]")
+{
+    // 1.3.0: PRESS on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 and to
+    // nothing else; every preset in D "in" (the koto's scale).
+    int count = 0, koto = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 43)   // RONIN: the forty-fourth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            const auto value = [&] (const juce::String& id, float otherwise)
+            {
+                const auto it = version->parameters.find (id);
+                return it == version->parameters.end() ? otherwise : it->second;
+            };
+            CHECK (value (ParamIDs::pressOn, 0.0f) == 1.0f);
+            CHECK (value (ParamIDs::pressAmount, 1.0f) == 0.0f);
+            CHECK (value (ParamIDs::pressKey, -1.0f) == 2.0f);
+            CHECK (juce::roundToInt (value (ParamIDs::pressScale, -1.0f)) == synth::arp::scaleNames.indexOf ("In"));
+            CHECK (version->modulation.macroNames[2] == "PRESS");
+            CHECK (version->notes.contains ("PRESS"));
+            int toAmount = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    CHECK (r.destination == ParamIDs::pressAmount);
+                    CHECK (r.amount == 1.0f);
+                    ++toAmount;
+                }
+            CHECK (toAmount == 1);
+            for (const auto& [osc, ref] : version->sfz)
+                if (ref.contains ("Ui_KOTO"))
+                    ++koto;
+        }
+    }
+    CHECK (count == 18);
+    CHECK (koto == 4);   // the koto presets' versions: Court Koto, War Koto, Plum Blossom, Falling Petal
+}
+
 TEST_CASE ("OFFWORLD: two lines in every preset, MACRO 3 LINES moving only line II", "[rigs][expansions][filter2]")
 {
     // 0.96.0: line I through FILTER 1, line II through FILTER 2 (0.96.0), each with a LOW CUT; LINES detunes line II
@@ -1869,8 +1913,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto noon = rig.bank == Rig::numBanks + 38;      // HIGHNOON: 96 BPM in G major, G Em C D
         const auto steel = rig.bank == Rig::numBanks + 41;     // STEEL TITANS: 140 BPM in F minor, Fm Db Ab Eb (half-time drops)
         const auto wicked = rig.bank == Rig::numBanks + 42;    // WICKED GAME: 128 BPM in D minor, Dm Bb Gm A (held, for RUNNER)
+        const auto ronin = rig.bank == Rig::numBanks + 43;     // RONIN: 84 BPM in D "in" (D Eb G A Bb), notes ringing for PRESS
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : ronin ? 84.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -2918,6 +2963,53 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     const auto& n = chords[(size_t) c];
                     chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
                 }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (ronin)
+        {
+            // Our own phrases (nothing from any series): D "in", the koto's scale (D E-flat G A B-flat); the chords
+            // an open D, G minor, E flat and an A with a D and an E flat over it; every note left to ring so a press
+            // after it is heard.
+            const std::vector<std::vector<int>> chords { { 38, 50, 57, 62, 69 }, { 31, 50, 55, 58, 62 },
+                                                         { 27, 51, 55, 58, 63 }, { 33, 50, 57, 63, 69 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 69 }, { 1.5, 0.5, 70 }, { 2, 2, 69 }, { 4, 1, 67 }, { 5, 1, 63 }, { 6, 2, 62 },
+                        { 8, 1.5, 74 }, { 9.5, 0.5, 75 }, { 10, 2, 74 }, { 12, 1, 70 }, { 13, 1, 69 }, { 14, 2.5, 67 } }, 100);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto r = chords[(size_t) c][0];
+                    if (rig.tags.contains ("Drone"))
+                        line ({ { c * 4.0, 3.9, r } }, 100);
+                    else
+                        line ({ { c * 4.0, 1.9, r }, { c * 4.0 + 2.0, 1.4, r }, { c * 4.0 + 3.5, 0.45, r + 12 } }, 110);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys" || type == "Pluck")
+            {
+                // A koto-like figure: the chord's notes one by one up, then back down, each ringing.
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    line ({ { c * 4.0, 1.0, n[1] + 12 }, { c * 4.0 + 1.0, 1.0, n[2] + 12 }, { c * 4.0 + 2.0, 1.0, n[3] + 12 },
+                            { c * 4.0 + 3.0, 0.9, n[4] + 12 } }, 100);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else   // the pads and arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 92);
                 wheel (8.0, 14.0, 90);
                 length = 20.0 * beat;
             }
@@ -4431,4 +4523,5 @@ TEST_CASE ("Expansions: the browser's list scrolls, so every bank can be reached
     const auto last = browser.getExpansionButton (count - 1)->getBounds();
     CHECK (view.getViewArea().contains (last));
 }
+
 

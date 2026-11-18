@@ -261,6 +261,7 @@ namespace
             { "Wasteland Pick", -5.1f },
             { "Wet Neon Pluck", -9.8f },
             { "Wire Shamisen", -5.3f },
+            { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
         };
         const auto found = levels.find (name);
         return found != levels.end() ? found->second : 0.0f;
@@ -21807,6 +21808,548 @@ namespace
         pkAdd (x, laser);
     }
 
+    // RONIN (1.3.0, the owner's theme (the 2024 series of feudal Japan, its court and its wars, and the European ship
+    // wrecked on its coast) and the owner's name; no title, characters, places, terms or music from it on the plugin;
+    // our own sounds). Three columns in every category: the court (koto, a bamboo flute, the mouth organ's clusters, a
+    // temple), the battlefield (taiko, the shamisen's slap, horns in the smoke), the foreign ship (a viol, plainchant,
+    // a harpsichord, rigging and the ship's bell). MACRO 3, PRESS (1.3.0): on at AMOUNT 0 (the preset as built), the
+    // macro to AMOUNT; every preset in D "in" (the koto's own scale: D E-flat G A B-flat), each its own style, grid,
+    // steps and speed. The koto presets play Unreal Instruments' 13Strings koto when it's downloaded (its maker's own
+    // link: its files are never in this repository), PR7-K's own koto otherwise.
+    struct Hand
+    {
+        int style = synth::press::mixed;   // synth::press::styleNames
+        int division = 1;                  // synth::press::divisionNames: 1/8
+        int steps = 0;                     // synth::press::stepNames: 1 STEP
+        float speed = 0.4f;                // 40 to 400 ms
+    };
+    void press (Builder& b, Hand h)
+    {
+        b.set (ParamIDs::pressOn, 1.0f).set (ParamIDs::pressAmount, 0.0f).set (ParamIDs::pressStyle, (float) h.style)
+         .set (ParamIDs::pressDivision, (float) h.division).set (ParamIDs::pressSteps, (float) h.steps)
+         .set (ParamIDs::pressKey, 2.0f).set (ParamIDs::pressScale, (float) synth::arp::scaleNames.indexOf ("In"))
+         .set (ParamIDs::pressSpeed, h.speed);
+        route (b, "macro3", ParamIDs::pressAmount, 1.0f);   // the macro is AMOUNT: how many notes are pressed
+    }
+
+    void ronin (Expansion x)
+    {
+        using DM = effects::Drive::Model;
+        using LW = synth::mod::LfoWave;
+        using AM = synth::arp::Mode;
+        namespace pr = synth::press;
+        const auto& koto = libraries::unrealKoto();
+        const auto& vcsl = libraries::versilianCollection();
+        const auto& rusty = libraries::bigRustyDrums();
+        constexpr auto kotoFile = "KOTO/#KOTO.sfz";
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto on = [] (Builder& b, int o, float wave, float volume)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", wave).osc (o, "Volume", volume);
+        };
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto lfo = [] (Builder& b, int l, LW wave, float hz)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Rate"), hz)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        // A drum on its own arp, at a fixed note, in sixteenths: steps `hits` on, `accents` louder.
+        const auto drumArp = [] (Builder& b, int arp, std::initializer_list<int> hits, std::initializer_list<int> accents = {})
+        {
+            b.set (ParamIDs::arp (arp, "On"), 1.0f).set (ParamIDs::arp (arp, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (arp, "Division"), division ("1/16")).set (ParamIDs::arp (arp, "Octaves"), 1.0f)
+             .set (ParamIDs::arp (arp, "Gate"), 0.9f)
+             .set (ParamIDs::arp (arp, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
+            auto& p = b.rig.modulation.arps[(size_t) arp].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                const auto hit = std::find (hits.begin(), hits.end(), k) != hits.end();
+                const auto accent = std::find (accents.begin(), accents.end(), k) != accents.end();
+                p.blocks[(size_t) k].on = hit;
+                p.blocks[(size_t) k].velocity = accent ? 1.0f : 0.72f;
+            }
+        };
+        // One recording on every key, at its own pitch (SFZ KEY): a drum, a gong.
+        const auto pinned = [] (Builder& s, int o, int key)
+        {
+            s.osc (o, "SfzKey", (float) (key + 1)).osc (o, "SfzKeyTrack", 0.0f).osc (o, "PitchEnv", 0.0f);
+        };
+        // PR7-K's own koto: a plucked string (a pulse and a saw a hair apart) struck by an ivory pick (a click of
+        // bright noise), the string's brightness dying faster than its ring, a little sustain left so a press is heard.
+        const auto synthKoto = [] (Builder& b, float decayMs, float sustain, float cutoff)
+        {
+            b.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.45f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.3f).osc (1, "PhaseRand", 0.0f)
+             .filter (FilterType::lp24, cutoff, 0.15f, 0.55f).set (ParamIDs::fltKey, 0.6f)
+             .filterEnvelope (0.0f, 320.0f, 0.15f, 300.0f)
+             .ampEnvelope (0.5f, decayMs, sustain, 600.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+            pkStrike (b, 2, 0, 0.12f, 6.0f, 0.05f);
+            pkBend (b, 0.3f, 0.04f, -0.6f);   // the string struck a hair sharp
+            pkVelocity (b, 0.6f, 0.25f, 0.5f);
+        };
+        const auto finish = [] (Builder& b, RT room, float size, float mix)
+        {
+            macros (b, "BRIGHT", "SPACE", "PRESS");
+            reverb (b, room, size, mix, 20.0f, 4.5f);
+            space (b);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto flute = x.make ("Bamboo Flute", 1, { "Lead", "Court", "Flute", "Breath" },
+            "A bamboo flute in the castle garden: a pure tone and a hollow triangle under a lot of breath, every note "
+            "scooped up into from below as the player's jaw lifts, a slow vibrato coming in late. Turn up PRESS and the "
+            "notes bend up the old scale and back, the way the flute's players shade a note. MOD WHEEL: more breath. "
+            "MACROS: BRIGHT, SPACE, PRESS.");
+        flute.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "VibAmount", 18.0f).osc (0, "VibRate", 4.8f).osc (0, "VibFade", 700.0f).osc (0, "VibCurve", 0.5f);
+        on (flute, 1, triangle, 0.14f);
+        flute.osc (1, "PhaseRand", 0.0f).osc (1, "VibAmount", 18.0f).osc (1, "VibRate", 4.8f).osc (1, "VibFade", 700.0f);
+        noiseOsc (flute, 2, 0.12f, 0.05f);
+        flute.filter (FilterType::lp12, 3200.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.6f)
+             .ampEnvelope (60.0f, 500.0f, 0.85f, 300.0f)
+             .mono (70.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        pkBend (flute, -1.0f, 0.14f, -0.4f);
+        route (flute, "modWheel", ParamIDs::osc (2, "Volume"), 0.12f);
+        route (flute, "macro1", ParamIDs::fltCutoff, 0.18f);
+        delay (flute, "1/4", 0.3f, 0.1f, false, 4.0f);
+        finish (flute, RT::hall, 0.7f, 0.22f);
+        press (flute, { pr::mixed, 1, 0, 0.5f });
+        flute.set (ParamIDs::patchLevel, -3.9f);
+        orchestra (flute, { { { 3, "Woodwinds - Notation/Alto Flute Solo Sustain (looped).sfz", 1.0f, 0.0f } },
+                            { 0, 1 }, 4.5f,
+                            "A bamboo flute in the castle garden: the orchestra's alto flute (its low, breathy voice), "
+                            "looped so it holds, the synth's breath kept round it, each note scooped up into from below.",
+                            40.0f, 500.0f, 0.9f, 300.0f, -1.0f, {} });
+        x.add (flute);
+
+        auto shamisen = x.make ("Shamisen Fury", 2, { "Lead", "Battlefield", "Shamisen", "Plucked" },
+            "A three-stringed lute struck hard with a big plectrum before the charge: a narrow pulse and a saw snapping "
+            "through the filter, the plectrum's slap on the skin, the buzz the instrument is built to make (a light drive), "
+            "a short ring. Turn up PRESS and the notes jump up the scale and back on the sixteenths. MOD WHEEL: a harder "
+            "slap. MACROS: BRIGHT, SPACE, PRESS.");
+        shamisen.osc (0, "Wave", pulse).osc (0, "Width", 0.2f).osc (0, "Volume", 0.45f).osc (0, "PhaseRand", 0.0f).osc (0, "Insert", 1.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", -5.0f).osc (1, "Volume", 0.3f).osc (1, "PhaseRand", 0.0f)
+                .osc (1, "Insert", 1.0f)
+                .filter (FilterType::lp24, 1800.0f, 0.3f, 0.7f).set (ParamIDs::fltKey, 0.5f)
+                .filterEnvelope (0.0f, 160.0f, 0.1f, 120.0f)
+                .ampEnvelope (0.3f, 450.0f, 0.15f, 160.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkStrike (shamisen, 2, 0, 0.25f, 10.0f, 0.1f);
+        shamisen.osc (2, "Insert", 1.0f);
+        pkBend (shamisen, 0.5f, 0.03f, -0.6f);
+        pkVelocity (shamisen, 0.7f, 0.3f, 0.6f);
+        drive (shamisen, 0, DM::skyline, 3.5f, 6.5f, -1.0f, 0.2f, 0.25f);
+        route (shamisen, "modWheel", ParamIDs::osc (2, "Volume"), 0.25f);
+        route (shamisen, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (shamisen, "1/8", 0.2f, 0.08f, true, 4.0f);
+        finish (shamisen, RT::room, 0.45f, 0.14f);
+        press (shamisen, { pr::push, 0, 0, 0.1f });
+        shamisen.set (ParamIDs::patchLevel, 4.0f);
+        x.add (shamisen);
+
+        auto viol = x.make ("Foreign Viol", 3, { "Lead", "Foreign Ship", "Bowed", "Solo" },
+            "A sailor's viol on the wrecked ship's deck: a bowed string (a saw and a thin pulse through a dark filter, the "
+            "bow's rosin in the noise), a slow, sad vibrato, sliding between notes. Turn up PRESS and the foreigner's "
+            "tune is bent into the old Japanese scale, pressed up on the beats like a koto string. MOD WHEEL: more "
+            "vibrato. MACROS: BRIGHT, SPACE, PRESS.");
+        viol.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+            .osc (0, "VibAmount", 14.0f).osc (0, "VibRate", 5.4f).osc (0, "VibFade", 450.0f).osc (0, "VibCurve", 0.4f);
+        on (viol, 1, pulse, 0.18f);
+        viol.osc (1, "Width", 0.2f).osc (1, "Fine", 3.0f).osc (1, "VibAmount", 14.0f).osc (1, "VibRate", 5.4f).osc (1, "VibFade", 450.0f);
+        noiseOsc (viol, 2, 0.04f, 0.3f);
+        viol.filter (FilterType::lp24, 2000.0f, 0.15f, 0.25f).set (ParamIDs::fltKey, 0.5f)
+            .filterEnvelope (120.0f, 600.0f, 0.6f, 400.0f)
+            .ampEnvelope (110.0f, 600.0f, 0.85f, 350.0f)
+            .mono (80.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        route (viol, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (viol, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.25f);
+        route (viol, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (viol, RT::hall, 0.6f, 0.2f);
+        press (viol, { pr::hold, 2, 0, 0.6f });
+        viol.set (ParamIDs::patchLevel, -1.1f);
+        orchestra (viol, { { { 0, "Strings - Notation/Cello Solo Sustain.sfz", 1.0f, 0.0f, true } },
+                           { 0, 1 }, 5.3f,
+                           "A sailor's viol on the wrecked ship's deck: the orchestra's solo cello, sliding between notes, "
+                           "the bow's rosin in the noise round it.",
+                           80.0f, 600.0f, 0.9f, 350.0f, -1.0f, {} });
+        x.add (viol);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto organ = x.make ("Mouth Organ", 4, { "Pad", "Court", "Reed", "Cluster" },
+            "The court's mouth organ: seventeen bamboo pipes with metal reeds, played as clusters that breathe in and out. "
+            "Reedy pulses with a fifth and a second stacked on every note (the chorder), swelling slowly, a slow breath "
+            "moving the filter. Hold one note and it's already a cluster. Turn up PRESS and the cluster wavers up the scale "
+            "and back. MOD WHEEL: a brighter reed. MACROS: BRIGHT, SPACE, PRESS.");
+        organ.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.35f)
+             .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 7.0f).osc (0, "Ch1Vol", 0.8f).osc (0, "Ch1Pan", -0.3f)
+             .osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 14.0f).osc (0, "Ch2Vol", 0.6f).osc (0, "Ch2Pan", 0.3f);
+        unison (organ, 0, 2, 0.5f, 0.06f, 0.6f);
+        on (organ, 1, saw, 0.1f);
+        organ.osc (1, "Transpose", 12.0f);
+        noiseOsc (organ, 2, 0.03f, 0.1f);
+        organ.filter (FilterType::lp12, 2400.0f, 0.1f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (500.0f, 1000.0f, 0.9f, 900.0f);
+        lfo (organ, 0, LW::sine, 0.12f);
+        route (organ, "lfo1", ParamIDs::fltCutoff, 0.1f);
+        route (organ, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (organ, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (organ, RT::hall, 0.75f, 0.24f);
+        press (organ, { pr::wobble, 3, 0, 0.8f });
+        organ.set (ParamIDs::patchLevel, -8.3f);
+        x.add (organ);
+
+        auto smoke = x.make ("Battle Smoke", 5, { "Pad", "Battlefield", "Horns", "Dust" },
+            "The field after the charge: low horns (a section of saws and a square an octave down, each player his own "
+            "vibrato) under drifting dust and smoke (noise through a slow, wandering filter), a cold wide hall. Hold "
+            "chords; PRESS bends them up the scale on the half bars, a held breath. MOD WHEEL: opens the filter. MACROS: "
+            "BRIGHT, SPACE, PRESS.");
+        smoke.osc (0, "Wave", saw).osc (0, "Volume", 0.42f);
+        pkSection (smoke, 0, 4, 0.2f, 8.0f, 4.6f, 500.0f);
+        on (smoke, 1, pulse, 0.3f);
+        smoke.osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f);
+        noiseOsc (smoke, 2, 0.05f, 0.55f);
+        smoke.filter (FilterType::lp24, 1000.0f, 0.15f, 0.2f).set (ParamIDs::fltKey, 0.35f)
+             .filterEnvelope (300.0f, 1500.0f, 0.6f, 1200.0f)
+             .ampEnvelope (250.0f, 1200.0f, 0.9f, 1300.0f);
+        lfo (smoke, 0, LW::smoothRandom, 0.2f);
+        route (smoke, "lfo1", ParamIDs::fltCutoff, 0.1f);
+        route (smoke, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (smoke, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (smoke, RT::hall, 0.85f, 0.26f);
+        press (smoke, { pr::hold, 3, 0, 0.9f });
+        smoke.set (ParamIDs::patchLevel, -10.7f);
+        x.add (smoke);
+
+        auto chant = x.make ("Chant at Sea", 6, { "Pad", "Foreign Ship", "Choir", "Voice" },
+            "Monks' plainchant in the ship's hold: low men's voices (saws sung through the VOICE filter on \"ah\", a bass's "
+            "size, each singer his own vibrato) and a breath of air, a stone-cold hall. Turn up PRESS and each note starts "
+            "a step high and sinks onto its pitch, the old chant's slide. MOD WHEEL: the vowel opens. MACROS: BRIGHT, "
+            "SPACE, PRESS.");
+        chant.osc (0, "Wave", saw).osc (0, "Volume", 0.5f);
+        pkSection (chant, 0, 5, 0.18f, 10.0f, 5.0f, 300.0f);
+        noiseOsc (chant, 1, 0.04f, 0.05f);
+        chant.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.45f).set (ParamIDs::voiceSize, 0.15f)
+             .set (ParamIDs::voiceSharp, 0.4f).set (ParamIDs::voiceMix, 1.0f)
+             .filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (300.0f, 1000.0f, 0.9f, 1200.0f);
+        route (chant, "modWheel", ParamIDs::voiceVowel, 0.25f);
+        route (chant, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (chant, RT::hall, 0.9f, 0.3f);
+        press (chant, { pr::release, 2, 0, 0.7f });
+        chant.set (ParamIDs::patchLevel, -9.2f);
+        orchestra (chant, { { { 3, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
+                            { 0 }, -1.1f,
+                            "Plainchant in the ship's hold: the orchestra's large choir, a breath of air round it.",
+                            300.0f, 1000.0f, 0.9f, 1200.0f, -1.0f, {} });
+        x.add (chant);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto drone = x.make ("Temple Drone", 7, { "Bass", "Court", "Drone", "Gong" },
+            "Deep in the temple: a bowed drone (a saw and a sine an octave down, dark and slow to speak) with a gong's "
+            "struck metal under each new note (a sine ring-modulated at a gong's own ratio, dying over four seconds). "
+            "Hold the root; PRESS lifts the drone up the scale and holds it there, slowly. MOD WHEEL: more gong. MACROS: "
+            "BRIGHT, SPACE, PRESS.");
+        drone.osc (0, "Wave", saw).osc (0, "Volume", 0.4f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.55f).osc (1, "Filter", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 12.0f).osc (2, "Filter", 0.0f)
+             .osc (2, "AmAmount", 0.8f).osc (2, "AmShape", 0.0f).osc (2, "ModGrid", 0.0f).osc (2, "ModRate", 0.683f);
+        pkPartial (drone, 2, 0, 0.18f, 4.0f, -0.6f);
+        drone.filter (FilterType::lp24, 420.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (350.0f, 1200.0f, 0.9f, 1500.0f)
+             .mono (0.0f);
+        route (drone, "modWheel", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (drone, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (drone, RT::hall, 0.8f, 0.2f);
+        press (drone, { pr::hold, 3, 0, 1.0f });
+        drone.set (ParamIDs::patchLevel, -2.5f);
+        orchestra (drone, { { { 3, "Idiophones/Struck Idiophones/Gong 1.sfz", 0.8f, 0.0f, false, &vcsl } },
+                            { 2 }, -4.4f,
+                            "Deep in the temple: the synth's bowed drone, a real gong (VCSL's) struck under each new note "
+                            "at its own pitch.",
+                            -1.0f, 1200.0f, 0.9f, 1500.0f, -1.0f,
+                            [pinned] (Builder& s) { pinned (s, 3, 60); s.osc (3, "Filter", 0.0f); } });
+        x.add (drone);
+
+        auto taiko = x.make ("Taiko Bass", 8, { "Bass", "Battlefield", "Drum", "Sine" },
+            "A great drum tuned as a bass: a sine dropping an octave into its note, the stick's crack and the skin's "
+            "boom in the noise, dying into a short ring. Play the bass line on it. Turn up PRESS and the drum's pitch "
+            "pushes up and back after each hit, like a hand pressing the skin. MOD WHEEL: a harder crack. MACROS: "
+            "BRIGHT, SPACE, PRESS.");
+        taiko.osc (0, "Wave", sine).osc (0, "Volume", 0.75f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f);
+        on (taiko, 1, triangle, 0.2f);
+        taiko.osc (1, "PhaseRand", 0.0f);
+        pkStrike (taiko, 2, 0, 0.35f, 35.0f, 0.5f);
+        pkBend (taiko, 12.0f, 0.07f, -0.7f);
+        taiko.filter (FilterType::lp12, 800.0f, 0.1f, 0.4f).filterEnvelope (0.0f, 140.0f, 0.2f, 120.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (1.0f, 500.0f, 0.3f, 200.0f).set (ParamIDs::ampDecayCurve, -0.5f)
+             .mono (0.0f);
+        pkVelocity (taiko, 0.5f, 0.2f, 0.5f);
+        route (taiko, "modWheel", ParamIDs::osc (2, "Volume"), 0.2f);
+        route (taiko, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (taiko, RT::hall, 0.6f, 0.1f);
+        press (taiko, { pr::push, 1, 0, 0.3f });
+        taiko.set (ParamIDs::patchLevel, -1.0f);
+        orchestra (taiko, { { { 3, "Programs/01-full.sfz", 0.9f, 0.0f, false, &rusty } },
+                            { 1 }, -0.3f,
+                            "A great drum tuned as a bass: a real floor tom (Big Rusty Drums') on every note over the "
+                            "synth's sine dropping into its pitch.",
+                            -1.0f, 500.0f, 0.3f, 200.0f, -1.0f,
+                            [pinned] (Builder& s) { pinned (s, 3, 41); } });
+        x.add (taiko);
+
+        auto hull = x.make ("Ship's Hull", 9, { "Bass", "Foreign Ship", "Bowed", "Groan" },
+            "The wrecked ship's hull groaning: a low bowed string (a saw and a pulse through a dark filter that opens as "
+            "the bow digs in), the bow's grind in the noise, the pitch creaking a few cents with the swell. Turn up PRESS "
+            "and the timbers bend up the scale on the half bars. MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, PRESS.");
+        hull.osc (0, "Wave", saw).osc (0, "Volume", 0.5f);
+        on (hull, 1, pulse, 0.3f);
+        hull.osc (1, "Width", 0.3f).osc (1, "Transpose", -12.0f);
+        noiseOsc (hull, 2, 0.04f, 0.45f);
+        hull.filter (FilterType::lp24, 450.0f, 0.2f, 0.35f).set (ParamIDs::fltKey, 0.3f)
+            .filterEnvelope (150.0f, 800.0f, 0.5f, 600.0f)
+            .ampEnvelope (90.0f, 900.0f, 0.85f, 500.0f)
+            .mono (40.0f);
+        lfo (hull, 0, LW::smoothRandom, 0.3f);
+        route (hull, "lfo1", ParamIDs::osc (0, "Fine"), 0.04f);
+        route (hull, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (hull, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (hull, RT::hall, 0.6f, 0.12f);
+        press (hull, { pr::hold, 3, 0, 0.8f });
+        hull.set (ParamIDs::patchLevel, -2.8f);
+        orchestra (hull, { { { 0, "Strings - Notation/Celli Sustain.sfz", 1.0f, -0.15f, true },
+                             { 3, "Strings - Notation/Basses Sustain.sfz", 1.0f, 0.15f, true } },
+                           { 0, 1 }, -1.4f,
+                           "The wrecked ship's hull groaning: the orchestra's cellos and basses bowing low, the grind of "
+                           "the bow in the noise.",
+                           80.0f, 900.0f, 0.9f, 500.0f, -1.0f, {} });
+        x.add (hull);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto court = x.make ("Court Koto", 10, { "Keys", "Court", "Koto", "Plucked" },
+            "The koto played plain at court: thirteen silk strings plucked with ivory picks, each note ringing and "
+            "fading. PRESS is the left hand: turned up, more and more notes are pressed up the scale after the pluck, "
+            "pushed and let go, held, or wavering. MACROS: BRIGHT, SPACE, PRESS.");
+        synthKoto (court, 2200.0f, 0.12f, 2600.0f);
+        route (court, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (court, RT::hall, 0.6f, 0.2f);
+        press (court, { pr::mixed, 1, 0, 0.35f });
+        court.set (ParamIDs::patchLevel, -1.0f);
+        orchestra (court, { { { 0, kotoFile, 1.0f, 0.0f, false, &koto } },
+                            { 0, 1, 2 }, 1.5f,
+                            "The koto played plain at court: a real thirteen-string koto (Unreal Instruments' 13Strings "
+                            "KOTO), its own playing styles on the keys G1 to B2 (pressed, pulled, wavered, tremolo).",
+                            0.0f, 3000.0f, 1.0f, 700.0f, -1.0f,
+                            [] (Builder& s) { s.osc (0, "PitchEnv", 0.0f); } });
+        x.add (court);
+
+        auto war = x.make ("War Koto", 11, { "Keys", "Battlefield", "Koto", "Drive" },
+            "The koto struck hard for war: the same silk strings driven through a burning amp, a short room, the picks "
+            "biting. PRESS flicks the notes up the scale and back on the sixteenths, fast. MOD WHEEL: a sharper bite. MACROS: "
+            "BRIGHT, SPACE, PRESS.");
+        synthKoto (war, 1400.0f, 0.15f, 3200.0f);
+        war.osc (0, "Insert", 1.0f).osc (1, "Insert", 1.0f).osc (2, "Insert", 1.0f);
+        drive (war, 0, DM::rabid, 5.0f, 6.0f, -2.0f, 0.2f, 0.2f);
+        route (war, "modWheel", ParamIDs::fltRes, 0.2f);
+        route (war, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (war, RT::room, 0.4f, 0.12f);
+        press (war, { pr::push, 0, 0, 0.12f });
+        war.set (ParamIDs::patchLevel, 4.2f);
+        orchestra (war, { { { 0, kotoFile, 1.0f, 0.0f, false, &koto } },
+                          { 0, 1, 2 }, 4.4f,
+                          "The koto struck hard for war: a real thirteen-string koto (Unreal Instruments' 13Strings KOTO) "
+                          "driven through a burning amp.",
+                          0.0f, 3000.0f, 1.0f, 500.0f, -1.0f,
+                          [] (Builder& s) { s.osc (0, "Insert", 1.0f).osc (0, "PitchEnv", 0.0f); } });
+        x.add (war);
+
+        auto mass = x.make ("Harpsichord Mass", 12, { "Keys", "Foreign Ship", "Harpsichord", "Baroque" },
+            "The priests' harpsichord brought ashore for mass: a narrow pulse and a saw an octave up plucked by a quill "
+            "(a click and a quick filter snap), ringing a moment, a stone chapel. Turn up PRESS and the European keyboard "
+            "starts to bend like a koto, notes pushed up the old scale and back. MACROS: BRIGHT, SPACE, PRESS.");
+        mass.osc (0, "Wave", pulse).osc (0, "Width", 0.15f).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f)
+            .filter (FilterType::lp12, 3500.0f, 0.1f, 0.4f).set (ParamIDs::fltKey, 0.6f)
+            .filterEnvelope (0.0f, 400.0f, 0.3f, 300.0f)
+            .ampEnvelope (0.5f, 1600.0f, 0.1f, 250.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (mass, 2, 0, 0.06f, 2.0f, 0.1f);
+        route (mass, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (mass, RT::room, 0.55f, 0.18f);
+        press (mass, { pr::push, 0, 0, 0.2f });
+        mass.set (ParamIDs::patchLevel, 2.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);   // a held chord stacks its strikes
+        orchestra (mass, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 11.5f,
+                           "The priests' harpsichord brought ashore for mass: the orchestra's harpsichord (both its "
+                           "registers), a stone chapel.",
+                           0.0f, 300.0f, 1.0f, 300.0f, -1.0f, {} });
+        x.add (mass);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto blossom = x.make ("Plum Blossom", 13, { "Arp", "Court", "Koto", "Pattern" },
+            "Plum blossom on the castle wall: hold a chord and the koto plays it as a running pattern in eighths, up two "
+            "octaves, each note left to ring. Turn up PRESS and the pattern starts to bend, notes pressed up the scale "
+            "and let go as they fall. MACROS: BRIGHT, SPACE, PRESS.");
+        synthKoto (blossom, 1600.0f, 0.1f, 2800.0f);
+        arpOn (blossom, { 0, 1, 2 }, AM::upDown, "1/8", 2.0f, 0.9f);
+        route (blossom, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (blossom, "1/4 dotted", 0.3f, 0.12f, true, 4.0f);
+        finish (blossom, RT::hall, 0.65f, 0.22f);
+        press (blossom, { pr::mixed, 1, 0, 0.3f });
+        blossom.set (ParamIDs::patchLevel, -2.0f);
+        orchestra (blossom, { { { 3, kotoFile, 1.0f, 0.0f, false, &koto } },
+                              { 0, 1, 2 }, 1.8f,
+                              "Plum blossom on the castle wall: a real thirteen-string koto (Unreal Instruments' 13Strings "
+                              "KOTO) playing the chord you hold as a running pattern.",
+                              0.0f, 3000.0f, 1.0f, 700.0f, -1.0f,
+                              [] (Builder& s) { s.osc (3, "PitchEnv", 0.0f); } });
+        x.add (blossom);
+
+        auto ensemble = x.make ("Taiko Ensemble", 14, { "Arp", "Battlefield", "Drums", "Taiko" },
+            "The war drums: hold any key and a great drum, two smaller drums and a wooden clapper beat out a battle "
+            "rhythm together (sines falling into their notes, a crack of noise on each, a clicking block), rolling "
+            "before the bar comes round. The key you hold doesn't change it. Turn up PRESS and the drums are struck a step "
+            "high and drop onto their pitch. MOD WHEEL: a brighter crack. MACROS: BRIGHT, SPACE, PRESS.");
+        ensemble.osc (0, "Wave", sine).osc (0, "Transpose", -29.0f).osc (0, "Volume", 0.9f).osc (0, "PhaseRand", 0.0f)
+                .osc (0, "Arp", 1.0f).osc (0, "Filter", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -19.0f).osc (1, "Volume", 0.7f)
+                .osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 2.0f).osc (1, "Filter", 0.0f)
+                .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.55f)
+                .osc (2, "PhaseRand", 0.0f).osc (2, "Arp", 3.0f).osc (2, "Filter", 0.0f)
+                .filter (FilterType::bp12, 2400.0f, 0.3f, 0.0f).set (ParamIDs::fltKey, 0.0f)
+                .ampEnvelope (0.5f, 420.0f, 0.0f, 250.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.6f)
+                .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchKeytrack, 0.0f).set (ParamIDs::pitchEnvRange, 7.0f)
+                .set (ParamIDs::arpsTogether, 1.0f);
+        noiseOsc (ensemble, 3, 0.4f, 0.15f);
+        ensemble.osc (3, "Arp", 4.0f).osc (3, "PitchEnv", 0.0f);
+        ensemble.rig.modulation.pitchEnvelope = { { PK { 0.0f, 1.0f, -0.6f }, PK { 0.09f, 0.5f, 0.0f } }, -1, -1, -1 };
+        drumArp (ensemble, 0, { 0, 6, 8, 11 }, { 0, 8 });                 // the great drum
+        drumArp (ensemble, 1, { 4, 12, 13, 14, 15 }, { 4, 12 });          // the middle drum, rolling at the end
+        drumArp (ensemble, 2, { 2, 7, 10 }, { 10 });                      // the small drum
+        drumArp (ensemble, 3, { 0, 2, 4, 6, 8, 10, 12, 14 }, { 0, 8 });   // the wooden clapper on the eighths
+        route (ensemble, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (ensemble, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (ensemble, RT::hall, 0.7f, 0.16f);
+        press (ensemble, { pr::release, 0, 0, 0.15f });
+        ensemble.set (ParamIDs::patchLevel, 2.6f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        orchestra (ensemble, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
+                                 { 1, "Programs/01-full.sfz", 0.9f, -0.15f, false, &rusty },
+                                 { 2, "Programs/01-full.sfz", 0.8f, 0.15f, false, &rusty },
+                                 { 3, "Idiophones/Struck Idiophones/Woodblock.sfz", 0.6f, 0.25f, false, &vcsl } },
+                               { 0, 1, 2, 3 }, 8.0f,
+                               "The war drums: a real kick, floor tom and tom (Big Rusty Drums') and a woodblock (VCSL's) "
+                               "beating out a battle rhythm together. The key you hold doesn't change it.",
+                               0.5f, 1500.0f, 0.0f, 600.0f, -1.0f,
+                               [pinned] (Builder& s)
+                               {
+                                   pinned (s, 0, 36); pinned (s, 1, 41); pinned (s, 2, 45); pinned (s, 3, 60);
+                                   s.osc (0, "Arp", 1.0f).osc (1, "Arp", 2.0f).osc (2, "Arp", 3.0f).osc (3, "Arp", 4.0f);
+                               } });
+        x.add (ensemble);
+
+        auto rigging = x.make ("Rigging", 15, { "Arp", "Foreign Ship", "Pizzicato", "Pattern" },
+            "The ship's rigging creaking in the wind: plucked strings (a section of short saws, each player a hair "
+            "apart) running up and down the chord you hold in sixteenths, like ropes through pulleys, a wooden room. "
+            "Turn up PRESS and the plucks are pressed up the scale and held. MOD WHEEL: brighter. MACROS: BRIGHT, "
+            "SPACE, PRESS.");
+        rigging.osc (0, "Wave", saw).osc (0, "Volume", 0.45f);
+        unison (rigging, 0, 3, 0.6f, 0.1f, 0.7f);
+        on (rigging, 1, triangle, 0.25f);
+        rigging.osc (1, "Transpose", -12.0f);
+        rigging.filter (FilterType::lp24, 2200.0f, 0.15f, 0.5f).set (ParamIDs::fltKey, 0.5f)
+               .filterEnvelope (0.0f, 150.0f, 0.1f, 100.0f)
+               .ampEnvelope (0.5f, 260.0f, 0.1f, 160.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        arpOn (rigging, { 0, 1 }, AM::upDown, "1/16", 2.0f, 0.7f);
+        pkVelocity (rigging, 0.5f, 0.2f, 0.5f);
+        route (rigging, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (rigging, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (rigging, RT::room, 0.5f, 0.14f);
+        press (rigging, { pr::hold, 0, 0, 0.25f });
+        rigging.set (ParamIDs::patchLevel, 3.5f);
+        orchestra (rigging, { { { 3, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f, 0.0f } },
+                              { 0, 1 }, 6.8f,
+                              "The ship's rigging creaking in the wind: the orchestra's strings plucked, running up and down "
+                              "the chord you hold.",
+                              0.0f, 600.0f, 1.0f, 300.0f, -1.0f, {} });
+        x.add (rigging);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto petal = x.make ("Falling Petal", 16, { "Pluck", "Court", "Koto", "Soft" },
+            "A soft, short koto touch: the string barely plucked with a bare finger (no pick: a dark filter, no click), "
+            "a short ring. Turn up PRESS and each note starts pressed and drifts down onto its pitch, a petal falling. "
+            "MACROS: BRIGHT, SPACE, PRESS.");
+        petal.osc (0, "Wave", triangle).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.15f).osc (1, "PhaseRand", 0.0f)
+             .filter (FilterType::lp12, 1600.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.6f)
+             .filterEnvelope (0.0f, 250.0f, 0.1f, 200.0f)
+             .ampEnvelope (1.0f, 700.0f, 0.1f, 400.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkVelocity (petal, 0.5f, 0.2f, 0.5f);
+        route (petal, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (petal, "1/4", 0.3f, 0.14f, true, 3.5f);
+        finish (petal, RT::hall, 0.6f, 0.2f);
+        press (petal, { pr::release, 1, 0, 0.35f });
+        orchestra (petal, { { { 0, kotoFile, 1.0f, 0.0f, true, &koto } },
+                            { 0, 1 }, -1.5f,
+                            "A soft, short koto touch: a real koto (Unreal Instruments' 13Strings KOTO) through a dark "
+                            "filter, each note let go quickly.",
+                            0.0f, 900.0f, 0.15f, 350.0f, -1.0f,
+                            [] (Builder& s) { s.osc (0, "PitchEnv", 0.0f); } });
+        pkAdd (x, petal);
+
+        auto bow = x.make ("Bowstring", 17, { "Pluck", "Battlefield", "Twang", "Chirp" },
+            "An archer's bow let go: a taut string's twang (a sine and a pulse chirping down into the note), the thud of "
+            "the bow's wood in low noise, gone in a moment. Turn up PRESS and the twangs flick up the scale on the "
+            "sixteenths. MOD WHEEL: a sharper snap. MACROS: BRIGHT, SPACE, PRESS.");
+        bow.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.15f).osc (1, "Volume", 0.18f).osc (1, "PhaseRand", 0.0f)
+           .filter (FilterType::lp24, 2500.0f, 0.3f, 0.6f).set (ParamIDs::fltKey, 0.5f)
+           .filterEnvelope (0.0f, 90.0f, 0.05f, 80.0f)
+           .ampEnvelope (0.3f, 320.0f, 0.08f, 150.0f).set (ParamIDs::ampDecayCurve, -0.7f);
+        pkStrike (bow, 2, 0, 0.3f, 25.0f, 0.7f);
+        pkBend (bow, 7.0f, 0.045f, -0.7f);
+        pkVelocity (bow, 0.6f, 0.3f, 0.5f);
+        route (bow, "modWheel", ParamIDs::fltEnv, 0.2f);
+        route (bow, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (bow, RT::room, 0.45f, 0.12f);
+        press (bow, { pr::push, 0, 0, 0.1f });
+        pkAdd (x, bow);
+
+        auto bell = x.make ("Ship's Bell", 18, { "Pluck", "Foreign Ship", "Bell", "Bronze" },
+            "The ship's small bronze bell: a bell's partials struck together (the hum an octave down, the strike, a minor "
+            "third a little sharp, a fifth, the octave), each fading in its own time. Turn up PRESS and each ring wavers "
+            "above its note. MACROS: BRIGHT, SPACE, PRESS.");
+        bell.osc (0, "Wave", sine).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "PhaseRand", 0.0f)
+            .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 3.0f).osc (2, "Fine", 15.0f).osc (2, "PhaseRand", 0.0f)
+            .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 7.0f).osc (3, "PhaseRand", 0.0f)
+            .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", 12.0f).osc (4, "PhaseRand", 0.0f)
+            .set (ParamIDs::fltOn, 0.0f)
+            .ampEnvelope (0.5f, 2500.0f, 0.1f, 900.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (bell, 1, 0, 0.35f, 3.0f);
+        pkPartial (bell, 2, 1, 0.22f, 1.2f);
+        pkPartial (bell, 3, 2, 0.15f, 0.9f);
+        pkPartial (bell, 4, 3, 0.18f, 0.7f);
+        route (bell, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        finish (bell, RT::hall, 0.65f, 0.2f);
+        press (bell, { pr::wobble, 1, 0, 0.4f });
+        orchestra (bell, { { { 0, "Idiophones/Struck Idiophones/Hand Chimes.sfz", 1.0f, 0.0f, false, &vcsl } },
+                           { 0, 1, 2, 3, 4 }, -3.5f,
+                           "The ship's small bell: real hand chimes (VCSL's), struck and left to ring.",
+                           0.0f, 3000.0f, 1.0f, 900.0f, -1.0f, {} });
+        pkAdd (x, bell);
+    }
+
 std::vector<Rig> makeExpansionRigs()
 {
     std::vector<Rig> rigs;
@@ -21853,5 +22396,6 @@ std::vector<Rig> makeExpansionRigs()
     offworld ({ Rig::numBanks + 40, rigs });
     steelTitans ({ Rig::numBanks + 41, rigs });
     wickedGame ({ Rig::numBanks + 42, rigs });
+    ronin ({ Rig::numBanks + 43, rigs });
     return rigs;
 }

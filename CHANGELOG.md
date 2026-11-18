@@ -2,6 +2,26 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.3.0
+
+**RONIN, a feudal Japan bank, and PRESS, its signature: a koto player's left hand on every note.**
+
+- **PRESS** (MACRO 3 on every RONIN preset, and in the SIGNATURE slot for any sound). After a note is struck, it's pressed up to the next note of the scale, the way a koto player presses the string behind its bridge:
+  - **AMOUNT** is how many notes are pressed: none at 0 (the sound exactly as it was), every one at the top. The same passage at the same place in the song presses the same notes every time.
+  - **WHEN:** the press waits for the next 1/16, 1/8, 1/4 or 1/2 of your song, so it lands in time.
+  - **It always lands in key** (KEY and SCALE), one or two notes up, and never goes flat: a koto string is only ever pressed sharp.
+  - **STYLE:** PUSH (up and back), PRESS (up and held), RELEASE (struck already pressed, let down onto the note), WOBBLE (a slow swing above the note), MIXED (each note one of those). **SPEED:** how long a press takes, 40 to 400 ms.
+  - Its page shows a koto from above, the last string pressed bending under the hand.
+  - A note that rings on after you let go (a bell, a koto) keeps its press as it rings.
+- **Three Japanese scales** in every scale menu (PRESS, the arp's randomizer, SIROCCO, NAVICOMPUTER, CROSSROADS): hirajoshi, in and yo.
+- **RONIN** (18 presets): the court, the battlefield, and the foreign ship wrecked on its coast.
+  - *The court:* Bamboo Flute, Mouth Organ, Temple Drone, Court Koto, Plum Blossom, Falling Petal.
+  - *The battlefield:* Shamisen Fury, Battle Smoke, Taiko Bass, War Koto, Taiko Ensemble, Bowstring.
+  - *The foreign ship:* Foreign Viol, Chant at Sea, Ship's Hull, Harpsichord Mass, Rigging, Ship's Bell.
+  - The four koto presets play the real koto once it's downloaded (GET THE KOTO), PR7-K's own koto until then. Fourteen presets have a version on a downloadable library (the koto, the orchestra, VCSL, Big Rusty Drums); without it each plays its synthesized version, levelled to match.
+  - Every preset is in D "in", the koto's own scale; MACRO 1 BRIGHT, MACRO 2 SPACE, MACRO 3 PRESS.
+- Already-released sounds are unchanged.
+
 ## 1.2.0
 
 **Groundwork for the koto bank: a free sampled koto the plugin can download, with its pressed-string bends.**
