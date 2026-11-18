@@ -15224,7 +15224,7 @@ namespace
         polymeter (bell, { bar, x1, 0.4f, 0.0f });
         bell.set (ParamIDs::patchLevel, -3.5f);
         orchestra (bell, { { { 0, "Idiophones/Struck Idiophones/Hand Chimes.sfz", 1.0f, 0.0f, false, &vcsl } },
-                           { 0, 1, 2, 3, 4 }, 0.0f,
+                           { 0, 1, 2, 3, 4 }, -2.5f,
                            "The small temple bell that starts the dream: real hand chimes (VCSL's, from middle C up), "
                            "with a soft strike.",
                            1.0f, 2600.0f, 0.1f, 1800.0f, -1.0f, {} });
@@ -15248,7 +15248,7 @@ namespace
         polymeter (plate, { bar, x1, 0.4f, 0.4f });
         plate.set (ParamIDs::patchLevel, 1.0f);
         orchestra (plate, { { { 1, "Idiophones/Struck Idiophones/Vibraphone - Bowed.sfz", 1.0f, 0.0f, false, &vcsl } },
-                            { 1 }, 3.0f,
+                            { 1 }, 11.0f,
                             "A metal sculpture bowed and scraped: a real bowed vibraphone (VCSL's, from A3 up) over the "
                             "synth's ring-modulated metal and its scrape, through the metal plate's band-pass.",
                             -1.0f, 0.0f, 0.0f, 0.0f, -1.0f, {} });
@@ -15302,7 +15302,7 @@ namespace
         route (grooves, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (grooves, RT::room, 0.5f, 0.15f);
         polymeter (grooves, { bar, x2, 0.6f, 0.6f });
-        grooves.set (ParamIDs::patchLevel, 2.0f);
+        grooves.set (ParamIDs::patchLevel, 4.0f);
         x.add (grooves);
 
         auto antiGroove = x.make ("Anti-Groove", 14, { "Arp", "Cold", "Drums", "Synthesized" },
