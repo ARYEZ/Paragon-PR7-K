@@ -547,6 +547,33 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
         processor.setMimicReference (note, rate);
         browser->showMimic();
         browser->getMimicPanel().setAnalysis (synth::mimic::analyse (note, rate, "Breathy Lead G3"));
+        // MIMIC_PHRASE=1: PICK A NOTE (1.5.0) on a stem: a riff of short notes round one long held one.
+        if (env ("PARAGON_SNAPSHOT_MIMIC_PHRASE") == "1")
+        {
+            struct P { double start, length, note; };
+            const P riff[] { { 0.10, 0.18, 57 }, { 0.35, 0.18, 60 }, { 0.60, 0.18, 64 }, { 0.85, 0.40, 62 },
+                             { 1.40, 1.60, 69 }, { 3.20, 0.18, 67 }, { 3.45, 0.18, 64 }, { 3.70, 0.45, 60 } };
+            juce::AudioBuffer<float> stemAudio (2, (int) (4.6 * rate));
+            stemAudio.clear();
+            for (const auto& p : riff)
+            {
+                double ph = 0.0;
+                const auto from = (int) (p.start * rate), to = juce::jmin (stemAudio.getNumSamples(), (int) ((p.start + p.length + 0.15) * rate));
+                for (int i = from; i < to; ++i)
+                {
+                    const auto t = (i - from) / rate;
+                    const auto hz = 440.0 * std::exp2 ((p.note - 69.0) / 12.0 + (t > 0.4 ? 18.0 * std::sin (juce::MathConstants<double>::twoPi * 5.2 * t) / 1200.0 : 0.0));
+                    ph += hz / rate;
+                    double sum = 0.0;
+                    for (int k = 1; k * hz < 20000.0 && k <= 30; ++k)
+                        sum += std::sin (juce::MathConstants<double>::twoPi * k * ph) / k * std::exp (-(k - 1) * t * 0.8);
+                    const auto level = t < 0.006 ? t / 0.006 : t < p.length ? 0.6 + 0.4 * std::exp (-t / 0.1) : 0.6 * std::pow (10.0, -60.0 * (t - p.length) / 0.15 / 20.0);
+                    stemAudio.addSample (0, i, (float) (0.3 * level * sum));
+                    stemAudio.addSample (1, i, (float) (0.27 * level * sum));
+                }
+            }
+            browser->getMimicPanel().setPhrase (synth::mimic::findNotes (stemAudio, rate, "Synth Riff 120"));
+        }
         // MIMIC=1: made and refined (part 2): the match, and the made sound's loudness over the recording's.
         if (env ("PARAGON_SNAPSHOT_MIMIC") == "1")
         {

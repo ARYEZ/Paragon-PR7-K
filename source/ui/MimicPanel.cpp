@@ -29,7 +29,7 @@ MimicPanel::MimicPanel (ParagonX1AudioProcessor& p) : processor (p)
 
     load.onClick = [this]
     {
-        chooser = std::make_unique<juce::FileChooser> ("A recording of one note to make a sound from", juce::File(),
+        chooser = std::make_unique<juce::FileChooser> ("A recording of a note, or a stem, to make a sound from", juce::File(),
                                                        "*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3");
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                               [this] (const juce::FileChooser& c)
@@ -72,17 +72,119 @@ void MimicPanel::loadFile (const juce::File& file)
     juce::Component::SafePointer<MimicPanel> safe (this);
     juce::Thread::launch ([safe, file]
     {
-        auto result = synth::mimic::analyseFile (file);
-        juce::MessageManager::callAsync ([safe, file, result]
+        // The stem cut into its notes, and the best one analysed (one note: just that note).
+        auto found = synth::mimic::findNotesInFile (file);
+        auto result = found.valid ? synth::mimic::analyseNote (found, found.best) : synth::mimic::analyseFile (file);
+        juce::MessageManager::callAsync ([safe, found, result]
         {
             if (safe == nullptr)
                 return;
             safe->busyWith = {};
-            if (result.valid)
-                safe->processor.setMimicReference (file);
+            safe->phrase.reset();
+            safe->chosen = -1;
+            if (found.valid)
+            {
+                safe->phrase = found;
+                safe->chosen = found.best;
+                safe->processor.setMimicReference (synth::mimic::cutNote (found, found.notes[(size_t) found.best]), found.sampleRate);
+            }
             safe->setAnalysis (result);
         });
     });
+}
+
+void MimicPanel::setPhrase (const synth::mimic::Phrase& p)
+{
+    phrase = p;
+    chosen = -1;
+    if (p.valid)
+        chooseNote (p.best);
+    else
+    {
+        synth::mimic::Analysis a;
+        a.name = p.name;
+        a.problem = p.problem;
+        setAnalysis (a);
+    }
+}
+
+void MimicPanel::chooseNote (int index)
+{
+    if (! phrase.has_value() || ! phrase->valid || index < 0 || index >= (int) phrase->notes.size() || refiner.isRefining())
+        return;
+    chosen = index;
+    processor.stopMimicReference();
+    processor.setMimicReference (synth::mimic::cutNote (*phrase, phrase->notes[(size_t) index]), phrase->sampleRate);
+    setAnalysis (synth::mimic::analyseNote (*phrase, index));   // a fraction of a second for a note
+}
+
+int MimicPanel::noteAt (juce::Point<int> point) const
+{
+    if (! showsNotes() || ! notesArea.contains (point))
+        return -1;
+    const auto plot = notesArea.reduced (10, 6).toFloat();
+    const auto t = (point.x - plot.getX()) / plot.getWidth() * phrase->seconds;
+    for (size_t n = 0; n < phrase->notes.size(); ++n)
+        if (t >= phrase->notes[n].start && t < phrase->notes[n].end)
+            return (int) n;
+    return -1;
+}
+
+void MimicPanel::mouseDown (const juce::MouseEvent& e)
+{
+    const auto n = noteAt (e.getPosition());
+    if (n >= 0 && n != chosen)
+        chooseNote (n);
+}
+
+void MimicPanel::paintNotes (juce::Graphics& g, juce::Rectangle<int> area) const
+{
+    g.setColour (juce::Colour (0xff111014));
+    g.fillRoundedRectangle (area.toFloat(), 6.0f);
+    g.setColour (ParagonColours::panelEdge);
+    g.drawRoundedRectangle (area.toFloat().reduced (0.5f), 6.0f, 1.0f);
+    const auto& p = *phrase;
+    const auto plot = area.reduced (10, 6).toFloat();
+    const auto seconds = juce::jmax (0.1, p.seconds);
+    const auto xAt = [&] (double t) { return plot.getX() + (float) (t / seconds) * plot.getWidth(); };
+    // The stem's loudness, faint, under the notes.
+    juce::Path level;
+    const auto levelAt = [&] (float db) { return plot.getBottom() - juce::jlimit (0.0f, 1.0f, 1.0f + db / 60.0f) * plot.getHeight(); };
+    level.startNewSubPath (plot.getX(), plot.getBottom());
+    for (size_t h = 0; h < p.levels.size(); ++h)
+        level.lineTo (xAt ((double) h * synth::mimic::Analysis::hopSeconds), levelAt (p.levels[h]));
+    level.lineTo (xAt (seconds), plot.getBottom());
+    level.closeSubPath();
+    g.setColour (ParagonColours::textDim.withAlpha (0.18f));
+    g.fillPath (level);
+    // Each note a block (the chosen one lit), named; the best marked.
+    for (size_t n = 0; n < p.notes.size(); ++n)
+    {
+        const auto& f = p.notes[n];
+        const auto block = juce::Rectangle<float>::leftTopRightBottom (xAt (f.start) + 0.5f, plot.getY() + 14.0f, juce::jmax (xAt (f.start) + 2.0f, xAt (f.end) - 0.5f), plot.getBottom());
+        const auto isChosen = (int) n == chosen;
+        const auto colour = isChosen ? ParagonColours::accent : pitchColour.withAlpha (0.25f + 0.55f * f.score);
+        g.setColour (colour.withAlpha (isChosen ? 0.35f : 0.18f));
+        g.fillRoundedRectangle (block, 3.0f);
+        g.setColour (colour);
+        g.drawRoundedRectangle (block, 3.0f, isChosen ? 1.8f : 1.0f);
+        // The note's place on a pitch scale inside its block.
+        if (block.getWidth() > 18.0f)
+        {
+            g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+            g.setColour (isChosen ? juce::Colours::white : ParagonColours::text);
+            g.drawText (synth::mimic::noteName (f.note), block.reduced (3.0f, 1.0f).withHeight (13.0f), juce::Justification::centredLeft, false);
+        }
+        if ((int) n == p.best)
+        {
+            g.setColour (juce::Colour (0xffffd166));
+            g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre ({ block.getRight() - 6.0f, block.getY() + 6.0f }));
+        }
+    }
+    g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+    g.setColour (ParagonColours::textDim);
+    g.drawText (juce::String ((int) p.notes.size()) + " NOTES FOUND  ·  CLICK ONE TO MAKE THE SOUND FROM IT  ·  THE DOT: THE BEST FOR MIMIC",
+                plot.withHeight (12.0f), juce::Justification::centredLeft, false);
 }
 
 void MimicPanel::setAnalysis (const synth::mimic::Analysis& a)
@@ -98,6 +200,7 @@ void MimicPanel::setAnalysis (const synth::mimic::Analysis& a)
     noise.setEnabled (a.noise > 0.0f);
     for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise })
         toggle->setAlpha (toggle->isEnabled() ? 1.0f : 0.35f);
+    resized();   // a stem's notes strip comes or goes
     updateButtons();
     repaint();
 }
@@ -349,8 +452,8 @@ void MimicPanel::paint (juce::Graphics& g)
     g.drawText ("MIMIC", title.removeFromTop (24), juce::Justification::centredLeft, false);
     g.setColour (ParagonColours::textDim);
     g.setFont (juce::FontOptions (12.0f));
-    g.drawFittedText ("Make a sound from a recording of one: load a note (or drop one here), held and fairly dry is best. "
-                      "MIMIC takes its own waves as a wavetable, its loudness and its movement. Close, not a copy: then shape it as you like.",
+    g.drawFittedText ("Make a sound from a recording of one: load a note or a whole stem (or drop one here); a stem is cut into its notes and the best "
+                      "chosen (click another to use it). Held and fairly dry is best. MIMIC takes its own waves as a wavetable, its loudness and its movement.",
                       title, juce::Justification::topLeft, 3);
 
     if (busyWith.isNotEmpty() || ! analysis.has_value())
@@ -363,12 +466,16 @@ void MimicPanel::paint (juce::Graphics& g)
     }
     if (! analysis->valid)
     {
+        if (showsNotes())
+            paintNotes (g, notesArea);
         g.setColour (juce::Colour (0xffff6b5e));
         g.setFont (juce::FontOptions (14.0f));
         g.drawFittedText ("\"" + analysis->name + "\": " + analysis->problem, pictureArea.reduced (20), juce::Justification::centred, 4);
         return;
     }
 
+    if (showsNotes())
+        paintNotes (g, notesArea);
     paintPicture (g, pictureArea);
 
     auto area = findingsArea;
@@ -454,5 +561,12 @@ void MimicPanel::resized()
 
     findingsArea = area.removeFromRight (juce::jmin (380, area.getWidth() / 2));
     area.removeFromRight (12);
+    // A stem's notes along the top (1.5.0), when there are several.
+    notesArea = {};
+    if (showsNotes())
+    {
+        notesArea = area.removeFromTop (juce::jmin (78, area.getHeight() / 3));
+        area.removeFromTop (8);
+    }
     pictureArea = area;
 }

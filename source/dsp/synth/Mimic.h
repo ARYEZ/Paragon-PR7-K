@@ -82,6 +82,53 @@ namespace synth::mimic
     juce::String noteName (int note);
 
     //==================================================================================================================
+    // PICK A NOTE (1.5.0, the owner's ask: thousands of synth stems from construction kits, mostly loops and phrases):
+    // a whole stem is cut into its notes first, and MIMIC is made from the one chosen. Our own design:
+    //   - the level and the pitch (YIN, as above) every 10 ms over the whole stem;
+    //   - a note starts where the sound starts after a silence, where it attacks again (the level jumping 6 dB in 30 ms
+    //     at the same pitch) or where the pitch moves to another note (over 0.6 of a semitone from the note's middle
+    //     pitch for 40 ms: vibrato and slides inside a note don't split it); it ends where the next starts or where it
+    //     falls 40 dB under its own loudest (its release kept);
+    //   - each note scored for MIMIC: longer (up to 2 s) is better, clearly pitched (a chord or a noise is not), steady
+    //     (not sliding or bending all through), loud enough, and ringing out before the next note (so its release can be
+    //     measured). The best is chosen at first; any can be.
+    // A stem of one note is just that note. Up to `maxPhraseSeconds` of a stem is read.
+    struct FoundNote
+    {
+        double start = 0.0, end = 0.0;   // seconds into the stem (end: where the next note starts or it has died away)
+        double voicedEnd = 0.0;          // where its pitch was last heard
+        int note = 60;                   // its middle pitch, as a note...
+        float cents = 0.0f;              // ...and how far off it
+        float levelDb = -120.0f;         // its loudest, dB from the stem's loudest
+        float clarity = 0.0f;            // 0 to 1 (under about 0.8: probably a chord, or noisy)
+        float wobbleCents = 0.0f;        // how far its pitch strays from its middle (vibrato, slides), the median
+        bool ringsOut = false;           // falls away before the next note starts
+        float score = 0.0f;              // how well MIMIC should do with it, 0 to 1
+    };
+
+    struct Phrase
+    {
+        bool valid = false;
+        juce::String problem;
+        juce::String name;
+        double sampleRate = 48000.0;
+        double seconds = 0.0;
+        std::vector<float> levels;       // dB from the loudest, every 10 ms
+        std::vector<float> pitches;      // as a note number (fractional), every 10 ms; NaN where there's none
+        std::vector<FoundNote> notes;    // in time order
+        int best = -1;                   // the best for MIMIC (an index into notes)
+        std::shared_ptr<const juce::AudioBuffer<float>> audio;   // the stem as read
+    };
+
+    static constexpr double maxPhraseSeconds = 180.0;
+    Phrase findNotes (const juce::AudioBuffer<float>& audio, double sampleRate, const juce::String& name);
+    Phrase findNotesInFile (const juce::File& file);
+    // The note cut out of the stem (a few ms before its start to its end), every channel, for `analyse`.
+    juce::AudioBuffer<float> cutNote (const Phrase&, const FoundNote&);
+    // The note analysed, named "<stem> · <note> (n)".
+    Analysis analyseNote (const Phrase&, int index);
+
+    //==================================================================================================================
     // THE MATCH (part 2, 0.45.0): how close a sound is to the recording, by ear's measure as far as we can make one:
     //   - its TONE: the spectrum in 32 bands a third of an octave or so wide (60 Hz to 16 kHz) every 10 ms, each moment
     //     compared as a shape (its own loudness taken out), where the recording is within 30 dB of its loudest;

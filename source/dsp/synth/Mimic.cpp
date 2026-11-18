@@ -736,6 +736,282 @@ namespace synth::mimic
         return s;
     }
 
+    //==================================================================================================================
+    // PICK A NOTE (1.5.0).
+    Phrase findNotes (const juce::AudioBuffer<float>& audio, double sampleRate, const juce::String& name)
+    {
+        Phrase p;
+        p.name = name;
+        p.sampleRate = sampleRate;
+        const auto total = juce::jmin (audio.getNumSamples(), (int) (maxPhraseSeconds * sampleRate));
+        const auto channels = audio.getNumChannels();
+        p.seconds = total / sampleRate;
+        {
+            auto copy = std::make_shared<juce::AudioBuffer<float>> (juce::jmax (1, channels), juce::jmax (1, total));
+            copy->clear();
+            for (int c = 0; c < channels; ++c)
+                copy->copyFrom (c, 0, audio, c, 0, total);
+            p.audio = copy;
+        }
+        if (channels == 0 || total < (int) (0.05 * sampleRate))
+        {
+            p.problem = "The recording is too short (it needs at least a twentieth of a second).";
+            return p;
+        }
+        std::vector<float> x ((size_t) total);
+        for (int i = 0; i < total; ++i)
+        {
+            float sum = 0.0f;
+            for (int c = 0; c < channels; ++c)
+                sum += audio.getSample (c, i);
+            x[(size_t) i] = sum / (float) channels;
+        }
+
+        // The level every 10 ms (20 ms windows), dB from the loudest.
+        const auto hop = juce::jmax (1, juce::roundToInt (sampleRate * Analysis::hopSeconds));
+        const auto hops = total / hop;
+        std::vector<float> db ((size_t) hops, -120.0f);
+        for (int h = 0; h < hops; ++h)
+        {
+            const auto from = juce::jmax (0, h * hop - hop / 2), to = juce::jmin (total, h * hop + hop + hop / 2);
+            double power = 0.0;
+            for (int i = from; i < to; ++i)
+                power += (double) x[(size_t) i] * x[(size_t) i];
+            power /= juce::jmax (1, to - from);
+            db[(size_t) h] = (float) juce::jmax (-120.0, 10.0 * std::log10 (power + 1.0e-14) + 3.01);
+        }
+        const auto peakDb = hops > 0 ? *std::max_element (db.begin(), db.end()) : -120.0f;
+        if (peakDb < -60.0f)
+        {
+            p.problem = "The recording is too quiet (its loudest moment is under -60 dB).";
+            return p;
+        }
+        p.levels.resize ((size_t) hops);
+        for (int h = 0; h < hops; ++h)
+            p.levels[(size_t) h] = db[(size_t) h] - peakDb;
+        const auto& rel = p.levels;
+
+        // The pitch every 10 ms (YIN at a reduced rate, 25 Hz to 2 kHz), as a fractional note; NaN where unclear.
+        const auto decimation = juce::jmax (1, (int) (sampleRate / 12000.0));
+        const auto reducedRate = sampleRate / decimation;
+        std::vector<float> reduced ((size_t) (total / decimation));
+        for (size_t i = 0; i < reduced.size(); ++i)
+        {
+            float sum = 0.0f;
+            for (int k = 0; k < decimation; ++k)
+                sum += x[i * (size_t) decimation + (size_t) k];
+            reduced[i] = sum / (float) decimation;
+        }
+        const auto minLag = juce::jmax (2, (int) (reducedRate / 2000.0));
+        const auto maxLag = (int) (reducedRate / 25.0) + 1;
+        const auto window = juce::jmax (minLag * 2, maxLag / 2);   // 20 ms: short enough to follow fast notes
+        const auto nan = std::numeric_limits<float>::quiet_NaN();
+        p.pitches.assign ((size_t) hops, nan);
+        std::vector<float> clarity ((size_t) hops, 0.0f), scratch;
+        for (int h = 0; h < hops; ++h)
+        {
+            if (rel[(size_t) h] < -45.0f)
+                continue;
+            const auto begin = juce::jmax (0, h * hop / decimation - window / 2);
+            if (begin + window + maxLag + 2 >= (int) reduced.size())
+                continue;
+            float c = 0.0f;
+            const auto lag = yinLag (reduced.data() + begin, window, minLag, maxLag, c, scratch);
+            clarity[(size_t) h] = c;
+            if (c >= 0.7f && lag > 0.0)
+                p.pitches[(size_t) h] = (float) (69.0 + 12.0 * std::log2 (reducedRate / lag / 440.0));
+        }
+        // Single readings an octave off their neighbours (YIN's usual slip) take their neighbours' pitch.
+        for (int h = 1; h + 1 < hops; ++h)
+        {
+            const auto a = p.pitches[(size_t) h - 1], b = p.pitches[(size_t) h], c = p.pitches[(size_t) h + 1];
+            if (! std::isnan (a) && ! std::isnan (b) && ! std::isnan (c) && std::abs (a - c) < 1.0f && std::abs (b - 0.5f * (a + c)) > 9.0f)
+                p.pitches[(size_t) h] = 0.5f * (a + c);
+        }
+
+        // Cutting it into notes.
+        const auto voiced = [&] (int h) { return h >= 0 && h < hops && ! std::isnan (p.pitches[(size_t) h]) && rel[(size_t) h] > -40.0f; };
+        std::vector<int> starts;   // hop where each note starts
+        {
+            int h = 0;
+            auto inNote = false;
+            float noteMiddle = 0.0f;
+            std::vector<float> notePitches;
+            int away = 0, silent = 0;
+            for (; h < hops; ++h)
+            {
+                if (! voiced (h))
+                {
+                    if (inNote && ++silent >= 3)
+                        inNote = false;
+                    continue;
+                }
+                silent = 0;
+                const auto pitch = p.pitches[(size_t) h];
+                if (! inNote)
+                {
+                    // The note starts at its attack: back up while the level is still rising out of the silence.
+                    auto s = h;
+                    while (s > 0 && rel[(size_t) s - 1] < rel[(size_t) s] && rel[(size_t) s - 1] > -60.0f && h - s < 8
+                           && (starts.empty() || s - 1 > starts.back()))
+                        --s;
+                    starts.push_back (s);
+                    inNote = true;
+                    notePitches.assign (1, pitch);
+                    noteMiddle = pitch;
+                    away = 0;
+                    continue;
+                }
+                // A fresh attack: the level jumps 6 dB over the lowest of the last 30 ms (at least 60 ms into the note).
+                const auto lowest = juce::jmin (rel[(size_t) juce::jmax (0, h - 1)], rel[(size_t) juce::jmax (0, h - 2)], rel[(size_t) juce::jmax (0, h - 3)]);
+                if (h - starts.back() >= 6 && rel[(size_t) h] - lowest > 6.0f && rel[(size_t) h] > -30.0f)
+                {
+                    starts.push_back (h - 1);
+                    notePitches.assign (1, pitch);
+                    noteMiddle = pitch;
+                    away = 0;
+                    continue;
+                }
+                // Another note: the pitch jumps (0.4 of a semitone within 30 ms) to 0.6 of a semitone or more from this
+                // note's middle and stays there for 40 ms. Moving there smoothly is a slide inside the note (its middle
+                // follows it, so a jump from where it slid to is judged from there).
+                if (std::abs (pitch - noteMiddle) > 0.6f)
+                {
+                    if (away == 0)
+                    {
+                        const auto before = p.pitches[(size_t) juce::jmax (starts.back(), h - 3)];
+                        if (before > 0.0f && std::abs (pitch - before) < 0.4f)
+                        {
+                            notePitches.push_back (pitch);
+                            noteMiddle = pitch;
+                            continue;
+                        }
+                    }
+                    if (++away >= 4)
+                    {
+                        starts.push_back (h - 3);
+                        notePitches.assign (1, pitch);
+                        noteMiddle = pitch;
+                        away = 0;
+                    }
+                    continue;
+                }
+                away = 0;
+                notePitches.push_back (pitch);
+                if (notePitches.size() <= 30)   // the middle from its first 300 ms (a slide later doesn't move it)
+                    noteMiddle = median (notePitches);
+            }
+        }
+
+        for (size_t n = 0; n < starts.size(); ++n)
+        {
+            FoundNote f;
+            const auto s = starts[n];
+            const auto next = n + 1 < starts.size() ? starts[n + 1] : hops;
+            // Its own pitches and loudest.
+            std::vector<float> pitches, clear;
+            float loudest = -120.0f;
+            int lastVoiced = s;
+            for (int h = s; h < next; ++h)
+            {
+                loudest = juce::jmax (loudest, rel[(size_t) h]);
+                if (voiced (h))
+                {
+                    pitches.push_back (p.pitches[(size_t) h]);
+                    clear.push_back (clarity[(size_t) h]);
+                    lastVoiced = h;
+                }
+            }
+            if (pitches.size() < 8)   // under 80 ms of pitch: a click, a grace note
+                continue;
+            // Where it has died away (40 dB under its loudest), or the next note.
+            int endHop = lastVoiced;
+            while (endHop + 1 < next && rel[(size_t) endHop + 1] > loudest - 40.0f)
+                ++endHop;
+            f.ringsOut = endHop + 1 < next || next == hops;
+            const auto middle = median (pitches);
+            f.note = juce::jlimit (0, 127, juce::roundToInt (middle));
+            f.cents = (middle - (float) f.note) * 100.0f;
+            f.start = s * Analysis::hopSeconds;
+            f.voicedEnd = (lastVoiced + 1) * Analysis::hopSeconds;
+            f.end = juce::jmin (p.seconds, (endHop + 1) * Analysis::hopSeconds);
+            f.levelDb = loudest;
+            f.clarity = median (clear);
+            std::vector<float> strays;
+            for (const auto pitch : pitches)
+                strays.push_back (std::abs (pitch - middle) * 100.0f);
+            f.wobbleCents = median (strays);
+            // The score: length (to 2 s), clarity, steadiness, loudness, a clean release.
+            const auto length = juce::jlimit (0.0, 1.0, (f.voicedEnd - f.start) / 2.0);
+            const auto clean = juce::jlimit (0.0f, 1.0f, (f.clarity - 0.7f) / 0.25f);
+            const auto steady = 1.0f / (1.0f + f.wobbleCents / 40.0f);
+            const auto loud = juce::jlimit (0.0f, 1.0f, (f.levelDb + 30.0f) / 24.0f);
+            f.score = (float) (0.15 + 0.85 * length) * (0.3f + 0.7f * clean) * (0.5f + 0.5f * steady) * (0.4f + 0.6f * loud)
+                    * (f.ringsOut ? 1.0f : 0.75f);
+            p.notes.push_back (f);
+        }
+        if (p.notes.empty())
+        {
+            p.problem = "No notes found: MIMIC needs pitched notes (a drum loop, a noise or a dense chord has none to follow).";
+            return p;
+        }
+        for (size_t n = 0; n < p.notes.size(); ++n)
+            if (p.best < 0 || p.notes[n].score > p.notes[(size_t) p.best].score)
+                p.best = (int) n;
+        p.valid = true;
+        return p;
+    }
+
+    Phrase findNotesInFile (const juce::File& file)
+    {
+        juce::AudioFormatManager formats;
+        formats.registerBasicFormats();
+        std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+        if (reader == nullptr || reader->sampleRate <= 0.0)
+        {
+            Phrase p;
+            p.name = file.getFileNameWithoutExtension();
+            p.problem = "That file couldn't be read as audio (WAV, AIFF, FLAC, OGG or MP3).";
+            return p;
+        }
+        const auto length = (int) juce::jmin (reader->lengthInSamples, (juce::int64) (maxPhraseSeconds * reader->sampleRate));
+        juce::AudioBuffer<float> buffer ((int) juce::jlimit (1u, 2u, reader->numChannels), juce::jmax (1, length));
+        reader->read (&buffer, 0, length, 0, true, buffer.getNumChannels() > 1);
+        return findNotes (buffer, reader->sampleRate, file.getFileNameWithoutExtension());
+    }
+
+    juce::AudioBuffer<float> cutNote (const Phrase& p, const FoundNote& f)
+    {
+        if (p.audio == nullptr)
+            return {};
+        const auto& a = *p.audio;
+        const auto from = juce::jmax (0, (int) ((f.start - 0.005) * p.sampleRate));
+        const auto to = juce::jmin (a.getNumSamples(), (int) (f.end * p.sampleRate));
+        juce::AudioBuffer<float> out (a.getNumChannels(), juce::jmax (1, to - from));
+        out.clear();
+        for (int c = 0; c < a.getNumChannels(); ++c)
+            if (to > from)
+                out.copyFrom (c, 0, a, c, from, to - from);
+        // A 5 ms fade at the cut's end, so a note cut short by the next doesn't end in a click.
+        const auto fade = juce::jmin (out.getNumSamples(), (int) (0.005 * p.sampleRate));
+        if (! f.ringsOut && fade > 1)
+            out.applyGainRamp (out.getNumSamples() - fade, fade, 1.0f, 0.0f);
+        return out;
+    }
+
+    Analysis analyseNote (const Phrase& p, int index)
+    {
+        if (index < 0 || index >= (int) p.notes.size())
+            return {};
+        const auto& f = p.notes[(size_t) index];
+        int same = 0;   // which of its pitch it is, for the name
+        for (int k = 0; k <= index; ++k)
+            if (p.notes[(size_t) k].note == f.note)
+                ++same;
+        auto a = analyse (cutNote (p, f), p.sampleRate, p.name + " - " + noteName (f.note) + (same > 1 ? " (" + juce::String (same) + ")" : juce::String()));
+        return a;
+    }
+
     Analysis analyseFile (const juce::File& file)
     {
         juce::AudioFormatManager formats;

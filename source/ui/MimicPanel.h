@@ -12,8 +12,9 @@
 // MIMIC (0.44.0): make a sound from a recording, on the PRESETS page (MIMIC A SOUND... in the right column), over the
 // preset list. See dsp/synth/Mimic.h for what it measures and rigs/MimicRig.h for the sound it makes.
 //
-//   1. LOAD SOUND... (or drop an audio file on it): one note, held, fairly dry, is best. It's analysed in the
-//      background, a fraction of a second.
+//   1. LOAD SOUND... (or drop an audio file on it): one note, held, fairly dry, is best; a whole stem (a loop, a phrase)
+//      is cut into its notes first (1.5.0, PICK A NOTE: synth::mimic::findNotes), shown as a strip along the top, the
+//      best one for MIMIC chosen, and a click on another makes it from that one. Analysed in the background.
 //   2. The picture: the recording's loudness, where the note starts, settles and is let go, the stretch its tone is
 //      taken from, and its pitch. Beside it, what was found.
 //   3. TONE, LOUDNESS, VIBRATO, SWOOP, UNISON, NOISE: what to take (the ones not found are greyed).
@@ -35,6 +36,12 @@ public:
     void loadFile (const juce::File& file);
     // Shows an analysis made already (tests, the snapshot).
     void setAnalysis (const synth::mimic::Analysis&);
+    // A stem cut into notes (tests, the snapshot); `chooseNote` makes the analysis (and PLAY ORIGINAL) that note's.
+    void setPhrase (const synth::mimic::Phrase&);
+    void chooseNote (int index);
+    const std::optional<synth::mimic::Phrase>& getPhrase() const noexcept { return phrase; }
+    int getChosenNote() const noexcept { return chosen; }
+    void mouseDown (const juce::MouseEvent&) override;
     const std::optional<synth::mimic::Analysis>& getAnalysis() const noexcept { return analysis; }
     mimic::Choices getChoices() const;
     void makeSound();
@@ -56,10 +63,15 @@ private:
     void timerCallback() override;
     void updateButtons();
     void paintPicture (juce::Graphics&, juce::Rectangle<int> area) const;
+    void paintNotes (juce::Graphics&, juce::Rectangle<int> area) const;
+    bool showsNotes() const noexcept { return phrase.has_value() && phrase->valid && phrase->notes.size() > 1; }
+    int noteAt (juce::Point<int>) const;
     juce::StringArray findings() const;
 
     ParagonX1AudioProcessor& processor;
     std::optional<synth::mimic::Analysis> analysis;
+    std::optional<synth::mimic::Phrase> phrase;   // the stem, cut into its notes (1.5.0)
+    int chosen = -1;
     juce::String busyWith;            // the file being analysed (empty: none)
     bool dragging = false, made = false;
     MimicRefiner refiner;
@@ -75,5 +87,5 @@ private:
     juce::ToggleButton tone { "TONE" }, envelope { "LOUDNESS" }, vibrato { "VIBRATO" }, swoop { "SWOOP" },
                        unison { "UNISON" }, noise { "NOISE" };
     std::unique_ptr<juce::FileChooser> chooser;
-    juce::Rectangle<int> titleArea, pictureArea, findingsArea;
+    juce::Rectangle<int> titleArea, pictureArea, findingsArea, notesArea;
 };

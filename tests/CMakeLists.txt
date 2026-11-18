@@ -16,6 +16,7 @@ add_executable(ParagonX1Tests
     ShaperTests.cpp
     VoiceFilterTests.cpp
     MimicTests.cpp
+    MimicPickTests.cpp
     SfzTests.cpp
     LibraryTests.cpp
     MatrixTests.cpp

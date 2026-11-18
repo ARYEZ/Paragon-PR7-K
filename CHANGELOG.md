@@ -2,6 +2,16 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.5.0
+
+MIMIC's PICK A NOTE (your ask, for building sounds from your synth stems).
+
+- MIMIC now takes a whole stem (a loop, a riff, a phrase, up to 3 minutes), not just one note. It cuts the stem into its notes and shows them in a strip along the top of the panel, each named.
+- It picks the best note for MIMIC on its own (marked with a gold dot) and makes the sound from it: a long, clean, steady note that rings out on its own scores highest; short notes, notes cut off by the next one and unclear pitches score lower.
+- Click any other note in the strip to make the sound from that one instead. PLAY ORIGINAL plays just the chosen note.
+- How notes are told apart: a silence, a fresh attack (even on the same pitch), or a jump to a new pitch. Vibrato and slow slides stay inside one note.
+- Limits: it follows one line at a time. A chord, a dense pad or a noisy loop has no single pitch to follow, so it will say there is nothing to follow, or find poor notes. A one-note file works exactly as before.
+
 ## 1.4.0
 
 **SANDSEA rebuilt from how the desert film's score was really made, round a new signature: POLYMETER.**
