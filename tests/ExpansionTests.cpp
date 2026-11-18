@@ -360,7 +360,7 @@ TEST_CASE ("SANDSEA: MACRO 3 is POLYMETER on every preset, resting at its left; 
         }
     }
     CHECK (count == 18);
-    CHECK (sampled == 6);       // Fuzz Cello, Sisterhood, Herald Pipes, Temple Bell, Resonator Plate, Anti-Groove
+    CHECK (sampled == 6);       // Fuzz Cello, Sisterhood, Herald Pipes, Prayer Bell, Resonator Plate, Anti-Groove
     CHECK (used.size() == 4);   // the orchestra (its cello and choir), Squidpipes, VCSL and Big Rusty Drums
 }
 
@@ -4249,7 +4249,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (sand && type == "Keys")
         {
-            if (rig.name == "Temple Bell")
+            if (rig.name == "Prayer Bell")
             {
                 chord (e, at (0), at (7.8), { 74 }, 105);
                 chord (e, at (8), at (15.8), { 74, 81 }, 100);

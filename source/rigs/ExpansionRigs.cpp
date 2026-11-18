@@ -15198,7 +15198,7 @@ namespace
         x.add (monks);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
-        auto bell = x.make ("Temple Bell", 10, { "Keys", "Heat", "Bell", "Struck" },
+        auto bell = x.make ("Prayer Bell", 10, { "Keys", "Heat", "Bell", "Struck" },
             "The small temple bell that starts the dream: a struck bell's partials (the hum, the prime, a minor third a "
             "little sharp, a fifth, the octave), each fading on its own, a soft strike. Turn up POLYMETER and held notes "
             "ring again in 4, 3, 5 and 7, a bell tower out of time with itself. MOD WHEEL: a brighter strike. MACROS: "
@@ -15294,7 +15294,7 @@ namespace
         voice (grooves, 0.5f, 0.6f, 0.6f, 1.0f);
         arpOn (grooves, { 0 }, AM::up, "1/16", 1.0f, 0.5f);
         steps (grooves, 0, { 0, 2, 3, 5, 6, 8, 10, 11, 13, 14 }, { 0, 3, 6, 10, 13 });
-        lfo (grooves, 0, LW::sampleHold, 0.0f);
+        lfo (grooves, 0, LW::sampleHold, 1.0f);   // (synced: the rate is the division)
         grooves.set (ParamIDs::lfo (0, "Sync"), 1.0f).set (ParamIDs::lfo (0, "Division"), (float) synth::mod::lfoDivisionNames.indexOf ("1/16"));
         route (grooves, "lfo1", ParamIDs::voiceVowel, 0.4f);
         route (grooves, "lfo1", ParamIDs::fltCutoff, 0.15f);
