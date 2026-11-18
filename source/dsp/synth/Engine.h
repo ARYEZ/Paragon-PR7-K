@@ -279,6 +279,11 @@ namespace synth
             bool naviFresh = true;                                           // ...a new note takes its move at once
             float crossSemis = 0.0f;                                         // CROSSROADS (0.90.0): this note pulled, semitones (glided)
             bool crossFresh = true;                                          // ...a new note takes its pull at once
+            float pressSemis = 0.0f;                                         // PRESS (1.3.0): this note pressed, semitones
+            float pressTarget = 0.0f;                                        // ...how far its press goes
+            double pressTime = 0.0;                                          // ...seconds since its grid line (negative: before it)
+            int pressStyle = -1;                                             // ...press::Style, -1 not pressed
+            int pressNote = -1;                                              // ...the note it was judged for (-1: not yet)
             float ragVelocity = 1.0f;                                        // RAGTIME (0.92.0): the velocity it was played at
             float ragGain = 1.0f;                                            // ...the damper's lift (1: none)
             float panLeft = 1.0f, panRight = 1.0f;      // the AMP's PAN, KEYTRACK and SPREAD for this note
@@ -309,6 +314,7 @@ namespace synth
 
         void handle (const juce::MidiMessage&, const Settings&) noexcept;
         void render (float* left, float* right, int numSamples, const Settings&) noexcept;
+        void renderPress (Voice&, int n, const press::Settings&, int interval) noexcept;
         void renderVoice (Voice&, float* left, float* right, int numSamples, const Settings&, int interval) noexcept;
         // This note's own copy of the settings with its modulation applied (`interval`: which of render's intervals it is).
         const Settings& modulate (Voice&, int n, const Settings&, int interval) noexcept;
@@ -541,6 +547,13 @@ namespace synth
         int crossSteps = 0;
         float crossGlideCoef = 1.0f;
         SharedInt crossSideShown {};   // -1 off, 0 light, 1 dark
+        // PRESS (1.3.0): the song position at each interval's start (beats), its own clock while stopped, the beat's
+        // length in seconds, whether it presses, the let-go glide; and what the page shows.
+        std::array<double, maxIntervals> pressBeats {};
+        double pressClock = 0.0, pressSecondsPerBeat = 0.5;
+        bool pressPlaying = false;
+        float pressLetGo = 1.0f;
+        SharedInt pressCountShown {}, pressLastShown {}, pressNowShown {};
         // RAGTIME (0.92.0): each interval's strike (bits ragtime::Who, 4 accented) and lift (who's lifted for the
         // strike just after it), its own clock while stopped, the lowest key held (the bass), the step for the page.
         std::array<std::uint8_t, maxIntervals> ragStrikes {}, ragLifts {};
@@ -567,6 +580,11 @@ namespace synth
         // NAVICOMPUTER's step now (0-15; -1: not moving), for its page.
         int getNaviStep() const noexcept { return naviStepShown.load(); }
         int getCrossSide() const noexcept { return crossSideShown.load(); }   // CROSSROADS: -1 off, 0 light, 1 dark
+        // PRESS: notes pressed so far (0 until the first); the last one as style x 1000 + its note (-1 none); and how
+        // far the newest pressed note is pressed now, hundredths of a semitone (-1 none sounding).
+        int getPressCount() const noexcept { return pressCountShown.load() + 1; }
+        int getPressLast() const noexcept { return pressLastShown.load(); }
+        int getPressNow() const noexcept { return pressNowShown.load(); }
         int getRagtimeStep() const noexcept { return ragStepShown.load(); }   // RAGTIME: the roll's step (0-15; -1 not playing)
         int getRagtimeStrikes() const noexcept { return ragStrikeCount.load() + 1; }   // ...strikes so far
         // THE GRID (the front panel's lower half, 0.98.0): where the newest note sounding (a key or an arp; not

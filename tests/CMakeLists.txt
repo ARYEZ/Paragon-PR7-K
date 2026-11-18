@@ -96,6 +96,7 @@ add_executable(ParagonX1Tests
     SweepTests.cpp
     WobbleTests.cpp
     RunnerTests.cpp
+    PressTests.cpp
     RedlineTests.cpp
     FreezeTagTests.cpp
     CrossroadsTests.cpp

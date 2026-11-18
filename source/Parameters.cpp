@@ -584,6 +584,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         add (layout, runnerLift, "Runner Lift", { 0.0f, 1.0f }, d.lift, asPercent, stageRunner);
     }
 
+    // PRESS (1.3.0): notes pressed up the scale after the strike, in time with the song; in presets. Off and at 0.
+    {
+        constexpr int stagePress = 65;
+        const synth::press::Settings d;
+        addSwitch (layout, pressOn, "Press On", d.on, stagePress);
+        add (layout, pressAmount, "Press Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stagePress);
+        addChoice (layout, pressStyle, "Press Style", synth::press::styleNames, d.style, stagePress);
+        addChoice (layout, pressDivision, "Press When", synth::press::divisionNames, d.division, stagePress);
+        addChoice (layout, pressSteps, "Press Steps", synth::press::stepNames, d.steps, stagePress);
+        addChoice (layout, pressKey, "Press Key", synth::sirocco::keyNames, d.key, stagePress);
+        addChoice (layout, pressScale, "Press Scale", synth::arp::scaleNames, d.scale, stagePress);
+        add (layout, pressSpeed, "Press Speed", { 0.0f, 1.0f }, d.speed,
+             [] (float v, int) { return juce::String (juce::roundToInt (synth::press::riseSeconds (v) * 1000.0)) + " ms"; }, stagePress);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);

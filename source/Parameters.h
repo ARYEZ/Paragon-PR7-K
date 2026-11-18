@@ -704,6 +704,16 @@ namespace ParamIDs
     inline constexpr auto runnerAmount = "runnerAmount";   // 0 to 1: off at 0, then the speed by fifths (the macro's)
     inline constexpr auto runnerAccent = "runnerAccent";   // 0 to 1: the strikes off the beat softer
     inline constexpr auto runnerLift   = "runnerLift";     // 0 to 1: the damper's lift before each strike
+    // PRESS (1.3.0, version hint 65, synth::press): the feudal-Japan bank's signature: notes pressed up the scale after
+    // the strike, as a koto player presses the string, in time with the song. In presets.
+    inline constexpr auto pressOn       = "pressOn";
+    inline constexpr auto pressAmount   = "pressAmount";     // 0 to 1: how many notes are pressed (the macro's)
+    inline constexpr auto pressStyle    = "pressStyle";      // synth::press::styleNames
+    inline constexpr auto pressDivision = "pressDivision";   // synth::press::divisionNames: the grid the press waits for
+    inline constexpr auto pressSteps    = "pressSteps";      // synth::press::stepNames
+    inline constexpr auto pressKey      = "pressKey";        // synth::sirocco::keyNames
+    inline constexpr auto pressScale    = "pressScale";      // synth::arp::scaleNames
+    inline constexpr auto pressSpeed    = "pressSpeed";      // 0 to 1: 40 to 400 ms
     // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
     inline constexpr auto sortOn     = "sortOn";
     inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)

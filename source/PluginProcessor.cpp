@@ -1087,6 +1087,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         // RAGTIME (0.92.0): AMOUNT, SWING and ACCENT as the matrix moves them.
         s.ragtime = getRagtimeSettings();
         s.runner = getRunnerSettings();
+        s.press = getPressSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
         s.afterglow.age = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("afterglowAge"), ParamIDs::afterglowAge));
@@ -1551,6 +1552,20 @@ synth::runner::Settings ParagonX1AudioProcessor::getRunnerSettings() const noexc
     r.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerAccent"), ParamIDs::runnerAccent));
     r.lift = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerLift"), ParamIDs::runnerLift));
     return r;
+}
+
+synth::press::Settings ParagonX1AudioProcessor::getPressSettings() const noexcept
+{
+    synth::press::Settings s;
+    s.on = isOn (ParamIDs::pressOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("pressAmount"), ParamIDs::pressAmount));
+    s.style = juce::jlimit (0, synth::press::styleNames.size() - 1, juce::roundToInt (param (ParamIDs::pressStyle)));
+    s.division = juce::jlimit (0, synth::press::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::pressDivision)));
+    s.steps = juce::jlimit (0, synth::press::stepNames.size() - 1, juce::roundToInt (param (ParamIDs::pressSteps)));
+    s.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::pressKey)));
+    s.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::pressScale)));
+    s.speed = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("pressSpeed"), ParamIDs::pressSpeed));
+    return s;
 }
 
 synth::ragtime::Settings ParagonX1AudioProcessor::getRagtimeSettings() const noexcept

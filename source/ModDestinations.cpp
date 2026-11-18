@@ -111,7 +111,8 @@ namespace ModDestinations
                 { "FX Ragtime", "Amount" }, { "FX Ragtime", "Swing" }, { "FX Ragtime", "Accent" },
                 { "FX Sort", "Amount" }, { "FX Sort", "Edge" }, { "FX Sort", "Strike" },
                 { "FX Wobble", "Amount" }, { "FX Wobble", "Talk" }, { "FX Wobble", "Resonance" },
-                { "FX Runner", "Amount" }, { "FX Runner", "Accent" }, { "FX Runner", "Lift" } };
+                { "FX Runner", "Amount" }, { "FX Runner", "Accent" }, { "FX Runner", "Lift" },
+                { "FX Press", "Amount" }, { "FX Press", "Speed" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

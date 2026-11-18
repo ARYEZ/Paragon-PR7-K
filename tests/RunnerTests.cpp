@@ -240,7 +240,7 @@ TEST_CASE ("RUNNER in the plugin: matrix destinations, the SIGNATURE slot and it
         REQUIRE (ModDestinations::find (id) != nullptr);
         CHECK (ModDestinations::find (id)->group == "FX Runner");
     }
-    CHECK (signatureNames()[signatureNames().size() - 1] == "RUNNER");
+    CHECK (signatureNames().contains ("RUNNER"));
     ParagonX1AudioProcessor processor;
     processor.setPlayConfigDetails (0, 2, sampleRate, blockSize);
     processor.prepareToPlay (sampleRate, blockSize);

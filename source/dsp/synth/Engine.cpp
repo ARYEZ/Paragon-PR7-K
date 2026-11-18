@@ -371,6 +371,7 @@ namespace synth
         seqClock = 0.0;
         naviClock = 0.0;
         crossClock = 0.0;
+        pressClock = 0.0;
         ragClock = 0.0;
         ragLastStep = std::numeric_limits<std::int64_t>::min();
         runClock = 0.0;
@@ -626,7 +627,10 @@ namespace synth
             naviClock = 0.0;
         // ...and CROSSROADS' (the first stretch is light).
         if (! anyHeld)
+        {
             crossClock = 0.0;
+            pressClock = 0.0;   // ...and PRESS's
+        }
         // ...and RAGTIME's (the roll starts with the first key).
         if (! anyHeld)
         {
@@ -926,6 +930,9 @@ namespace synth
         voice.naviFresh = true;
         voice.crossSemis = 0.0f;  // CROSSROADS: a new note takes its pull at once
         voice.crossFresh = true;
+        voice.pressSemis = voice.pressTarget = 0.0f;   // PRESS: judged afresh (in renderVoice)
+        voice.pressTime = 0.0;
+        voice.pressStyle = voice.pressNote = -1;
         voice.ragGain = 1.0f;     // RAGTIME: no lift on a new note
         // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
         voice.glowTune = nextGlow();
@@ -1394,6 +1401,19 @@ namespace synth
                 crossGlideCoef = (float) (1.0 - std::exp (-(double) controlInterval / (tau * sampleRate)));
                 crossClock += length * beatsPerSample;
             }
+            // PRESS (1.3.0): the song position at each interval's start, for the notes struck in it.
+            {
+                pressPlaying = settings.press.pressing();
+                const auto bpm = juce::jmax (1.0, modulation.bpm);
+                const auto beatsPerSample = bpm / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                pressSecondsPerBeat = 60.0 / bpm;
+                if (pressPlaying)
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                        pressBeats[(size_t) i] = followSong ? modulation.ppq + (samplesIntoBlock + start + at) * beatsPerSample : pressClock + at * beatsPerSample;
+                pressLetGo = (float) (1.0 - std::exp (-(double) controlInterval / (press::letGoSeconds * sampleRate)));
+                pressClock += length * beatsPerSample;
+            }
             // RAGTIME (0.92.0): which interval each strike of the roll falls in, and the ones its damper lifts in
             // (about 4 ms before it), in time with the song (or its own count); the bass is the lowest key held.
             ragPlaying = settings.ragtime.playing();
@@ -1639,6 +1659,59 @@ namespace synth
         return voiceSettings;
     }
 
+    // PRESS (1.3.0): see Press.h.
+    void Engine::renderPress (Voice& voice, int n, const press::Settings& ps, int interval) noexcept
+    {
+        const auto struck = voice.source != answerSource && voice.source != tailSource;
+        if (pressPlaying && struck && voice.pressNote != voice.note)
+        {
+            // Judged now: the grid line its press falls on (at least minimumGap after the strike).
+            const auto beat = pressBeats[(size_t) juce::jlimit (0, maxIntervals - 1, interval)];
+            const auto perLine = press::beatsPerLine (ps.division);
+            const auto line = (std::int64_t) std::ceil ((beat + press::minimumGap / pressSecondsPerBeat) / perLine - 1.0e-9);
+            const auto fresh = voice.pressNote < 0;
+            voice.pressNote = voice.note;
+            voice.pressStyle = press::pressedAt (ps, line, voice.note);
+            voice.pressTime = -((double) line * perLine - beat) * pressSecondsPerBeat;
+            voice.pressTarget = voice.pressStyle >= 0 ? press::semitonesFor (voice.note, ps) : 0.0f;
+            if (voice.pressStyle >= 0)
+            {
+                pressCountShown.store (pressCountShown.load() + 1);
+                pressLastShown.store (voice.pressStyle * 1000 + voice.note);
+            }
+            if (fresh && voice.pressStyle == press::release)
+                voice.pressSemis = voice.pressTarget;   // struck already pressed
+        }
+        if (voice.pressStyle < 0)
+        {
+            voice.pressSemis = 0.0f;
+            return;
+        }
+        if (pressPlaying)
+        {
+            const auto shape = press::shapeAt (voice.pressStyle, voice.pressTime, press::riseSeconds (ps.speed));
+            const auto target = shape * voice.pressTarget;
+            // A legato move from a pressed note: glide there rather than jump.
+            if (voice.pressTime < 0.0 && voice.pressStyle != press::release)
+                voice.pressSemis += (target - voice.pressSemis) * pressLetGo;
+            else
+                voice.pressSemis = target;
+            pressNowShown.store (juce::roundToInt (voice.pressSemis * 100.0f));
+        }
+        else
+        {
+            // Off, or AMOUNT to 0: let it back down, then it's done.
+            voice.pressSemis -= voice.pressSemis * pressLetGo;
+            if (std::abs (voice.pressSemis) < 1.0e-4f)
+            {
+                voice.pressSemis = 0.0f;
+                voice.pressStyle = -1;
+                voice.pressNote = -1;
+            }
+        }
+        voice.pressTime += (double) n / sampleRate;
+    }
+
     void Engine::renderVoice (Voice& voice, float* left, float* right, int n, const Settings& unmodulated, int interval) noexcept
     {
         // RAGTIME (0.92.0): a key's note struck again on the roll's step (unless it has only just started: its own
@@ -1744,6 +1817,10 @@ namespace synth
             }
         }
         voice.crossFresh = false;
+        // PRESS: a note judged once, when struck (or when a legato move gives the voice a new note), on the next grid
+        // line; then its press shaped over time. Nothing at all while it's off and nothing is pressed.
+        if (pressPlaying || voice.pressStyle >= 0)
+            renderPress (voice, n, unmodulated.press, interval);
         if (modulated)
             balance (voice.notePan + settings.amp.pan - unmodulated.amp.pan, voice.panLeft, voice.panRight);
 
@@ -2950,7 +3027,7 @@ namespace synth
             // KEYTRACK (from middle C; at 100% the note as played) and the PITCH envelope, if it follows it.
             const auto keyPitch = juce::exactlyEqual (settings.pitch.keytrack, 1.0f) ? voice.pitch : 60.0f + (voice.pitch - 60.0f) * settings.pitch.keytrack;
             const auto basePitch = keyPitch + (s.pitchEnvelope ? voice.pitchSemitones : 0.0f) + bendSemitones + s.transpose + s.fineCents * 0.01f + osc.randomOffset
-                                 + settings.play.tuneCents * 0.01f + voice.naviSemis + voice.crossSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
+                                 + settings.play.tuneCents * 0.01f + voice.naviSemis + voice.crossSemis + voice.pressSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
             const auto independent = vibratoDepth > 0.0f && s.vibratoMode == VibratoMode::independent;
             const auto ownVibrato = independent ? vibratoValue (s.vibratoWave, osc.copies[0].vibratoPhase, osc.copies[0].vibratoHeld,
                                                                 vibratoAdvance * osc.copies[0].vibratoRate) * vibratoDepth

@@ -222,11 +222,15 @@ namespace synth
         inline const juce::StringArray scaleNames { "Chromatic", "Major", "Minor", "Harmonic Minor", "Melodic Minor", "Dorian", "Phrygian",
                                                     "Lydian", "Mixolydian", "Locrian", "Major Pentatonic", "Minor Pentatonic", "Blues", "Whole Tone",
                                                     "Phrygian Dominant", "Double Harmonic",     // 0.28.0: appended (SANDSEA)
-                                                    "Pelog" };                                  // 0.42.0: appended (PSI STORM)
-        inline constexpr std::array<int, 17> scaleMasks {   // bit per semitone above the root
+                                                    "Pelog",                                    // 0.42.0: appended (PSI STORM)
+                                                    "Hirajoshi", "In", "Yo" };                  // 1.3.0: appended (the koto's tunings)
+        inline constexpr std::array<int, 20> scaleMasks {   // bit per semitone above the root
             0xfff, 0xab5, 0x5ad, 0x9ad, 0xaad, 0x6ad, 0x5ab, 0xad5, 0x6b5, 0x56b, 0x295, 0x4a9, 0x4e9, 0x555,
             0x5b3, 0x9b3,     // Phrygian dominant 0 1 4 5 7 8 10, double harmonic 0 1 4 5 7 8 11
-            0x18b };          // pelog (the gamelan's five-note scale, its common "selisir" form, nearest semitones) 0 1 3 7 8
+            0x18b,            // pelog (the gamelan's five-note scale, its common "selisir" form, nearest semitones) 0 1 3 7 8
+            0x18d,            // hirajoshi 0 2 3 7 8 (the koto's common tuning, as most Western sources give it)
+            0x1a3,            // in (miyako-bushi) 0 1 5 7 8
+            0x2a5 };          // yo 0 2 5 7 9
         inline bool inScale (int scale, int semitone) noexcept
         {
             return (scaleMasks[(size_t) juce::jlimit (0, (int) scaleMasks.size() - 1, scale)] >> (((semitone % 12) + 12) % 12)) & 1;

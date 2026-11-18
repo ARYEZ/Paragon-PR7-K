@@ -481,6 +481,10 @@ public:
     int getRagtimeStep() const noexcept { return engine.getRagtimeStep(); }
     int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }
     synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (1.0.0)
+    synth::press::Settings getPressSettings() const noexcept;                    // PRESS (1.3.0)
+    int getPressCount() const noexcept { return engine.getPressCount(); }
+    int getPressLast() const noexcept { return engine.getPressLast(); }
+    int getPressNow() const noexcept { return engine.getPressNow(); }
     int getRunnerStrikes() const noexcept { return engine.getRunnerStrikes(); }
     int getRunnerBeatPosition() const noexcept { return engine.getRunnerBeatPosition(); }
     const effects::Lockstep& getLockstep() const noexcept { return rack->lockstep; }
