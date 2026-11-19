@@ -512,7 +512,7 @@ TEST_CASE ("Libraries: GET THE ORCHESTRA: a second library, found by its presets
     CHECK (libraries::libraryFor (libraries::refFor (sso, horns)) == &sso);
     CHECK (libraries::libraryFor (libraries::refFor (piano)) == &piano);
     CHECK (libraries::libraryFor ("{sfz:some other folder}/x.sfz") == nullptr);
-    CHECK (libraries::all().size() == 13);   // 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three; 0.84.0: the western five; 1.2.0: the koto
+    CHECK (libraries::all().size() == 14);   // 1.6.0: epic-choir; 0.81.0: the Versilian collection and Sam's Sonor too; 0.82.0: Karoryfer's three; 0.84.0: the western five; 1.2.0: the koto
 
     TempFolder t;
     const auto presets = t.dir.getChildFile ("presets");
@@ -961,4 +961,104 @@ TEST_CASE ("Libraries: the real Black And Green Guitars repair", "[.rawrepair]")
     CHECK (download.getState() == libraries::Download::State::done);
     CHECK (libraries::isComplete (library, folder.getChildFile (library.folder)));
     WARN ("Repaired in " << (juce::Time::getMillisecondCounterHiRes() - start) / 1000.0 << " s");
+}
+
+TEST_CASE ("Libraries: a zip unpacks, nothing lands outside the folder; GET THE CHOIR fetches its four sections into one (1.6.0)", "[library]")
+{
+    TempFolder t;
+    const auto zipOf = [&t] (const juce::String& name, std::vector<std::pair<juce::String, juce::MemoryBlock>> files)
+    {
+        juce::ZipFile::Builder builder;
+        for (const auto& [path, data] : files)
+            builder.addEntry (new juce::MemoryInputStream (data, true), 9, path, juce::Time::getCurrentTime());
+        const auto file = t.dir.getChildFile ("server/" + name);
+        file.getParentDirectory().createDirectory();
+        juce::FileOutputStream out (file);
+        REQUIRE (builder.writeToStream (out, nullptr));
+        return file;
+    };
+    // extractZip: keep / place, and a path climbing out refused.
+    {
+        const auto archive = zipOf ("a.zip", { { "S_ah.sfz", text ("<region> sample=samples/S/c4.wav\n") },
+                                               { "samples/S/c4.wav", sineWav() },
+                                               { "skip/me.txt", text ("left out") },
+                                               { "../outside.txt", text ("never") } });
+        const auto into = t.dir.getChildFile ("out");
+        juce::String error;
+        float last = 0.0f;
+        REQUIRE (libraries::extractZip (archive, into, [&last] (float p) { last = p; }, nullptr, error,
+                                        [] (const juce::String& path) { return ! path.startsWith ("skip/"); },
+                                        [] (const juce::String& path) { return "Lib/" + path; }));
+        INFO (error);
+        CHECK (into.getChildFile ("Lib/S_ah.sfz").loadFileAsString().startsWith ("<region>"));
+        juce::MemoryBlock wav;
+        into.getChildFile ("Lib/samples/S/c4.wav").loadFileAsData (wav);
+        CHECK (wav == sineWav());
+        CHECK_FALSE (into.getChildFile ("Lib/skip").exists());
+        CHECK_FALSE (t.dir.getChildFile ("outside.txt").exists());
+        CHECK_FALSE (into.getChildFile ("Lib/../outside.txt").exists());
+        CHECK (last == 1.0f);
+        const auto junk = t.dir.getChildFile ("junk.zip");
+        junk.replaceWithText ("<html>nope</html>");
+        CHECK_FALSE (libraries::extractZip (junk, t.dir.getChildFile ("out3"), {}, nullptr, error));
+    }
+    // GET THE CHOIR: epic-choir's real layout, a zip per section with its files at the top, fetched and unpacked in
+    // turn into one folder; complete only with all four.
+    const auto& choir = libraries::epicChoir();
+    CHECK (choir.archive == libraries::Library::Archive::zip);
+    CHECK (choir.flat);
+    CHECK (choir.moreUrls.size() == 3);
+    CHECK (choir.url.startsWith ("https://github.com/thepok/epic-choir/releases/download/v1.0/"));
+    CHECK (choir.credit.contains ("CC BY 4.0"));
+    CHECK (choir.credit.contains ("VocalSet"));
+    std::vector<juce::String> urls;
+    for (const auto* part : { "S", "A", "T", "B" })
+        urls.push_back (juce::URL (zipOf (juce::String ("choir-") + part + ".zip",
+                                          { { juce::String (part) + "_ah.sfz", text ("<region> sample=samples/" + juce::String (part) + "/c4.wav\n") },
+                                            { "samples/" + juce::String (part) + "/c4.wav", sineWav() },
+                                            { "ATTRIBUTION.txt", text ("credit") } })).toString (false));
+    const auto libraryFolder = t.dir.getChildFile ("Libraries");
+    {
+        libraries::Download download;
+        download.start (choir, libraryFolder, urls[0], {}, { urls[1], urls[2], urls[3] });
+        REQUIRE (download.waitUntilFinished (60000));
+        INFO (download.getMessage());
+        REQUIRE (download.getState() == libraries::Download::State::done);
+    }
+    const auto folder = libraryFolder.getChildFile ("epic-choir");
+    CHECK (libraries::isComplete (choir, folder));
+    for (const auto* part : { "S", "A", "T", "B" })
+    {
+        CHECK (folder.getChildFile (juce::String (part) + "_ah.sfz").existsAsFile());
+        CHECK (folder.getChildFile (juce::String ("samples/") + part + "/c4.wav").existsAsFile());
+    }
+    CHECK_FALSE (libraryFolder.getChildFile ("epic-choir.partial").exists());
+    CHECK (libraryFolder.findChildFiles (juce::File::findFiles, false, "*.download").isEmpty());
+    // A section missing (its archive not there): the download fails and leaves no half library.
+    {
+        const auto other = t.dir.getChildFile ("Libraries2");
+        libraries::Download download;
+        download.start (choir, other, urls[0], {}, { urls[1], juce::URL (t.dir.getChildFile ("server/missing.zip")).toString (false), urls[3] });
+        REQUIRE (download.waitUntilFinished (60000));
+        CHECK (download.getState() == libraries::Download::State::failed);
+        CHECK_FALSE (other.getChildFile ("epic-choir").exists());
+        CHECK_FALSE (other.getChildFile ("epic-choir.partial").exists());
+    }
+    // Three of four sections in place isn't complete.
+    folder.getChildFile ("B_ah.sfz").deleteFile();
+    CHECK_FALSE (libraries::isComplete (choir, folder));
+}
+
+TEST_CASE ("Libraries: the real epic-choir download (its four zips from GitHub's release)", "[.choirlive]")
+{
+    TempFolder t;
+    libraries::Download download;
+    download.start (libraries::epicChoir(), t.dir);
+    REQUIRE (download.waitUntilFinished (1800000));
+    INFO (download.getMessage());
+    REQUIRE (download.getState() == libraries::Download::State::done);
+    const auto folder = t.dir.getChildFile ("epic-choir");
+    CHECK (libraries::isComplete (libraries::epicChoir(), folder));
+    CHECK (folder.findChildFiles (juce::File::findFiles, false, "*.sfz").size() == 20);
+    CHECK (folder.findChildFiles (juce::File::findFiles, true, "*.wav").size() == 598);
 }

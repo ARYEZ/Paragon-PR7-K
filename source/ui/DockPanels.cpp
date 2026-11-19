@@ -226,7 +226,9 @@ void SettingsPage::paint (juce::Graphics& g)
                    "Karoryfer Samples (CC0), ganjo by itsclipping (CC0) and the Kay 5-String Banjo by FlameStudios, SFZ by "
                    "S. Christian Collins (GPL-3.0-or-later), downloaded from github.com/sfzinstruments. "
                    "The koto is 13Strings KOTO by Unreal Instruments (free), downloaded from its maker's own link "
-                   "(unreal-instruments.wixsite.com), unpacked with dmc_unrar by Sven Hesse (GPL-2.0-or-later).");
+                   "(unreal-instruments.wixsite.com), unpacked with dmc_unrar by Sven Hesse (GPL-2.0-or-later). "
+                   "The choir is epic-choir by thepok (CC BY 4.0), its samples derived from VocalSet (Wilkins, Seetharaman, "
+                   "Wahl, Pardo 2018, CC BY 4.0, doi.org/10.5281/zenodo.1442513), downloaded from github.com/thepok/epic-choir.");
 }
 
 void SettingsPage::resized()

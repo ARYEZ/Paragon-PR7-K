@@ -231,11 +231,36 @@ namespace libraries
         return library;
     }
 
+    const Library& epicChoir()
+    {
+        static const Library library = []
+        {
+            Library l;
+            l.name = "epic-choir";
+            const juce::String base = "https://github.com/thepok/epic-choir/releases/download/v1.0/epic-choir-v1.0-";
+            l.url = base + "S.zip";
+            l.moreUrls = { base + "A.zip", base + "T.zip", base + "B.zip" };
+            l.bytes = 695596194;            // the four together (each about 170 MB)
+            l.folder = "epic-choir";
+            l.sfz = "S_ah.sfz";
+            l.alsoNeeds = { "A_ah.sfz", "T_ah.sfz", "B_ah.sfz" };
+            l.credit = "epic-choir by thepok (CC BY 4.0): choir samples derived from VocalSet (Wilkins, Seetharaman, Wahl, Pardo 2018), "
+                       "CC BY 4.0, doi.org/10.5281/zenodo.1442513";
+            l.what = "CHOIR";
+            l.exactSize = false;
+            l.unpackedMb = 740;
+            l.archive = Library::Archive::zip;
+            l.flat = true;
+            return l;
+        }();
+        return library;
+    }
+
     std::vector<const Library*> all()
     {
         return { &salamanderGrand(), &sonatinaOrchestra(), &versilianCollection(), &samsSonor(),
                  &bigRustyDrums(), &gogodzePhu(), &squidpipes(),
-                 &blackAndGreenGuitars(), &shinyguitar(), &meatbass(), &ganjo(), &kayBanjo(), &unrealKoto() };
+                 &blackAndGreenGuitars(), &shinyguitar(), &meatbass(), &ganjo(), &kayBanjo(), &unrealKoto(), &epicChoir() };
     }
 
     juce::String refFor (const Library& library)
@@ -496,6 +521,101 @@ namespace libraries
         return true;
     }
 
+    bool extractZip (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
+                     const std::atomic<bool>* cancel, juce::String& error, std::function<bool (const juce::String&)> keep,
+                     std::function<juce::String (const juce::String&)> place)
+    {
+        juce::ZipFile zip (archive);
+        if (zip.getNumEntries() == 0)
+        {
+            error = archive.getFileName() + " isn't a readable zip archive";
+            return false;
+        }
+        if (! destination.createDirectory())
+        {
+            error = "Couldn't make " + destination.getFullPathName();
+            return false;
+        }
+        juce::int64 total = 0, done = 0;
+        for (int i = 0; i < zip.getNumEntries(); ++i)
+            total += zip.getEntry (i)->uncompressedSize;
+        std::vector<char> buffer (1 << 16);
+        auto files = 0;
+        for (int i = 0; i < zip.getNumEntries(); ++i)
+        {
+            if (cancel != nullptr && cancel->load())
+            {
+                error = "Cancelled";
+                return false;
+            }
+            const auto* entry = zip.getEntry (i);
+            const auto path = entry->filename.replaceCharacter ('\\', '/');
+            if (path.isEmpty() || path.endsWithChar ('/') || entry->isSymbolicLink)
+                continue;
+            auto target = safeChild (destination, place ? place (path) : path);
+            if ((keep && ! keep (path)) || target == juce::File())
+            {
+                done += entry->uncompressedSize;
+                continue;
+            }
+            std::unique_ptr<juce::InputStream> in (zip.createStreamForEntry (i));
+            if (in == nullptr)
+            {
+                error = path + " couldn't be read from the archive";
+                return false;
+            }
+            target.getParentDirectory().createDirectory();
+            target.deleteFile();
+            auto out = target.createOutputStream();
+            if (out == nullptr || ! out->openedOk())
+            {
+                error = "Couldn't write " + target.getFullPathName();
+                return false;
+            }
+            juce::int64 written = 0;
+            for (;;)
+            {
+                if (cancel != nullptr && cancel->load())
+                {
+                    out.reset();
+                    target.deleteFile();
+                    error = "Cancelled";
+                    return false;
+                }
+                const auto n = in->read (buffer.data(), (int) buffer.size());
+                if (n <= 0)
+                    break;
+                if (! out->write (buffer.data(), (size_t) n))
+                {
+                    out.reset();
+                    target.deleteFile();
+                    error = "Couldn't write " + target.getFullPathName() + " (is the disk full?)";
+                    return false;
+                }
+                written += n;
+                if (progress)
+                    progress ((float) juce::jlimit (0.0, 1.0, (double) (done + written) / (double) juce::jmax<juce::int64> (1, total)));
+            }
+            out.reset();
+            if (written != entry->uncompressedSize)
+            {
+                target.deleteFile();
+                error = path + " is damaged in the archive (" + juce::String (written) + " of " + juce::String (entry->uncompressedSize) + " bytes)";
+                return false;
+            }
+            ++files;
+            done += entry->uncompressedSize;
+        }
+        if (files == 0)
+        {
+            error = archive.getFileName() + " holds no files";
+            return false;
+        }
+        if (progress)
+            progress (1.0f);
+        return true;
+    }
+
     //==========================================================================
     Download::Download() : juce::Thread ("PR7-K library download") {}
 
@@ -507,6 +627,9 @@ namespace libraries
 
     bool isComplete (const Library& library, const juce::File& folder)
     {
+        for (const auto& needed : library.alsoNeeds)
+            if (! folder.getChildFile (needed).existsAsFile())
+                return false;
         return folder.getChildFile (library.sfz).existsAsFile()
             && (library.rawBase.isEmpty() || folder.getChildFile (exactMarker).existsAsFile());
     }
@@ -524,13 +647,15 @@ namespace libraries
         return out.getMemoryBlock();
     }
 
-    void Download::start (const Library& toFetch, const juce::File& folder, const juce::String& url, const juce::String& raw)
+    void Download::start (const Library& toFetch, const juce::File& folder, const juce::String& url, const juce::String& raw,
+                          const juce::StringArray& more)
     {
         if (isRunning() || isThreadRunning())
             return;
         library = toFetch;
         destination = folder;
         sourceUrl = url.isNotEmpty() ? url : toFetch.url;
+        moreSources = url.isNotEmpty() ? more : toFetch.moreUrls;
         rawUrl = raw.isNotEmpty() ? raw : toFetch.rawBase;
         cancelled = false;
         progress = 0.0f;
@@ -589,98 +714,131 @@ namespace libraries
 
         destination.createDirectory();
         const auto isRar = library.archive == Library::Archive::rar;
-        const auto archive = destination.getChildFile (library.folder + (isRar ? ".rar.download" : ".tar.gz.download"));
-        archive.deleteFile();
-
-        // 1. The archive, read in pieces (so it can be cancelled and its progress shown).
-        {
-            int status = 0;
-            std::unique_ptr<juce::InputStream> in (juce::URL (sourceUrl).createInputStream (
-                juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
-                    .withConnectionTimeoutMs (20000)
-                    .withStatusCode (&status)
-                    .withNumRedirectsToFollow (5)));
-            if (in == nullptr || (status != 0 && status != 200))
-                return fail ("Couldn't reach " + juce::URL (sourceUrl).getDomain() + (status != 0 ? " (" + juce::String (status) + ")" : juce::String())
-                             + ". Check the internet connection and try again.");
-            auto out = archive.createOutputStream();
-            if (out == nullptr)
-                return fail ("Couldn't write to " + destination.getFullPathName());
-            const auto expected = in->getTotalLength() > 0 ? in->getTotalLength() : library.bytes;
-            std::vector<char> buffer (1 << 16);
-            juce::int64 got = 0;
-            for (;;)
-            {
-                if (cancelled.load() || threadShouldExit())
-                {
-                    out.reset();
-                    archive.deleteFile();
-                    return fail ("Cancelled");
-                }
-                const auto n = in->read (buffer.data(), (int) buffer.size());
-                if (n <= 0)
-                    break;
-                if (! out->write (buffer.data(), (size_t) n))
-                {
-                    out.reset();
-                    archive.deleteFile();
-                    return fail ("Couldn't save the download (is the disk full? It needs about " + juce::String (2 * library.bytes / 1000000000.0 + 0.1, 1)
-                             + " GB free while it unpacks).");
-                }
-                got += n;
-                progress = (float) juce::jlimit (0.0, 1.0, (double) got / (double) juce::jmax<juce::int64> (1, expected));
-            }
-            out.reset();
-            // (1.2.0) Google Drive answers with a web page, not the file, when too many people fetched it lately.
-            if (isRar)
-            {
-                juce::FileInputStream head (archive);
-                char magic[4] {};
-                if (head.read (magic, 4) != 4 || std::memcmp (magic, "Rar!", 4) != 0)
-                {
-                    const auto page = archive.getSize() < 1000000 ? archive.loadFileAsString() : juce::String();
-                    archive.deleteFile();
-                    return fail (page.containsIgnoreCase ("quota") || page.containsIgnoreCase ("too many users")
-                                     ? juce::String ("Google Drive, where its maker keeps it, is holding back downloads of this file: too many "
-                                                     "people fetched it lately. Try again later (it can take up to a day).")
-                                     : juce::String ("The download wasn't the library (its maker's link may have changed). Try again later."));
-                }
-            }
-            if (library.exactSize && library.bytes > 0 && got != library.bytes && sourceUrl == library.url)
-            {
-                archive.deleteFile();
-                return fail ("The download stopped part way (" + juce::String (got / 1000000) + " of " + juce::String (library.bytes / 1000000)
-                             + " MB). Try again.");
-            }
-        }
-
-        // 2. Unpacked beside the library as "<folder>.partial", then renamed into place whole (0.89.2: unpacked
+        const auto isZip = library.archive == Library::Archive::zip;
+        const auto extension = isRar ? juce::String (".rar") : isZip ? juce::String (".zip") : juce::String (".tar.gz");
+        juce::StringArray sources { sourceUrl };
+        sources.addArray (moreSources);
+        const auto parts = sources.size();
+        // Unpacked beside the library as "<folder>.partial", then renamed into place whole (0.89.2: unpacked
         // straight into place, a stop part way (the host closed, two copies of the plugin at once, a full disk) left
         // a folder holding its instrument but not all its samples, which counted as installed and played silence).
         // A sibling, not a folder holding the library: that added the long folder name to every path a second time
-        // and passed Windows' 260-character limit (0.89.2's first build failed so). Then the archive goes.
-        state = State::unpacking;
-        progress = 0.0f;
+        // and passed Windows' 260-character limit (0.89.2's first build failed so). (1.6.0) A library in several
+        // archives (epic-choir's sections) has each fetched and unpacked in turn into the same place.
         const auto partial = destination.getChildFile (library.folder + ".partial");
         partial.deleteRecursively();
-        juce::String error;
-        const auto& lib = library;
-        const auto ok = (isRar ? extractRar : extractTarGz) (archive, destination, [this] (float p) { progress = p; }, &cancelled, error,
-                                      [&lib] (const juce::String& path)
-                                      {
-                                          // Only the library's own folder (anything else in the archive is left out).
-                                          return path.startsWith (lib.folder + "/") && lib.keeps (path.substring (lib.folder.length() + 1));
-                                      },
-                                      [&lib] (const juce::String& path)
-                                      {
-                                          return lib.folder + ".partial" + path.substring (lib.folder.length());
-                                      });
-        archive.deleteFile();
-        if (! ok)
+        for (int part = 0; part < parts; ++part)
         {
-            partial.deleteRecursively();
-            return fail ("Couldn't unpack it: " + error);
+            const auto url = sources[part];
+            const auto archive = destination.getChildFile (library.folder + (parts > 1 ? "." + juce::String (part + 1) : juce::String())
+                                                           + extension + ".download");
+            archive.deleteFile();
+            state = State::downloading;
+            // 1. The archive, read in pieces (so it can be cancelled and its progress shown).
+            {
+                int status = 0;
+                std::unique_ptr<juce::InputStream> in (juce::URL (url).createInputStream (
+                    juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
+                        .withConnectionTimeoutMs (20000)
+                        .withStatusCode (&status)
+                        .withNumRedirectsToFollow (5)));
+                if (in == nullptr || (status != 0 && status != 200))
+                {
+                    partial.deleteRecursively();
+                    return fail ("Couldn't reach " + juce::URL (url).getDomain() + (status != 0 ? " (" + juce::String (status) + ")" : juce::String())
+                                 + ". Check the internet connection and try again.");
+                }
+                auto out = archive.createOutputStream();
+                if (out == nullptr)
+                {
+                    partial.deleteRecursively();
+                    return fail ("Couldn't write to " + destination.getFullPathName());
+                }
+                const auto expected = in->getTotalLength() > 0 ? in->getTotalLength() : library.bytes / parts;
+                std::vector<char> buffer (1 << 16);
+                juce::int64 got = 0;
+                for (;;)
+                {
+                    if (cancelled.load() || threadShouldExit())
+                    {
+                        out.reset();
+                        archive.deleteFile();
+                        partial.deleteRecursively();
+                        return fail ("Cancelled");
+                    }
+                    const auto n = in->read (buffer.data(), (int) buffer.size());
+                    if (n <= 0)
+                        break;
+                    if (! out->write (buffer.data(), (size_t) n))
+                    {
+                        out.reset();
+                        archive.deleteFile();
+                        partial.deleteRecursively();
+                        return fail ("Couldn't save the download (is the disk full? It needs about " + juce::String (2 * library.bytes / 1000000000.0 + 0.1, 1)
+                                 + " GB free while it unpacks).");
+                    }
+                    got += n;
+                    progress = (float) (((double) part + juce::jlimit (0.0, 1.0, (double) got / (double) juce::jmax<juce::int64> (1, expected)))
+                                        / (double) parts);
+                }
+                out.reset();
+                // (1.2.0) Google Drive answers with a web page, not the file, when too many people fetched it lately.
+                if (isRar)
+                {
+                    juce::FileInputStream head (archive);
+                    char magic[4] {};
+                    if (head.read (magic, 4) != 4 || std::memcmp (magic, "Rar!", 4) != 0)
+                    {
+                        const auto page = archive.getSize() < 1000000 ? archive.loadFileAsString() : juce::String();
+                        archive.deleteFile();
+                        partial.deleteRecursively();
+                        return fail (page.containsIgnoreCase ("quota") || page.containsIgnoreCase ("too many users")
+                                         ? juce::String ("Google Drive, where its maker keeps it, is holding back downloads of this file: too many "
+                                                         "people fetched it lately. Try again later (it can take up to a day).")
+                                         : juce::String ("The download wasn't the library (its maker's link may have changed). Try again later."));
+                    }
+                }
+                if (library.exactSize && library.bytes > 0 && got != library.bytes && url == library.url && parts == 1)
+                {
+                    archive.deleteFile();
+                    partial.deleteRecursively();
+                    return fail ("The download stopped part way (" + juce::String (got / 1000000) + " of " + juce::String (library.bytes / 1000000)
+                                 + " MB). Try again.");
+                }
+            }
+
+            // 2. Unpacked into "<folder>.partial", then the archive goes.
+            state = State::unpacking;
+            juce::String error;
+            const auto& lib = library;
+            const auto unpack = isRar ? extractRar : isZip ? extractZip : extractTarGz;
+            const auto ok = unpack (archive, destination,
+                                    [this, part, parts] (float p) { progress = ((float) part + p) / (float) parts; }, &cancelled, error,
+                                    [&lib] (const juce::String& path)
+                                    {
+                                        // Only the library's own folder (anything else in the archive is left out).
+                                        if (lib.flat)
+                                            return lib.keeps (path);
+                                        return path.startsWith (lib.folder + "/") && lib.keeps (path.substring (lib.folder.length() + 1));
+                                    },
+                                    [&lib] (const juce::String& path)
+                                    {
+                                        return lib.flat ? lib.folder + ".partial/" + path : lib.folder + ".partial" + path.substring (lib.folder.length());
+                                    });
+            archive.deleteFile();
+            if (! ok)
+            {
+                partial.deleteRecursively();
+                return fail ("Couldn't unpack it: " + error);
+            }
         }
+        state = State::unpacking;
+        for (const auto& needed : library.alsoNeeds)
+            if (! partial.getChildFile (needed).existsAsFile())
+            {
+                partial.deleteRecursively();
+                return fail ("The download doesn't hold " + needed);
+            }
         if (! partial.getChildFile (library.sfz).existsAsFile())
         {
             partial.deleteRecursively();

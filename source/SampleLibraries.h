@@ -44,8 +44,14 @@ namespace libraries
         juce::String rawBase;
         // (1.2.0) What the download is: a .tar.gz (the rest), or a RAR archive (Unreal Instruments' koto), unpacked by
         // dmc_unrar (source/thirdparty).
-        enum class Archive { tarGz, rar };
+        enum class Archive { tarGz, rar, zip };
         Archive archive = Archive::tarGz;
+        // (1.6.0) More archives after `url`, unpacked into the same folder (epic-choir: a zip per section).
+        juce::StringArray moreUrls;
+        // (1.6.0) The archives hold the library's files at their top (no folder of their own): unpacked into `folder`.
+        bool flat = false;
+        // (1.6.0) Files besides `sfz` it isn't complete without (one from each of `moreUrls`' archives).
+        juce::StringArray alsoNeeds;
     };
 
     // (0.89.1) Written into a library's folder once its audio has been put back as stored (`rawBase`): without it the
@@ -119,6 +125,18 @@ namespace libraries
                      std::function<bool (const juce::String&)> keep = {},
                      std::function<juce::String (const juce::String&)> place = {});
 
+    // (1.6.0) Unpacks a zip archive as extractTarGz does a .tar.gz: the same `keep` and `place`, paths outside
+    // `destination` refused, each file's size checked against the archive's. `progress` 0-1 by the bytes unpacked.
+    bool extractZip (const juce::File& archive, const juce::File& destination, std::function<void (float)> progress,
+                     const std::atomic<bool>* cancel, juce::String& error,
+                     std::function<bool (const juce::String&)> keep = {},
+                     std::function<juce::String (const juce::String&)> place = {});
+
+    // epic-choir (1.6.0; thepok, CC BY 4.0, from the VocalSet singing dataset): a wordless SATB vowel choir, each part
+    // a section of 3-10 real singers, AH OH OO EE EH at p / mf / f on the mod wheel. Its v1.0 release: one zip per
+    // section (about 700 MB in all), its files at the zips' top.
+    const Library& epicChoir();
+
     // Fetches and unpacks a library on a thread of its own: `destination` / library.folder once it's done.
     class Download final : private juce::Thread
     {
@@ -130,7 +148,8 @@ namespace libraries
 
         // Starts (if not already running). `url` overrides the library's (tests: a file:// URL).
         // `rawUrl` overrides the library's `rawBase` (tests).
-        void start (const Library&, const juce::File& destination, const juce::String& url = {}, const juce::String& rawUrl = {});
+        void start (const Library&, const juce::File& destination, const juce::String& url = {}, const juce::String& rawUrl = {},
+                    const juce::StringArray& moreUrls = {});
         void cancel();
 
         State getState() const noexcept { return state.load(); }
@@ -148,6 +167,7 @@ namespace libraries
         Library library;
         juce::File destination;
         juce::String sourceUrl, rawUrl;
+        juce::StringArray moreSources;   // (1.6.0) the archives after the first
         bool fetchExact();   // (0.89.1) the `rawBase` step: false (after `fail`) if it couldn't
         std::atomic<State> state { State::idle };
         std::atomic<float> progress { 0.0f };

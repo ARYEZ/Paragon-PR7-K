@@ -2,6 +2,13 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.6.0
+
+The choir (for the gothic symphonic-metal bank to come).
+
+- **GET THE CHOIR:** PR7-K can now download epic-choir (free, CC BY 4.0, about 700 MB), a wordless choir of real singers: sopranos, altos, tenors and basses, each a section of 3 to 10 voices, singing AH, OH, OO, EE and EH, soft to loud on the mod wheel. It comes from GitHub as four zip files (one per section); the plugin fetches and unpacks all four into one folder, and counts it installed only when all four are there. Credited in ABOUT.
+- **SFZ HOLD:** a new switch for each sampled oscillator (in its SFZ menu): notes last as long as you hold the key, even when the recordings are short. Free libraries are often recorded without loops (epic-choir's notes fade after about 6 seconds); with HOLD on, PR7-K finds a steady stretch in each recording, loops it, and blends the seam so it doesn't click or dip. Plucked and struck sounds (pianos, bells, plucks) are left alone, since a loop would freeze their decay. Off by default, so every existing preset sounds exactly as before. Our own design; I can't hear the loops, so tell me if any seam is audible.
+
 ## 1.5.0
 
 MIMIC's PICK A NOTE (your ask, for building sounds from your synth stems).
