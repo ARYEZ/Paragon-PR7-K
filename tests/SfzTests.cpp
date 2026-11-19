@@ -1813,3 +1813,173 @@ TEST_CASE ("SFZ + PRESS: a pressed note's recording keeps its press when it ring
     CHECK_THAT (semis (struck[0], 0.01, 0.09), WithinAbs (0.0, 0.05));
     CHECK_THAT (semis (rung[0], 0.3, 0.7), WithinAbs (2.0, 0.03));
 }
+
+// epic-choir (PARAGON_CHOIR: the unpacked folder): the four sections on oscillators 1-4 playing a progression, and each
+// section's tuning and level by dynamic measured (a sketch for the gothic bank, before building on it).
+TEST_CASE ("Render the epic-choir sketch", "[.choirsketch]")
+{
+    const juce::File dir (juce::SystemStats::getEnvironmentVariable ("PARAGON_CHOIR", {}));
+    REQUIRE (dir.isDirectory());
+    const auto folder = juce::File (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", "/tmp/paragon-render"));
+    folder.createDirectory();
+    const auto vowel = juce::SystemStats::getEnvironmentVariable ("PARAGON_CHOIR_VOWEL", "ah");
+    Folder presets;
+    auto processor = makeSfzProcessor (presets.dir);
+    const auto setParam = [&] (const juce::String& id, float value)
+    {
+        auto* p = processor->getParameters().getParameter (id);
+        REQUIRE (p != nullptr);
+        p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+    const char* parts[] { "B", "T", "A", "S" };
+    for (int i = 0; i < 4; ++i)
+    {
+        processor->loadSfz (i, dir.getChildFile (juce::String (parts[i]) + "_" + vowel + ".sfz"));
+        REQUIRE (processor->waitForSfz (120000));
+        REQUIRE (processor->getSfzInstrument (i) != nullptr);
+        WARN (parts[i] << ": " << processor->getSfzInstrument (i)->regions.size() << " regions; "
+              << processor->getSfzInstrument (i)->problems.joinIntoString ("; "));
+        setParam (ParamIDs::osc (i, "On"), 1.0f);
+        setParam (ParamIDs::osc (i, "Filter"), 0.0f);
+        setParam (ParamIDs::osc (i, "Volume"), 0.7f);
+    }
+    setParam (ParamIDs::ampVel, 0.0f);
+    setParam ("amp1Attack", 0.0f);
+    setParam ("amp1Sustain", 1.0f);
+    setParam ("amp1Release", 900.0f);
+    setParam ("voices", 64.0f);
+    processor->seedRandomForTest (1);
+
+    // Each section alone: tuning (cents off at a recorded note and between) and level at p / mf / f.
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 4; ++j)
+            setParam (ParamIDs::osc (j, "On"), j == i ? 1.0f : 0.0f);
+        const auto inst = processor->getSfzInstrument (i);
+        juce::String line;
+        for (const auto cc : { 20, 64, 127 })
+        {
+            const auto lo = inst->loKey, hi = inst->hiKey;
+            for (const auto key : { lo + 3, (lo + hi) / 2, hi - 2 })
+            {
+                juce::MidiBuffer midi;
+                midi.addEvent (juce::MidiMessage::controllerEvent (1, 1, cc), 0);
+                juce::AudioBuffer<float> b (2, blockSize);
+                processor->processBlock (b, midi);
+                processor->getKeyboardState().reset();
+                juce::MidiBuffer on;
+                on.addEvent (juce::MidiMessage::noteOn (1, key, 0.8f), 0);
+                std::vector<float> out;
+                for (int at = 0; at < (int) (3.0 * sampleRate); at += blockSize)
+                {
+                    b.clear();
+                    juce::MidiBuffer none;
+                    processor->processBlock (b, at == 0 ? on : none);
+                    for (int s = 0; s < blockSize; ++s)
+                        out.push_back (0.5f * (b.getSample (0, s) + b.getSample (1, s)));
+                }
+                juce::MidiBuffer off;
+                off.addEvent (juce::MidiMessage::noteOff (1, key), 0);
+                for (int at = 0; at < (int) (1.5 * sampleRate); at += blockSize)
+                {
+                    b.clear();
+                    juce::MidiBuffer none;
+                    processor->processBlock (b, at == 0 ? off : none);
+                }
+                double sum = 0.0;
+                for (size_t s = (size_t) (0.5 * sampleRate); s < (size_t) (2.5 * sampleRate); ++s)
+                    sum += out[s] * out[s];
+                const auto rmsDb = 10.0 * std::log10 (sum / (2.0 * sampleRate) + 1e-20);
+                const auto hz = frequency (out, (size_t) (0.6 * sampleRate), (size_t) (2.4 * sampleRate));
+                const auto cents = 1200.0 * std::log2 (hz / hzOf (key));
+                line << "cc" << cc << " key " << key << ": " << juce::String (rmsDb, 1) << " dB, " << juce::String (cents, 0) << " c; ";
+            }
+        }
+        WARN (parts[i] << " " << line);
+    }
+    for (int j = 0; j < 4; ++j)
+        setParam (ParamIDs::osc (j, "On"), 1.0f);
+
+    struct Event { double beat; int type; int note; float value; };   // 0 on, 1 off, 3 CC1 (0-1)
+    const auto render = [&] (const juce::String& name, std::vector<Event> events, double bpm, double tailSeconds)
+    {
+        std::stable_sort (events.begin(), events.end(), [] (const Event& a, const Event& b) { return a.beat < b.beat; });
+        const auto spb = 60.0 / bpm;
+        const auto total = (int) ((events.back().beat * spb + tailSeconds) * sampleRate);
+        juce::AudioBuffer<float> out (2, total + blockSize), block (2, blockSize);
+        size_t next = 0;
+        for (int at = 0; at < total; at += blockSize)
+        {
+            juce::MidiBuffer midi;
+            while (next < events.size() && (int) (events[next].beat * spb * sampleRate) < at + blockSize)
+            {
+                const auto& e = events[next++];
+                const auto offset = juce::jlimit (0, blockSize - 1, (int) (e.beat * spb * sampleRate) - at);
+                midi.addEvent (e.type == 0 ? juce::MidiMessage::noteOn (1, e.note, e.value)
+                             : e.type == 1 ? juce::MidiMessage::noteOff (1, e.note)
+                                           : juce::MidiMessage::controllerEvent (1, 1, juce::roundToInt (127.0f * e.value)), offset);
+            }
+            block.clear();
+            processor->processBlock (block, midi);
+            for (int c = 0; c < 2; ++c)
+                out.copyFrom (c, at, block, c, 0, blockSize);
+        }
+        out.setSize (2, total, true);
+        auto peak = 0.0f;
+        double sum = 0.0;
+        for (int c = 0; c < 2; ++c)
+        {
+            peak = juce::jmax (peak, out.getMagnitude (c, 0, total));
+            for (int s = 0; s < total; ++s)
+                sum += out.getSample (c, s) * out.getSample (c, s);
+        }
+        WARN (name << ": peak " << juce::String (juce::Decibels::gainToDecibels (peak), 1) << " dBFS, rms "
+              << juce::String (10.0 * std::log10 (sum / (2.0 * total)), 1) << " dB");
+        const auto file = folder.getChildFile (name + ".wav");
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        auto writer = wav.createWriterFor (stream, juce::AudioFormatWriterOptions{}.withSampleRate (sampleRate).withNumChannels (2).withBitsPerSample (24));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (out, 0, total);
+    };
+    // D minor, Dm Bb Gm A, voiced wide (bass D2-ish up to soprano), a bar each at 66 BPM, then Dm held 10 s; the wheel
+    // rides p to f and back.
+    const std::vector<std::vector<int>> chords { { 50, 57, 62, 65, 69, 74 }, { 46, 53, 62, 65, 70, 74 },
+                                                 { 55, 58, 62, 67, 70, 74 }, { 57, 61, 64, 69, 73, 76 } };
+    const auto progression = [&] (double wheelFrom, double wheelTo)
+    {
+        std::vector<Event> e;
+        double beat = 0.0;
+        for (int pass = 0; pass < 2; ++pass)
+            for (const auto& chord : chords)
+            {
+                for (const auto k : chord)
+                {
+                    e.push_back ({ beat, 0, k, 0.8f });
+                    e.push_back ({ beat + 3.9, 1, k, 0.0f });
+                }
+                beat += 4.0;
+            }
+        for (int s = 0; s <= 64; ++s)
+        {
+            const auto t = s / 64.0;
+            e.push_back ({ t * beat, 3, 0, (float) (wheelFrom + (wheelTo - wheelFrom) * std::sin (juce::MathConstants<double>::pi * t)) });
+        }
+        for (const auto k : chords[0])
+        {
+            e.push_back ({ beat, 0, k, 0.8f });
+            e.push_back ({ beat + 11.0, 1, k, 0.0f });
+        }
+        e.push_back ({ beat, 3, 0, 0.7f });
+        return e;
+    };
+    render ("choir 1 dry " + vowel, progression (0.25, 1.0), 66.0, 3.0);
+    setParam ("reverbOn", 1.0f);
+    setParam ("reverbType", 3.0f);   // CATHEDRAL
+    setParam ("reverbSize", 0.85f);
+    setParam ("reverbMix", 0.35f);
+    setParam ("legionOn", 1.0f);
+    setParam ("legionSize", 0.8f);
+    render ("choir 2 cathedral " + vowel, progression (0.25, 1.0), 66.0, 5.0);
+}
