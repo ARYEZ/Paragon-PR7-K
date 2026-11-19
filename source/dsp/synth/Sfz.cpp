@@ -358,8 +358,152 @@ namespace synth::sfz
         return n;
     }
 
+    HoldLoop findHold (const float* left, const float* right, juce::int64 frames, double sampleRate, juce::int64 from)
+    {
+        HoldLoop loop;
+        from = juce::jlimit<juce::int64> (0, juce::jmax<juce::int64> (0, frames - 1), from);
+        if (frames - from < (juce::int64) (1.2 * sampleRate) || frames > (juce::int64) std::numeric_limits<int>::max())
+            return loop;
+        const auto at = [&] (juce::int64 i) { return 0.5f * (left[i] + right[i]); };
+        // The level every 10 ms.
+        const auto hop = juce::jmax<juce::int64> (1, (juce::int64) (0.01 * sampleRate));
+        std::vector<float> level;
+        for (auto i = from; i + hop <= frames; i += hop)
+        {
+            double sum = 0.0;
+            for (auto j = i; j < i + hop; ++j)
+                sum += (double) at (j) * at (j);
+            level.push_back ((float) std::sqrt (sum / (double) hop));
+        }
+        const auto hops = (int) level.size();
+        if (hops < 20)
+            return loop;
+        // Smoothed over 150 ms: a section of singers a few cents apart beats, its level dipping for a moment.
+        std::vector<float> smooth ((size_t) hops, 0.0f);
+        {
+            double sum = 0.0;
+            for (int k = 0; k < hops; ++k)
+            {
+                sum += level[(size_t) k];
+                if (k >= 15)
+                    sum -= level[(size_t) (k - 15)];
+                smooth[(size_t) juce::jmax (0, k - 7)] = (float) (sum / juce::jmin (k + 1, 15));
+            }
+            for (int k = juce::jmax (0, hops - 7); k < hops; ++k)
+                smooth[(size_t) k] = level[(size_t) k];
+        }
+        const auto peak = *std::max_element (smooth.begin(), smooth.end());
+        if (peak < 1.0e-5f)
+            return loop;
+        // After the attack: where it first reaches half its loudest, and 0.3 s more.
+        int first = 0;
+        while (first < hops && smooth[(size_t) first] < 0.5f * peak)
+            ++first;
+        first += 30;
+        if (first >= hops - 10)
+            return loop;
+        std::vector<float> rest (smooth.begin() + first, smooth.end());
+        std::nth_element (rest.begin(), rest.begin() + (std::ptrdiff_t) (rest.size() / 2), rest.end());
+        const auto middle = rest[rest.size() / 2];
+        // The steady part: from there to the last moment at half the middle or more (where the recording fades),
+        // nearly all of it (90%) within 0.4 to 2.5 times the middle.
+        int last = hops - 1;
+        while (last > first && smooth[(size_t) last] < 0.5f * middle)
+            --last;
+        if (last - first < 80)
+            return loop;
+        int inside = 0;
+        for (int k = first; k <= last; ++k)
+            inside += smooth[(size_t) k] >= 0.4f * middle && smooth[(size_t) k] <= 2.5f * middle ? 1 : 0;
+        if (inside < (int) (0.9 * (last - first + 1)))
+            return loop;
+        // Dying away (a struck note): its last quarter 9 dB under its first.
+        const auto quarter = (last - first) / 4;
+        double early = 0.0, late = 0.0;
+        for (int k = 0; k < quarter; ++k)
+        {
+            early += smooth[(size_t) (first + k)];
+            late += smooth[(size_t) (last - k)];
+        }
+        if (late < 0.355 * early)
+            return loop;
+        // The loop: from a fifth of the way in to near the end, 0.4 s to 3 s long.
+        const auto toFrame = [&] (double h) { return from + (juce::int64) (h * (double) hop); };
+        auto start = toFrame (first + 0.2 * (last - first));
+        auto target = toFrame (last - 0.1 * (last - first));
+        target = juce::jlimit (start + (juce::int64) (0.4 * sampleRate), start + (juce::int64) (3.0 * sampleRate), target);
+        const auto window = (juce::int64) juce::jmax (256.0, 0.012 * sampleRate);
+        const auto reach = juce::jmin ((juce::int64) (0.05 * sampleRate), (target - start) / 4);
+        if (target + reach + window >= frames || start < window)
+            return loop;
+        // The end moved to where the frames after it line up best with those after the start (normalised
+        // correlation of `window` frames either side, every 2 frames, then each frame near the best).
+        const auto alike = [&] (juce::int64 next) -> float
+        {
+            double xy = 0.0, xx = 0.0, yy = 0.0;
+            for (juce::int64 j = -window; j < window; j += 2)
+            {
+                const auto x = at (start + j), y = at (next + j);
+                xy += x * y;
+                xx += x * x;
+                yy += y * y;
+            }
+            return xx > 0.0 && yy > 0.0 ? (float) (xy / std::sqrt (xx * yy)) : 0.0f;
+        };
+        auto best = target;
+        auto bestMatch = -2.0f;
+        for (auto next = target - reach; next <= target + reach; next += 2)
+            if (const auto m = alike (next); m > bestMatch)
+            {
+                bestMatch = m;
+                best = next;
+            }
+        for (auto next = best - 2; next <= best + 2; ++next)
+            if (next != best)
+                if (const auto m = alike (next); m > bestMatch)
+                {
+                    bestMatch = m;
+                    best = next;
+                }
+        loop.start = start;
+        loop.end = best - 1;   // the frame after END is START's place
+        loop.crossfade = (int) juce::jmin ((juce::int64) (0.3 * sampleRate), (loop.end - loop.start) / 3, loop.start - from);
+        loop.match = bestMatch;
+        loop.found = loop.crossfade > 16;
+        return loop;
+    }
+
+    void applyHold (float* left, float* right, const HoldLoop& loop)
+    {
+        if (! loop.found)
+            return;
+        const auto c = loop.crossfade;
+        const auto tail = loop.end + 1 - c, lead = loop.start - c;
+        // How alike the two stretches are: straight-line fades keep the power of identical sound, and lose 3 dB in
+        // the middle of unrelated sound; the gains are scaled for the measured likeness so the level stays.
+        double xy = 0.0, xx = 0.0, yy = 0.0;
+        for (int i = 0; i < c; ++i)
+            for (auto* ch : { left, right })
+            {
+                const auto x = ch[tail + i], y = ch[lead + i];
+                xy += x * y;
+                xx += x * x;
+                yy += y * y;
+            }
+        const auto r = xx > 0.0 && yy > 0.0 ? juce::jlimit (-1.0, 1.0, xy / std::sqrt (xx * yy)) : 0.0;
+        for (int i = 0; i < c; ++i)
+        {
+            const auto w = ((double) i + 0.5) / (double) c;
+            const auto a = 1.0 - w, b = w;
+            const auto norm = std::sqrt (juce::jmax (0.25, a * a + b * b + 2.0 * r * a * b));
+            for (auto* ch : { left, right })
+                if (ch != nullptr)
+                    ch[tail + i] = (float) ((a * ch[tail + i] + b * ch[lead + i]) / norm);
+        }
+    }
+
     std::shared_ptr<const Instrument> load (const juce::File& sfzFile, std::function<void (float)> progress,
-                                            const std::atomic<bool>* cancel)
+                                            const std::atomic<bool>* cancel, bool hold)
     {
         auto inst = std::make_shared<Instrument>();
         inst->file = sfzFile;
@@ -811,6 +955,52 @@ namespace synth::sfz
                 if ((name.startsWith ("xfin_locc") || name.startsWith ("xfout_locc"))
                     && ! name.endsWith ("cc1") && leftOutSeen.insert ("othercc").second)
                     inst->problems.add ("held at their starting values: controllers other than the mod wheel and the pedal");
+        // SFZ HOLD (1.6.0): every sample only unlooped attack regions play (not a release or the pedal's) gets a loop
+        // of its own, if it has a steady part; read whole, crossfaded, and kept only up to the loop's end.
+        if (hold)
+        {
+            std::vector<juce::int64> earliest (inst->samples.size(), std::numeric_limits<juce::int64>::max());
+            std::vector<bool> excluded (inst->samples.size(), false);
+            for (const auto& r : inst->regions)
+            {
+                if (r.release || r.pedalTrigger || r.loops())
+                    excluded[(size_t) r.sample] = true;
+                else
+                    earliest[(size_t) r.sample] = juce::jmin (earliest[(size_t) r.sample], (juce::int64) r.offset);
+            }
+            for (size_t i = 0; i < inst->samples.size(); ++i)
+            {
+                if (cancel != nullptr && cancel->load())
+                    return nullptr;
+                auto& sample = *inst->samples[i];
+                if (excluded[i] || earliest[i] == std::numeric_limits<juce::int64>::max())
+                    continue;
+                if (sample.headFrames < sample.length)
+                    readWhole (sample, formats);
+                if (sample.headFrames < sample.length)
+                    continue;   // too long to read
+                auto loop = findHold (sample.head[0].data(), sample.head[1].data(), sample.length, sample.sampleRate, earliest[i]);
+                if (! loop.found)
+                    continue;
+                applyHold (sample.head[0].data(), sample.head[1].data(), loop);
+                for (auto& h : sample.head)
+                {
+                    h.resize ((size_t) loop.end + 1);
+                    h.shrink_to_fit();
+                }
+                sample.headFrames = (int) loop.end + 1;
+                sample.length = loop.end + 1;
+                sample.hold = loop;
+                ++inst->held;
+            }
+            for (auto& r : inst->regions)
+                if (const auto& loop = inst->samples[(size_t) r.sample]->hold; loop.found && ! r.release && ! r.pedalTrigger && r.offset < loop.end)
+                {
+                    r.loop = Region::Loop::continuous;
+                    r.loopStart = loop.start;
+                    r.loopEnd = loop.end;
+                }
+        }
         if (progress)
             progress (1.0f);
         // (a sample first read as a head and then kept whole for a loop no longer streams)

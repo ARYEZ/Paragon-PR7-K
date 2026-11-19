@@ -61,7 +61,9 @@ namespace ParamIDs
         // across the keyboard).
         "SfzKeyTrack",
         // 0.96.0: with TO FILTER, through FILTER 2 instead of FILTER 1.
-        "Filter2" };
+        "Filter2",
+        // 1.6.0: SFZ HOLD (unlooped recordings given a loop of their own, so they last as long as the key is held).
+        "SfzHold" };
 
     // Where a setting is in oscSettings, worked out by the compiler (a typo won't compile).
     consteval int oscSetting (std::string_view what)

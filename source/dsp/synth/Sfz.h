@@ -52,6 +52,16 @@
 // (SfzStreamer.h).
 namespace synth::sfz
 {
+    // SFZ HOLD (1.6.0, our own design; for libraries recorded without loops, e.g. epic-choir's 7 s notes): a loop
+    // found in a recording's steady stretch. `start` / `end` are frames (END inclusive: a read past it goes back to
+    // START, as LOOP_END), `crossfade` frames before END blended with those before START so the wrap is seamless.
+    struct HoldLoop
+    {
+        bool found = false;
+        juce::int64 start = 0, end = 0;
+        int crossfade = 0;
+        float match = 0.0f;   // how alike the two sides of the seam were (normalised correlation, -1 to 1)
+    };
     struct Sample
     {
         juce::File file;
@@ -61,6 +71,7 @@ namespace synth::sfz
         int headFrames = 0;                     // the whole file when a region loops it
         juce::int64 fileLoopStart = -1, fileLoopEnd = -1;   // the file's own loop (a WAV's smpl chunk), -1: none
         std::unique_ptr<StreamSource> stream;   // the rest, from disk (null: the head is the whole file)
+        HoldLoop hold;                          // SFZ HOLD's loop (1.6.0; found: the head ends at its END)
     };
 
     struct Region
@@ -223,6 +234,7 @@ namespace synth::sfz
             return {};
         }
         int loKey = 127, hiKey = 0;             // the keys it plays
+        int held = 0;                           // samples SFZ HOLD gave a loop (1.6.0)
 
         // The regions a note plays: attack regions for a note-on, release regions for its release. `seqCount` is
         // the oscillator's turn counter for this key (round-robins), `chance` 0-1 (LORAND / HIRAND), `pedal` CC 64.
@@ -234,9 +246,20 @@ namespace synth::sfz
     };
 
     // Reads an SFZ file and every sample's head (on a background thread: a big piano takes seconds). `progress`
-    // (0-1) and `cancel` are optional. Null if the file can't be read or plays nothing.
+    // (0-1) and `cancel` are optional. Null if the file can't be read or plays nothing. `hold` (1.6.0, an oscillator's
+    // SFZ HOLD): each unlooped, sustained sample gets a loop of its own (findHold, applyHold), so it lasts as long as
+    // the key is held; read into memory up to its loop's end (the rest isn't kept).
     std::shared_ptr<const Instrument> load (const juce::File& sfzFile, std::function<void (float)> progress = {},
-                                            const std::atomic<bool>* cancel = nullptr);
+                                            const std::atomic<bool>* cancel = nullptr, bool hold = false);
+
+    // Where to loop a recording (two channels, `frames` long, `from` its first frame played): after the attack, in the
+    // steady part (level within half to twice its middle), as long as that allows up to 3 s, the end moved within
+    // 50 ms to where the sound lines up best with the start. Not found: shorter than 1.2 s, no steady part of 0.8 s, or
+    // dying away (its last quarter 9 dB under its first: a plucked or struck note, which a loop would freeze).
+    HoldLoop findHold (const float* left, const float* right, juce::int64 frames, double sampleRate, juce::int64 from = 0);
+    // Blends the frames before `end` into those before `start` (straight lines, kept at constant power for how alike
+    // they are), so a read from END + 1 back to START joins up. Changes the samples in place.
+    void applyHold (float* left, float* right, const HoldLoop&);
 
     inline constexpr double headSeconds = 0.25;
     inline constexpr int maxPlayers = 8;        // regions a note plays at once on one oscillator (1.2.0: 8, was 4; a

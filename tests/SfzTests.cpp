@@ -1832,12 +1832,14 @@ TEST_CASE ("Render the epic-choir sketch", "[.choirsketch]")
         p->setValueNotifyingHost (p->convertTo0to1 (value));
     };
     const char* parts[] { "B", "T", "A", "S" };
+    const auto hold = juce::SystemStats::getEnvironmentVariable ("PARAGON_CHOIR_HOLD", "0") == "1";
     for (int i = 0; i < 4; ++i)
     {
+        setParam (ParamIDs::osc (i, "SfzHold"), hold ? 1.0f : 0.0f);
         processor->loadSfz (i, dir.getChildFile (juce::String (parts[i]) + "_" + vowel + ".sfz"));
         REQUIRE (processor->waitForSfz (120000));
         REQUIRE (processor->getSfzInstrument (i) != nullptr);
-        WARN (parts[i] << ": " << processor->getSfzInstrument (i)->regions.size() << " regions; "
+        WARN (parts[i] << ": " << processor->getSfzInstrument (i)->regions.size() << " regions, " << processor->getSfzInstrument (i)->held << " held; "
               << processor->getSfzInstrument (i)->problems.joinIntoString ("; "));
         setParam (ParamIDs::osc (i, "On"), 1.0f);
         setParam (ParamIDs::osc (i, "Filter"), 0.0f);
@@ -1969,17 +1971,217 @@ TEST_CASE ("Render the epic-choir sketch", "[.choirsketch]")
         for (const auto k : chords[0])
         {
             e.push_back ({ beat, 0, k, 0.8f });
-            e.push_back ({ beat + 11.0, 1, k, 0.0f });
+            e.push_back ({ beat + (hold ? 16.0 : 11.0), 1, k, 0.0f });
         }
         e.push_back ({ beat, 3, 0, 0.7f });
         return e;
     };
-    render ("choir 1 dry " + vowel, progression (0.25, 1.0), 66.0, 3.0);
+    const juce::String tag = hold ? " hold" : "";
+    render ("choir 1 dry " + vowel + tag, progression (0.25, 1.0), 66.0, 3.0);
     setParam ("reverbOn", 1.0f);
     setParam ("reverbType", 3.0f);   // CATHEDRAL
     setParam ("reverbSize", 0.85f);
     setParam ("reverbMix", 0.35f);
     setParam ("legionOn", 1.0f);
     setParam ("legionSize", 0.8f);
-    render ("choir 2 cathedral " + vowel, progression (0.25, 1.0), 66.0, 5.0);
+    render ("choir 2 cathedral " + vowel + tag, progression (0.25, 1.0), 66.0, 5.0);
+}
+
+//==============================================================================
+// SFZ HOLD (1.6.0): unlooped recordings given a loop of their own.
+namespace
+{
+    // A choir-like held note: five voices a few cents apart, each with its own vibrato, 12 harmonics, a 0.15 s attack,
+    // steady, then a fade over its last 0.6 s (as epic-choir's recordings end); stereo (the right side a little
+    // different). Or `struck`: falling 20 dB a second from the start (a plucked note).
+    std::vector<float> writeVoices (const juce::File& file, double hz, double seconds, bool struck = false)
+    {
+        constexpr double rate = 48000.0;
+        const auto frames = (int) (seconds * rate);
+        juce::AudioBuffer<float> buffer (2, frames);
+        buffer.clear();
+        juce::Random random (11);
+        for (int v = 0; v < 5; ++v)
+        {
+            const auto cents = (v - 2) * 6.0, vibHz = 5.0 + 0.3 * v, vibCents = 18.0;
+            double phase = random.nextDouble(), vib = random.nextDouble();
+            for (int i = 0; i < frames; ++i)
+            {
+                const auto t = i / rate;
+                vib += vibHz / rate;
+                const auto f = hz * std::exp2 ((cents + vibCents * std::sin (juce::MathConstants<double>::twoPi * vib)) / 1200.0);
+                phase += f / rate;
+                double sum = 0.0;
+                for (int k = 1; k <= 12; ++k)
+                    sum += std::sin (juce::MathConstants<double>::twoPi * k * phase) / k;
+                const auto env = struck ? std::pow (10.0, -t) * juce::jmin (1.0, t / 0.005)
+                                        : juce::jmin (1.0, t / 0.15) * juce::jlimit (0.0, 1.0, (seconds - t) / 0.6);
+                buffer.addSample (0, i, (float) (0.06 * env * sum));
+                buffer.addSample (1, i, (float) (0.06 * env * sum * (v % 2 == 0 ? 1.1 : 0.9)));
+            }
+        }
+        file.deleteFile();
+        file.getParentDirectory().createDirectory();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream().release());
+        auto options = juce::AudioFormatWriterOptions().withSampleRate (rate).withNumChannels (2).withBitsPerSample (32)
+                           .withSampleFormat (juce::AudioFormatWriterOptions::SampleFormat::floatingPoint);
+        auto writer = wav.createWriterFor (stream, options);
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (buffer, 0, frames);
+        return std::vector<float> (buffer.getReadPointer (0), buffer.getReadPointer (0) + frames);
+    }
+
+    // The pitch in [from, to) by autocorrelation between 80 and 1000 Hz (zero crossings miscount a rich, many-voiced
+    // sound): the first lag whose normalised correlation reaches 90% of the best.
+    double pitchOf (const std::vector<float>& x, size_t from, size_t to)
+    {
+        const auto minLag = (int) (sampleRate / 1000.0), maxLag = (int) (sampleRate / 80.0);
+        std::vector<double> r ((size_t) maxLag + 1, 0.0);
+        double best = 0.0;
+        for (int lag = minLag; lag <= maxLag; ++lag)
+        {
+            double xy = 0.0, xx = 0.0, yy = 0.0;
+            for (auto i = from; i + (size_t) lag < to; ++i)
+            {
+                xy += (double) x[i] * x[i + (size_t) lag];
+                xx += (double) x[i] * x[i];
+                yy += (double) x[i + (size_t) lag] * x[i + (size_t) lag];
+            }
+            r[(size_t) lag] = xx > 0.0 && yy > 0.0 ? xy / std::sqrt (xx * yy) : 0.0;
+            best = juce::jmax (best, r[(size_t) lag]);
+        }
+        for (int lag = minLag + 1; lag < maxLag; ++lag)
+            if (r[(size_t) lag] >= 0.9 * best && r[(size_t) lag] >= r[(size_t) lag - 1] && r[(size_t) lag] >= r[(size_t) lag + 1])
+                return sampleRate / lag;
+        return 0.0;
+    }
+
+    double rmsDb (const std::vector<float>& x, size_t from, size_t to)
+    {
+        double sum = 0.0;
+        for (auto i = from; i < to; ++i)
+            sum += (double) x[i] * x[i];
+        return 10.0 * std::log10 (sum / (double) juce::jmax<size_t> (1, to - from) + 1e-20);
+    }
+}
+
+TEST_CASE ("SFZ HOLD: a loop found in the steady part of a held note, none in a struck or short one", "[sfz][sfzhold]")
+{
+    Folder f;
+    const auto held = writeVoices (f.dir.getChildFile ("held.wav"), 220.0, 5.0);
+    const auto struck = writeVoices (f.dir.getChildFile ("struck.wav"), 220.0, 5.0, true);
+    std::vector<float> heldRight (held.size());
+    for (size_t i = 0; i < held.size(); ++i)
+        heldRight[i] = held[i];
+    const auto loop = synth::sfz::findHold (held.data(), heldRight.data(), (juce::int64) held.size(), 48000.0);
+    REQUIRE (loop.found);
+    // After the attack and before the fade (which starts at 4.4 s); at least 0.4 s long; the seam well matched.
+    CHECK (loop.start > (juce::int64) (0.45 * 48000));
+    CHECK (loop.end < (juce::int64) (4.4 * 48000));
+    CHECK (loop.end - loop.start > (juce::int64) (0.4 * 48000));
+    CHECK (loop.match > 0.5f);   // five voices beating and each with its own vibrato never line up exactly
+    CHECK (loop.crossfade > 1000);
+    CHECK_FALSE (synth::sfz::findHold (struck.data(), struck.data(), (juce::int64) struck.size(), 48000.0).found);
+    CHECK_FALSE (synth::sfz::findHold (held.data(), held.data(), (juce::int64) (1.0 * 48000), 48000.0).found);
+}
+
+TEST_CASE ("SFZ HOLD: across the seam the loop keeps its level and has no step", "[sfz][sfzhold]")
+{
+    Folder f;
+    auto left = writeVoices (f.dir.getChildFile ("held.wav"), 196.0, 5.0);
+    auto right = left;
+    const auto original = left;
+    const auto loop = synth::sfz::findHold (left.data(), right.data(), (juce::int64) left.size(), 48000.0);
+    REQUIRE (loop.found);
+    synth::sfz::applyHold (left.data(), right.data(), loop);
+    // Played as the engine does: to END, then from START, three times round.
+    std::vector<float> played (left.begin(), left.begin() + (std::ptrdiff_t) loop.end + 1);
+    for (int pass = 0; pass < 3; ++pass)
+        played.insert (played.end(), left.begin() + (std::ptrdiff_t) loop.start, left.begin() + (std::ptrdiff_t) loop.end + 1);
+    // The biggest step from one sample to the next at each seam, against the biggest anywhere in the steady part.
+    float steadiest = 0.0f;
+    for (auto i = (size_t) loop.start + 1; i <= (size_t) loop.end; ++i)
+        steadiest = juce::jmax (steadiest, std::abs (original[i] - original[i - 1]));
+    const auto length = (size_t) (loop.end - loop.start + 1);
+    const auto e = (size_t) loop.end + 1, s0 = (size_t) loop.start, c = (size_t) loop.crossfade;
+    // Through the crossfade the level stays between the two stretches it joins (within 1.5 dB of the nearer).
+    const auto tailDb = rmsDb (original, e - c, e), leadDb = rmsDb (original, s0 - c, s0);
+    for (int pass = 1; pass <= 3; ++pass)
+    {
+        const auto seam = e + (size_t) (pass - 1) * length;
+        float step = 0.0f;
+        for (auto i = seam - 4; i < seam + 4; ++i)
+            step = juce::jmax (step, std::abs (played[i] - played[i - 1]));
+        CHECK (step < 1.05f * steadiest);
+        const auto through = rmsDb (played, seam - c, seam);
+        CHECK (through > juce::jmin (tailDb, leadDb) - 1.5);
+        CHECK (through < juce::jmax (tailDb, leadDb) + 1.5);
+        // After the seam: the recording from START, exactly.
+        CHECK (std::equal (played.begin() + (std::ptrdiff_t) seam, played.begin() + (std::ptrdiff_t) (seam + 2400),
+                           original.begin() + (std::ptrdiff_t) s0));
+    }
+}
+
+TEST_CASE ("SFZ HOLD: in the plugin a held note lasts as long as the key, and off it ends with its recording", "[sfz][sfzhold]")
+{
+    Folder f, presets;
+    writeVoices (f.dir.getChildFile ("samples/a3.wav"), hzOf (57), 4.0);
+    writeVoices (f.dir.getChildFile ("samples/pluck.wav"), hzOf (64), 4.0, true);
+    writeSine (f.dir.getChildFile ("samples/rel.wav"), hzOf (57), 0.2);
+    const auto file = writeSfz (f.dir, "<region> sample=samples/a3.wav lokey=50 hikey=60 pitch_keycenter=57\n"
+                                       "<region> sample=samples/pluck.wav lokey=61 hikey=70 pitch_keycenter=64\n"
+                                       "<region> sample=samples/rel.wav lokey=50 hikey=60 pitch_keycenter=57 trigger=release\n");
+    auto processor = makeSfzProcessor (presets.dir);
+    const auto setParam = [&] (const juce::String& id, float value)
+    {
+        auto* p = processor->getParameters().getParameter (id);
+        REQUIRE (p != nullptr);
+        p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+    setParam (ParamIDs::osc (0, "Filter"), 0.0f);
+    setParam (ParamIDs::ampVel, 0.0f);
+    setParam ("amp1Attack", 0.0f);
+    setParam ("amp1Sustain", 1.0f);
+    processor->loadSfz (0, file);
+    REQUIRE (processor->waitForSfz());
+    REQUIRE (processor->getSfzInstrument (0) != nullptr);
+    CHECK (processor->getSfzInstrument (0)->held == 0);
+    const auto offNote = playNote (*processor, 57, 10.0);
+    // Off: silent once the 4 s recording has ended.
+    CHECK (rmsDb (offNote, (size_t) (6.0 * sampleRate), (size_t) (9.5 * sampleRate)) < -100.0);
+
+    setParam (ParamIDs::osc (0, "SfzHold"), 1.0f);
+    processor->runTimerForTest();        // the switch loads it again (from the timer's check)
+    REQUIRE (processor->waitForSfz());
+    const auto instrument = processor->getSfzInstrument (0);
+    REQUIRE (instrument != nullptr);
+    CHECK (instrument->held == 1);   // the held note only: not the pluck, not the release sample
+    for (const auto& r : instrument->regions)
+        CHECK (r.loops() == (! r.release && r.keyCenter == 57.0f));
+    const auto onNote = playNote (*processor, 57, 10.0);
+    // On: still sounding at 9 s, within 1.5 dB of its level at 2 s, at its pitch; the first 3 s as the recording.
+    const auto early = rmsDb (onNote, (size_t) (1.5 * sampleRate), (size_t) (2.5 * sampleRate));
+    const auto late = rmsDb (onNote, (size_t) (8.5 * sampleRate), (size_t) (9.5 * sampleRate));
+    CHECK (std::abs (late - early) < 1.5);
+    CHECK_THAT (rmsDb (offNote, (size_t) (1.5 * sampleRate), (size_t) (2.5 * sampleRate)), Catch::Matchers::WithinAbs (early, 0.01));
+    CHECK_THAT (pitchOf (onNote, (size_t) (8.0 * sampleRate), (size_t) (8.3 * sampleRate)), Catch::Matchers::WithinRel (hzOf (57), 0.02));
+    // No click anywhere: the biggest step from sample to sample after 1 s no bigger than in the recording's first 3 s.
+    float before = 0.0f, after = 0.0f;
+    for (auto i = (size_t) sampleRate; i < (size_t) (3.0 * sampleRate); ++i)
+        before = juce::jmax (before, std::abs (onNote[i] - onNote[i - 1]));
+    for (auto i = (size_t) (3.0 * sampleRate); i < (size_t) (9.9 * sampleRate); ++i)
+        after = juce::jmax (after, std::abs (onNote[i] - onNote[i - 1]));
+    CHECK (after < 1.1f * before);
+    // The pluck isn't held: it dies away as recorded.
+    const auto pluck = playNote (*processor, 64, 6.0);
+    CHECK (rmsDb (pluck, (size_t) (4.5 * sampleRate), (size_t) (5.5 * sampleRate)) < -100.0);
+    // Switched off again: as recorded.
+    setParam (ParamIDs::osc (0, "SfzHold"), 0.0f);
+    processor->runTimerForTest();
+    REQUIRE (processor->waitForSfz());
+    CHECK (processor->getSfzInstrument (0)->held == 0);
+    const auto again = playNote (*processor, 57, 10.0);
+    REQUIRE (again.size() == offNote.size());
+    CHECK (std::equal (again.begin(), again.end(), offNote.begin()));
 }

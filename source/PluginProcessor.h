@@ -650,6 +650,9 @@ private:
     // after a preset change, one at a time, so stepping through presets queued the big libraries and the preset chosen
     // waited silent behind them (the owner's GUNSLINGER report).
     std::array<std::shared_ptr<std::atomic<bool>>, ParamIDs::numOscillators> sfzJobCancel {};
+    // SFZ HOLD (1.6.0): what each oscillator's instrument was loaded with; the timer loads it again when the switch moves.
+    std::array<bool, ParamIDs::numOscillators> sfzHoldLoaded {};
+    bool sfzHoldWanted (int osc) const noexcept;
     void startSfzLoad (int osc, const juce::String& ref);
     libraries::Download libraryDownload;
     libraries::Download::State libraryStateSeen = libraries::Download::State::idle;

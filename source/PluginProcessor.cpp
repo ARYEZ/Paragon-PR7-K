@@ -2633,6 +2633,8 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
         sfzJobCancel[index]->store (true);            // (0.89.2) ...and told to stop now
     sfzJobCancel[index] = std::make_shared<std::atomic<bool>> (false);
     sfzProblems[index] = {};
+    const auto hold = sfzHoldWanted (osc);
+    sfzHoldLoaded[index] = hold;
     if (ref.isEmpty())
     {
         sfzStates[index] = SfzState::none;
@@ -2650,11 +2652,11 @@ void ParagonX1AudioProcessor::startSfzLoad (int osc, const juce::String& ref)
     sfzStates[index] = SfzState::loading;
     sfzProgress[index]->store (0.0f);
     ++sfzLoadsRunning;
-    sfzPool->addJob ([this, osc, generation, file, progress = sfzProgress[index], cancel = sfzCancel, stop = sfzJobCancel[index]]
+    sfzPool->addJob ([this, osc, generation, file, hold, progress = sfzProgress[index], cancel = sfzCancel, stop = sfzJobCancel[index]]
     {
         if (cancel->load())
             return;
-        auto instrument = stop->load() ? nullptr : synth::sfz::load (file, [progress] (float p) { progress->store (p); }, stop.get());
+        auto instrument = stop->load() ? nullptr : synth::sfz::load (file, [progress] (float p) { progress->store (p); }, stop.get(), hold);
         if (cancel->load())
             return;
         SfzLoaded loaded { osc, generation, stop->load() ? nullptr : instrument, {} };   // (a stopped one is dropped: an older generation)
@@ -2680,8 +2682,25 @@ const libraries::Library* ParagonX1AudioProcessor::missingLibrary (int osc) cons
     return libraries::libraryFor (sfzRefs[(size_t) osc]);
 }
 
+bool ParagonX1AudioProcessor::sfzHoldWanted (int osc) const noexcept
+{
+    static const auto ids = []
+    {
+        std::array<juce::String, ParamIDs::numOscillators> names;
+        for (int i = 0; i < ParamIDs::numOscillators; ++i)
+            names[(size_t) i] = ParamIDs::osc (i, "SfzHold");
+        return names;
+    }();
+    const auto* slot = findParam (ids[(size_t) juce::jlimit (0, ParamIDs::numOscillators - 1, osc)].toRawUTF8());
+    return slot != nullptr && slot->value != nullptr && slot->value->load() > 0.5f;
+}
+
 void ParagonX1AudioProcessor::installSfzLoads()
 {
+    // SFZ HOLD (1.6.0) switched: the oscillator's instrument read again with it (or without).
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+        if (sfzRefs[(size_t) i].isNotEmpty() && sfzStates[(size_t) i] != SfzState::failed && sfzHoldWanted (i) != sfzHoldLoaded[(size_t) i])
+            startSfzLoad (i, sfzRefs[(size_t) i]);
     // A library just downloaded: the oscillators that couldn't find it load it now.
     if (const auto state = libraryDownload.getState(); state != libraryStateSeen)
     {

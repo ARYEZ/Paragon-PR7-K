@@ -34,6 +34,7 @@ namespace
     constexpr int stageSirocco = 30;
     constexpr int stageFilter2 = 62;      // 0.96.0: FILTER 2, the filters' LOW CUT, each oscillator's FILTER 2 switch
     constexpr int stageSfzKeyTrack = 51;  // 0.83.0: SFZ KEY TRACK (50: COLOSSUS, in RackParameters.cpp)
+    constexpr int stageSfzHold = 67;     // 1.6.0: SFZ HOLD
     constexpr int stageSfzKey = 49;       // 0.81.0: SFZ KEY (48: LOCKSTEP, in RackParameters.cpp)      // 0.58.0: SIROCCO (27-29: ECHOES, CRACKLE, DOWNPOUR, in RackParameters.cpp)
 
     const ToText asDb = [] (float value, int) { return juce::String (value, 1) + " dB"; };
@@ -352,6 +353,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         // SFZ KEY TRACK (0.83.0): SFZ KEY's samples follow the key played (off: at their own pitch).
         addSwitch (layout, osc (i, "SfzKeyTrack"), name + "Sfz Key Track", defaults.sfzKeyTrack, stageSfzKeyTrack);
         addSwitch (layout, osc (i, "Filter2"), name + "To Filter 2", defaults.toFilter2, stageFilter2);
+        // SFZ HOLD (1.6.0): off, the recordings play as recorded (a held note ends where its recording does).
+        addSwitch (layout, osc (i, "SfzHold"), name + "Sfz Hold", false, stageSfzHold);
     }
 
     // The VOICE filter (0.39.0): off in a new sound.
