@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 44> list
+    inline constexpr std::array<Expansion, 45> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -295,5 +295,13 @@ namespace expansions
           "harpsichord brought ashore for mass, the rigging, the ship's bell. MACRO 3, PRESS: a koto player's left hand, "
           "every note pressed up the old scale after it's struck, in time with your song. The koto presets play a real koto "
           "when it's downloaded (free, from its maker's own link). Our own sounds; no series, character or music named." },
+        { "NIGHT REIGN", "NG",
+          "A vampire's castle played as symphonic metal, a huge gothic choir at its heart. The cathedral: a soprano's aria, "
+          "the great choir, the deepest basses, the organ at midnight mass, the choir's ostinato, the bell tower. The "
+          "ballroom: the count's violin, velvet strings, galloping cellos, a harpsichord duel, a masked pizzicato, a "
+          "neoclassical sweep. The crypt: a shredding lead guitar, a requiem, the guitar's gallop, a coffin organ, a blast "
+          "beat, a raven's harp. MACRO 3, ORNAMENT: a baroque player's trills, mordents and turns on what you play, in D "
+          "harmonic minor and in time with your song. The choirs play real singers when they're downloaded (free). Our own "
+          "sounds; no film, game, band or song named." },
     }};
 }

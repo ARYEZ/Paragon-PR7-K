@@ -1491,6 +1491,55 @@ TEST_CASE ("WICKED GAME: MACRO 3 is RUNNER on every preset, every note able to b
     CHECK (count == 18);
 }
 
+TEST_CASE ("NIGHT REIGN: MACRO 3 is ORNAMENT on every preset, in D harmonic minor, its versions too", "[rigs][expansions][ornament]")
+{
+    // 1.6.0: ORNAMENT on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 and
+    // to nothing else; every preset in D harmonic minor. The choir versions hold their notes (SFZ HOLD).
+    int count = 0, choir = 0, held = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 44)   // NIGHT REIGN: the forty-fifth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            const auto value = [&] (const juce::String& id, float otherwise)
+            {
+                const auto it = version->parameters.find (id);
+                return it == version->parameters.end() ? otherwise : it->second;
+            };
+            CHECK (value (ParamIDs::ornOn, 0.0f) == 1.0f);
+            CHECK (value (ParamIDs::ornAmount, 1.0f) == 0.0f);
+            CHECK (value (ParamIDs::ornKey, -1.0f) == 2.0f);
+            CHECK (juce::roundToInt (value (ParamIDs::ornScale, -1.0f)) == synth::arp::scaleNames.indexOf ("Harmonic Minor"));
+            CHECK (version->modulation.macroNames[2] == "ORNAMENT");
+            CHECK (version->notes.contains ("ORNAMENT"));
+            int toAmount = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    CHECK (r.destination == ParamIDs::ornAmount);
+                    CHECK (r.amount == 1.0f);
+                    ++toAmount;
+                }
+            CHECK (toAmount == 1);
+            for (const auto& [osc, ref] : version->sfz)
+                if (ref.contains ("epic-choir"))
+                {
+                    ++choir;
+                    if (value (ParamIDs::osc (osc, "SfzHold"), 0.0f) > 0.5f)
+                        ++held;
+                }
+        }
+    }
+    CHECK (count == 18);
+    CHECK (choir == 10);   // Cathedral Choir 4, Crypt Requiem 2, Basso Profondo 1, Choir Ostinato 3
+    CHECK (held == 7);     // all but the ostinato's short notes
+}
+
 TEST_CASE ("RONIN: MACRO 3 is PRESS on every preset, in D in, its versions too", "[rigs][expansions][press]")
 {
     // 1.3.0: PRESS on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 and to
@@ -1939,8 +1988,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto steel = rig.bank == Rig::numBanks + 41;     // STEEL TITANS: 140 BPM in F minor, Fm Db Ab Eb (half-time drops)
         const auto wicked = rig.bank == Rig::numBanks + 42;    // WICKED GAME: 128 BPM in D minor, Dm Bb Gm A (held, for RUNNER)
         const auto ronin = rig.bank == Rig::numBanks + 43;     // RONIN: 84 BPM in D "in" (D Eb G A Bb), notes ringing for PRESS
+        const auto reign = rig.bank == Rig::numBanks + 44;     // NIGHT REIGN: 112 BPM in D harmonic minor, Dm Bb Gm A
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : ronin ? 84.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : ronin ? 84.0 : reign ? 112.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -2997,6 +3047,58 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
                     const auto& n = chords[(size_t) c];
                     chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> { n[1] + 12, n[2] + 12, n[3] + 12 }, 100);
                 }
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (reign)
+        {
+            // Our own phrases (none from any band or film): D harmonic minor, the chords D minor, B flat, G minor and
+            // A major at 112 BPM; held notes so ORNAMENT has notes to decorate.
+            const std::vector<std::vector<int>> chords { { 38, 50, 57, 62, 65, 69 }, { 34, 46, 53, 58, 62, 65 },
+                                                         { 31, 43, 50, 55, 58, 62 }, { 33, 45, 52, 57, 61, 64 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 1.5, 74 }, { 1.5, 0.5, 76 }, { 2, 2, 77 }, { 4, 1, 76 }, { 5, 1, 74 }, { 6, 2, 70 },
+                        { 8, 1, 69 }, { 9, 1, 70 }, { 10, 2, 67 }, { 12, 1, 69 }, { 13, 1, 73 }, { 14, 2.5, 74 } }, 105);
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    if (rig.tags.contains ("Choir"))   // the choir's basses sing from A2 up
+                    {
+                        const int roots[] { 50, 46, 55, 45 };
+                        line ({ { c * 4.0, 3.9, roots[c] } }, 100);
+                    }
+                    else   // the gallops: a note held a bar
+                        line ({ { c * 4.0, 3.9, chords[(size_t) c][0] + 12 } }, 105);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Arp" && rig.tags.contains ("Drums"))
+            {
+                line ({ { 0, 15.9, 60 } }, 110);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys" || type == "Pluck")
+            {
+                for (int c = 0; c < 4; ++c)
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 1.9), std::vector<int> { n[2], n[3], n[4] }, 100);
+                    line ({ { c * 4.0 + 2.0, 1.0, n[5] + 12 }, { c * 4.0 + 3.0, 0.9, n[4] + 12 } }, 95);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 19.0 * beat;
+            }
+            else   // the pads and arps: chords held a bar each
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 92);
                 wheel (8.0, 14.0, 90);
                 length = 20.0 * beat;
             }

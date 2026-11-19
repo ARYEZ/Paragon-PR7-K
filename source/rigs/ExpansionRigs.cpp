@@ -15898,6 +15898,670 @@ namespace
         x.add (needle);
     }
 
+
+    // NIGHT REIGN (1.6.0, the owner's theme and name: a vampire's castle, played as symphonic metal, a huge gothic
+    // choir at its heart). Three columns in every category: the cathedral (the choir, the organ, the bells), the
+    // ballroom (the violin, the strings, the harpsichord, a masked dance), the crypt (the guitars, the requiem, the
+    // gallop, the blast beat). MACRO 3 ORNAMENT on every preset: a baroque player's trills, mordents and turns, in D
+    // harmonic minor and in time with the song. The choir versions play epic-choir (real singers, GET THE CHOIR) with
+    // SFZ HOLD so a held chord lasts. Our own sounds; no film, game, band or song named.
+    struct Flourish
+    {
+        int style = synth::ornament::mixed;   // synth::ornament::styleNames
+        int speed = 2;                        // speedNames: 1/32
+        int length = 1;                       // lengthNames: 1 BEAT
+    };
+    void ornament (Builder& b, Flourish f)
+    {
+        b.set (ParamIDs::ornOn, 1.0f).set (ParamIDs::ornAmount, 0.0f).set (ParamIDs::ornStyle, (float) f.style)
+         .set (ParamIDs::ornSpeed, (float) f.speed).set (ParamIDs::ornLength, (float) f.length)
+         .set (ParamIDs::ornKey, 2.0f).set (ParamIDs::ornScale, (float) synth::arp::scaleNames.indexOf ("Harmonic Minor"));
+        route (b, "macro3", ParamIDs::ornAmount, 1.0f);   // the macro is AMOUNT: how many notes are ornamented
+    }
+
+    void nightReign (Expansion x)
+    {
+        using DM = effects::Drive::Model;
+        using LW = synth::mod::LfoWave;
+        using AM = synth::arp::Mode;
+        namespace orn = synth::ornament;
+        const auto& choir = libraries::epicChoir();
+        const auto& vcsl = libraries::versilianCollection();
+        const auto& rusty = libraries::bigRustyDrums();
+        const auto& guitars = libraries::blackAndGreenGuitars();
+        const auto on = [] (Builder& b, int o, float wave, float volume)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", wave).osc (o, "Volume", volume);
+        };
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto lfo = [] (Builder& b, int l, LW wave, float hz)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Rate"), hz)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto voice = [] (Builder& b, float vowel, float size, float sharp)
+        {
+            b.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, vowel).set (ParamIDs::voiceSize, size)
+             .set (ParamIDs::voiceSharp, sharp).set (ParamIDs::voiceMix, 1.0f);
+        };
+        // The hummed start: the vowel opens from OO to the one set over `ms` (a one-shot envelope on VOWEL).
+        const auto hum = [] (Builder& b, int env, float openTo, float ms)
+        {
+            b.set (ParamIDs::env (env, "Mode"), (float) synth::mod::EnvelopeMode::oneShot);
+            b.rig.modulation.envelopes[(size_t) env] = { { PK { 0.0f, 0.0f, 0.3f }, PK { ms / 1000.0f, 1.0f, 0.0f } }, -1, -1, -1 };
+            b.set (ParamIDs::voiceVowel, 0.0f);
+            route (b, pkEnv (env).toRawUTF8(), ParamIDs::voiceVowel, openTo);
+        };
+        // SIZE following the keys (ASCENSION's): a bass at C2, an alto at middle C, a soprano at C6.
+        const auto sizeByKey = [] (Builder& b)
+        {
+            b.set (ParamIDs::voiceSize, 0.0f);
+            for (int k = 0; k < 2; ++k)
+                b.rig.modulation.routes.push_back ({ true, "keytrack", ParamIDs::voiceSize, 1.0f, false, 0.0f, 0.5f });
+        };
+        const auto cleanSub = [] (Builder& b, int o, float volume, float transpose = -12.0f)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", sine).osc (o, "Transpose", transpose).osc (o, "Volume", volume)
+             .osc (o, "Filter", 0.0f).osc (o, "Insert", 0.0f).osc (o, "Voice", 0.0f).osc (o, "PhaseRand", 0.0f);
+            for (const auto* shp : { "Shp1", "Shp2", "Shp3", "Shp4" })
+                b.osc (o, shp, 0.0f);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        // A drum on its own arp, at a fixed note, in sixteenths: steps `hits` on, `accents` louder.
+        const auto drumArp = [] (Builder& b, int arp, std::initializer_list<int> hits, std::initializer_list<int> accents = {})
+        {
+            b.set (ParamIDs::arp (arp, "On"), 1.0f).set (ParamIDs::arp (arp, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (arp, "Division"), division ("1/16")).set (ParamIDs::arp (arp, "Octaves"), 1.0f)
+             .set (ParamIDs::arp (arp, "Gate"), 0.9f)
+             .set (ParamIDs::arp (arp, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
+            auto& p = b.rig.modulation.arps[(size_t) arp].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                const auto hit = std::find (hits.begin(), hits.end(), k) != hits.end();
+                const auto accent = std::find (accents.begin(), accents.end(), k) != accents.end();
+                p.blocks[(size_t) k].on = hit;
+                p.blocks[(size_t) k].velocity = accent ? 1.0f : 0.72f;
+            }
+        };
+        const auto pinned = [] (Builder& s, int o, int key)
+        {
+            s.osc (o, "SfzKey", (float) (key + 1)).osc (o, "SfzKeyTrack", 0.0f).osc (o, "PitchEnv", 0.0f);
+        };
+        const auto hold = [] (Builder& s, std::initializer_list<int> oscs)   // SFZ HOLD: the choir's notes last
+        {
+            for (const auto o : oscs)
+                s.osc (o, "SfzHold", 1.0f);
+        };
+        const auto finish = [] (Builder& b, const char* one, RT room, float size, float mix, float preDelay = 30.0f)
+        {
+            macros (b, one, "SPACE", "ORNAMENT");
+            reverb (b, room, size, mix, preDelay, 4.5f);
+            space (b);
+        };
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto aria = x.make ("Soprano Aria", 1, { "Lead", "Cathedral", "Voice", "Soprano" },
+            "The castle's soprano singing over the band: a narrow pulse and a quiet saw sung as \"ah\" by the VOICE filter at "
+            "a soprano's size, a wide vibrato blooming as she holds a note, a breath, a gentle glide, echoes and a "
+            "cathedral. Turn up ORNAMENT and she sings trills, mordents and turns on her notes, in key and in time. MOD "
+            "WHEEL: a wider vibrato. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        aria.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.7f)
+            .osc (1, "On", 1.0f).osc (1, "Volume", 0.3f).osc (1, "Fine", -3.0f);
+        vibrato (aria, 0, 22.0f, 5.6f, 450.0f);
+        vibrato (aria, 1, 22.0f, 5.6f, 450.0f);
+        noiseOsc (aria, 2, 0.04f, 0.08f);
+        voice (aria, 0.5f, 0.95f, 0.5f);
+        aria.ampEnvelope (110.0f, 800.0f, 0.95f, 900.0f)
+            .mono (60.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        route (aria, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.2f);
+        route (aria, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.2f);
+        route (aria, "macro1", ParamIDs::voiceSharp, 0.3f);
+        delay (aria, "1/4", 0.35f, 0.14f, true, 4.0f);
+        finish (aria, "BRIGHT", RT::cathedral, 0.65f, 0.28f, 40.0f);
+        ornament (aria, { orn::mixed, 2, 1 });
+        aria.set (ParamIDs::patchLevel, -6.0f);
+        x.add (aria);
+
+        auto violin = x.make ("Vampire Violin", 2, { "Lead", "Ballroom", "Violin", "Bowed" },
+            "The count's violin in the ballroom: a bowed string (two saws a few cents apart through a bright filter, the "
+            "bow's rosin in the noise), a quick, nervous vibrato, every note slid into. Turn up ORNAMENT for the "
+            "virtuoso's trills and turns. MOD WHEEL: more vibrato. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        violin.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.25f);
+        vibrato (violin, 0, 16.0f, 6.0f, 300.0f);
+        vibrato (violin, 1, 16.0f, 6.0f, 300.0f);
+        noiseOsc (violin, 2, 0.035f, 0.3f);
+        violin.filter (FilterType::lp24, 3200.0f, 0.15f, 0.2f).set (ParamIDs::fltKey, 0.5f)
+              .filterEnvelope (60.0f, 500.0f, 0.7f, 300.0f)
+              .ampEnvelope (60.0f, 600.0f, 0.9f, 300.0f)
+              .mono (40.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        eqBand (violin, 0, eq::Shape::bell, 2600.0f, 3.0f, 0.9f);
+        route (violin, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (violin, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.25f);
+        route (violin, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (violin, "BRIGHT", RT::hall, 0.6f, 0.22f);
+        ornament (violin, { orn::mixed, 2, 1 });
+        violin.set (ParamIDs::patchLevel, -3.0f);
+        orchestra (violin, { { { 0, "Strings - Notation/Violin Solo 1 Sustain (looped).sfz", 1.0f, 0.0f, true } },
+                             { 0, 1 }, 4.0f,
+                             "The count's violin in the ballroom: the orchestra's solo violin, looped so it holds, slid "
+                             "into each note, the bow's rosin round it.",
+                             60.0f, 600.0f, 0.9f, 300.0f, 0.0f,
+                             [] (Builder& s) { s.set (ParamIDs::fltCutoff, 6000.0f); } });
+        x.add (violin);
+
+        auto shred = x.make ("Night Shred", 3, { "Lead", "Crypt", "Guitar", "Distorted" },
+            "The lead guitar over the double kick: two saws and a pulse with a fifth inside every note, a tube in front, a "
+            "burning amp, the mids pushed so it cuts, a clean sub under it. Bend down a whole step, up two. Turn up "
+            "ORNAMENT and it shreds: fast trills and turns in harmonic minor, in time. MOD WHEEL: vibrato. MACROS: BRIGHT, "
+            "SPACE, ORNAMENT.");
+        shred.osc (0, "Volume", 0.7f).osc (0, "Insert", 1.0f)
+             .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 7.0f).osc (0, "Ch1Vol", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Fine", 8.0f).osc (1, "Volume", 0.45f)
+             .osc (1, "Insert", 1.0f)
+             .shaper (0, synth::ShaperModel::tube, 0.3f)
+             .filter (FilterType::lp24, 5000.0f, 0.15f, 0.0f)
+             .ampEnvelope (3.0f, 500.0f, 1.0f, 250.0f)
+             .mono (15.0f).set (ParamIDs::bendDown, 2.0f).set (ParamIDs::bendUp, 2.0f);
+        unison (shred, 0, 3, 0.5f, 0.1f, 0.5f);
+        cleanSub (shred, 4, 0.3f);
+        for (int o = 0; o < 2; ++o)
+        {
+            vibrato (shred, o, 0.0f, 6.0f, 0.0f);
+            route (shred, "modWheel", ParamIDs::osc (o, "VibAmount"), 0.2f);
+        }
+        drive (shred, 0, DM::rabid, 7.0f, 6.0f, -2.0f, 0.35f, 0.3f);
+        eqBand (shred, 0, eq::Shape::bell, 1500.0f, 3.0f, 0.8f);
+        eqBand (shred, 1, eq::Shape::lowCut, 70.0f, 0.0f);
+        route (shred, "macro1", ParamIDs::fltCutoff, 0.15f);
+        delay (shred, "1/8 dotted", 0.3f, 0.13f, true, 4.5f);
+        finish (shred, "BRIGHT", RT::hall, 0.6f, 0.14f);
+        ornament (shred, { orn::trill, 2, 0 });
+        shred.set (ParamIDs::patchLevel, -3.0f);
+        orchestra (shred, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
+                            { 0, 1 }, 0.0f,
+                            "The lead guitar over the double kick: a real Gretsch Anniversary (Black And Green Guitars) "
+                            "through a burning amp, a clean sub under it.",
+                            1.0f, 2000.0f, 0.8f, 250.0f, 0.0f,
+                            [] (Builder& s) { s.osc (0, "Insert", 1.0f).set (ParamIDs::fltCutoff, 6000.0f); } });
+        x.add (shred);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto cathedral = x.make ("Cathedral Choir", 4, { "Pad", "Cathedral", "Choir", "Voice" },
+            "The centrepiece: the castle's great choir in the cathedral. Sections of singers (saws and narrow pulses, each "
+            "singer his or her own vibrato) sung through the VOICE filter, the vowel opening from a hum to \"ah\", basses "
+            "low and sopranos high as you play up the keys, an octave of basses under every note, a breath of air, a long "
+            "cathedral. Play wide chords. Turn up ORNAMENT and the choir sings turns and mordents in the old style. MOD "
+            "WHEEL: louder and brighter. MACROS: VOWEL (towards \"eh\"), SPACE, ORNAMENT.");
+        cathedral.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Fine", 4.0f).osc (1, "Volume", 0.3f);
+        pkSection (cathedral, 0, 5, 0.15f, 12.0f, 5.0f, 600.0f);
+        pkSection (cathedral, 1, 4, 0.18f, 12.0f, 5.3f, 600.0f);
+        noiseOsc (cathedral, 2, 0.04f, 0.08f);
+        cathedral.osc (3, "On", 1.0f).osc (3, "Wave", saw).osc (3, "Transpose", -12.0f).osc (3, "Volume", 0.22f);
+        pkSection (cathedral, 3, 3, 0.12f, 9.0f, 4.6f, 600.0f);
+        voice (cathedral, 0.45f, 0.4f, 0.5f);
+        sizeByKey (cathedral);
+        hum (cathedral, 0, 0.45f, 350.0f);
+        cathedral.filter (FilterType::lp12, 4500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+                 .ampEnvelope (350.0f, 1000.0f, 0.9f, 1600.0f);
+        route (cathedral, "modWheel", ParamIDs::voiceSharp, 0.25f);
+        route (cathedral, "modWheel", ParamIDs::fltCutoff, 0.15f);
+        route (cathedral, "macro1", ParamIDs::voiceVowel, 0.2f);
+        finish (cathedral, "VOWEL", RT::cathedral, 0.85f, 0.34f, 40.0f);
+        ornament (cathedral, { orn::mixed, 0, 1 });
+        cathedral.set (ParamIDs::patchLevel, -9.0f);
+        orchestra (cathedral, { { { 0, "B_ah.sfz", 1.0f, -0.25f, true, &choir },
+                                  { 1, "T_ah.sfz", 1.0f, -0.1f, true, &choir },
+                                  { 2, "A_ah.sfz", 1.0f, 0.1f, true, &choir },
+                                  { 4, "S_ah.sfz", 1.0f, 0.25f, true, &choir } },
+                                { 0, 1, 2 }, 0.0f,
+                                "The centrepiece: the castle's great choir in the cathedral. Real singers (epic-choir, from "
+                                "VocalSet): basses, tenors, altos and sopranos on \"ah\", each section singing the notes in "
+                                "its own range, held as long as you hold the keys (SFZ HOLD), the synth's basses an octave "
+                                "under it all. Play wide chords. The mod wheel is the dynamics: soft, middle, full voice.",
+                                350.0f, 1000.0f, 1.0f, 1600.0f, -1.0f,
+                                [hold] (Builder& s)
+                                {
+                                    hold (s, { 0, 1, 2, 4 });
+                                    s.set (ParamIDs::fltCutoff, 9000.0f);
+                                    s.rig.modulation.macroNames[0] = "BRIGHT";
+                                    route (s, "macro1", ParamIDs::fltCutoff, -0.2f);
+                                    s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                        [] (const auto& r) { return r.source == "modWheel"; }), s.rig.modulation.routes.end());
+                                } });
+        x.add (cathedral);
+
+        auto velvet = x.make ("Velvet Strings", 5, { "Pad", "Ballroom", "Strings", "Section" },
+            "The ballroom's string section under the chandeliers: violins (a section of saws, each player his own vibrato) "
+            "over cellos an octave down, swelling slowly, the bows' warmth in a gently opening filter, a wide hall. Hold "
+            "chords. Turn up ORNAMENT and the players add turns and mordents to the top of the chord. MOD WHEEL: opens "
+            "the filter. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        velvet.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f);
+        pkSection (velvet, 0, 6, 0.16f, 10.0f, 5.4f, 500.0f);
+        pkSection (velvet, 1, 4, 0.12f, 8.0f, 4.9f, 500.0f);
+        velvet.filter (FilterType::lp24, 1800.0f, 0.1f, 0.3f).set (ParamIDs::fltKey, 0.4f)
+              .filterEnvelope (500.0f, 1500.0f, 0.7f, 1000.0f)
+              .ampEnvelope (450.0f, 1000.0f, 0.9f, 1200.0f);
+        route (velvet, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (velvet, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (velvet, "BRIGHT", RT::hall, 0.8f, 0.28f);
+        ornament (velvet, { orn::mixed, 0, 1 });
+        velvet.set (ParamIDs::patchLevel, -8.0f);
+        orchestra (velvet, { { { 3, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f, true } },
+                             {}, 0.0f,
+                             "The ballroom's string section: the orchestra's whole section, held as long as you hold the "
+                             "keys (SFZ HOLD), PR7-K's own strings quietly under it.",
+                             -1.0f, 1000.0f, 0.9f, 1200.0f, -1.0f,
+                             [hold] (Builder& s)
+                             {
+                                 hold (s, { 3 });
+                                 s.osc (0, "Volume", 0.2f).osc (1, "Volume", 0.14f);
+                             } });
+        x.add (velvet);
+
+        auto requiem = x.make ("Crypt Requiem", 6, { "Pad", "Crypt", "Choir", "Dark" },
+            "A requiem sung in the crypt: low men's voices on a dark \"oo\" (saws through the VOICE filter, a bass's size, "
+            "each singer his own vibrato), low strings under them (unfiltered by the voice, dark and slow), stone-cold "
+            "air. Hold chords low. Turn up ORNAMENT and the men's voices turn round their notes, slowly. MOD WHEEL: the "
+            "vowel opens. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        requiem.osc (0, "Wave", saw).osc (0, "Volume", 0.55f);
+        pkSection (requiem, 0, 5, 0.14f, 9.0f, 4.7f, 700.0f);
+        noiseOsc (requiem, 1, 0.03f, 0.1f);
+        requiem.osc (2, "On", 1.0f).osc (2, "Wave", saw).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f).osc (2, "Voice", 0.0f);
+        pkSection (requiem, 2, 4, 0.1f, 7.0f, 4.4f, 500.0f);
+        voice (requiem, 0.05f, 0.1f, 0.4f);
+        requiem.filter (FilterType::lp24, 1400.0f, 0.1f, 0.15f).set (ParamIDs::fltKey, 0.3f)
+               .filterEnvelope (600.0f, 1500.0f, 0.7f, 1200.0f)
+               .ampEnvelope (500.0f, 1200.0f, 0.9f, 1800.0f);
+        route (requiem, "modWheel", ParamIDs::voiceVowel, 0.3f);
+        route (requiem, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (requiem, "BRIGHT", RT::cathedral, 0.9f, 0.32f, 40.0f);
+        ornament (requiem, { orn::turn, 0, 1 });
+        requiem.set (ParamIDs::patchLevel, -8.0f);
+        orchestra (requiem, { { { 0, "T_oo.sfz", 1.0f, -0.2f, true, &choir },
+                                { 1, "B_oo.sfz", 1.0f, 0.2f, true, &choir },
+                                { 3, "Strings - Notation/Celli Sustain.sfz", 0.8f, 0.0f, true } },
+                              { 0, 1 }, 0.0f,
+                              "A requiem sung in the crypt: real tenors and basses (epic-choir, from VocalSet) on a dark "
+                              "\"oo\", the orchestra's cellos under them, all held as long as you hold the keys (SFZ HOLD). "
+                              "The mod wheel is the singers' dynamics.",
+                              500.0f, 1200.0f, 1.0f, 1800.0f, -1.0f,
+                              [hold] (Builder& s)
+                              {
+                                  hold (s, { 0, 1, 3 });
+                                  s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                      [] (const auto& r) { return r.source == "modWheel"; }), s.rig.modulation.routes.end());
+                              } });
+        x.add (requiem);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto basso = x.make ("Basso Profondo", 7, { "Bass", "Cathedral", "Choir", "Voice" },
+            "The deepest voices of the choir as a bass line: a saw and a narrow pulse sung through the VOICE filter on "
+            "\"oh\" at a bass's size, and a clean sine an octave under, so the line has the weight of an organ's pedal. "
+            "Sing it from A2 up for the sampled version's singers (below that the octave under carries it). Turn up "
+            "ORNAMENT for mordents on the bass. MOD WHEEL: the vowel opens. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        basso.osc (0, "Wave", saw).osc (0, "Volume", 0.6f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Fine", 5.0f).osc (1, "Volume", 0.3f);
+        pkSection (basso, 0, 3, 0.1f, 7.0f, 4.6f, 500.0f);
+        cleanSub (basso, 2, 0.45f);
+        voice (basso, 0.25f, 0.0f, 0.4f);
+        basso.filter (FilterType::lp12, 2500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+             .ampEnvelope (90.0f, 800.0f, 0.9f, 600.0f)
+             .mono (30.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        route (basso, "modWheel", ParamIDs::voiceVowel, 0.25f);
+        route (basso, "macro1", ParamIDs::voiceSharp, 0.3f);
+        finish (basso, "BRIGHT", RT::cathedral, 0.7f, 0.18f, 40.0f);
+        ornament (basso, { orn::mordent, 2, 1 });
+        basso.set (ParamIDs::patchLevel, -4.0f);
+        orchestra (basso, { { { 0, "B_oh.sfz", 1.0f, 0.0f, true, &choir } },
+                            { 0, 1 }, 0.0f,
+                            "The deepest voices of the choir as a bass line: real basses (epic-choir, from VocalSet) on "
+                            "\"oh\", held as long as you hold the key (SFZ HOLD), a clean sine an octave under them. They "
+                            "sing from A2 up; below that the octave under carries the line. The mod wheel is their dynamics.",
+                            90.0f, 800.0f, 1.0f, 600.0f, 0.0f,
+                            [hold] (Builder& s)
+                            {
+                                hold (s, { 0 });
+                                s.set (ParamIDs::playMode, 0.0f).set (ParamIDs::voices, 16.0f);   // each sung note its own singer
+                                s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                    [] (const auto& r) { return r.source == "modWheel"; }), s.rig.modulation.routes.end());
+                            } });
+        x.add (basso);
+
+        auto cellos = x.make ("Gallop Cellos", 8, { "Bass", "Ballroom", "Strings", "Gallop" },
+            "The cellos and basses galloping under the band, as symphonic metal's strings do: hold a note and they play it "
+            "in the gallop (an eighth and two sixteenths), short bows (saws through a snapping filter, each player a hair "
+            "apart), a deep octave under. Turn up ORNAMENT and the gallop flicks up the scale and back. MOD WHEEL: a harder "
+            "bite. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        cellos.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f);
+        unison (cellos, 0, 4, 0.7f, 0.1f, 0.7f);
+        cellos.filter (FilterType::lp24, 1100.0f, 0.15f, 0.55f).set (ParamIDs::fltKey, 0.4f)
+              .filterEnvelope (0.0f, 160.0f, 0.2f, 120.0f)
+              .ampEnvelope (2.0f, 200.0f, 0.25f, 120.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkVelocity (cellos, 0.5f, 0.2f, 0.5f);
+        arpOn (cellos, { 0, 1 }, AM::up, "1/16", 1.0f, 0.8f);
+        {
+            auto& p = cellos.rig.modulation.arps[0].patterns[0];   // the gallop: an eighth, two sixteenths
+            for (int k = 0; k < 16; ++k)
+            {
+                p.blocks[(size_t) k].on = (k % 4) != 1;
+                p.blocks[(size_t) k].velocity = (k % 4) == 0 ? 1.0f : 0.75f;
+            }
+        }
+        route (cellos, "modWheel", ParamIDs::fltEnv, 0.2f);
+        route (cellos, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (cellos, "BRIGHT", RT::hall, 0.55f, 0.12f);
+        ornament (cellos, { orn::mordent, 0, 1 });
+        cellos.set (ParamIDs::patchLevel, -3.0f);
+        orchestra (cellos, { { { 0, "Strings - Notation/Celli Staccato.sfz", 1.0f, -0.15f, true },
+                               { 3, "Strings - Notation/Basses Staccato.sfz", 1.0f, 0.15f, true } },
+                             { 0, 1 }, 0.0f,
+                             "The cellos and basses galloping under the band: the orchestra's cellos and basses playing "
+                             "short bows in the gallop on the note you hold.",
+                             0.0f, 400.0f, 1.0f, 200.0f, -1.0f,
+                             [] (Builder& s) { s.osc (3, "Arp", 1.0f); } });
+        x.add (cellos);
+
+        auto iron = x.make ("Iron Gallop", 9, { "Bass", "Crypt", "Guitar", "Gallop" },
+            "The rhythm guitar's palm-muted gallop as the bass of the band: hold a note and it chugs the gallop (an eighth "
+            "and two sixteenths) through a burning amp, each hit dying inside its step, a clean sine sub under it. Turn up "
+            "ORNAMENT and the chug flicks up the scale. MOD WHEEL: a tighter, brighter chug. MACROS: BRIGHT, SPACE, "
+            "ORNAMENT.");
+        iron.osc (0, "Volume", 0.7f).osc (0, "Insert", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Fine", -7.0f).osc (1, "Volume", 0.5f)
+            .osc (1, "Insert", 1.0f)
+            .filter (FilterType::lp24, 1600.0f, 0.15f, 0.5f).filterEnvelope (0.0f, 90.0f, 0.1f, 60.0f)
+            .ampEnvelope (1.0f, 90.0f, 0.15f, 60.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        cleanSub (iron, 2, 0.4f);
+        arpOn (iron, { 0, 1, 2 }, AM::up, "1/16", 1.0f, 0.75f);
+        {
+            auto& p = iron.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                p.blocks[(size_t) k].on = (k % 4) != 1;
+                p.blocks[(size_t) k].velocity = (k % 4) == 0 ? 1.0f : 0.8f;
+            }
+        }
+        drive (iron, 0, DM::rabid, 7.0f, 5.5f, -2.0f, 0.1f, 0.15f);
+        eqBand (iron, 0, eq::Shape::lowCut, 60.0f, 0.0f);
+        route (iron, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (iron, "macro1", ParamIDs::fltCutoff, 0.15f);
+        finish (iron, "BRIGHT", RT::room, 0.4f, 0.08f);
+        ornament (iron, { orn::mordent, 0, 1 });
+        iron.set (ParamIDs::patchLevel, -2.0f);
+        orchestra (iron, { { { 0, "Programs/05-green_staccato.sfz", 1.0f, 0.0f, true, &guitars } },
+                           { 0, 1 }, 0.0f,
+                           "The rhythm guitar's gallop: a real Gretsch Anniversary played short (Black And Green Guitars) "
+                           "through a burning amp, a clean sine sub under it.",
+                           1.0f, 150.0f, 0.3f, 80.0f, -1.0f,
+                           [] (Builder& s) { s.osc (0, "Insert", 1.0f).set (ParamIDs::fltCutoff, 5000.0f); } });
+        x.add (iron);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto mass = x.make ("Pipe Organ Mass", 10, { "Keys", "Cathedral", "Organ", "Pipes" },
+            "The castle's great organ at midnight mass: pipes from sines (16', 8', 4', a twelfth and 2'), every stop pulled, "
+            "a breath of wind in the pipes, a vast cathedral. Turn up ORNAMENT and the organist plays the old ornaments on "
+            "the top notes. MOD WHEEL: more of the high stops. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        {
+            static constexpr float transposes[] = { -12.0f, 0.0f, 12.0f, 19.0f, 24.0f };
+            static constexpr float levels[] = { 0.35f, 0.45f, 0.3f, 0.16f, 0.14f };
+            for (int k = 0; k < 5; ++k)
+                mass.osc (k, "On", 1.0f).osc (k, "Wave", sine).osc (k, "Transpose", transposes[k]).osc (k, "Volume", levels[k])
+                    .osc (k, "PhaseRand", 0.0f).osc (k, "Filter", 0.0f);
+        }
+        noiseOsc (mass, 5, 0.012f, 0.1f);
+        mass.osc (5, "Filter", 0.0f)
+            .set (ParamIDs::fltOn, 0.0f)
+            .ampEnvelope (25.0f, 500.0f, 1.0f, 700.0f);
+        route (mass, "modWheel", ParamIDs::osc (3, "Volume"), 0.15f);
+        route (mass, "modWheel", ParamIDs::osc (4, "Volume"), 0.15f);
+        route (mass, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        finish (mass, "BRIGHT", RT::cathedral, 0.9f, 0.3f, 40.0f);
+        ornament (mass, { orn::mixed, 1, 1 });
+        mass.set (ParamIDs::patchLevel, -10.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        orchestra (mass, { { { 0, "Aerophones/Edge-blown Aerophones/Pipe Organ - Loud.sfz", 1.0f, 0.0f, false, &vcsl } },
+                           { 0, 1, 2, 3, 4 }, 0.0f,
+                           "The castle's great organ at midnight mass: a real pipe organ (VCSL's), every stop pulled, a "
+                           "breath of wind, a vast cathedral.",
+                           20.0f, 500.0f, 1.0f, 700.0f, -1.0f,
+                           [] (Builder& s) { s.rig.modulation.macroNames[0] = "HALL"; route (s, "macro1", ParamIDs::reverbSize, 0.1f); } });
+        x.add (mass);
+
+        auto duel = x.make ("Harpsichord Duel", 11, { "Keys", "Ballroom", "Harpsichord", "Baroque" },
+            "The ballroom's harpsichord in a duel with the guitar: a narrow pulse and a saw an octave up plucked by a "
+            "quill (a click and a quick filter snap), both registers, ringing a moment. Play fast runs. Turn up ORNAMENT "
+            "for the harpsichordist's own trills and mordents. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        duel.osc (0, "Wave", pulse).osc (0, "Width", 0.15f).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f)
+            .filter (FilterType::lp12, 3800.0f, 0.1f, 0.4f).set (ParamIDs::fltKey, 0.6f)
+            .filterEnvelope (0.0f, 400.0f, 0.3f, 300.0f)
+            .ampEnvelope (0.5f, 1500.0f, 0.12f, 250.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (duel, 2, 0, 0.06f, 2.0f, 0.1f);
+        route (duel, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (duel, "BRIGHT", RT::room, 0.55f, 0.16f);
+        ornament (duel, { orn::mixed, 2, 0 });
+        duel.set (ParamIDs::patchLevel, 1.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        orchestra (duel, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 10.0f,
+                           "The ballroom's harpsichord: the orchestra's harpsichord (both its registers), a stone room.",
+                           0.0f, 300.0f, 1.0f, 300.0f, -1.0f, {} });
+        x.add (duel);
+
+        auto coffin = x.make ("Coffin Organ", 12, { "Keys", "Crypt", "Organ", "Drive" },
+            "The organ in the crypt, played through the band's amp: drawbar-style sines and a square through a spinning "
+            "speaker and a growling drive, the bass end heavy, a short stone room. Chords for the riff's backing. Turn up "
+            "ORNAMENT and the top notes trill. MOD WHEEL: the speaker spins faster (the rotary's depth). MACROS: BRIGHT, "
+            "SPACE, ORNAMENT.");
+        coffin.osc (0, "Wave", sine).osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.4f).osc (0, "PhaseRand", 0.0f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.4f).osc (1, "PhaseRand", 0.0f)
+              .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 19.0f).osc (2, "Volume", 0.22f).osc (2, "PhaseRand", 0.0f)
+              .osc (3, "On", 1.0f).osc (3, "Wave", pulse).osc (3, "Width", 0.5f).osc (3, "Transpose", 12.0f).osc (3, "Volume", 0.12f)
+              .shaper (0, synth::ShaperModel::tube, 0.45f)
+              .filter (FilterType::lp12, 4000.0f, 0.05f, 0.0f)
+              .ampEnvelope (5.0f, 400.0f, 1.0f, 120.0f);
+        chorus (coffin, ParamIDs::modIds, MT::rotary, 0.5f, 0.6f, 0.8f);
+        route (coffin, "modWheel", ParamIDs::modDepth, 0.3f);
+        route (coffin, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (coffin, "BRIGHT", RT::room, 0.45f, 0.14f);
+        ornament (coffin, { orn::trill, 2, 1 });
+        coffin.set (ParamIDs::patchLevel, -6.0f);
+        x.add (coffin);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto ostinato = x.make ("Choir Ostinato", 13, { "Arp", "Cathedral", "Choir", "Pattern" },
+            "The choir's driving ostinato, as symphonic metal's choirs chant over the riffs: hold a chord and short sung "
+            "\"ah\"s (saws through the VOICE filter, sizes following the keys) run through it in eighths, up and down, "
+            "accented on the beat, a cathedral. Turn up ORNAMENT and the sung notes flick with mordents. MOD WHEEL: the "
+            "vowel opens. MACROS: VOWEL, SPACE, ORNAMENT.");
+        ostinato.osc (0, "Wave", saw).osc (0, "Volume", 0.55f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Volume", 0.25f);
+        pkSection (ostinato, 0, 4, 0.14f, 8.0f, 5.0f, 100.0f);
+        voice (ostinato, 0.5f, 0.4f, 0.55f);
+        sizeByKey (ostinato);
+        ostinato.filter (FilterType::lp12, 5000.0f, 0.05f, 0.0f)
+                .ampEnvelope (15.0f, 240.0f, 0.35f, 140.0f);
+        arpOn (ostinato, { 0, 1 }, AM::upDown, "1/8", 1.0f, 0.8f);
+        {
+            auto& p = ostinato.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = (k % 2) == 0 ? 1.0f : 0.75f;
+        }
+        route (ostinato, "modWheel", ParamIDs::voiceVowel, 0.25f);
+        route (ostinato, "macro1", ParamIDs::voiceVowel, 0.2f);
+        finish (ostinato, "VOWEL", RT::cathedral, 0.75f, 0.25f, 40.0f);
+        ornament (ostinato, { orn::mordent, 3, 1 });
+        ostinato.set (ParamIDs::patchLevel, -6.0f);
+        orchestra (ostinato, { { { 0, "T_ah.sfz", 1.0f, -0.2f, true, &choir },
+                                 { 2, "A_ah.sfz", 1.0f, 0.2f, true, &choir },
+                                 { 3, "S_ah.sfz", 0.8f, 0.0f, true, &choir } },
+                               { 0, 1 }, 0.0f,
+                               "The choir's driving ostinato: real tenors, altos and sopranos (epic-choir, from VocalSet) "
+                               "chanting short \"ah\"s through the chord you hold, each in its own range. The mod wheel is "
+                               "their dynamics.",
+                               10.0f, 300.0f, 0.4f, 160.0f, -1.0f,
+                               [] (Builder& s)
+                               {
+                                   s.osc (2, "Arp", 1.0f).osc (3, "Arp", 1.0f);
+                                   s.rig.modulation.macroNames[0] = "BRIGHT";
+                                   route (s, "macro1", ParamIDs::fltCutoff, 0.2f);
+                                   s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                       [] (const auto& r) { return r.source == "modWheel"; }), s.rig.modulation.routes.end());
+                               } });
+        x.add (ostinato);
+
+        auto run = x.make ("Neoclassical Run", 14, { "Arp", "Crypt", "Lead", "Sweep" },
+            "The neoclassical guitarist's sweep: hold a chord and a bright, driven lead runs it up and down two octaves "
+            "in sixteenths, each note picked (a quick filter snap), echoes a dotted eighth behind. Hold A, C sharp, E for the "
+            "harmonic minor's own sweep. Turn up ORNAMENT and the run trills and turns on its notes. MOD WHEEL: more "
+            "drive. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        run.osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.35f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.35f)
+           .osc (1, "Insert", 1.0f)
+           .filter (FilterType::lp24, 3500.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.4f)
+           .filterEnvelope (0.0f, 120.0f, 0.4f, 100.0f)
+           .ampEnvelope (1.0f, 300.0f, 0.5f, 120.0f);
+        unison (run, 0, 2, 0.5f, 0.08f, 0.4f);
+        arpOn (run, { 0, 1 }, AM::upDown, "1/16", 2.0f, 0.85f);
+        drive (run, 0, DM::screamer, 6.0f, 6.0f, -2.0f, 0.4f, 0.3f);
+        route (run, "modWheel", ParamIDs::shp (0, "Drive"), 0.2f);
+        run.shaper (0, synth::ShaperModel::soft, 0.15f);
+        route (run, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (run, "1/8 dotted", 0.3f, 0.16f, true, 4.5f);
+        finish (run, "BRIGHT", RT::hall, 0.6f, 0.14f);
+        ornament (run, { orn::mixed, 3, 0 });
+        run.set (ParamIDs::patchLevel, -4.0f);
+        x.add (run);
+
+        auto blast = x.make ("Blast Beat", 15, { "Arp", "Crypt", "Drums", "Metal" },
+            "The drummer under it all: hold any key and a double kick runs in sixteenths, a snare on the backbeat and a "
+            "blast on the last beat, toms rolling at the bar's end (sines falling into their notes, the stick's crack in "
+            "the noise). The key you hold doesn't change it. Turn up ORNAMENT and the drums are struck in grace-note "
+            "flams. MOD WHEEL: a brighter crack. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        blast.osc (0, "Wave", sine).osc (0, "Transpose", -31.0f).osc (0, "Volume", 0.9f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "Arp", 1.0f).osc (0, "Filter", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -10.0f).osc (1, "Volume", 0.35f)
+             .osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 2.0f).osc (1, "Filter", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -17.0f).osc (2, "Volume", 0.6f)
+             .osc (2, "PhaseRand", 0.0f).osc (2, "Arp", 3.0f).osc (2, "Filter", 0.0f)
+             .filter (FilterType::bp12, 2800.0f, 0.3f, 0.0f).set (ParamIDs::fltKey, 0.0f)
+             .ampEnvelope (0.5f, 260.0f, 0.0f, 150.0f).set (ParamIDs::ampDecayCurve, -0.5f).set (ParamIDs::ampVel, 0.6f)
+             .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchKeytrack, 0.0f).set (ParamIDs::pitchEnvRange, 9.0f)
+             .set (ParamIDs::arpsTogether, 1.0f);
+        noiseOsc (blast, 3, 0.45f, 0.1f);
+        blast.osc (3, "Arp", 2.0f).osc (3, "PitchEnv", 0.0f);
+        blast.rig.modulation.pitchEnvelope = { { PK { 0.0f, 1.0f, -0.6f }, PK { 0.06f, 0.5f, 0.0f } }, -1, -1, -1 };
+        drumArp (blast, 0, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }, { 0, 4, 8, 12 });   // the double kick
+        drumArp (blast, 1, { 4, 12, 13, 14, 15 }, { 4, 12 });                                                 // snare, the blast
+        drumArp (blast, 2, { 10, 11 }, { 10 });                                                               // the toms
+        route (blast, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (blast, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (blast, "BRIGHT", RT::room, 0.45f, 0.1f);
+        ornament (blast, { orn::mordent, 3, 1 });
+        blast.set (ParamIDs::patchLevel, 0.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        orchestra (blast, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
+                              { 1, "Programs/01-full.sfz", 0.9f, -0.1f, false, &rusty },
+                              { 2, "Programs/01-full.sfz", 0.8f, 0.15f, false, &rusty } },
+                            { 0, 1, 2, 3 }, 0.0f,
+                            "The drummer under it all: a real kit (Big Rusty Drums'): a double kick in sixteenths, the "
+                            "snare on the backbeat and a blast at the bar's end, the toms rolling. The key you hold "
+                            "doesn't change it.",
+                            0.5f, 1200.0f, 0.0f, 400.0f, -1.0f,
+                            [pinned] (Builder& s)
+                            {
+                                pinned (s, 0, 36); pinned (s, 1, 38); pinned (s, 2, 41);
+                                s.osc (0, "Arp", 1.0f).osc (1, "Arp", 2.0f).osc (2, "Arp", 3.0f);
+                            } });
+        x.add (blast);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto bells = x.make ("Bell Tower", 16, { "Pluck", "Cathedral", "Bell", "Bronze" },
+            "The castle's bell tower tolling midnight: a big bell's partials struck together (the hum an octave down, the "
+            "strike, a minor third a little sharp, a fifth, the octave), each fading in its own time, a long cathedral. "
+            "Turn up ORNAMENT and the bells ring changes round their notes. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        bells.osc (0, "Wave", sine).osc (0, "Volume", 0.5f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 3.0f).osc (2, "Fine", 15.0f).osc (2, "PhaseRand", 0.0f)
+             .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 7.0f).osc (3, "PhaseRand", 0.0f)
+             .osc (4, "On", 1.0f).osc (4, "Wave", sine).osc (4, "Transpose", 12.0f).osc (4, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (0.5f, 3500.0f, 0.12f, 1200.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkPartial (bells, 1, 0, 0.4f, 5.0f);
+        pkPartial (bells, 2, 1, 0.22f, 2.0f);
+        pkPartial (bells, 3, 2, 0.15f, 1.4f);
+        pkPartial (bells, 4, 3, 0.18f, 1.0f);
+        route (bells, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
+        finish (bells, "BRIGHT", RT::cathedral, 0.8f, 0.24f, 40.0f);
+        ornament (bells, { orn::turn, 1, 1 });
+        orchestra (bells, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
+                            { 0, 1, 2, 3, 4 }, 0.0f,
+                            "The castle's bell tower tolling midnight: real tubular bells (VCSL's), a long cathedral.",
+                            0.0f, 4000.0f, 1.0f, 1500.0f, -1.0f,
+                            [] (Builder& s) { s.rig.modulation.macroNames[0] = "HALL"; route (s, "macro1", ParamIDs::reverbSize, 0.1f); } });
+        pkAdd (x, bells);
+
+        auto masque = x.make ("Pizzicato Masque", 17, { "Pluck", "Ballroom", "Pizzicato", "Section" },
+            "The masked dancers' pizzicato: a string section plucking (short saws, each player a hair apart, the fingers' "
+            "snap in a quick filter), a little ring, the ballroom's hall. Turn up ORNAMENT and the plucks flick with "
+            "mordents and turns. MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        masque.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f);
+        unison (masque, 0, 4, 0.6f, 0.12f, 0.8f);
+        masque.filter (FilterType::lp24, 2200.0f, 0.15f, 0.5f).set (ParamIDs::fltKey, 0.5f)
+              .filterEnvelope (0.0f, 130.0f, 0.1f, 100.0f)
+              .ampEnvelope (0.5f, 350.0f, 0.08f, 200.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkVelocity (masque, 0.5f, 0.2f, 0.5f);
+        route (masque, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (masque, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (masque, "BRIGHT", RT::hall, 0.6f, 0.18f);
+        ornament (masque, { orn::mixed, 2, 1 });
+        orchestra (masque, { { { 3, "Strings - Notation/All Strings Pizzicato.sfz", 1.0f, 0.0f } },
+                             { 0, 1 }, 0.0f,
+                             "The masked dancers' pizzicato: the orchestra's strings plucked, the ballroom's hall.",
+                             0.0f, 600.0f, 1.0f, 300.0f, -1.0f, {} });
+        pkAdd (x, masque);
+
+        auto raven = x.make ("Raven Pluck", 18, { "Pluck", "Crypt", "Harp", "Dark" },
+            "A dark harp in the crypt, a raven's call: a plucked string (a triangle and a soft saw through a closing filter), "
+            "a little noise for the finger, a long, cold hall. Turn up ORNAMENT and the harp's notes are ornamented with "
+            "trills and turns. MACROS: BRIGHT, SPACE, ORNAMENT.");
+        raven.osc (0, "Wave", triangle).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.18f).osc (1, "Fine", 4.0f).osc (1, "PhaseRand", 0.0f)
+             .filter (FilterType::lp12, 1800.0f, 0.1f, 0.4f).set (ParamIDs::fltKey, 0.6f)
+             .filterEnvelope (0.0f, 400.0f, 0.15f, 300.0f)
+             .ampEnvelope (0.5f, 1400.0f, 0.1f, 600.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkStrike (raven, 2, 0, 0.08f, 4.0f, 0.2f);
+        pkVelocity (raven, 0.5f, 0.2f, 0.5f);
+        route (raven, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (raven, "1/4", 0.3f, 0.12f, true, 3.5f);
+        finish (raven, "BRIGHT", RT::hall, 0.75f, 0.24f);
+        ornament (raven, { orn::mixed, 2, 1 });
+        orchestra (raven, { { { 0, "Concert Harp.sfz", 1.0f, 0.0f, true } },
+                            { 0, 1, 2 }, 0.0f,
+                            "A dark harp in the crypt: the orchestra's concert harp through a dark filter, a long, cold hall.",
+                            0.0f, 3000.0f, 1.0f, 800.0f, -1.0f, {} });
+        pkAdd (x, raven);
+    }
 }
 
     // GUNSLINGER (0.84.0, the owner's theme and name: the spaghetti-western sound, our own sounds and phrases; no film,
@@ -22359,5 +23023,6 @@ std::vector<Rig> makeExpansionRigs()
     steelTitans ({ Rig::numBanks + 41, rigs });
     wickedGame ({ Rig::numBanks + 42, rigs });
     ronin ({ Rig::numBanks + 43, rigs });
+    nightReign ({ Rig::numBanks + 44, rigs });
     return rigs;
 }
