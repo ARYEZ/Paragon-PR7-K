@@ -41,6 +41,7 @@
 #include "dsp/effects/Gearworks.h"
 #include "dsp/effects/Sort.h"
 #include "dsp/effects/Wobble.h"
+#include "dsp/effects/TranceGate.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1106,4 +1107,29 @@ void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout& l
     layout.add (makeFloat (ParamIDs::wobbleResonance, "Wobble Resonance", { 0.0f, 1.0f, 0.01f }, d.resonance, v, asPercent));
     layout.add (makeFloat (ParamIDs::wobbleTalk, "Wobble Talk", { 0.0f, 1.0f, 0.01f }, d.talk, v, asPercent));
     layout.add (makeFloat (ParamIDs::wobbleDrive, "Wobble Drive", { 0.0f, 1.0f, 0.01f }, d.drive, v, asPercent));
+}
+
+void addTranceGateParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // TRANCE GATE (1.7.0, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 69;
+    using T = effects::TranceGate;
+    const T::Settings d;
+    const ToText asSteps = [] (float value, int) { return juce::String (juce::roundToInt (value)) + " steps"; };
+    const ToText asAttack = [] (float value, int) { return juce::String (T::attackMs (value), 1) + " ms"; };
+    const ToText asRelease = [] (float value, int) { return juce::String (juce::roundToInt (T::releaseMs (value))) + " ms"; };
+    layout.add (makeSwitch (ParamIDs::tgOn, "Trance Gate On", v, false));
+    layout.add (makeFloat (ParamIDs::tgMix, "Trance Gate Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+    layout.add (makeChoice (ParamIDs::tgDivision, "Trance Gate Division", v, T::divisionNames, d.division));
+    layout.add (makeFloat (ParamIDs::tgLength, "Trance Gate Length", { 1.0f, (float) T::maxSteps, 1.0f }, (float) d.length, v, asSteps));
+    layout.add (makeFloat (ParamIDs::tgGate, "Trance Gate Gate", { 0.05f, 1.0f, 0.01f }, d.gate, v, asPercent));
+    layout.add (makeFloat (ParamIDs::tgAttack, "Trance Gate Attack", { 0.0f, 1.0f, 0.01f }, d.attack, v, asAttack));
+    layout.add (makeFloat (ParamIDs::tgRelease, "Trance Gate Release", { 0.0f, 1.0f, 0.01f }, d.release, v, asRelease));
+    layout.add (makeFloat (ParamIDs::tgSwing, "Trance Gate Swing", { 0.0f, 1.0f, 0.01f }, d.swing, v, asPercent));
+    layout.add (makeChoice (ParamIDs::tgStereo, "Trance Gate Stereo", v, T::stereoNames, d.stereo));
+    for (int side = 0; side < 2; ++side)
+        for (int step = 0; step < T::maxSteps; ++step)
+            layout.add (makeFloat (ParamIDs::tgStep (side, step),
+                                   juce::String ("Trance Gate ") + (side == 0 ? "L" : "R") + " Step " + juce::String (step + 1),
+                                   { 0.0f, 1.0f, 0.01f }, T::defaultStep (side, step), v, asPercent));
 }

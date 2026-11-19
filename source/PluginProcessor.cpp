@@ -10,6 +10,15 @@
 
 namespace
 {
+    // TRANCE GATE's step levels' IDs (1.7.0), made once: building them on the audio thread would allocate memory.
+    const std::array<std::array<juce::String, effects::TranceGate::maxSteps>, 2> tgStepIds = []
+    {
+        std::array<std::array<juce::String, effects::TranceGate::maxSteps>, 2> ids;
+        for (int side = 0; side < 2; ++side)
+            for (int step = 0; step < effects::TranceGate::maxSteps; ++step)
+                ids[(size_t) side][(size_t) step] = ParamIDs::tgStep (side, step);
+        return ids;
+    }();
     constexpr double gainRampSeconds = 0.02;
 
     // Extra settings kept in the saved state (DAW project).
@@ -337,6 +346,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->gearworks.prepare (sampleRate, preparedBlockSize);
     rack->sort.prepare (sampleRate, preparedBlockSize);
     rack->wobble.prepare (sampleRate, preparedBlockSize);
+    rack->tranceGate.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1489,6 +1499,28 @@ effects::Wobble::Settings ParagonX1AudioProcessor::getWobbleSettings() const noe
     return s;
 }
 
+effects::TranceGate::Settings ParagonX1AudioProcessor::getTranceGateSettings() const noexcept
+{
+    using T = effects::TranceGate;
+    T::Settings s;
+    s.on = isOn (ParamIDs::tgOn);
+    s.mix = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("tgMix"), ParamIDs::tgMix));
+    s.division = juce::jlimit (0, T::divisionNames.size() - 1, juce::roundToInt (param (ParamIDs::tgDivision)));
+    s.length = juce::jlimit (1, T::maxSteps, juce::roundToInt (param (ParamIDs::tgLength)));
+    s.gate = juce::jlimit (0.05f, 1.0f, effectParam (ModDestinations::effect ("tgGate"), ParamIDs::tgGate));
+    s.attack = param (ParamIDs::tgAttack);
+    s.release = param (ParamIDs::tgRelease);
+    s.swing = param (ParamIDs::tgSwing);
+    s.stereo = juce::jlimit (0, T::stereoNames.size() - 1, juce::roundToInt (param (ParamIDs::tgStereo)));
+    if (s.on)   // the 64 step levels only read while it's on
+        for (int step = 0; step < T::maxSteps; ++step)
+        {
+            s.left[(size_t) step] = param (tgStepIds[0][(size_t) step].toRawUTF8());
+            s.right[(size_t) step] = param (tgStepIds[1][(size_t) step].toRawUTF8());
+        }
+    return s;
+}
+
 effects::Sort::Settings ParagonX1AudioProcessor::getSortSettings() const noexcept
 {
     using S = effects::Sort;
@@ -1995,6 +2027,8 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->wobble.process (block, getWobbleSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.97.0: the wobble
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
+        // 1.7.0: the trance gate, last, so the reverb, echoes and signature effects are chopped with the sound.
+        rack->tranceGate.process (block, getTranceGateSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);
     }
     processRack (block);
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (param (ParamIDs::outputGain) + param (ParamIDs::patchLevel)));

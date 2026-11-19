@@ -203,7 +203,7 @@ TEST_CASE ("ORNAMENT in the plugin: parameters, matrix destination, MACRO 3, the
 {
     REQUIRE (ModDestinations::find (ParamIDs::ornAmount) != nullptr);
     CHECK (ModDestinations::find (ParamIDs::ornAmount)->group == "FX Ornament");
-    CHECK (signatureNames()[signatureNames().size() - 1] == "ORNAMENT");
+    CHECK (signatureNames()[37] == "ORNAMENT");
     ParagonX1AudioProcessor processor;
     processor.setPlayConfigDetails (0, 2, sampleRate, blockSize);
     processor.prepareToPlay (sampleRate, blockSize);

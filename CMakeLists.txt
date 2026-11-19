@@ -104,6 +104,7 @@ target_sources(ParagonX1
         source/dsp/effects/Gearworks.cpp
         source/dsp/effects/Sort.cpp
         source/dsp/effects/Wobble.cpp
+        source/dsp/effects/TranceGate.cpp
         source/dsp/effects/Drive.cpp
         source/dsp/effects/Glitch.cpp
         source/dsp/effects/Abyss.cpp
@@ -168,6 +169,7 @@ target_sources(ParagonX1
         source/ui/RagtimePage.cpp
         source/ui/SortPage.cpp
         source/ui/WobblePage.cpp
+        source/ui/TranceGatePage.cpp
         source/ui/RunnerPage.cpp
         source/ui/PressPage.cpp
         source/ui/PolymeterPage.cpp

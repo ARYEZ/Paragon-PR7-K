@@ -472,6 +472,8 @@ public:
     const effects::Sort& getSort() const noexcept { return rack->sort; }
     effects::Wobble::Settings getWobbleSettings() const noexcept;                // WOBBLE (0.97.0)
     const effects::Wobble& getWobble() const noexcept { return rack->wobble; }
+    effects::TranceGate::Settings getTranceGateSettings() const noexcept;        // TRANCE GATE (1.7.0)
+    const effects::TranceGate& getTranceGate() const noexcept { return rack->tranceGate; }
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }

@@ -2,6 +2,16 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.7.0
+
+The TRANCE GATE (your ask: a proper trance gate, as its own effect).
+
+- **TRANCE GATE**, in the SIGNATURE slot: the whole sound chopped in time with your song by a pattern of steps. It sits at the very end of the effects, so the reverb, the echoes and every signature effect are chopped with the sound (the STEP SEQUENCER works inside the synth, before the effects, so its gaps fill up with the reverb; this one cuts them).
+- **The pattern:** up to 32 steps on its page. Click a step to open or close it, drag across steps to paint them, hold SHIFT (or drag with the right mouse button) to set a step's level by height: a soft step lets some sound through for accents. START FROM loads a pattern: CLASSIC, SIXTEENTHS, EIGHTHS, OFFBEAT, STUTTER, ACCENTS, BROKEN, PING-PONG.
+- **STEREO:** a second row for the right side, so the gate can bounce between the speakers (PING-PONG sets it up).
+- **The controls:** STEP (1/8, 1/16, 1/32 and triplets), LENGTH (1 to 32 steps), GATE (how much of each step is open), ATTACK and RELEASE (from a hard chop to a soft pump), SWING, and MIX (how deep it cuts). MIX and GATE can be moved by the mod matrix (a macro, an LFO, the mod wheel).
+- Off by default: every preset and project sounds exactly as before. Our own design.
+
 ## 1.6.0
 
 NIGHT REIGN, the gothic symphonic-metal bank, with its choir and its signature effect.

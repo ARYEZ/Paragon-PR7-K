@@ -697,5 +697,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addGearworksParameters (layout);       // GEARWORKS (0.91.0, version hint 59): RackParameters.cpp
     addSortParameters (layout);            // SORT (0.93.0, version hint 61): RackParameters.cpp
     addWobbleParameters (layout);          // WOBBLE (0.97.0, version hint 63): RackParameters.cpp
+    addTranceGateParameters (layout);      // TRANCE GATE (1.7.0, version hint 69): RackParameters.cpp
     return layout;
 }

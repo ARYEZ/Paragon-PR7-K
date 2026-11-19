@@ -41,6 +41,7 @@
 #include "ui/PressPage.h"
 #include "ui/PolymeterPage.h"
 #include "ui/OrnamentPage.h"
+#include "ui/TranceGatePage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -80,7 +81,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks, ragtime, sort, wobble, runner, press, polymeter, ornament };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks, ragtime, sort, wobble, runner, press, polymeter, ornament, tranceGate };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -121,6 +122,7 @@ public:
     PressPage& getPressPage() noexcept { return pressPage; }
     PolymeterPage& getPolymeterPage() noexcept { return polymeterPage; }
     OrnamentPage& getOrnamentPage() noexcept { return ornamentPage; }
+    TranceGatePage& getTranceGatePage() noexcept { return tranceGatePage; }
     BloomPage& getBloomPage() noexcept { return bloomPage; }
     LegionPage& getLegionPage() noexcept { return legionPage; }
     OverchargePage& getOverchargePage() noexcept { return overchargePage; }
@@ -155,7 +157,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 41> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 42> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -205,6 +207,7 @@ private:
     PressPage pressPage;                 // 1.3.0
     PolymeterPage polymeterPage;         // 1.4.0
     OrnamentPage ornamentPage;           // 1.6.0
+    TranceGatePage tranceGatePage;       // 1.7.0
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

@@ -114,7 +114,8 @@ namespace ModDestinations
                 { "FX Runner", "Amount" }, { "FX Runner", "Accent" }, { "FX Runner", "Lift" },
                 { "FX Press", "Amount" }, { "FX Press", "Speed" },
                 { "FX Polymeter", "Amount" }, { "FX Polymeter", "Accent" }, { "FX Polymeter", "Lift" },
-                { "FX Ornament", "Amount" } };
+                { "FX Ornament", "Amount" },
+                { "FX Trance Gate", "Mix" }, { "FX Trance Gate", "Gate" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

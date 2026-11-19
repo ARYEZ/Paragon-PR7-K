@@ -3,6 +3,7 @@
 #include "dsp/synth/NaviComputer.h"
 #include "dsp/effects/Sweep.h"
 #include "dsp/effects/Wobble.h"
+#include "dsp/effects/TranceGate.h"
 #include "dsp/effects/Redline.h"
 #include "dsp/effects/FreezeTag.h"
 #include "dsp/effects/Crossroads.h"
@@ -631,19 +632,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 41> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 42> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 41> specs;
+    std::array<RackUnit::Spec, 42> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -2377,6 +2378,63 @@ std::array<RackUnit::Spec, 41> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (40); };
+    }
+
+    // TRANCE GATE (1.7.0): the step playing in big digits and the pattern as a row of lights, the settings beside it;
+    // the keys set MIX: PULSE, CHOP, SLICE; the ladder how open the gate is now.
+    {
+        auto& s = specs[41];
+        s.name = "TRANCE GATE";
+        s.kind = "THE STEPPED  GATE";
+        s.onParameterIds = { ParamIDs::tgOn };
+        s.powerTooltip = "TRANCE GATE on or off: the whole sound chopped in time with the song by a pattern of steps, the reverb "
+                         "and echoes too. Click POWER (the word) or EDIT for its page and the pattern";
+        struct Stage { const char* name; float mix; const char* tip; };
+        static constexpr Stage stages[] = { { "PULSE", 0.4f, "A gentle pulse: the closed steps dip, not silent" },
+                                            { "CHOP", 0.75f, "Most of the way: the closed steps well down" },
+                                            { "SLICE", 1.0f, "All of it: the closed steps silent" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::tgMix) - t.mix) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::tgMix, t.mix); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::tgMix, "MIX" }, RackUnit::Knob { ParamIDs::tgGate, "GATE" } };
+        s.ladderTitle = "OPEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "OPEN", "", "", "", "SHUT" };
+        s.ladderReading = [&p]
+        {
+            const auto& fx = p.getTranceGate();
+            return p.getTranceGateSettings().on && ! fx.isResting() ? 0.5f * (fx.getLevel (0) + fx.getLevel (1)) : 1.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto settings = p.getTranceGateSettings();
+            const auto& fx = p.getTranceGate();
+            const auto step = fx.getStep();
+            const auto end = drawNumber (g, juce::String (step >= 0 ? step + 1 : 0), left.getTopLeft(), h);
+            line (g, "/" + juce::String (settings.length) + " STEP", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            // The pattern as a row of lights (the step playing brightest).
+            auto lights = left.withTop (left.getY() + h * 1.15f).withHeight (h * 0.3f);
+            const auto n = juce::jlimit (1, 32, settings.length);
+            const auto w = lights.getWidth() / (float) n;
+            for (int k = 0; k < n; ++k)
+            {
+                const auto level = valueOf (p, ParamIDs::tgStep (0, k).toRawUTF8());
+                g.setColour (juce::Colour (0xffff3d6e).withAlpha (k == step ? 1.0f : 0.15f + 0.5f * level));
+                g.fillRect (lights.getX() + w * k + w * 0.15f, lights.getBottom() - lights.getHeight() * juce::jmax (0.15f, level),
+                            w * 0.7f, lights.getHeight() * juce::jmax (0.15f, level));
+            }
+            column (g, content, { "MIX " + textOf (p, ParamIDs::tgMix), "STEP " + textOf (p, ParamIDs::tgDivision),
+                                  "GATE " + textOf (p, ParamIDs::tgGate), "SWING " + textOf (p, ParamIDs::tgSwing) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (41); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

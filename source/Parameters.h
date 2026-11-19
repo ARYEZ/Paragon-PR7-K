@@ -733,6 +733,19 @@ namespace ParamIDs
     inline constexpr auto ornLength = "ornLength";   // synth::ornament::lengthNames: how long a trill goes on
     inline constexpr auto ornKey    = "ornKey";      // synth::sirocco::keyNames
     inline constexpr auto ornScale  = "ornScale";    // synth::arp::scaleNames
+    // TRANCE GATE (1.7.0, version hint 69, effects::TranceGate): a stepped volume gate in time with the song at the
+    // very end of the effects (the reverb, echoes and signature effects chopped with it). In presets.
+    inline constexpr auto tgOn       = "tgOn";
+    inline constexpr auto tgMix      = "tgMix";        // 0 to 1: how deep it cuts
+    inline constexpr auto tgDivision = "tgDivision";   // effects::TranceGate::divisionNames: each step's length
+    inline constexpr auto tgLength   = "tgLength";     // 1 to 32 steps
+    inline constexpr auto tgGate     = "tgGate";       // 0.05 to 1: the share of each step open
+    inline constexpr auto tgAttack   = "tgAttack";     // 0 to 1: 0.5 to 40 ms
+    inline constexpr auto tgRelease  = "tgRelease";    // 0 to 1: 1 to 300 ms
+    inline constexpr auto tgSwing    = "tgSwing";      // 0 to 1: every second step up to half a step late
+    inline constexpr auto tgStereo   = "tgStereo";     // effects::TranceGate::stereoNames
+    // Each step's level: "tgStepL1"... "tgStepL32" (left, or both sides when LINKED), "tgStepR1"... (right).
+    inline juce::String tgStep (int side, int step) { return juce::String (side == 0 ? "tgStepL" : "tgStepR") + juce::String (step + 1); }
     // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
     inline constexpr auto sortOn     = "sortOn";
     inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)
@@ -858,4 +871,5 @@ void addCrossroadsParameters (juce::AudioProcessorValueTreeState::ParameterLayou
 void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (0.91.0)
 void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);         // RackParameters.cpp (0.93.0)
 void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.97.0)
+void addTranceGateParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (1.7.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)
