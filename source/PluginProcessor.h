@@ -482,6 +482,10 @@ public:
     int getRagtimeStrikes() const noexcept { return engine.getRagtimeStrikes(); }
     synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (1.0.0)
     synth::press::Settings getPressSettings() const noexcept;                    // PRESS (1.3.0)
+    synth::ornament::Settings getOrnamentSettings() const noexcept;              // ORNAMENT (1.6.0)
+    int getOrnamentCount() const noexcept { return engine.getOrnamentCount(); }
+    int getOrnamentLast() const noexcept { return engine.getOrnamentLast(); }
+    int getOrnamentNow() const noexcept { return engine.getOrnamentNow(); }
     int getPressCount() const noexcept { return engine.getPressCount(); }
     int getPressLast() const noexcept { return engine.getPressLast(); }
     int getPressNow() const noexcept { return engine.getPressNow(); }

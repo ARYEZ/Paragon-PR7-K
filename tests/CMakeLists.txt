@@ -99,6 +99,7 @@ add_executable(ParagonX1Tests
     RunnerTests.cpp
     PressTests.cpp
     PolymeterTests.cpp
+    OrnamentTests.cpp
     RedlineTests.cpp
     FreezeTagTests.cpp
     CrossroadsTests.cpp

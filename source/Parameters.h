@@ -724,6 +724,15 @@ namespace ParamIDs
     inline constexpr auto polyDensity = "polyDensity";   // synth::polymeter::densityNames
     inline constexpr auto polyAccent  = "polyAccent";    // 0 to 1: the subdivisions softer
     inline constexpr auto polyLift    = "polyLift";      // 0 to 1: the damper's lift before each strike
+    // ORNAMENT (1.6.0, version hint 68, synth::ornament): NIGHT REIGN's signature: trills, mordents and turns in key on
+    // the notes played, in time with the song. In presets.
+    inline constexpr auto ornOn     = "ornOn";
+    inline constexpr auto ornAmount = "ornAmount";   // 0 to 1: how many notes are ornamented (the macro's)
+    inline constexpr auto ornStyle  = "ornStyle";    // synth::ornament::styleNames
+    inline constexpr auto ornSpeed  = "ornSpeed";    // synth::ornament::speedNames: each step's length
+    inline constexpr auto ornLength = "ornLength";   // synth::ornament::lengthNames: how long a trill goes on
+    inline constexpr auto ornKey    = "ornKey";      // synth::sirocco::keyNames
+    inline constexpr auto ornScale  = "ornScale";    // synth::arp::scaleNames
     // SORT (0.93.0, version hint 61, effects::Sort): the Severance rebuild's signature: the phrase re-filed in order.
     inline constexpr auto sortOn     = "sortOn";
     inline constexpr auto sortAmount = "sortAmount";   // 0 to 1: live to re-filed (the macro's)

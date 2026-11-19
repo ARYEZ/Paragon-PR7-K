@@ -171,6 +171,7 @@ target_sources(ParagonX1
         source/ui/RunnerPage.cpp
         source/ui/PressPage.cpp
         source/ui/PolymeterPage.cpp
+        source/ui/OrnamentPage.cpp
         source/ui/SynthFace.cpp
         source/ui/EnvelopeGrid.cpp
         source/ui/FreeformEditor.cpp

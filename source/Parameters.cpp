@@ -614,6 +614,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         add (layout, polyLift, "Polymeter Lift", { 0.0f, 1.0f }, d.lift, asPercent, stagePoly);
     }
 
+    // ORNAMENT (1.6.0): trills, mordents and turns in key; in presets. Off and at 0 by default.
+    {
+        constexpr int stageOrnament = 68;
+        const synth::ornament::Settings d;
+        addSwitch (layout, ornOn, "Ornament On", d.on, stageOrnament);
+        add (layout, ornAmount, "Ornament Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stageOrnament);
+        addChoice (layout, ornStyle, "Ornament Style", synth::ornament::styleNames, d.style, stageOrnament);
+        addChoice (layout, ornSpeed, "Ornament Speed", synth::ornament::speedNames, d.speed, stageOrnament);
+        addChoice (layout, ornLength, "Ornament Length", synth::ornament::lengthNames, d.length, stageOrnament);
+        addChoice (layout, ornKey, "Ornament Key", synth::sirocco::keyNames, d.key, stageOrnament);
+        addChoice (layout, ornScale, "Ornament Scale", synth::arp::scaleNames, d.scale, stageOrnament);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);

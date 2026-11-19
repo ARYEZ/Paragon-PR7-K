@@ -284,6 +284,10 @@ namespace synth
             double pressTime = 0.0;                                          // ...seconds since its grid line (negative: before it)
             int pressStyle = -1;                                             // ...press::Style, -1 not pressed
             int pressNote = -1;                                              // ...the note it was judged for (-1: not yet)
+            float ornSemis = 0.0f;                                           // ORNAMENT (1.6.0): this note's ornament now, semitones
+            double ornStart = 0.0;                                           // ...the beat its first step starts on
+            int ornStyle = -1;                                               // ...ornament::Style, -1 not ornamented
+            int ornNote = -1;                                                // ...the note it was judged for (-1: not yet)
             float ragVelocity = 1.0f;                                        // RAGTIME (0.92.0): the velocity it was played at
             float ragGain = 1.0f;                                            // ...the damper's lift (1: none)
             std::uint8_t polyMask = 0;                                       // POLYMETER (1.4.0): the meters (bits) this note plays
@@ -317,6 +321,7 @@ namespace synth
         void handle (const juce::MidiMessage&, const Settings&) noexcept;
         void render (float* left, float* right, int numSamples, const Settings&) noexcept;
         void renderPress (Voice&, int n, const press::Settings&, int interval) noexcept;
+        void renderOrnament (Voice&, const ornament::Settings&, int interval) noexcept;
         void renderVoice (Voice&, float* left, float* right, int numSamples, const Settings&, int interval) noexcept;
         // This note's own copy of the settings with its modulation applied (`interval`: which of render's intervals it is).
         const Settings& modulate (Voice&, int n, const Settings&, int interval) noexcept;
@@ -560,6 +565,12 @@ namespace synth
         bool pressPlaying = false;
         float pressLetGo = 1.0f;
         SharedInt pressCountShown {}, pressLastShown {}, pressNowShown {};
+        // ORNAMENT (1.6.0): the song position at each interval's start; its own count while stopped; the glide.
+        std::array<double, maxIntervals> ornBeats {};
+        double ornClock = 0.0, ornSecondsPerBeat = 0.5;
+        bool ornPlaying = false;
+        float ornGlide = 1.0f;
+        SharedInt ornCountShown {}, ornLastShown {}, ornNowShown {};
         // RAGTIME (0.92.0): each interval's strike (bits ragtime::Who, 4 accented) and lift (who's lifted for the
         // strike just after it), its own clock while stopped, the lowest key held (the bass), the step for the page.
         std::array<std::uint8_t, maxIntervals> ragStrikes {}, ragLifts {};
@@ -601,6 +612,11 @@ namespace synth
         int getPressCount() const noexcept { return pressCountShown.load() + 1; }
         int getPressLast() const noexcept { return pressLastShown.load(); }
         int getPressNow() const noexcept { return pressNowShown.load(); }
+        // ORNAMENT: notes ornamented so far (0 until the first); the last as style x 1000 + its note (-1 none); and the
+        // newest ornamented note's move now, scale steps x 100 in semitones (-1000 none).
+        int getOrnamentCount() const noexcept { return ornCountShown.load() + 1; }
+        int getOrnamentLast() const noexcept { return ornLastShown.load(); }
+        int getOrnamentNow() const noexcept { return ornNowShown.load(); }
         int getRagtimeStep() const noexcept { return ragStepShown.load(); }   // RAGTIME: the roll's step (0-15; -1 not playing)
         int getRagtimeStrikes() const noexcept { return ragStrikeCount.load() + 1; }   // ...strikes so far
         // THE GRID (the front panel's lower half, 0.98.0): where the newest note sounding (a key or an arp; not

@@ -1088,6 +1088,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.ragtime = getRagtimeSettings();
         s.runner = getRunnerSettings();
         s.press = getPressSettings();
+        s.ornament = getOrnamentSettings();
         s.polymeter = getPolymeterSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
@@ -1553,6 +1554,19 @@ synth::runner::Settings ParagonX1AudioProcessor::getRunnerSettings() const noexc
     r.accent = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerAccent"), ParamIDs::runnerAccent));
     r.lift = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("runnerLift"), ParamIDs::runnerLift));
     return r;
+}
+
+synth::ornament::Settings ParagonX1AudioProcessor::getOrnamentSettings() const noexcept
+{
+    synth::ornament::Settings s;
+    s.on = isOn (ParamIDs::ornOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("ornAmount"), ParamIDs::ornAmount));
+    s.style = juce::jlimit (0, synth::ornament::styleNames.size() - 1, juce::roundToInt (param (ParamIDs::ornStyle)));
+    s.speed = juce::jlimit (0, synth::ornament::speedNames.size() - 1, juce::roundToInt (param (ParamIDs::ornSpeed)));
+    s.length = juce::jlimit (0, synth::ornament::lengthNames.size() - 1, juce::roundToInt (param (ParamIDs::ornLength)));
+    s.key = juce::jlimit (0, synth::sirocco::keyNames.size() - 1, juce::roundToInt (param (ParamIDs::ornKey)));
+    s.scale = juce::jlimit (0, synth::arp::scaleNames.size() - 1, juce::roundToInt (param (ParamIDs::ornScale)));
+    return s;
 }
 
 synth::press::Settings ParagonX1AudioProcessor::getPressSettings() const noexcept

@@ -232,7 +232,7 @@ TEST_CASE ("POLYMETER in the plugin: parameters, matrix destinations, MACRO 3, t
         REQUIRE (ModDestinations::find (id) != nullptr);
         CHECK (ModDestinations::find (id)->group == "FX Polymeter");
     }
-    CHECK (signatureNames()[signatureNames().size() - 1] == "POLYMETER");
+    CHECK (signatureNames()[36] == "POLYMETER");
     ParagonX1AudioProcessor processor;
     processor.setPlayConfigDetails (0, 2, sampleRate, blockSize);
     processor.prepareToPlay (sampleRate, blockSize);
