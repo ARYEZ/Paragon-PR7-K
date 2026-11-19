@@ -261,6 +261,7 @@ namespace
             { "Wasteland Pick", -5.1f },
             { "Wet Neon Pluck", -9.8f },
             { "Wire Shamisen", -5.3f },
+            { "Bell Tower", -10.0f }, { "Pizzicato Masque", 0.0f }, { "Raven Pluck", 0.0f },
             { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
             { "Breath Hit", -4.0f }, { "Struck Sculpture", -6.0f }, { "Fretless Slide", 4.0f },
         };
@@ -16513,6 +16514,7 @@ namespace
         route (bells, "macro1", ParamIDs::osc (4, "Volume"), 0.1f);
         finish (bells, "BRIGHT", RT::cathedral, 0.8f, 0.24f, 40.0f);
         ornament (bells, { orn::turn, 1, 1 });
+        bells.set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);   // a held chord lines its partials up
         orchestra (bells, { { { 0, "Idiophones/Struck Idiophones/Tubular Bells 1.sfz", 1.0f, 0.0f, false, &vcsl } },
                             { 0, 1, 2, 3, 4 }, 0.0f,
                             "The castle's bell tower tolling midnight: real tubular bells (VCSL's), a long cathedral.",
