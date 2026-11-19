@@ -261,7 +261,7 @@ namespace
             { "Wasteland Pick", -5.1f },
             { "Wet Neon Pluck", -9.8f },
             { "Wire Shamisen", -5.3f },
-            { "Bell Tower", -11.5f }, { "Pizzicato Masque", -2.7f }, { "Raven Pluck", -2.0f },
+            { "Bell Tower", -13.0f }, { "Pizzicato Masque", -2.7f }, { "Raven Pluck", -2.0f },
             { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
             { "Breath Hit", -4.0f }, { "Struck Sculpture", -6.0f }, { "Fretless Slide", 4.0f },
         };
@@ -16135,7 +16135,7 @@ namespace
                                   { 1, "T_ah.sfz", 1.0f, -0.1f, true, &choir },
                                   { 2, "A_ah.sfz", 1.0f, 0.1f, true, &choir },
                                   { 4, "S_ah.sfz", 1.0f, 0.25f, true, &choir } },
-                                { 0, 1, 2 }, -6.5f,
+                                { 0, 1, 2 }, -7.0f,
                                 "The centrepiece: the castle's great choir in the cathedral. Real singers (epic-choir, from "
                                 "VocalSet): basses, tenors, altos and sopranos on \"ah\", each section singing the notes in "
                                 "its own range, held as long as you hold the keys (SFZ HOLD), the synth's basses an octave "
@@ -16170,7 +16170,7 @@ namespace
         ornament (velvet, { orn::mixed, 0, 1 });
         velvet.set (ParamIDs::patchLevel, -13.0f);
         orchestra (velvet, { { { 3, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.0f, true } },
-                             {}, -7.0f,
+                             {}, -8.4f,
                              "The ballroom's string section: the orchestra's whole section, held as long as you hold the "
                              "keys (SFZ HOLD), PR7-K's own strings quietly under it.",
                              -1.0f, 1000.0f, 0.9f, 1200.0f, -1.0f,
@@ -16203,7 +16203,7 @@ namespace
         orchestra (requiem, { { { 0, "T_oo.sfz", 1.0f, -0.2f, true, &choir },
                                 { 1, "B_oo.sfz", 1.0f, 0.2f, true, &choir },
                                 { 3, "Strings - Notation/Celli Sustain.sfz", 0.8f, 0.0f, true } },
-                              { 0, 1 }, -8.1f,
+                              { 0, 1 }, -10.7f,
                               "A requiem sung in the crypt: real tenors and basses (epic-choir, from VocalSet) on a dark "
                               "\"oo\", the orchestra's cellos under them, all held as long as you hold the keys (SFZ HOLD). "
                               "The mod wheel is the singers' dynamics.",
@@ -16274,7 +16274,7 @@ namespace
         route (cellos, "modWheel", ParamIDs::fltEnv, 0.2f);
         route (cellos, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (cellos, "BRIGHT", RT::hall, 0.55f, 0.12f);
-        ornament (cellos, { orn::mordent, 0, 1 });
+        ornament (cellos, { orn::mordent, 3, 1 });
         cellos.set (ParamIDs::patchLevel, 0.0f);
         orchestra (cellos, { { { 0, "Strings - Notation/Celli Staccato.sfz", 1.0f, -0.15f, true },
                                { 3, "Strings - Notation/Basses Staccato.sfz", 1.0f, 0.15f, true } },
@@ -16310,7 +16310,7 @@ namespace
         route (iron, "modWheel", ParamIDs::fltCutoff, 0.2f);
         route (iron, "macro1", ParamIDs::fltCutoff, 0.15f);
         finish (iron, "BRIGHT", RT::room, 0.4f, 0.08f);
-        ornament (iron, { orn::mordent, 0, 1 });
+        ornament (iron, { orn::mordent, 3, 1 });
         iron.set (ParamIDs::patchLevel, 5.2f);
         orchestra (iron, { { { 0, "Programs/05-green_staccato.sfz", 1.0f, 0.0f, true, &guitars } },
                            { 0, 1 }, 5.0f,
@@ -16363,7 +16363,7 @@ namespace
         route (duel, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (duel, "BRIGHT", RT::room, 0.55f, 0.16f);
         ornament (duel, { orn::mixed, 2, 0 });
-        duel.set (ParamIDs::patchLevel, -0.6f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        duel.set (ParamIDs::patchLevel, -2.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         orchestra (duel, { { { 0, "Harpsichord/Harpsichord Full.sfz", 1.0f } }, { 0, 1, 2 }, 8.2f,
                            "The ballroom's harpsichord: the orchestra's harpsichord (both its registers), a stone room.",
                            0.0f, 300.0f, 1.0f, 300.0f, -1.0f, {} });
@@ -16412,7 +16412,7 @@ namespace
         route (ostinato, "macro1", ParamIDs::voiceVowel, 0.2f);
         finish (ostinato, "VOWEL", RT::cathedral, 0.75f, 0.25f, 40.0f);
         ornament (ostinato, { orn::mordent, 3, 1 });
-        ostinato.set (ParamIDs::patchLevel, 0.4f);
+        ostinato.set (ParamIDs::patchLevel, -0.6f);
         orchestra (ostinato, { { { 0, "T_ah.sfz", 1.0f, -0.2f, true, &choir },
                                  { 2, "A_ah.sfz", 1.0f, 0.2f, true, &choir },
                                  { 3, "S_ah.sfz", 0.8f, 0.0f, true, &choir } },
@@ -16457,8 +16457,8 @@ namespace
         auto blast = x.make ("Blast Beat", 15, { "Arp", "Crypt", "Drums", "Metal" },
             "The drummer under it all: hold any key and a double kick runs in sixteenths, a snare on the backbeat and a "
             "blast on the last beat, toms rolling at the bar's end (sines falling into their notes, the stick's crack in "
-            "the noise). The key you hold doesn't change it. Turn up ORNAMENT and the drums are struck in grace-note "
-            "flams. MOD WHEEL: a brighter crack. MACROS: BRIGHT, SPACE, ORNAMENT.");
+            "the noise). The key you hold doesn't change it. Turn up ORNAMENT and the drums' pitch flicks up and "
+            "back after the hits. MOD WHEEL: a brighter crack. MACROS: BRIGHT, SPACE, ORNAMENT.");
         blast.osc (0, "Wave", sine).osc (0, "Transpose", -31.0f).osc (0, "Volume", 0.9f).osc (0, "PhaseRand", 0.0f)
              .osc (0, "Arp", 1.0f).osc (0, "Filter", 0.0f)
              .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -10.0f).osc (1, "Volume", 0.35f)
