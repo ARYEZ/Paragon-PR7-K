@@ -226,6 +226,13 @@ void SfzChooser::showMenu()
             for (const auto& [key, label] : instrument->switchLabels)
                 menu.addItem (1000 + key, label + "   (" + juce::MidiMessage::getMidiNoteName (key, true, true, 4) + ")", true, key == current);
         }
+        // SFZ HOLD (1.6.0): unlooped recordings given a loop of their own.
+        menu.addSeparator();
+        const auto holding = processor.getParameters().getRawParameterValue (ParamIDs::osc (oscillator, "SfzHold"))->load() > 0.5f;
+        menu.addItem (5, "HOLD: notes last as long as the key (loops recordings that have none)", true, holding);
+        if (holding)
+            menu.addItem (109, juce::String (instrument->held) + " of " + juce::String ((int) instrument->samples.size())
+                                   + " samples given a loop (struck and short ones play as recorded)", false, false);
         if (instrument->wheelDynamics)
             menu.addItem (108, "Dynamics on the mod wheel" + juce::String (instrument->setCc1 >= 0 ? " (" + juce::String (juce::roundToInt (instrument->setCc1 / 1.27f)) + "% until it's moved)" : juce::String()),
                           false, false);
@@ -259,6 +266,11 @@ void SfzChooser::showMenu()
                             }
                             else if (result == 4)
                                 safe->processor.cancelLibraryDownload();
+                            else if (result == 5)
+                            {
+                                if (auto* p = safe->processor.getParameters().getParameter (ParamIDs::osc (safe->oscillator, "SfzHold")))
+                                    p->setValueNotifyingHost (p->getValue() > 0.5f ? 0.0f : 1.0f);   // the timer loads it again
+                            }
                             else if (result >= 1000 && result < 1128)
                             {
                                 // A playing style: its switch key pressed and let go, as from a keyboard.
