@@ -211,6 +211,7 @@ TEST_CASE ("MIMIC's panel picks a note: the best at first, another by a click, t
 // the made and refined sounds (the recording's note held as long) beside the cut note, to compare by ear.
 #include "MimicRefiner.h"
 #include "rigs/MimicRig.h"
+#include "dsp/synth/Wavetable.h"
 
 TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
 {
@@ -239,6 +240,28 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
 
     std::printf ("  movement: %.3f s a round (alike %.2f), brightness %.2f oct, level %.1f dB; %d attack frames\n",
                  a.movementSeconds, a.movementStrength, a.movementOctaves, a.movementDb, a.attackFrames);
+    {
+        // The table's own spectrum (round frames, equal weight), in the bands the comparison script uses.
+        std::vector<double> power (121, 0.0);
+        for (int f = a.attackFrames; f < a.table.numFrames() - 1; ++f)
+        {
+            const auto levels = synth::Wavetable::harmonicLevels (a.table.samples->data() + (size_t) f * (size_t) a.table.frameSize, a.table.frameSize, 120);
+            for (int k = 1; k <= 120; ++k)
+                power[(size_t) k] += (double) levels[(size_t) k] * levels[(size_t) k];
+        }
+        double top = 0.0;
+        for (int k = 1; k <= 6; ++k)
+            top = juce::jmax (top, power[(size_t) k]);
+        std::printf ("  table bands:");
+        for (const auto [lo, hi] : { std::pair { 1, 4 }, { 5, 8 }, { 9, 16 }, { 17, 32 }, { 33, 64 }, { 65, 120 } })
+        {
+            double sum = 0.0;
+            for (int k = lo; k <= hi; ++k)
+                sum += power[(size_t) k] / top;
+            std::printf (" %.1f", 10.0 * std::log10 (sum / (hi - lo + 1)));
+        }
+        std::printf ("\n");
+    }
     // PARAGON_MIMIC_OFF: what to leave out (any of tone envelope vibrato swoop unison noise movement), to find what helps.
     mimic::Choices choices;
     const auto off = juce::SystemStats::getEnvironmentVariable ("PARAGON_MIMIC_OFF", {});

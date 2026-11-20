@@ -693,24 +693,28 @@ namespace synth::mimic
                 }
             }
             std::vector<Complex> h ((size_t) most + 1);
+            double heard = 0.0;
             for (int k = 1; k <= most; ++k)
             {
                 const auto level = std::sqrt (power[(size_t) k] / (float) juce::jmax (1, used));
                 const auto direction = std::abs (sum[(size_t) k]) > 1.0e-12f ? sum[(size_t) k] / std::abs (sum[(size_t) k]) : Complex (1.0f, 0.0f);
                 h[(size_t) k] = level * direction;
+                heard += (double) level * level;
             }
-            auto cycle = cycleFrom (h, fft, fftScratch);
-            rms = 0.0;
-            for (const auto v : cycle)
-                rms += (double) v * v;
-            rms = std::sqrt (rms / frameSize);
-            return cycle;
+            rms = std::sqrt (heard);   // in harmonic units: only ratios between frames are used
+            return h;
         };
-        auto samples = std::make_shared<std::vector<float>>();
-        const auto addFrame = [&samples] (const std::vector<float>& cycle, double scale)
+        // The frames as harmonics first; then (1.8.0) every frame given each harmonic's common phase, the frames'
+        // sum's: INDEX blends neighbouring frames sample by sample, and where a harmonic's phase differs from one frame
+        // to the next the blend partly cancels it (up to 3 dB halfway, about 2 dB on average for a smeared, unison-
+        // like sound: what made 1.7.0's copies duller than the recording). A held tone's colour is its harmonics'
+        // levels, which are kept exactly.
+        std::vector<std::vector<Complex>> frameHarmonics;
+        std::vector<double> frameScale;
+        const auto addFrame = [&] (std::vector<Complex> h, double scale)
         {
-            for (const auto v : cycle)
-                samples->push_back ((float) (v * scale));
+            frameHarmonics.push_back (std::move (h));
+            frameScale.push_back (scale);
         };
         if (a.movementSeconds > 0.0)
         {
@@ -720,14 +724,13 @@ namespace synth::mimic
             const auto attackSeconds = a.settle - a.start;
             a.attackFrames = juce::jlimit (0, 16, juce::roundToInt (attackSeconds / frameSpacing));
             const auto roundFrames = juce::jlimit (8, maxFrames - a.attackFrames - 1, juce::roundToInt (a.movementSeconds / 0.06));
-            samples->reserve ((size_t) (a.attackFrames + roundFrames + 1) * frameSize);
             for (int f = 0; f < a.attackFrames; ++f)
             {
                 double rms = 0.0;
-                const auto cycle = frameAt ({ a.start + attackSeconds * f / a.attackFrames }, rms);
-                addFrame (cycle, rms > 1.0e-9 ? 0.25 / rms : 0.0);
+                auto h = frameAt ({ a.start + attackSeconds * f / a.attackFrames }, rms);
+                addFrame (std::move (h), rms > 1.0e-12 ? 1.0 / rms : 0.0);
             }
-            std::vector<std::vector<float>> round;
+            std::vector<std::vector<Complex>> round;
             std::vector<double> levels;
             for (int k = 0; k < roundFrames; ++k)
             {
@@ -748,7 +751,7 @@ namespace synth::mimic
             {
                 const auto i = (size_t) (k % roundFrames);
                 const auto against = mean > 1.0e-9 ? juce::jlimit (0.35, 2.8, levels[i] / mean) : 1.0;
-                addFrame (round[i], levels[i] > 1.0e-9 ? 0.25 / levels[i] * against : 0.0);
+                addFrame (round[i], levels[i] > 1.0e-12 ? 1.0 / levels[i] * against : 0.0);
             }
             a.travelSeconds = attackSeconds;
         }
@@ -756,17 +759,49 @@ namespace synth::mimic
         {
             a.travelSeconds = juce::jmax (0.0, (toneEndHop + 0.5) * Analysis::hopSeconds - a.start);
             const auto frames = juce::jlimit (1, maxFrames, juce::roundToInt (a.travelSeconds / frameSpacing));
-            samples->reserve ((size_t) frames * frameSize);
             for (int f = 0; f < frames; ++f)
             {
                 const auto t = frames == 1 ? a.start + juce::jmin (0.1, 0.5 * (steadyFrom + steadyTo) - a.start)
                                            : a.start + a.travelSeconds * f / (frames - 1);
                 double rms = 0.0;
-                const auto cycle = frameAt ({ t }, rms);
-                addFrame (cycle, rms > 1.0e-9 ? 0.25 / rms : 0.0);
+                auto h = frameAt ({ t }, rms);
+                addFrame (std::move (h), rms > 1.0e-12 ? 1.0 / rms : 0.0);
             }
         }
-        a.table = { "MIMIC " + name, frameSize, samples };
+        {
+            size_t most = 0;
+            for (const auto& h : frameHarmonics)
+                most = juce::jmax (most, h.size());
+            std::vector<Complex> common (most, Complex (0.0f, 0.0f));
+            for (size_t f = 0; f < frameHarmonics.size(); ++f)
+                for (size_t k = 1; k < frameHarmonics[f].size(); ++k)
+                    common[k] += frameHarmonics[f][k] * (float) frameScale[f];
+            auto samples = std::make_shared<std::vector<float>>();
+            samples->reserve (frameHarmonics.size() * frameSize);
+            for (size_t f = 0; f < frameHarmonics.size(); ++f)
+            {
+                // Each frame's harmonics scaled to unit power times its level against the others (frameScale).
+                auto h = frameHarmonics[f];
+                double power = 0.0;
+                for (size_t k = 1; k < h.size(); ++k)
+                {
+                    const auto magnitude = std::abs (h[k]) * (float) frameScale[f];
+                    const auto direction = std::abs (common[k]) > 1.0e-20f ? common[k] / std::abs (common[k]) : Complex (1.0f, 0.0f);
+                    h[k] = magnitude * direction;
+                    power += (double) magnitude * magnitude;
+                }
+                // As a cycle, at a quarter of full scale (RMS) for unit power.
+                const auto cycle = cycleFrom (h, fft, fftScratch);
+                double rms = 0.0;
+                for (const auto v : cycle)
+                    rms += (double) v * v;
+                rms = std::sqrt (rms / frameSize);
+                const auto gain = rms > 1.0e-12 ? 0.25 * std::sqrt (power) / rms : 0.0;
+                for (const auto v : cycle)
+                    samples->push_back ((float) (v * gain));
+            }
+            a.table = { "MIMIC " + name, frameSize, samples };
+        }
 
         // UNISON: copies a little out of tune make each harmonic's level rise and fall (beat), the higher the
         // harmonic the faster. A single oscillator's harmonics hold steady.
