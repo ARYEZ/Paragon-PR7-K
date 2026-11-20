@@ -285,6 +285,14 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
         }
     }
     auto made = mimic::makeRig (a, choices);
+    // PARAGON_MIMIC_SET: settings to try on the made sound, "id=value,...".
+    for (const auto& item : juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_MIMIC_SET", {}), ",", ""))
+        if (item.contains ("="))
+            made.parameters[item.upToFirstOccurrenceOf ("=", false, false).trim()] = item.fromFirstOccurrenceOf ("=", false, false).getFloatValue();
+    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_MIMIC_DUMP", {}).isNotEmpty())
+        for (const auto& [id, value] : made.parameters)
+            if (id.startsWith ("osc") || id.startsWith ("menv") || id.startsWith ("amp"))
+                std::printf ("    %s = %g\n", id.toRawUTF8(), value);
     const auto first = refiner.score (made, a);
     std::printf ("MATCH %.1f%% (tone %.2f dB, loudness %.2f dB)\n", first.match, first.toneDb, first.loudnessDb);
     refiner.begin (made, a, choices);
