@@ -131,7 +131,11 @@ namespace mimic
                 }
             // ON too: oscillator 1 is on by default and so isn't among the settings copied; oscillator 3 isn't.
             b.osc (2, "On", 1.0f).osc (0, "Pan", -pan).osc (2, "Pan", pan).osc (0, "PhaseRand", 1.0f).osc (2, "PhaseRand", 1.0f)
-             .osc (0, "UniSpread", 0.0f).osc (2, "UniSpread", 0.0f);
+             .osc (0, "UniSpread", 0.0f).osc (2, "UniSpread", 0.0f)
+             // Two sides' copies beat against each other in the middle as well as on their own side: at the single
+             // oscillator's MIX (0.8) the owner's lead shimmered 0.80 dB per 10 ms against the recording's 0.60; at 0.5
+             // 0.65 (measured).
+             .osc (0, "UniMix", 0.5f).osc (2, "UniMix", 0.5f);
             made.add ("its width (the tone on each side, " + juce::String (juce::roundToInt (pan * 100.0f)) + "% apart)");
         }
 
