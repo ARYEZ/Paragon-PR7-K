@@ -85,7 +85,7 @@ private:
                      make { "MAKE THIS SOUND" }, refineButton { "REFINE" },
                      close { "CLOSE" };
     juce::ToggleButton tone { "TONE" }, envelope { "LOUDNESS" }, vibrato { "VIBRATO" }, swoop { "SWOOP" },
-                       unison { "UNISON" }, noise { "NOISE" };
+                       unison { "UNISON" }, noise { "NOISE" }, movement { "MOVEMENT" };
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Rectangle<int> titleArea, pictureArea, findingsArea, notesArea;
 };

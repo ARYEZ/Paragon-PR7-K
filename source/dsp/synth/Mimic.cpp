@@ -157,6 +157,149 @@ namespace synth::mimic
             fft.performRealOnlyInverseTransform (scratch.data());
             return { scratch.begin(), scratch.begin() + frameSize };
         }
+
+        // A SLOW MOVEMENT (1.8.0): the brightness (the spectrum's centre, in octaves) and the level every 50 ms between
+        // `from` and `to` (seconds), and whether either goes round at a steady pace between 0.6 and 15 s a round: the
+        // lag where the series best matches itself (normalised over the overlap), at least 0.3 alike, with at least
+        // 2.2 rounds heard. The shortest lag nearly as alike as the best is taken (a round, not two), then made exact
+        // from the furthest whole number of rounds that still match.
+        struct Movement { double seconds = 0.0; float strength = 0.0f, octaves = 0.0f, db = 0.0f; };
+
+        Movement findMovement (const std::vector<float>& x, double sampleRate, double from, double to)
+        {
+            Movement found;
+            constexpr double step = 0.05;
+            constexpr int order = 11, size = 1 << order;
+            juce::dsp::FFT fft (order);
+            std::vector<float> work ((size_t) size * 2), window ((size_t) size);
+            for (int i = 0; i < size; ++i)
+                window[(size_t) i] = 0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / (float) size);
+            std::vector<double> bright, level;
+            for (auto t = from; (t + step) * sampleRate + size < (double) x.size() && t < to; t += step)
+            {
+                const auto at = (size_t) (t * sampleRate);
+                std::fill (work.begin(), work.end(), 0.0f);
+                for (int i = 0; i < size; ++i)
+                    work[(size_t) i] = x[at + (size_t) i] * window[(size_t) i];
+                fft.performFrequencyOnlyForwardTransform (work.data(), true);
+                double power = 0.0, weighted = 0.0;
+                for (int k = 1; k < size / 2; ++k)
+                {
+                    const auto p = (double) work[(size_t) k] * work[(size_t) k];
+                    power += p;
+                    weighted += p * k;
+                }
+                if (power < 1.0e-12)
+                    return found;   // a gap: not one held sound
+                bright.push_back (std::log2 (weighted / power * sampleRate / size));
+                level.push_back (10.0 * std::log10 (power));
+            }
+            const auto n = (int) bright.size();
+            if (n * step < 0.6 * 2.2)
+                return found;
+
+            // The lag (in steps) where a series best matches itself, its likeness, and the likeness at every lag.
+            const auto likeness = [n] (std::vector<double> v)
+            {
+                const auto mean = std::accumulate (v.begin(), v.end(), 0.0) / n;
+                for (auto& e : v)
+                    e -= mean;
+                std::vector<double> r ((size_t) n, 0.0);
+                for (int lag = 1; lag < n; ++lag)
+                {
+                    double xy = 0.0, xx = 0.0, yy = 0.0;
+                    for (int i = 0; i + lag < n; ++i)
+                    {
+                        xy += v[(size_t) i] * v[(size_t) (i + lag)];
+                        xx += v[(size_t) i] * v[(size_t) i];
+                        yy += v[(size_t) (i + lag)] * v[(size_t) (i + lag)];
+                    }
+                    r[(size_t) lag] = xx > 0.0 && yy > 0.0 ? xy / std::sqrt (xx * yy) : 0.0;
+                }
+                return r;
+            };
+            const auto shortest = (int) std::ceil (0.6 / step);
+            const auto longest = juce::jmin ((int) (15.0 / step), (int) (n / 2.2));
+            if (longest <= shortest + 2)
+                return found;
+            double bestR = 0.0;
+            int bestLag = 0;
+            std::vector<double> r;
+            for (const auto* series : { &bright, &level })
+            {
+                const auto rs = likeness (*series);
+                // Its peaks (local highs) in the range.
+                double top = 0.0;
+                for (int lag = shortest; lag <= longest; ++lag)
+                    if (rs[(size_t) lag] > rs[(size_t) (lag - 1)] && rs[(size_t) lag] >= rs[(size_t) (lag + 1)])
+                        top = juce::jmax (top, rs[(size_t) lag]);
+                for (int lag = shortest; lag <= longest; ++lag)
+                    if (rs[(size_t) lag] > rs[(size_t) (lag - 1)] && rs[(size_t) lag] >= rs[(size_t) (lag + 1)]
+                        && rs[(size_t) lag] >= 0.85 * top)
+                    {
+                        if (rs[(size_t) lag] > bestR)
+                        {
+                            bestR = rs[(size_t) lag];
+                            bestLag = lag;
+                            r = rs;
+                        }
+                        break;   // the shortest of the nearly best
+                    }
+            }
+            if (bestR < 0.3 || bestLag == 0)
+                return found;
+            // A fraction of a step (the peak's parabola), then from the furthest whole number of rounds still alike.
+            const auto peakAt = [&r, n] (double near)
+            {
+                const auto reach = juce::jmax (2, (int) (near * 0.08));
+                auto best = juce::roundToInt (near);
+                for (int lag = juce::jmax (2, best - reach); lag <= juce::jmin (n - 2, best + reach); ++lag)
+                    if (r[(size_t) lag] > r[(size_t) best])
+                        best = lag;
+                best = juce::jlimit (1, n - 2, best);
+                const auto a = r[(size_t) (best - 1)], b = r[(size_t) best], c = r[(size_t) (best + 1)];
+                const auto d = a - 2.0 * b + c;
+                return std::make_pair (best + (d < -1.0e-12 ? juce::jlimit (-0.5, 0.5, 0.5 * (a - c) / d) : 0.0), b);
+            };
+            auto lag = peakAt (bestLag).first;
+            for (int k = 2; k * lag < n * 0.75; ++k)
+            {
+                const auto [at, likenessThere] = peakAt (k * lag);
+                if (likenessThere < 0.25)
+                    break;
+                lag = at / k;
+            }
+            found.seconds = lag * step;
+            found.strength = (float) bestR;
+
+            // How far it swings: the series folded onto one round (its average at each point), peak to peak.
+            const auto swing = [&] (const std::vector<double>& v)
+            {
+                constexpr int points = 24;
+                std::vector<double> sum (points, 0.0), count (points, 0.0);
+                for (int i = 0; i < n; ++i)
+                {
+                    const auto phase = std::fmod (i / lag, 1.0);
+                    const auto p = juce::jmin (points - 1, (int) (phase * points));
+                    sum[(size_t) p] += v[(size_t) i];
+                    count[(size_t) p] += 1.0;
+                }
+                double low = 1.0e9, high = -1.0e9;
+                for (int p = 0; p < points; ++p)
+                    if (count[(size_t) p] > 0.0)
+                    {
+                        low = juce::jmin (low, sum[(size_t) p] / count[(size_t) p]);
+                        high = juce::jmax (high, sum[(size_t) p] / count[(size_t) p]);
+                    }
+                return (float) juce::jmax (0.0, high - low);
+            };
+            found.octaves = swing (bright);
+            found.db = swing (level);
+            // Too small to matter (a hair of brightness, under a dB): not a movement.
+            if (found.octaves < 0.1f && found.db < 1.0f)
+                found = {};
+            return found;
+        }
     }
 
     juce::String noteName (int note)
@@ -360,6 +503,58 @@ namespace synth::mimic
                 ++toneEndHop;
         }
 
+        // A SLOW MOVEMENT (1.8.0), in a held sound: if its tone goes round and round, its level's ups and downs are
+        // part of that (they go in the frames), not a fall to a lower sustain. So the loudness is fitted again: the
+        // attack's peak looked for in the first second only, the held level as the steady part's average power; a
+        // peak no more than 2 dB over that is no peak (SUSTAIN 1, the AMP straight to its level).
+        if (a.sustained)
+        {
+            const auto m = findMovement (x, sampleRate, a.start + 0.3, a.releaseStart);
+            if (m.seconds > 0.0)
+            {
+                a.movementSeconds = m.seconds;
+                a.movementStrength = m.strength;
+                a.movementOctaves = m.octaves;
+                a.movementDb = m.db;
+                // The level smoothed over 100 ms (power): unison's shimmer makes single 10 ms readings jump a few dB
+                // above the sound's real level.
+                const auto smoothed = [&] (int h)
+                {
+                    double sum = 0.0;
+                    int n = 0;
+                    for (int k = juce::jmax (0, h - 5); k <= juce::jmin (hops - 1, h + 5); ++k, ++n)
+                        sum += std::pow (10.0, rel[(size_t) k] / 10.0);
+                    return (float) (10.0 * std::log10 (sum / juce::jmax (1, n) + 1.0e-14));
+                };
+                const auto firstHop = juce::jmax (startHop, (int) (a.start / Analysis::hopSeconds));
+                int attackPeak = firstHop;
+                for (int h = firstHop; h <= juce::jmin (releaseHop, firstHop + 100); ++h)
+                    if (smoothed (h) > smoothed (attackPeak))
+                        attackPeak = h;
+                double power = 0.0;
+                int counted = 0;
+                for (int h = juce::jmin (releaseHop, firstHop + 50); h <= releaseHop; ++h, ++counted)
+                    power += std::pow (10.0, rel[(size_t) h] / 10.0);
+                const auto heldDb = (float) (10.0 * std::log10 (power / juce::jmax (1, counted) + 1.0e-14));
+                // The attack stands out only above the movement's own loudest (half its swing over the average).
+                const auto roundTop = heldDb + 0.5f * m.db;
+                int settled = attackPeak;
+                if (smoothed (attackPeak) > roundTop + 1.5f)
+                {
+                    while (settled < releaseHop && smoothed (settled) > roundTop)
+                        ++settled;
+                    a.sustain = std::pow (10.0f, (heldDb - smoothed (attackPeak)) / 20.0f);
+                    a.decayMs = juce::jlimit (10.0f, 20000.0f, (float) ((settled - attackPeak) * Analysis::hopSeconds / 0.23 * 1000.0));
+                }
+                else
+                {
+                    a.sustain = 1.0f;
+                    a.decayMs = 50.0f;
+                }
+                a.settle = juce::jmax (a.start + 0.05, (settled + 0.5) * Analysis::hopSeconds);
+            }
+        }
+
         // The steady part: where vibrato, unison and noise are measured.
         const auto steadyFrom = juce::jmax (a.settle, a.start + 0.05);
         const auto steadyTo = a.sustained ? a.releaseStart : juce::jmin (a.releaseStart, steadyFrom + 0.6);
@@ -467,48 +662,108 @@ namespace synth::mimic
         // (held sounds: to where it's let go; dying ones: to 30 dB down).
         juce::dsp::FFT fft (fftOrder);
         std::vector<float> fftScratch;
-        a.travelSeconds = juce::jmax (0.0, (toneEndHop + 0.5) * Analysis::hopSeconds - a.start);
-        const auto frames = juce::jlimit (1, maxFrames, juce::roundToInt (a.travelSeconds / frameSpacing));
-        auto samples = std::make_shared<std::vector<float>>();
-        samples->reserve ((size_t) frames * frameSize);
-        for (int f = 0; f < frames; ++f)
+        // One frame from a few cycles at each of `times` (seconds), every cycle turned so its fundamental starts at
+        // the same point; each harmonic keeps its full level (the cycles' power) at the averaged phase. `rms` is its
+        // level as heard (before it's scaled).
+        const auto frameAt = [&] (const std::vector<double>& times, double& rms)
         {
-            auto t = frames == 1 ? a.start + juce::jmin (0.1, 0.5 * (steadyFrom + steadyTo) - a.start)
-                                 : a.start + a.travelSeconds * f / (frames - 1);
-            const auto localHz = hzAt (t);
-            const auto period = sampleRate / localHz;
-            const auto cycles = juce::jlimit (2, 6, juce::roundToInt (0.03 * localHz));
-            t = juce::jmin (t, (total - 2 - cycles * period) / sampleRate);
-            const auto count = juce::jmax (1, juce::jmin (frameSize / 2 - 1, (int) (period / 2.0 * 0.95)));
-            std::vector<Complex> sum ((size_t) count + 1);
-            std::vector<float> power ((size_t) count + 1, 0.0f);
-            for (int c = 0; c < cycles; ++c)
+            const auto count = [&] (double t) { return juce::jmax (1, juce::jmin (frameSize / 2 - 1, (int) (sampleRate / hzAt (t) / 2.0 * 0.95))); };
+            const auto most = count (times.front());
+            std::vector<Complex> sum ((size_t) most + 1);
+            std::vector<float> power ((size_t) most + 1, 0.0f);
+            int used = 0;
+            for (auto t : times)
             {
-                auto h = cycleHarmonics (x, juce::jmax (0.0, t * sampleRate) + c * period, period, count, fft, fftScratch);
-                // Lined up: every cycle turned so its fundamental starts at the same point.
-                const auto phase = std::arg (h[1]);
-                for (int k = 1; k <= count; ++k)
+                const auto localHz = hzAt (t);
+                const auto period = sampleRate / localHz;
+                const auto cycles = juce::jlimit (2, 6, juce::roundToInt (0.03 * localHz));
+                t = juce::jmin (t, (total - 2 - cycles * period) / sampleRate);
+                const auto upTo = juce::jmin (most, count (t));
+                for (int c = 0; c < cycles; ++c, ++used)
                 {
-                    h[(size_t) k] *= std::polar (1.0f, -phase * (float) k);
-                    sum[(size_t) k] += h[(size_t) k];
-                    power[(size_t) k] += std::norm (h[(size_t) k]);
+                    auto h = cycleHarmonics (x, juce::jmax (0.0, t * sampleRate) + c * period, period, upTo, fft, fftScratch);
+                    const auto phase = std::arg (h[1]);
+                    for (int k = 1; k <= upTo; ++k)
+                    {
+                        h[(size_t) k] *= std::polar (1.0f, -phase * (float) k);
+                        sum[(size_t) k] += h[(size_t) k];
+                        power[(size_t) k] += std::norm (h[(size_t) k]);
+                    }
                 }
             }
-            // Each harmonic keeps its full level (the cycles' power), at the averaged phase.
-            std::vector<Complex> h ((size_t) count + 1);
-            for (int k = 1; k <= count; ++k)
+            std::vector<Complex> h ((size_t) most + 1);
+            for (int k = 1; k <= most; ++k)
             {
-                const auto level = std::sqrt (power[(size_t) k] / (float) cycles);
+                const auto level = std::sqrt (power[(size_t) k] / (float) juce::jmax (1, used));
                 const auto direction = std::abs (sum[(size_t) k]) > 1.0e-12f ? sum[(size_t) k] / std::abs (sum[(size_t) k]) : Complex (1.0f, 0.0f);
                 h[(size_t) k] = level * direction;
             }
             auto cycle = cycleFrom (h, fft, fftScratch);
-            double rms = 0.0;
-            for (const auto s : cycle)
-                rms += (double) s * s;
+            rms = 0.0;
+            for (const auto v : cycle)
+                rms += (double) v * v;
             rms = std::sqrt (rms / frameSize);
-            for (auto& s : cycle)
-                samples->push_back (rms > 1.0e-9 ? (float) (s * 0.25 / rms) : 0.0f);
+            return cycle;
+        };
+        auto samples = std::make_shared<std::vector<float>>();
+        const auto addFrame = [&samples] (const std::vector<float>& cycle, double scale)
+        {
+            for (const auto v : cycle)
+                samples->push_back ((float) (v * scale));
+        };
+        if (a.movementSeconds > 0.0)
+        {
+            // The attack's frames, then one round of the movement: each of its frames the average of every round heard
+            // at that point (what's typical of the round, not one round's chance), at its level against the round's
+            // average (the movement's ups and downs in level), and the round's first frame again at the end.
+            const auto attackSeconds = a.settle - a.start;
+            a.attackFrames = juce::jlimit (0, 16, juce::roundToInt (attackSeconds / frameSpacing));
+            const auto roundFrames = juce::jlimit (8, maxFrames - a.attackFrames - 1, juce::roundToInt (a.movementSeconds / 0.06));
+            samples->reserve ((size_t) (a.attackFrames + roundFrames + 1) * frameSize);
+            for (int f = 0; f < a.attackFrames; ++f)
+            {
+                double rms = 0.0;
+                const auto cycle = frameAt ({ a.start + attackSeconds * f / a.attackFrames }, rms);
+                addFrame (cycle, rms > 1.0e-9 ? 0.25 / rms : 0.0);
+            }
+            std::vector<std::vector<float>> round;
+            std::vector<double> levels;
+            for (int k = 0; k < roundFrames; ++k)
+            {
+                std::vector<double> times;
+                for (auto t = a.settle + a.movementSeconds * k / roundFrames; t + 0.05 < a.releaseStart; t += a.movementSeconds)
+                    times.push_back (t);
+                if (times.empty())
+                    times.push_back (a.settle);
+                double rms = 0.0;
+                round.push_back (frameAt (times, rms));
+                levels.push_back (rms);
+            }
+            double meanPower = 0.0;
+            for (const auto l : levels)
+                meanPower += l * l / roundFrames;
+            const auto mean = std::sqrt (meanPower);
+            for (int k = 0; k <= roundFrames; ++k)
+            {
+                const auto i = (size_t) (k % roundFrames);
+                const auto against = mean > 1.0e-9 ? juce::jlimit (0.35, 2.8, levels[i] / mean) : 1.0;
+                addFrame (round[i], levels[i] > 1.0e-9 ? 0.25 / levels[i] * against : 0.0);
+            }
+            a.travelSeconds = attackSeconds;
+        }
+        else
+        {
+            a.travelSeconds = juce::jmax (0.0, (toneEndHop + 0.5) * Analysis::hopSeconds - a.start);
+            const auto frames = juce::jlimit (1, maxFrames, juce::roundToInt (a.travelSeconds / frameSpacing));
+            samples->reserve ((size_t) frames * frameSize);
+            for (int f = 0; f < frames; ++f)
+            {
+                const auto t = frames == 1 ? a.start + juce::jmin (0.1, 0.5 * (steadyFrom + steadyTo) - a.start)
+                                           : a.start + a.travelSeconds * f / (frames - 1);
+                double rms = 0.0;
+                const auto cycle = frameAt ({ t }, rms);
+                addFrame (cycle, rms > 1.0e-9 ? 0.25 / rms : 0.0);
+            }
         }
         a.table = { "MIMIC " + name, frameSize, samples };
 

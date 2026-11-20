@@ -204,3 +204,66 @@ TEST_CASE ("MIMIC's panel picks a note: the best at first, another by a click, t
     CHECK (processor.getCurrentRig().name.contains ("D3"));   // made from the first note, D3;
     panel.paintEntireComponent (g, false);
 }
+
+//======================================================================================================================
+// MIMIC on a real recording (run by hand): PARAGON_MIMIC_FILE=<wav> [PARAGON_RENDER=<folder>] "[.mimicfile]". Prints
+// the notes found, what the best was measured to be and the match before and after REFINE; with PARAGON_RENDER writes
+// the made and refined sounds (the recording's note held as long) beside the cut note, to compare by ear.
+#include "MimicRefiner.h"
+#include "rigs/MimicRig.h"
+
+TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
+{
+    const auto path = juce::SystemStats::getEnvironmentVariable ("PARAGON_MIMIC_FILE", {});
+    REQUIRE (path.isNotEmpty());
+    const auto phrase = synth::mimic::findNotesInFile (juce::File (path));
+    REQUIRE (phrase.valid);
+    std::printf ("%s: %.1f s, %d notes\n", phrase.name.toRawUTF8(), phrase.seconds, (int) phrase.notes.size());
+    for (size_t k = 0; k < phrase.notes.size() && k < 12; ++k)
+    {
+        const auto& n = phrase.notes[k];
+        std::printf ("  %2d %6.2f-%6.2f s %s %+5.1f c  level %5.1f  clarity %.2f  wobble %.1f c  %s score %.2f%s\n", (int) k, n.start,
+                     n.end, synth::mimic::noteName (n.note).toRawUTF8(), n.cents, n.levelDb, n.clarity, n.wobbleCents,
+                     n.ringsOut ? "rings out" : "cut off", n.score, (int) k == phrase.best ? "  <- best" : "");
+    }
+    REQUIRE (phrase.best >= 0);
+    const auto a = synth::mimic::analyseNote (phrase, phrase.best);
+    REQUIRE (a.valid);
+    std::printf ("analysed: %s %+.1f c (%.2f Hz) clarity %.2f, %s\n  attack %.1f ms decay %.0f ms sustain %.2f release %.0f ms\n"
+                 "  vibrato %.2f Hz %.1f c delay %.0f ms; swoop %d hops; detune %.1f c; noise %.2f colour %.2f; width %.2f\n"
+                 "  table %d frames over %.2f s; note %.2f-%.2f s, settles %.2f, release %.2f\n",
+                 synth::mimic::noteName (a.rootNote).toRawUTF8(), a.cents, a.hz, a.clarity, a.sustained ? "held" : "dying",
+                 a.attackMs, a.decayMs, a.sustain, a.releaseMs, a.vibratoHz, a.vibratoCents, a.vibratoDelayMs, (int) a.swoop.size(),
+                 a.detuneCents, a.noise, a.noiseColour, a.width, a.table.numFrames(), a.travelSeconds, a.start, a.end,
+                 a.settle, a.releaseStart);
+
+    std::printf ("  movement: %.3f s a round (alike %.2f), brightness %.2f oct, level %.1f dB; %d attack frames\n",
+                 a.movementSeconds, a.movementStrength, a.movementOctaves, a.movementDb, a.attackFrames);
+    MimicRefiner refiner;
+    auto made = mimic::makeRig (a, {});
+    const auto first = refiner.score (made, a);
+    std::printf ("MATCH %.1f%% (tone %.2f dB, loudness %.2f dB)\n", first.match, first.toneDb, first.loudnessDb);
+    refiner.begin (made, a, {});
+    while (refiner.step()) {}
+    auto refined = refiner.getBest();
+    std::printf ("refined MATCH %.1f%% (tone %.2f dB, loudness %.2f dB) in %d plays\n", refiner.getBestScore().match,
+                 refiner.getBestScore().toneDb, refiner.getBestScore().loudnessDb, refiner.getDone());
+
+    const auto folder = juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", {});
+    if (folder.isEmpty())
+        return;
+    const auto write = [&] (const juce::String& name, const std::vector<float>& mono, double sampleRate)
+    {
+        juce::AudioBuffer<float> b (1, (int) mono.size());
+        std::copy (mono.begin(), mono.end(), b.getWritePointer (0));
+        juce::WavAudioFormat wav;
+        const auto file = juce::File (folder).getChildFile (name + ".wav");
+        file.deleteFile();
+        std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (file), sampleRate, 1, 24, {}, 0));
+        REQUIRE (w != nullptr);
+        w->writeFromAudioSampleBuffer (b, 0, b.getNumSamples());
+    };
+    write ("recording", *a.audio, a.sampleRate);
+    write ("made", refiner.play (made, a), MimicRefiner::renderRate);
+    write ("refined", refiner.play (refined, a), MimicRefiner::renderRate);
+}

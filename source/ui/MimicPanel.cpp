@@ -16,7 +16,7 @@ MimicPanel::MimicPanel (ParagonX1AudioProcessor& p) : processor (p)
 {
     for (auto* button : { &load, &playOriginal, &playMade, &make, &refineButton, &close })
         addAndMakeVisible (*button);
-    for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise })
+    for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise, &movement })
     {
         toggle->setToggleState (true, juce::dontSendNotification);
         toggle->onClick = [this]
@@ -198,7 +198,8 @@ void MimicPanel::setAnalysis (const synth::mimic::Analysis& a)
     swoop.setEnabled (! a.swoop.empty());
     unison.setEnabled (a.detuneCents > 0.0f);
     noise.setEnabled (a.noise > 0.0f);
-    for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise })
+    movement.setEnabled (a.movementSeconds > 0.0);
+    for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise, &movement })
         toggle->setAlpha (toggle->isEnabled() ? 1.0f : 0.35f);
     resized();   // a stem's notes strip comes or goes
     updateButtons();
@@ -214,6 +215,7 @@ mimic::Choices MimicPanel::getChoices() const
     c.swoop = swoop.getToggleState();
     c.unison = unison.getToggleState();
     c.noise = noise.getToggleState();
+    c.movement = movement.getToggleState();
     return c;
 }
 
@@ -327,7 +329,11 @@ juce::StringArray MimicPanel::findings() const
     const auto& a = *analysis;
     lines.add ("NOTE|" + synth::mimic::noteName (a.rootNote) + (std::abs (a.cents) >= 1.0f ? " " + juce::String (a.cents >= 0 ? "+" : "")
                + juce::String (juce::roundToInt (a.cents)) + " cents" : juce::String()) + "  (play it at " + synth::mimic::noteName (a.rootNote) + ")");
-    lines.add ("TONE|" + juce::String (a.table.numFrames()) + (a.table.numFrames() == 1 ? " frame" : " frames over " + juce::String (a.travelSeconds, 2) + " s"));
+    if (a.movementSeconds > 0.0)
+        lines.add ("TONE|" + juce::String (a.attackFrames) + " frames of attack, then " + juce::String (a.table.numFrames() - a.attackFrames - 1)
+                   + " going round");
+    else
+        lines.add ("TONE|" + juce::String (a.table.numFrames()) + (a.table.numFrames() == 1 ? " frame" : " frames over " + juce::String (a.travelSeconds, 2) + " s"));
     lines.add ("LOUDNESS|" + juce::String (a.sustained ? "held: " : "dying away: ") + "attack " + msText (a.attackMs) + ", decay "
                + msText (a.decayMs) + (a.sustained ? ", sustain " + juce::String (juce::roundToInt (a.sustain * 100.0f)) + "%" : juce::String())
                + ", release " + msText (a.releaseMs));
@@ -337,6 +343,8 @@ juce::StringArray MimicPanel::findings() const
                + msText ((float) a.swoop.size() * 10.0f)));
     lines.add ("UNISON|" + (a.detuneCents > 0.0f ? juce::String (juce::roundToInt (a.detuneCents)) + " cents apart" : juce::String ("none (one oscillator)")));
     lines.add ("NOISE|" + (a.noise > 0.0f ? juce::String (juce::roundToInt (a.noise * 100.0f)) + "% of it" : juce::String ("none")));
+    lines.add ("MOVEMENT|" + (a.movementSeconds > 0.0 ? "round every " + juce::String (a.movementSeconds, 2) + " s: brightness "
+               + juce::String (a.movementOctaves, 2) + " oct, level " + juce::String (a.movementDb, 1) + " dB" : juce::String ("none")));
     lines.add ("WIDTH|" + (a.width > 0.05f ? juce::String (juce::roundToInt (juce::jmin (1.0f, a.width) * 100.0f)) + "%" : juce::String ("mono")));
     return lines;
 }
@@ -554,8 +562,8 @@ void MimicPanel::resized()
     area.removeFromBottom (10);
 
     auto toggles = area.removeFromBottom (26);
-    const auto width = toggles.getWidth() / 6;
-    for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise })
+    const auto width = toggles.getWidth() / 7;
+    for (auto* toggle : { &tone, &envelope, &vibrato, &swoop, &unison, &noise, &movement })
         toggle->setBounds (toggles.removeFromLeft (width));
     area.removeFromBottom (8);
 

@@ -10,6 +10,13 @@ namespace
 }
 
 MimicRefiner::MimicRefiner() = default;
+
+double MimicRefiner::playSeconds (const synth::mimic::Analysis& a)
+{
+    if (a.movementSeconds <= 0.0)
+        return maxSeconds;
+    return juce::jlimit (maxSeconds, 30.0, a.settle - a.start + 2.0 * a.movementSeconds + 0.5);
+}
 MimicRefiner::~MimicRefiner() = default;
 
 std::vector<float> MimicRefiner::play (const Rig& rig, const synth::mimic::Analysis& a)
@@ -25,8 +32,9 @@ std::vector<float> MimicRefiner::play (const Rig& rig, const synth::mimic::Analy
     renderer->seedRandomForTest (1);
 
     // The note it was recorded at, held as long as it was, then its tail as far as the recording goes.
-    const auto held = juce::jlimit (0.05, maxSeconds, a.releaseStart - a.start);
-    const auto seconds = juce::jlimit (held, maxSeconds, a.seconds - a.start);
+    const auto longest = playSeconds (a);
+    const auto held = juce::jlimit (0.05, longest, a.releaseStart - a.start);
+    const auto seconds = juce::jlimit (held, longest, a.seconds - a.start);
     const auto blocks = (int) std::ceil (seconds * renderRate / block);
     const auto offSample = (int) (held * renderRate);
     std::vector<float> out;
@@ -53,7 +61,7 @@ synth::mimic::Score MimicRefiner::score (Rig& rig, const synth::mimic::Analysis&
     if (! a.valid || a.audio == nullptr)
         return {};
     if (&a != &analysis || target.levels.empty())
-        target = synth::mimic::fingerprint (*a.audio, a.sampleRate, a.start, maxSeconds);
+        target = synth::mimic::fingerprint (*a.audio, a.sampleRate, a.start, playSeconds (a));
     const auto candidate = synth::mimic::fingerprint (play (rig, a), renderRate);
     auto s = synth::mimic::compare (target, candidate);
     // The volume matched: the LEVEL the recording's loudness needs (OUTPUT plays both the same).
@@ -66,7 +74,7 @@ synth::mimic::Score MimicRefiner::score (Rig& rig, const synth::mimic::Analysis&
 void MimicRefiner::begin (const Rig& rig, const synth::mimic::Analysis& a, const mimic::Choices& choices)
 {
     analysis = a;
-    target = synth::mimic::fingerprint (*a.audio, a.sampleRate, a.start, maxSeconds);
+    target = synth::mimic::fingerprint (*a.audio, a.sampleRate, a.start, playSeconds (a));
     best = rig;
     bestScore = firstScore = score (best, analysis);
 
@@ -91,6 +99,8 @@ void MimicRefiner::begin (const Rig& rig, const synth::mimic::Analysis& a, const
         knobs.push_back ({ ParamIDs::osc (0, "UniDetune"), false, 0.0f, 1.0f });
     if (choices.vibrato && a.vibratoCents > 0.0f && has (ParamIDs::osc (0, "VibAmount")))
         knobs.push_back ({ ParamIDs::osc (0, "VibAmount"), true, 1.0f, 100.0f });
+    if (a.movementSeconds > 0.0 && choices.movement && choices.tone)
+        knobs.push_back ({ ParamIDs::env (0, "Speed"), true, 0.5f, 2.0f });
     if (has (ParamIDs::osc (0, "TrOn")) && best.parameters.at (ParamIDs::osc (0, "TrOn")) > 0.5f)
         knobs.push_back ({ ParamIDs::osc (0, "TrRate"), true, 0.02f, 40.0f });
 

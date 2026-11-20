@@ -38,6 +38,9 @@ public:
     std::vector<float> play (const Rig&, const synth::mimic::Analysis&);
     static constexpr double renderRate = 48000.0;
     static constexpr double maxSeconds = 6.0;
+    // How long a candidate plays: 6 s, or (1.8.0) with a slow movement its attack and two rounds (up to 30 s), so the
+    // match hears the movement go round.
+    static double playSeconds (const synth::mimic::Analysis&);
 
 private:
     struct Knob

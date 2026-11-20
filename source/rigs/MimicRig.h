@@ -17,6 +17,7 @@ namespace mimic
         bool swoop = true;
         bool unison = true;
         bool noise = true;
+        bool movement = true;   // 1.8.0: a slow movement found, looped (off: the tone stays where the attack leaves it)
     };
 
     Rig makeRig (const synth::mimic::Analysis&, const Choices& = {});

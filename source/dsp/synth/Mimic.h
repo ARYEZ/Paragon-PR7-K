@@ -57,6 +57,16 @@ namespace synth::mimic
         float noiseColour = 0.0f;        // 0 white to 1 dark (as the oscillator's NOISE COLOUR)
         float width = 0.0f;              // side against middle, 0 (mono) to about 1
 
+        // A SLOW MOVEMENT (1.8.0): the held part's tone (and level) going round and round, as an LFO on a filter does,
+        // every `movementSeconds` (0: none found). `movementStrength` how alike each round is to the last (0 to 1),
+        // `movementOctaves` how far the brightness swings across a round (peak to peak), `movementDb` the level's.
+        // With one, the table holds the attack's frames (`attackFrames` of them, from the start to `settle`) and then
+        // one round of the movement (each of its frames the average of every round at that point), its last frame a
+        // copy of its first so the loop is seamless.
+        double movementSeconds = 0.0;
+        float movementStrength = 0.0f, movementOctaves = 0.0f, movementDb = 0.0f;
+        int attackFrames = 0;
+
         // The tone: the sound's own cycles as a wavetable, walked from first to last frame over `travelSeconds`.
         WavetableSource table;
         double travelSeconds = 0.0;
@@ -72,7 +82,8 @@ namespace synth::mimic
 
     // Analyses a recording (any number of channels). Message thread or a worker: takes a fraction of a second for a
     // few seconds of sound. Anything past `maxSeconds` is left out.
-    static constexpr double maxSeconds = 20.0;
+    // (20 s until 1.8.0: a slow movement wants several rounds of it.)
+    static constexpr double maxSeconds = 60.0;
     Analysis analyse (const juce::AudioBuffer<float>& audio, double sampleRate, const juce::String& name);
 
     // The same for a file (false in `valid`, with a problem, if it can't be read).

@@ -481,3 +481,122 @@ TEST_CASE ("MIMIC's panel, part 2: MAKE shows a match; REFINE puts the refined s
     CHECK (p.processor.getCurrentRig().name == "Mimic Panel");
     CHECK (p.processor.canUndo());
 }
+
+//======================================================================================================================
+// A SLOW MOVEMENT (1.8.0): a held note whose brightness goes round every 4 s, as a slow LFO on a filter does (the
+// harmonics' fall-off swinging two octaves' worth of brightness), with a little level swing as a filter gives.
+namespace
+{
+    constexpr double roundSeconds = 4.0;
+    double brightnessAt (double t) { return 6.0 * std::exp2 (1.2 * std::sin (juce::MathConstants<double>::twoPi * t / roundSeconds)); }
+    const auto moving = [] (int k, double t) { return std::exp (-(k - 1) / brightnessAt (t)) / k; };
+
+    // The spectrum's centre (Hz) every 100 ms of a mono signal, from `from` for `seconds`.
+    std::vector<double> centres (const float* x, int length, double sampleRate, double from, double seconds)
+    {
+        constexpr int size = 4096;
+        juce::dsp::FFT fft (12);
+        std::vector<float> work (size * 2);
+        std::vector<double> out;
+        for (auto t = from; t < from + seconds && (int) ((t + 0.1) * sampleRate) + size < length; t += 0.1)
+        {
+            std::fill (work.begin(), work.end(), 0.0f);
+            const auto at = (int) (t * sampleRate);
+            for (int i = 0; i < size; ++i)
+                work[(size_t) i] = x[at + i] * (0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / size));
+            fft.performFrequencyOnlyForwardTransform (work.data(), true);
+            double p = 0.0, w = 0.0;
+            for (int k = 1; k < size / 2; ++k)
+            {
+                p += (double) work[(size_t) k] * work[(size_t) k];
+                w += (double) work[(size_t) k] * work[(size_t) k] * k;
+            }
+            out.push_back (w / juce::jmax (1.0e-20, p) * sampleRate / size);
+        }
+        return out;
+    }
+    double correlation (const std::vector<double>& a, const std::vector<double>& b)
+    {
+        const auto n = juce::jmin (a.size(), b.size());
+        double ma = 0, mb = 0;
+        for (size_t i = 0; i < n; ++i) { ma += a[i] / n; mb += b[i] / n; }
+        double xy = 0, xx = 0, yy = 0;
+        for (size_t i = 0; i < n; ++i) { xy += (a[i] - ma) * (b[i] - mb); xx += (a[i] - ma) * (a[i] - ma); yy += (b[i] - mb) * (b[i] - mb); }
+        return xy / std::sqrt (xx * yy + 1.0e-30);
+    }
+}
+
+TEST_CASE ("MIMIC: a slow movement in a held note is found (its round, how far it swings), and isn't taken for a decay", "[mimic]")
+{
+    const auto sound = note (14.0, steady (110.0), adsr (0.01, 0.05, 1.0, 13.0, 60.0), moving);
+    const auto a = synth::mimic::analyse (sound, rate, "Moving");
+    REQUIRE (a.valid);
+    REQUIRE (a.sustained);
+    INFO ("round " << a.movementSeconds << " s, alike " << a.movementStrength << ", " << a.movementOctaves << " oct, " << a.movementDb << " dB");
+    CHECK_THAT (a.movementSeconds, Catch::Matchers::WithinRel (roundSeconds, 0.03));
+    CHECK (a.movementOctaves > 0.5f);
+    // Held at a level: not a 9 s decay to a lower sustain (what 1.7.0 made of a sound like this).
+    CHECK (a.sustain > 0.85f);
+    CHECK (a.decayMs <= 1000.0f);
+    // The table: the attack's frames, then a round, its last frame its first.
+    const auto frames = a.table.numFrames();
+    REQUIRE (frames >= a.attackFrames + 9);
+    const auto frameSize = (size_t) a.table.frameSize;
+    const auto* data = a.table.samples->data();
+    const auto roundStart = (size_t) a.attackFrames;
+    CHECK (std::equal (data + roundStart * frameSize, data + (roundStart + 1) * frameSize, data + (size_t) (frames - 1) * frameSize));
+    // Across the round its frames go bright and dark as the sound did: the 8th harmonic against the fundamental
+    // swings by many dB (at the brightest about -10 dB, at the darkest about -35 dB).
+    float brightest = -200.0f, darkest = 0.0f;
+    for (auto f = a.attackFrames; f < frames - 1; ++f)
+    {
+        const auto h = frameHarmonics (a, f, 8);
+        brightest = juce::jmax (brightest, h[8]);
+        darkest = juce::jmin (darkest, h[8]);
+    }
+    INFO ("8th harmonic " << darkest << " to " << brightest << " dB");
+    CHECK (brightest - darkest > 15.0f);
+}
+
+TEST_CASE ("MIMIC: a steady held note has no movement", "[mimic]")
+{
+    const auto a = synth::mimic::analyse (note (8.0, steady (110.0), adsr (0.01, 0.05, 1.0, 7.0, 60.0), saw), rate, "Steady");
+    REQUIRE (a.valid);
+    CHECK (juce::exactlyEqual (a.movementSeconds, 0.0));
+    CHECK (a.attackFrames == 0);
+}
+
+TEST_CASE ("MIMIC's sound for a slow movement: MOD ENVELOPE 1 loops INDEX round it, and the made sound moves as the recording did", "[mimic][match]")
+{
+    const auto sound = note (14.0, steady (110.0), adsr (0.01, 0.05, 1.0, 13.0, 60.0), moving);
+    const auto a = synth::mimic::analyse (sound, rate, "Moving");
+    REQUIRE (a.movementSeconds > 0.0);
+    const auto rig = mimic::makeRig (a, {});
+    CHECK (juce::roundToInt (rig.parameters.at (ParamIDs::env (0, "Mode"))) == (int) synth::mod::EnvelopeMode::loop);
+    const auto& shape = rig.modulation.envelopes[0];
+    REQUIRE (shape.loopEnd > shape.loopStart);
+    CHECK_THAT (shape.points[(size_t) shape.loopEnd].x - shape.points[(size_t) shape.loopStart].x, Catch::Matchers::WithinRel ((float) a.movementSeconds, 0.001f));
+    bool routed = false;
+    for (const auto& r : rig.modulation.routes)
+        routed = routed || (r.source == "env1" && r.destination == ParamIDs::osc (0, "WtIndex") && juce::exactlyEqual (r.amount, 1.0f));
+    CHECK (routed);
+
+    // Played: its brightness follows the recording's over two rounds (one heard, one looped).
+    MimicRefiner refiner;
+    CHECK (MimicRefiner::playSeconds (a) >= 2.0 * roundSeconds);
+    const auto made = refiner.play (rig, a);
+    const auto heard = centres (a.audio->data(), (int) a.audio->size(), a.sampleRate, a.start + 0.3, 2.0 * roundSeconds);
+    const auto ours = centres (made.data(), (int) made.size(), MimicRefiner::renderRate, 0.3, 2.0 * roundSeconds);
+    const auto r = correlation (heard, ours);
+    INFO ("brightness followed: r = " << r);
+    CHECK (r > 0.9);
+
+    // Without MOVEMENT it stays where the attack leaves it: no loop, so no going round.
+    mimic::Choices still;
+    still.movement = false;
+    const auto stillRig = mimic::makeRig (a, still);
+    CHECK (stillRig.modulation.envelopes[0].loopStart < 0);
+    const auto plain = refiner.play (stillRig, a);
+    const auto flat = centres (plain.data(), (int) plain.size(), MimicRefiner::renderRate, 0.3, 2.0 * roundSeconds);
+    CHECK (*std::max_element (flat.begin(), flat.end()) / *std::min_element (flat.begin(), flat.end()) < 1.15);
+}

@@ -19,7 +19,34 @@ namespace mimic
         {
             b.rig.wavetables[0] = a.table;
             b.osc (0, "Wave", (float) synth::OscWave::wavetable).osc (0, "WtIndex", 0.0f);
-            if (a.table.numFrames() >= 2 && a.travelSeconds > 0.08)
+            if (a.movementSeconds > 0.0 && a.table.numFrames() >= 2)
+            {
+                // A SLOW MOVEMENT (1.8.0): MOD ENVELOPE 1 moves INDEX through the attack's frames over the time they
+                // took, then round the movement's frames once a round, looping as long as the note sounds (and on
+                // through its release). The round's last frame is its first, so the loop doesn't jump.
+                const auto last = (float) (a.table.numFrames() - 1);
+                const auto roundStart = (float) a.attackFrames / last;
+                const auto attack = (float) juce::jmax (0.0, a.travelSeconds);
+                ModShapeData shape;
+                shape.points.push_back ({ 0.0f, 0.0f, 0.0f });
+                if (a.attackFrames > 0)
+                    shape.points.push_back ({ attack, roundStart, 0.0f });
+                if (choices.movement)
+                {
+                    shape.points.push_back ({ attack + (float) a.movementSeconds, 1.0f, 0.0f });
+                    shape.loopEnd = (int) shape.points.size() - 1;
+                    shape.loopStart = shape.loopEnd - 1;
+                }
+                b.rig.modulation.envelopes[0] = shape;
+                b.set (ParamIDs::env (0, "Mode"), (float) (choices.movement ? synth::mod::EnvelopeMode::loop : synth::mod::EnvelopeMode::oneShot))
+                 .set (ParamIDs::env (0, "Sync"), 0.0f).set (ParamIDs::env (0, "Speed"), 1.0f);
+                b.rig.modulation.routes.push_back ({ true, "env1", ParamIDs::osc (0, "WtIndex"), 1.0f, false, 0.0f, 0.0f });
+                if (choices.movement)
+                    made.add ("its own waves and their slow movement (a round every " + juce::String (a.movementSeconds, 2) + " s, looped)");
+                else
+                    made.add ("its own waves (" + juce::String (a.attackFrames + 1) + " frames)");
+            }
+            else if (a.table.numFrames() >= 2 && a.travelSeconds > 0.08)
             {
                 // TRAVEL walks the frames once, from the first (the note's start) to the last (where it settles),
                 // over the time they took in the recording, and stays there.
