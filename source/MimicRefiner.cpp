@@ -21,6 +21,14 @@ MimicRefiner::~MimicRefiner() = default;
 
 std::vector<float> MimicRefiner::play (const Rig& rig, const synth::mimic::Analysis& a)
 {
+    std::vector<float> left, right;
+    return play (rig, a, left, right);
+}
+
+std::vector<float> MimicRefiner::play (const Rig& rig, const synth::mimic::Analysis& a, std::vector<float>& left, std::vector<float>& right)
+{
+    left.clear();
+    right.clear();
     if (renderer == nullptr)
     {
         renderer = std::make_unique<ParagonX1AudioProcessor>();
@@ -51,7 +59,11 @@ std::vector<float> MimicRefiner::play (const Rig& rig, const synth::mimic::Analy
         buffer.clear();
         renderer->processBlock (buffer, midi);
         for (int i = 0; i < block; ++i)
+        {
             out.push_back (0.5f * (buffer.getSample (0, i) + buffer.getSample (1, i)));
+            left.push_back (buffer.getSample (0, i));
+            right.push_back (buffer.getSample (1, i));
+        }
     }
     return out;
 }

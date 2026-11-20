@@ -36,6 +36,8 @@ public:
 
     // The candidate played (left and right mixed), for tests.
     std::vector<float> play (const Rig&, const synth::mimic::Analysis&);
+    // The same, with each side kept too (for checking width by ear or measurement).
+    std::vector<float> play (const Rig&, const synth::mimic::Analysis&, std::vector<float>& left, std::vector<float>& right);
     static constexpr double renderRate = 48000.0;
     static constexpr double maxSeconds = 6.0;
     // How long a candidate plays: 6 s, or (1.8.0) with a slow movement its attack and two rounds (up to 30 s), so the

@@ -273,6 +273,17 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
     choices.noise = ! off.contains ("noise");
     choices.movement = ! off.contains ("movement");
     MimicRefiner refiner;
+    if (a.movementSeconds > 0.0)
+    {
+        // The ceiling: the recording against itself a round later (the same sound, another moment).
+        const auto seconds = MimicRefiner::playSeconds (a);
+        if (a.start + a.movementSeconds + seconds < a.seconds)
+        {
+            const auto self = synth::mimic::compare (synth::mimic::fingerprint (*a.audio, a.sampleRate, a.start, seconds),
+                                                     synth::mimic::fingerprint (*a.audio, a.sampleRate, a.start + a.movementSeconds, seconds));
+            std::printf ("  ceiling (itself a round later): MATCH %.1f%% (tone %.2f dB, loudness %.2f dB)\n", self.match, self.toneDb, self.loudnessDb);
+        }
+    }
     auto made = mimic::makeRig (a, choices);
     const auto first = refiner.score (made, a);
     std::printf ("MATCH %.1f%% (tone %.2f dB, loudness %.2f dB)\n", first.match, first.toneDb, first.loudnessDb);
@@ -298,6 +309,19 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
         w->writeFromAudioSampleBuffer (b, 0, b.getNumSamples());
     };
     write ("recording", *a.audio, a.sampleRate);
+    {
+        std::vector<float> left, right;
+        refiner.play (made, a, left, right);
+        juce::AudioBuffer<float> b (2, (int) left.size());
+        std::copy (left.begin(), left.end(), b.getWritePointer (0));
+        std::copy (right.begin(), right.end(), b.getWritePointer (1));
+        juce::WavAudioFormat wav;
+        const auto file = juce::File (folder).getChildFile ("made-stereo.wav");
+        file.deleteFile();
+        std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (file), MimicRefiner::renderRate, 2, 24, {}, 0));
+        REQUIRE (w != nullptr);
+        w->writeFromAudioSampleBuffer (b, 0, b.getNumSamples());
+    }
     write ("made", refiner.play (made, a), MimicRefiner::renderRate);
     write ("refined", refiner.play (refined, a), MimicRefiner::renderRate);
 }
