@@ -536,8 +536,9 @@ namespace synth::mimic
                 for (int h = juce::jmin (releaseHop, firstHop + 50); h <= releaseHop; ++h, ++counted)
                     power += std::pow (10.0, rel[(size_t) h] / 10.0);
                 const auto heldDb = (float) (10.0 * std::log10 (power / juce::jmax (1, counted) + 1.0e-14));
-                // The attack stands out only above the movement's own loudest (half its swing over the average).
-                const auto roundTop = heldDb + 0.5f * m.db;
+                // The attack stands out only above the movement's own loudest: the average plus its whole swing (a
+                // round's loudest moments, smoothed, reach about that; the note can start on one).
+                const auto roundTop = heldDb + m.db;
                 int settled = attackPeak;
                 if (smoothed (attackPeak) > roundTop + 1.5f)
                 {

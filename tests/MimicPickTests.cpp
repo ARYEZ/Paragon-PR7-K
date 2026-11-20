@@ -239,12 +239,23 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
 
     std::printf ("  movement: %.3f s a round (alike %.2f), brightness %.2f oct, level %.1f dB; %d attack frames\n",
                  a.movementSeconds, a.movementStrength, a.movementOctaves, a.movementDb, a.attackFrames);
+    // PARAGON_MIMIC_OFF: what to leave out (any of tone envelope vibrato swoop unison noise movement), to find what helps.
+    mimic::Choices choices;
+    const auto off = juce::SystemStats::getEnvironmentVariable ("PARAGON_MIMIC_OFF", {});
+    choices.tone = ! off.contains ("tone");
+    choices.envelope = ! off.contains ("envelope");
+    choices.vibrato = ! off.contains ("vibrato");
+    choices.swoop = ! off.contains ("swoop");
+    choices.unison = ! off.contains ("unison");
+    choices.noise = ! off.contains ("noise");
+    choices.movement = ! off.contains ("movement");
     MimicRefiner refiner;
-    auto made = mimic::makeRig (a, {});
+    auto made = mimic::makeRig (a, choices);
     const auto first = refiner.score (made, a);
     std::printf ("MATCH %.1f%% (tone %.2f dB, loudness %.2f dB)\n", first.match, first.toneDb, first.loudnessDb);
-    refiner.begin (made, a, {});
-    while (refiner.step()) {}
+    refiner.begin (made, a, choices);
+    if (! off.contains ("refine"))
+        while (refiner.step()) {}
     auto refined = refiner.getBest();
     std::printf ("refined MATCH %.1f%% (tone %.2f dB, loudness %.2f dB) in %d plays\n", refiner.getBestScore().match,
                  refiner.getBestScore().toneDb, refiner.getBestScore().loudnessDb, refiner.getDone());
