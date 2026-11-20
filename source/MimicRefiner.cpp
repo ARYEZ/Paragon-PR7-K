@@ -116,6 +116,17 @@ void MimicRefiner::begin (const Rig& rig, const synth::mimic::Analysis& a, const
     if (has (ParamIDs::osc (0, "TrOn")) && best.parameters.at (ParamIDs::osc (0, "TrOn")) > 0.5f)
         knobs.push_back ({ ParamIDs::osc (0, "TrRate"), true, 0.02f, 40.0f });
 
+    // A wide sound's right side (oscillator 3, a copy of oscillator 1) moves with the left.
+    for (auto& k : knobs)
+    {
+        const auto left = ParamIDs::osc (0, "");
+        if (k.id.startsWith (left) && ! juce::CharacterFunctions::isDigit (k.id[left.length()]))
+        {
+            const auto twin = ParamIDs::osc (2, "") + k.id.substring (left.length());
+            if (has (twin))
+                k.twin = twin;
+        }
+    }
     pass = knob = direction = 0;
     factor = 1.6f;
     amount = 0.12f;
@@ -138,6 +149,8 @@ bool MimicRefiner::step()
     {
         auto candidate = best;
         candidate.parameters[k.id] = nudged;
+        if (k.twin.isNotEmpty())
+            candidate.parameters[k.twin] = nudged;
         const auto s = score (candidate, analysis);
         ++done;
         if (s.match > bestScore.match + 0.05)

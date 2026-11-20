@@ -51,6 +51,7 @@ private:
         bool multiply;        // nudged by a factor (times), or by an amount (plus: `scale` x the pass's amount)
         float low, high;
         float scale = 1.0f;
+        juce::String twin {};   // moved with it (the right side's copy of a wide sound)
     };
     double evaluate (Rig&);
 

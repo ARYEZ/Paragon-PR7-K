@@ -20,5 +20,8 @@ namespace mimic
         bool movement = true;   // 1.8.0: a slow movement found, looped (off: the tone stays where the attack leaves it)
     };
 
+    // From this width (side against mid), the tone is played on two oscillators, one a side (1.8.0).
+    inline constexpr float wideFrom = 0.6f;
+
     Rig makeRig (const synth::mimic::Analysis&, const Choices& = {});
 }

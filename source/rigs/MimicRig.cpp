@@ -101,6 +101,39 @@ namespace mimic
             made.add ("unison");
         }
 
+        // A WIDE sound (1.8.0): one in which each side carries its own version of the tone (unison copies spread
+        // hard, the middle nearly empty: side as loud as mid or louder) can't be made by one oscillator's unison,
+        // whose first copy always sits in the middle and ties the sides together. So the tone is played twice:
+        // oscillator 1 to the left and a copy on oscillator 3 to the right, each with its own unison and starting
+        // phase, so the sides go their own ways as the recording's did. How far apart: for two unrelated sources
+        // panned +-p with PR7-K's balance (the far side at 1 - p), the sides' likeness is 2 (1 - p) / ((1 - p)^2 + 1);
+        // the width measured (side against mid) gives the likeness wanted, (1 - w^2) / (1 + w^2).
+        if (choices.unison && a.detuneCents > 0.0f && a.width >= wideFrom && choices.tone && a.table.isValid())
+        {
+            const auto w = juce::jmin (1.5f, a.width);
+            const auto likeness = (1.0f - w * w) / (1.0f + w * w);
+            const auto q = likeness <= 0.0f ? 0.0f : (1.0f - std::sqrt (1.0f - likeness * likeness)) / likeness;
+            const auto pan = juce::jlimit (0.0f, 1.0f, 1.0f - q);
+            const auto from = ParamIDs::osc (0, ""), to = ParamIDs::osc (2, "");
+            std::vector<std::pair<juce::String, float>> copies;
+            for (const auto& [id, value] : b.rig.parameters)
+                if (id.startsWith (from) && ! juce::CharacterFunctions::isDigit (id[from.length()]))
+                    copies.push_back ({ to + id.substring (from.length()), value });
+            for (const auto& [id, value] : copies)
+                b.rig.parameters[id] = value;
+            b.rig.wavetables[2] = b.rig.wavetables[0];
+            const auto routes = b.rig.modulation.routes;
+            for (auto r : routes)
+                if (r.destination.startsWith (from) && ! juce::CharacterFunctions::isDigit (r.destination[from.length()]))
+                {
+                    r.destination = to + r.destination.substring (from.length());
+                    b.rig.modulation.routes.push_back (r);
+                }
+            b.osc (0, "Pan", -pan).osc (2, "Pan", pan).osc (0, "PhaseRand", 1.0f).osc (2, "PhaseRand", 1.0f)
+             .osc (0, "UniSpread", 0.0f).osc (2, "UniSpread", 0.0f);
+            made.add ("its width (the tone on each side, " + juce::String (juce::roundToInt (pan * 100.0f)) + "% apart)");
+        }
+
         if (choices.noise && a.noise > 0.0f)
         {
             // Oscillator 2 plays only noise, its level against the tone as measured (a guess at how loud our noise
