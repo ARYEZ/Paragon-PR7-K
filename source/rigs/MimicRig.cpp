@@ -129,7 +129,8 @@ namespace mimic
                     r.destination = to + r.destination.substring (from.length());
                     b.rig.modulation.routes.push_back (r);
                 }
-            b.osc (0, "Pan", -pan).osc (2, "Pan", pan).osc (0, "PhaseRand", 1.0f).osc (2, "PhaseRand", 1.0f)
+            // ON too: oscillator 1 is on by default and so isn't among the settings copied; oscillator 3 isn't.
+            b.osc (2, "On", 1.0f).osc (0, "Pan", -pan).osc (2, "Pan", pan).osc (0, "PhaseRand", 1.0f).osc (2, "PhaseRand", 1.0f)
              .osc (0, "UniSpread", 0.0f).osc (2, "UniSpread", 0.0f);
             made.add ("its width (the tone on each side, " + juce::String (juce::roundToInt (pan * 100.0f)) + "% apart)");
         }
