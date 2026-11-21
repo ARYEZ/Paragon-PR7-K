@@ -349,6 +349,12 @@ Dusty Upright|lib|p|patchLevel=4.7
 Saloon Upright|lib|p|patchLevel=7.0
 Walking Gospel|lib|p|patchLevel=0.6
 
+# --- The organs on VCSL's pipe organ (1.8.0, found by the full audit once the rest was done): Fortress Organ
+# keeps the loud pipe organ; Sanctuary Organ plays the little Renaissance organ's 4' and 8' flutes (as its synth
+# version's soft flute stops), Founder's Organ the pipe organ's quiet stops
+Sanctuary Organ|lib|s|0=Aerophones/Edge-blown Aerophones/Renaissance Organ - 4'+8'.sfz
+Founder's Organ|lib|s|0=Aerophones/Edge-blown Aerophones/Pipe Organ - Quiet.sfz
+Founder's Organ|lib|p|patchLevel=-4.1
 )PASS";
     return table;
 }
