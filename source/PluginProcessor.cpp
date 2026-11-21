@@ -1513,7 +1513,10 @@ effects::TalkBack::Settings ParagonX1AudioProcessor::getTalkBackSettings() const
     s.wait = juce::jlimit (0, T::waitNames.size() - 1, juce::roundToInt (param (ParamIDs::talkWait)));
     s.space = param (ParamIDs::talkSpace);
     s.pan = param (ParamIDs::talkPan);
-    s.levelDb = juce::jlimit (-36.0f, 6.0f, effectParam (ModDestinations::effect ("talkLevel"), ParamIDs::talkLevel));
+    // LEVEL is the drum's level as it leaves the plugin, whatever the preset's own LEVEL: the drum is added before
+    // the preset's LEVEL is applied, so that is taken back off here (a quiet preset's drum isn't made quiet too).
+    s.levelDb = juce::jlimit (-36.0f, 6.0f, effectParam (ModDestinations::effect ("talkLevel"), ParamIDs::talkLevel))
+              - param (ParamIDs::patchLevel);
     return s;
 }
 

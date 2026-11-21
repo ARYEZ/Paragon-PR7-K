@@ -1542,6 +1542,46 @@ TEST_CASE ("NIGHT REIGN: MACRO 3 is ORNAMENT on every preset, in D harmonic mino
     CHECK (held == 7);     // all but the ostinato's short notes
 }
 
+TEST_CASE ("SUNTHRONE: MACRO 3 is TALKBACK on every preset, its versions too", "[rigs][expansions][talkback]")
+{
+    // 1.9.0: TALKBACK on at AMOUNT 0 (the macro's left is the preset as built, the drum silent), MACRO 3 straight to
+    // AMOUNT at 1 and to nothing else.
+    int count = 0, versions = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        if (rig.bank != Rig::numBanks + 45)   // SUNTHRONE: the forty-sixth expansion
+            continue;
+        ++count;
+        INFO (rig.name);
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            versions += version != &rig ? 1 : 0;
+            const auto value = [&] (const juce::String& id, float otherwise)
+            {
+                const auto it = version->parameters.find (id);
+                return it == version->parameters.end() ? otherwise : it->second;
+            };
+            CHECK (value (ParamIDs::talkOn, 0.0f) == 1.0f);
+            CHECK (value (ParamIDs::talkAmount, 1.0f) == 0.0f);
+            CHECK (version->modulation.macroNames[2] == "TALKBACK");
+            CHECK (version->notes.contains ("TALKBACK"));
+            int toAmount = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    CHECK (r.destination == ParamIDs::talkAmount);
+                    CHECK (r.amount == 1.0f);
+                    ++toAmount;
+                }
+            CHECK (toAmount == 1);
+        }
+    }
+    CHECK (count == 18);
+    CHECK (versions == 3);   // Throne Room, Court Drum Bass, Kora Court
+}
+
 TEST_CASE ("RONIN: MACRO 3 is PRESS on every preset, in D in, its versions too", "[rigs][expansions][press]")
 {
     // 1.3.0: PRESS on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to AMOUNT at 1 and to
@@ -1991,8 +2031,9 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto wicked = rig.bank == Rig::numBanks + 42;    // WICKED GAME: 128 BPM in D minor, Dm Bb Gm A (held, for RUNNER)
         const auto ronin = rig.bank == Rig::numBanks + 43;     // RONIN: 84 BPM in D "in" (D Eb G A Bb), notes ringing for PRESS
         const auto reign = rig.bank == Rig::numBanks + 44;     // NIGHT REIGN: 112 BPM in D harmonic minor, Dm Bb Gm A
+        const auto sun = rig.bank == Rig::numBanks + 45;       // SUNTHRONE: 100 BPM in E minor, Em C Am B, call and response
         p.song.bpm = hell ? 140.0 : star ? 100.0 : sand ? 90.0 : data ? 120.0 : last ? 70.0 : sim ? 130.0 : dream ? 80.0
-                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : ronin ? 84.0 : reign ? 112.0 : 85.0;
+                   : night ? 100.0 : unspoken ? 70.0 : shrine ? 72.0 : stowaway ? 60.0 : fury ? 140.0 : ascent ? 80.0 : refract ? 75.0 : psi ? 120.0 : blood ? 120.0 : dust ? 70.0 : super ? 90.0 : sev ? 96.0 : sling ? 110.0 : para ? 80.0 : melt ? 66.0 : atomic ? 116.0 : hyper ? 104.0 : cinema ? 72.0 : maestro ? 90.0 : twin ? 95.0 : stolen ? 72.0 : drowned ? 92.0 : eden ? 108.0 : gun ? 96.0 : machine ? 128.0 : lastday ? 100.0 : play ? 108.0 : divide ? 84.0 : descent ? 96.0 : noon ? 96.0 : steel ? 140.0 : wicked ? 128.0 : ronin ? 84.0 : reign ? 112.0 : sun ? 100.0 : 85.0;
         const auto beat = 60.0 / p.song.bpm;
         for (const auto& item : overrides)
             if (auto* parameter = p.processor.getParameters().getParameter (item.upToFirstOccurrenceOf ("=", false, false)))
@@ -3101,6 +3142,45 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             {
                 for (int c = 0; c < 4; ++c)
                     chord (e, at (c * 4.0), at (c * 4.0 + 3.9), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 92);
+                wheel (8.0, 14.0, 90);
+                length = 20.0 * beat;
+            }
+        }
+        else if (sun)
+        {
+            // Our own phrases (none from any film): E minor at 100 BPM, Em C Am B. Call and response: a phrase in a
+            // bar, a rest in the next for TALKBACK's drum to answer in, again.
+            const std::vector<std::vector<int>> chords { { 40, 52, 55, 59, 64, 67 }, { 36, 48, 52, 55, 60, 64 },
+                                                         { 33, 45, 52, 57, 60, 64 }, { 35, 47, 51, 54, 59, 63 } };
+            if (type == "Lead")
+            {
+                line ({ { 0, 0.5, 76 }, { 0.5, 0.5, 79 }, { 1, 1, 81 }, { 2, 1.5, 83 },
+                        { 8, 0.5, 86 }, { 8.5, 0.5, 83 }, { 9, 1, 81 }, { 10, 0.5, 79 }, { 10.5, 1, 76 } }, 105);
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Bass")
+            {
+                line ({ { 0, 1, 40 }, { 1, 0.5, 40 }, { 1.5, 0.5, 43 }, { 2, 1.5, 45 },
+                        { 8, 1, 36 }, { 9, 0.5, 35 }, { 9.5, 0.5, 38 }, { 10, 1.5, 40 } }, 110);
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else if (type == "Keys" || type == "Pluck")
+            {
+                for (const auto c : { 0, 2 })
+                {
+                    const auto& n = chords[(size_t) c];
+                    chord (e, at (c * 4.0), at (c * 4.0 + 0.9), std::vector<int> { n[2], n[3], n[4] }, 100);
+                    line ({ { c * 4.0 + 1.0, 0.5, n[5] + 12 }, { c * 4.0 + 1.5, 0.5, n[4] + 12 }, { c * 4.0 + 2.0, 1.4, n[3] + 12 } }, 95);
+                }
+                wheel (8.0, 14.0, 90);
+                length = 18.0 * beat;
+            }
+            else   // the pads and arps: a chord held most of a bar, a rest, the drum answering over the next
+            {
+                for (int c = 0; c < 4; ++c)
+                    chord (e, at (c * 4.0), at (c * 4.0 + 3.5), std::vector<int> (chords[(size_t) c].begin() + 1, chords[(size_t) c].end()), 92);
                 wheel (8.0, 14.0, 90);
                 length = 20.0 * beat;
             }

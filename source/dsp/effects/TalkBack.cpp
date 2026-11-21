@@ -229,7 +229,7 @@ namespace effects
         const auto crackLevel = 0.9f * (0.4f + 0.6f * tone);
         const auto crackLowA = 1.0f - (float) std::exp (-twoPi * 700.0 / sampleRate);
         const auto crackHighA = 1.0f - (float) std::exp (-twoPi * juce::jmin (0.45 * sampleRate, 2000.0 + 5000.0 * tone) / sampleRate);
-        const auto gain = juce::Decibels::decibelsToGain (juce::jlimit (-36.0f, 6.0f, s.levelDb)) * makeUp;
+        const auto gain = juce::Decibels::decibelsToGain (juce::jlimit (-60.0f, 40.0f, s.levelDb)) * makeUp;
         const auto angle = (juce::jlimit (-1.0f, 1.0f, s.pan) + 1.0f) * juce::MathConstants<float>::pi * 0.25f;
         const auto gainL = gain * std::cos (angle) * juce::MathConstants<float>::sqrt2;
         const auto gainR = gain * std::sin (angle) * juce::MathConstants<float>::sqrt2;

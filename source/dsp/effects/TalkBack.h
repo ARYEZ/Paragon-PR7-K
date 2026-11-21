@@ -47,7 +47,7 @@ namespace effects
             int wait = 0;            // waitNames
             float space = 0.3f;      // 0 to 1: into the reverb's send
             float pan = 0.2f;        // -1 left to 1 right
-            float levelDb = -6.0f;   // -36 to +6
+            float levelDb = -6.0f;   // -36 to +6 (the processor takes the preset's LEVEL off, so up to -60 to +40 here)
         };
 
         // How AMOUNT is shared out: the chance a phrase is answered, the chance of each of the drummer's own touches

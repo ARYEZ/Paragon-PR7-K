@@ -15922,6 +15922,478 @@ namespace
         route (b, "macro3", ParamIDs::ornAmount, 1.0f);   // the macro is AMOUNT: how many notes are ornamented
     }
 
+    // SUNTHRONE (1.9.0, the owner's theme and name: an Afrofuturist kingdom, a high-tech African kingdom hidden from the
+    // world; our own sounds, no film, character, place, composer or music named). Three columns in every category: the
+    // kingdom (the court: a sung lead, brass and strings, kora, balafon), the technology (the glowing city: sync, 808s,
+    // electric keys, sequences), the ritual (night ceremony: a flute, the savanna, a heartbeat, bells, the fire circle).
+    // MACRO 3 TALKBACK on every preset: a talking drum answering each phrase you play on the next bar line, following
+    // its rise and fall.
+    struct Drum
+    {
+        float pitch = 150.0f;   // TALKBACK PITCH: the drum's middle (Hz)
+        float range = 0.6f, bend = 1.5f, tone = 0.5f;
+        int wait = 0;           // waitNames: NEXT BAR, NEXT BEAT
+        float space = 0.3f, pan = 0.25f;
+        float level = -8.0f;    // TALKBACK LEVEL (dB, at the output whatever the preset's LEVEL; measured)
+    };
+    void talkBack (Builder& b, Drum d)
+    {
+        b.set (ParamIDs::talkOn, 1.0f).set (ParamIDs::talkAmount, 0.0f).set (ParamIDs::talkPitch, d.pitch)
+         .set (ParamIDs::talkRange, d.range).set (ParamIDs::talkBend, d.bend).set (ParamIDs::talkTone, d.tone)
+         .set (ParamIDs::talkWait, (float) d.wait).set (ParamIDs::talkSpace, d.space).set (ParamIDs::talkPan, d.pan)
+         .set (ParamIDs::talkLevel, d.level);
+        route (b, "macro3", ParamIDs::talkAmount, 1.0f);   // the macro is AMOUNT: replies, then every phrase, then a conversation
+    }
+
+    void sunthrone (Expansion x)
+    {
+        using LW = synth::mod::LfoWave;
+        using AM = synth::arp::Mode;
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.4f);
+        };
+        const auto lfo = [] (Builder& b, int l, LW wave, float hz)
+        {
+            b.set (ParamIDs::lfo (l, "Wave"), (float) wave).set (ParamIDs::lfo (l, "Rate"), hz)
+             .set (ParamIDs::lfo (l, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        };
+        const auto voice = [] (Builder& b, float vowel, float size, float sharp)
+        {
+            b.set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, vowel).set (ParamIDs::voiceSize, size)
+             .set (ParamIDs::voiceSharp, sharp).set (ParamIDs::voiceMix, 1.0f);
+        };
+        const auto cleanSub = [] (Builder& b, int o, float volume, float transpose = -12.0f)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", sine).osc (o, "Transpose", transpose).osc (o, "Volume", volume)
+             .osc (o, "Filter", 0.0f).osc (o, "Insert", 0.0f).osc (o, "Voice", 0.0f).osc (o, "PhaseRand", 0.0f);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        const auto finish = [] (Builder& b, const char* one, RT room, float size, float mix, float preDelay = 25.0f)
+        {
+            macros (b, one, "SPACE", "TALKBACK");
+            reverb (b, room, size, mix, preDelay, 5.0f);
+            space (b);
+        };
+        const auto talk = " Turn up TALKBACK (MACRO 3) and a talking drum answers each phrase you play on the next bar line, "
+                          "following its rise and fall: now and then at first, every phrase from halfway, a whole "
+                          "conversation at the top.";
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto griot = x.make ("Griot Voice", 1, { "Lead", "Kingdom", "Voice", "Sung" },
+            juce::String ("The court's singer telling the kingdom's story: a saw and a narrow pulse sung through the VOICE "
+            "filter on \"eh\" at a man's size, a wide, slow vibrato, every note slid into from the one before, a little "
+            "breath, echoes in the throne room.") + talk + " MOD WHEEL: a wider vibrato. MACROS: BRIGHT, SPACE, TALKBACK.");
+        griot.osc (0, "Wave", saw).osc (0, "Volume", 0.6f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.25f).osc (1, "Fine", -5.0f).osc (1, "Volume", 0.35f);
+        vibrato (griot, 0, 26.0f, 4.8f, 380.0f);
+        vibrato (griot, 1, 26.0f, 4.8f, 380.0f);
+        noiseOsc (griot, 2, 0.05f, 0.1f);
+        voice (griot, 0.62f, 0.35f, 0.55f);
+        griot.ampEnvelope (60.0f, 700.0f, 0.9f, 500.0f)
+             .mono (110.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        route (griot, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.25f);
+        route (griot, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.25f);
+        route (griot, "macro1", ParamIDs::voiceSharp, 0.35f);
+        delay (griot, "1/4 dotted", 0.3f, 0.12f, true, 4.0f);
+        finish (griot, "BRIGHT", RT::hall, 0.6f, 0.2f);
+        talkBack (griot, { 150.0f, 0.6f, 1.5f, 0.5f, 0, 0.3f, 0.3f, -8.0f });
+        griot.set (ParamIDs::patchLevel, -5.0f);
+        x.add (griot);
+
+        auto spear = x.make ("Sonic Spear", 2, { "Lead", "Technology", "Sync", "Bright" },
+            juce::String ("The city's engines in a lead: a hard-synced saw whose sync sweeps down as each note starts, three "
+            "copies spread wide, a square an octave under, a quick glide, ping-pong echoes in dotted eighths.") + talk
+            + " MOD WHEEL: more sync. MACROS: BRIGHT, SPACE, TALKBACK.");
+        spear.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "SyncAmount", 0.25f).osc (0, "SyncEnv", 0.4f)
+             .osc (0, "SyncEnvTime", 250.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp24, 6000.0f, 0.2f, 0.0f)
+             .ampEnvelope (2.0f, 400.0f, 0.85f, 220.0f)
+             .mono (35.0f);
+        unison (spear, 0, 3, 0.6f, 0.15f, 0.8f);
+        route (spear, "modWheel", ParamIDs::osc (0, "SyncAmount"), 0.35f);
+        route (spear, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (spear, "1/8 dotted", 0.35f, 0.16f, true, 5.0f);
+        finish (spear, "BRIGHT", RT::plate, 0.5f, 0.12f);
+        talkBack (spear, { 190.0f, 0.7f, 1.0f, 0.8f, 0, 0.25f, -0.3f, -8.0f });
+        spear.set (ParamIDs::patchLevel, -6.0f);
+        x.add (spear);
+
+        auto flute = x.make ("Spirit Flute", 3, { "Lead", "Ritual", "Flute", "Breath" },
+            juce::String ("A wooden flute at the night ceremony: a sine and a quiet triangle, the player's breath (light "
+            "noise) round them, each note overblown into from a little below, a slow vibrato that grows, a dark open-air "
+            "hall.") + talk + " MOD WHEEL: more breath. MACROS: BRIGHT, SPACE, TALKBACK.");
+        flute.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.1f);
+        vibrato (flute, 0, 14.0f, 5.2f, 600.0f);
+        vibrato (flute, 1, 14.0f, 5.2f, 600.0f);
+        noiseOsc (flute, 2, 0.12f, 0.05f);
+        flute.filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f).set (ParamIDs::fltKey, 0.6f)
+             .ampEnvelope (70.0f, 600.0f, 0.85f, 350.0f)
+             .mono (60.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        pkBend (flute, -0.6f, 0.09f, -0.5f);
+        route (flute, "modWheel", ParamIDs::osc (2, "Volume"), 0.15f);
+        route (flute, "macro1", ParamIDs::fltCutoff, 0.25f);
+        delay (flute, "1/4", 0.25f, 0.1f, false, 3.5f);
+        finish (flute, "BRIGHT", RT::hall, 0.75f, 0.24f, 35.0f);
+        talkBack (flute, { 115.0f, 0.55f, 2.0f, 0.3f, 0, 0.45f, 0.2f, -8.0f });
+        flute.set (ParamIDs::patchLevel, -4.0f);
+        x.add (flute);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto throne = x.make ("Throne Room", 4, { "Pad", "Kingdom", "Brass", "Strings" },
+            juce::String ("The throne room's fanfare held as a chord: warm horns (saws whose filter swells open as you hold "
+            "them) over a section of strings, each player his own vibrato, a soft \"oh\" of voices far behind, a great "
+            "hall. Hold wide chords.") + talk + " MOD WHEEL: the horns swell brighter. MACROS: BRIGHT, SPACE, TALKBACK.");
+        throne.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+              .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.3f).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.12f)
+              .osc (2, "Filter", 0.0f);
+        pkSection (throne, 0, 3, 0.1f, 8.0f, 5.0f, 500.0f);
+        pkSection (throne, 1, 4, 0.12f, 9.0f, 5.4f, 500.0f);
+        pkSection (throne, 2, 4, 0.12f, 11.0f, 5.2f, 500.0f);
+        throne.filter (FilterType::lp24, 900.0f, 0.1f, 0.45f).set (ParamIDs::fltKey, 0.4f)
+              .filterEnvelope (700.0f, 1500.0f, 0.65f, 900.0f)
+              .ampEnvelope (300.0f, 1000.0f, 0.9f, 1200.0f);
+        route (throne, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (throne, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (throne, "BRIGHT", RT::hall, 0.8f, 0.26f, 35.0f);
+        talkBack (throne, { 140.0f, 0.6f, 1.5f, 0.5f, 0, 0.35f, 0.2f, -8.0f });
+        throne.set (ParamIDs::patchLevel, -12.0f);
+        orchestra (throne, { { { 3, "Brass - Notation/Horns Sustain.sfz", 0.8f, -0.15f, true },
+                               { 4, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.1f, true } },
+                             { 0, 1 }, -6.0f,
+                             "The throne room's fanfare held as a chord: the orchestra's horns over its whole string "
+                             "section, held as long as you hold the keys (SFZ HOLD), the synth's high voices far behind.",
+                             250.0f, 1000.0f, 1.0f, 1200.0f, -1.0f,
+                             [] (Builder& s) { s.osc (3, "SfzHold", 1.0f).osc (4, "SfzHold", 1.0f).set (ParamIDs::fltCutoff, 6000.0f); } });
+        x.add (throne);
+
+        auto haze = x.make ("Glowstone Haze", 5, { "Pad", "Technology", "Wavetable", "Shimmer" },
+            juce::String ("The glowing stone that powers the city, humming: a wavetable that circles slowly through its "
+            "frames in time with your song, a fifth above in a second table, a slow chorus, a shimmering digital hall. "
+            "Hold chords.") + talk + " MOD WHEEL: the tables move further. MACROS: BRIGHT, SPACE, TALKBACK.");
+        haze.osc (0, "Wave", wavetable).osc (0, "Table", table ("Harmonic Rise")).osc (0, "WtIndex", 0.2f).osc (0, "Volume", 0.6f)
+            .osc (0, "TrOn", 1.0f).osc (0, "TrMode", (float) synth::travel::Mode::pingPong).osc (0, "TrStrength", 0.5f)
+            .osc (0, "TrSync", 0.0f).osc (0, "TrRate", 0.12f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", wavetable).osc (1, "Table", table ("Analog Morph")).osc (1, "WtIndex", 0.6f)
+            .osc (1, "Transpose", 7.0f).osc (1, "Volume", 0.3f);
+        unison (haze, 0, 4, 0.6f, 0.12f, 0.9f);
+        lfo (haze, 0, LW::sine, 0.08f);
+        route (haze, "lfo1", ParamIDs::osc (1, "WtIndex"), 0.3f);
+        haze.filter (FilterType::lp12, 3000.0f, 0.1f, 0.0f)
+            .ampEnvelope (900.0f, 1500.0f, 0.9f, 2000.0f);
+        chorus (haze, ParamIDs::modIds, MT::dimension, 0.3f, 0.6f, 0.7f);
+        route (haze, "modWheel", ParamIDs::osc (0, "TrStrength"), 0.4f);
+        route (haze, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (haze, "BRIGHT", RT::digital, 0.85f, 0.32f, 40.0f);
+        talkBack (haze, { 180.0f, 0.65f, 1.2f, 0.7f, 0, 0.4f, -0.25f, -8.0f });
+        haze.set (ParamIDs::patchLevel, -10.0f);
+        x.add (haze);
+
+        auto savanna = x.make ("Night Savanna", 6, { "Pad", "Ritual", "Drone", "Night" },
+            juce::String ("The savanna after dark: a low, hollow drone (a triangle and a sine an octave under) breathing "
+            "through a slowly opening filter, crickets chirping high above it (noise pulsed fourteen times a second), "
+            "warm wind. Hold low chords.") + talk + " MOD WHEEL: more crickets. MACROS: BRIGHT, SPACE, TALKBACK.");
+        savanna.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.4f).osc (1, "PhaseRand", 0.0f);
+        unison (savanna, 0, 3, 0.5f, 0.08f, 0.7f);
+        noiseOsc (savanna, 2, 0.0f, 0.0f);
+        savanna.osc (2, "Filter", 0.0f);
+        noiseOsc (savanna, 3, 0.05f, 0.7f);   // the wind
+        lfo (savanna, 0, LW::square, 14.0f);
+        lfo (savanna, 1, LW::sine, 0.07f);
+        route (savanna, "lfo1", ParamIDs::osc (2, "Volume"), 0.025f);
+        route (savanna, "lfo2", ParamIDs::fltCutoff, 0.15f);
+        savanna.filter (FilterType::lp24, 700.0f, 0.2f, 0.0f).set (ParamIDs::fltKey, 0.3f)
+               .ampEnvelope (1200.0f, 1500.0f, 0.9f, 2500.0f);
+        eqBand (savanna, 0, eq::Shape::bell, 7000.0f, 2.0f, 0.7f);
+        route (savanna, "modWheel", ParamIDs::osc (2, "Volume"), 0.03f);
+        route (savanna, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (savanna, "BRIGHT", RT::hall, 0.9f, 0.28f, 40.0f);
+        talkBack (savanna, { 105.0f, 0.5f, 2.0f, 0.25f, 0, 0.5f, 0.15f, -8.0f });
+        savanna.set (ParamIDs::patchLevel, -8.0f);
+        x.add (savanna);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto court = x.make ("Court Drum Bass", 7, { "Bass", "Kingdom", "Drum", "Pitched" },
+            juce::String ("A bass played like the court's great drum: a sine that thumps down onto each note from a fifth "
+            "above, a triangle an octave up for its body, the skin's slap at the start, ringing on while you hold it.")
+            + talk + " MOD WHEEL: a harder thump. MACROS: BRIGHT, SPACE, TALKBACK.");
+        court.osc (0, "Wave", sine).osc (0, "Volume", 0.85f).osc (0, "PhaseRand", 0.0f).osc (0, "Filter", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.18f)
+             .filter (FilterType::lp12, 1200.0f, 0.1f, 0.3f).filterEnvelope (0.0f, 200.0f, 0.3f, 200.0f)
+             .ampEnvelope (1.0f, 900.0f, 0.45f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f)
+             .mono (0.0f);
+        pkStrike (court, 2, 0, 0.12f, 18.0f, 0.3f);
+        pkBend (court, 7.0f, 0.07f, -0.6f);
+        route (court, "modWheel", ParamIDs::pitchEnvRange, 4.0f);
+        route (court, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (court, "BRIGHT", RT::room, 0.5f, 0.1f);
+        talkBack (court, { 130.0f, 0.6f, 1.5f, 0.4f, 0, 0.25f, 0.3f, -8.0f });
+        court.set (ParamIDs::patchLevel, -4.0f);
+        orchestra (court, { { { 3, "Percussion/Timpani.sfz", 0.9f, 0.0f, false } },
+                            { 1, 2 }, -2.0f,
+                            "A bass played like the court's great drum: the orchestra's timpani on every note, the synth's "
+                            "thumping sine under it.",
+                            -1.0f, 900.0f, 0.45f, 300.0f, -1.0f, {} });
+        x.add (court);
+
+        auto eight = x.make ("Throne 808", 8, { "Bass", "Technology", "808", "Glide" },
+            juce::String ("The city's trap bass: a long sine 808, its pitch dropping an octave into each note, a little "
+            "drive for grit, slides between held notes (play legato to glide).") + talk
+            + " MOD WHEEL: more drive. MACROS: BRIGHT, SPACE, TALKBACK.");
+        eight.osc (0, "Wave", sine).osc (0, "Volume", 0.9f).osc (0, "PhaseRand", 0.0f)
+             .shaper (0, synth::ShaperModel::soft, 0.25f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 2200.0f, 0.35f, 400.0f).set (ParamIDs::ampDecayCurve, -0.4f)
+             .mono (90.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
+        pkBend (eight, 12.0f, 0.04f, -0.7f);
+        route (eight, "modWheel", ParamIDs::shp (0, "Drive"), 0.35f);
+        route (eight, "macro1", ParamIDs::shp (0, "Drive"), 0.2f);
+        finish (eight, "BRIGHT", RT::room, 0.4f, 0.06f);
+        talkBack (eight, { 175.0f, 0.65f, 1.0f, 0.75f, 0, 0.2f, -0.3f, -8.0f });
+        eight.set (ParamIDs::patchLevel, -6.0f);
+        x.add (eight);
+
+        auto heart = x.make ("Heartbeat Bass", 9, { "Bass", "Ritual", "Pulse", "Sub" },
+            juce::String ("The ceremony's heartbeat under everything: a sub (a sine and a darkened saw) that pulses lub-dub "
+            "in eighths while you hold a note, slow and deep.") + talk + " MOD WHEEL: opens the saw. MACROS: BRIGHT, "
+            "SPACE, TALKBACK.");
+        heart.osc (0, "Wave", sine).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.3f)
+             .filter (FilterType::lp24, 300.0f, 0.15f, 0.0f).set (ParamIDs::fltKey, 0.4f)
+             .ampEnvelope (5.0f, 600.0f, 0.9f, 300.0f)
+             .mono (20.0f);
+        heart.set (ParamIDs::seqOn, 1.0f).set (ParamIDs::seqMode, (float) synth::seq::Mode::mono)
+             .set (ParamIDs::seqVolMix, 0.9f).set (ParamIDs::seqGate, 0.6f).set (ParamIDs::seqContour, 0.3f)
+             .set (ParamIDs::seqDivision, division ("1/16")).set (ParamIDs::seqLength, 8.0f);
+        {
+            const float levels[] { 1.0f, 0.0f, 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };   // lub, dub, then rest
+            for (int k = 0; k < synth::seq::maxSteps; ++k)
+            {
+                auto& step = heart.rig.modulation.stepPattern.rows[0][(size_t) k];
+                step.on = levels[k % 8] > 0.0f;
+                step.level = levels[k % 8];
+            }
+        }
+        route (heart, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (heart, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (heart, "BRIGHT", RT::room, 0.5f, 0.08f);
+        talkBack (heart, { 110.0f, 0.5f, 2.0f, 0.3f, 0, 0.35f, 0.2f, -8.0f });
+        heart.set (ParamIDs::patchLevel, -3.0f);
+        x.add (heart);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto kora = x.make ("Kora Court", 10, { "Keys", "Kingdom", "Kora", "Harp" },
+            juce::String ("The court's kora (a harp-lute of many strings) as keys: a triangle and a narrow pulse plucked "
+            "with a thumb (a quick filter snap), ringing a while, bright and dry. Play running figures.") + talk
+            + " MACROS: BRIGHT, SPACE, TALKBACK.");
+        kora.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.18f).osc (1, "Volume", 0.22f).osc (1, "Fine", 3.0f)
+            .filter (FilterType::lp12, 2500.0f, 0.15f, 0.45f).set (ParamIDs::fltKey, 0.6f)
+            .filterEnvelope (0.0f, 350.0f, 0.2f, 300.0f)
+            .ampEnvelope (0.5f, 1600.0f, 0.15f, 400.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkVelocity (kora, 0.5f, 0.2f, 0.5f);
+        route (kora, "macro1", ParamIDs::fltCutoff, 0.25f);
+        delay (kora, "1/8", 0.25f, 0.1f, true, 4.5f);
+        finish (kora, "BRIGHT", RT::room, 0.55f, 0.14f);
+        talkBack (kora, { 150.0f, 0.6f, 1.5f, 0.55f, 0, 0.3f, -0.25f, -8.0f });
+        kora.set (ParamIDs::patchLevel, -4.0f);
+        orchestra (kora, { { { 0, "Concert Harp.sfz", 1.0f, 0.0f, true } },
+                           { 0, 1 }, 2.0f,
+                           "The court's kora as keys: the orchestra's concert harp, plucked bright and dry.",
+                           0.0f, 2500.0f, 1.0f, 600.0f, -1.0f, [] (Builder& s) { s.set (ParamIDs::fltCutoff, 6000.0f); } });
+        x.add (kora);
+
+        auto kinetic = x.make ("Kinetic Keys", 11, { "Keys", "Technology", "FM", "Electric" },
+            juce::String ("The city's electric keys: a sine with FM from a second sine at twice its pitch, bright at the "
+            "strike and settling, brighter the harder you play, a tremolo panning in eighths, a chorus.") + talk
+            + " MOD WHEEL: more bark (FM). MACROS: BRIGHT, SPACE, TALKBACK.");
+        kinetic.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+               .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.1f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 24.0f).osc (2, "Volume", 0.08f)
+               .set (ParamIDs::fltOn, 0.0f)
+               .ampEnvelope (2.0f, 2200.0f, 0.25f, 400.0f).set (ParamIDs::ampVel, 0.6f);
+        pkShot (kinetic, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.7f, 0.2f, 0.0f } });
+        route (kinetic, "env1", ParamIDs::osc (0, "FmAmount"), 0.3f);
+        route (kinetic, "velocity", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (kinetic, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        route (kinetic, "macro1", ParamIDs::osc (2, "Volume"), 0.12f);
+        chorus (kinetic, ParamIDs::modIds, MT::autoPan, 1.0f, 0.35f, 1.0f);
+        chorus (kinetic, ParamIDs::mod2Ids, MT::chorus, 0.6f, 0.4f, 0.5f);
+        finish (kinetic, "BRIGHT", RT::plate, 0.5f, 0.14f);
+        talkBack (kinetic, { 185.0f, 0.65f, 1.0f, 0.7f, 0, 0.25f, 0.3f, -8.0f });
+        kinetic.set (ParamIDs::patchLevel, -7.0f);
+        x.add (kinetic);
+
+        auto elder = x.make ("Elder Bells", 12, { "Keys", "Ritual", "Bell", "Metal" },
+            juce::String ("Deep ceremonial bells: a sine and a triangle rung by ring modulation at a bell's odd ratio "
+            "(the metal's own clang, falling away faster than the tone), a long dark tail. Play slow chords low.")
+            + talk + " MOD WHEEL: more clang. MACROS: BRIGHT, SPACE, TALKBACK.");
+        elder.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.683f).osc (0, "AmAmount", 0.15f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 4000.0f, 0.1f, 1500.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.5f);
+        pkShot (elder, 0, { PK { 0.0f, 1.0f, -0.6f }, PK { 1.2f, 0.0f, 0.0f } });
+        route (elder, "env1", ParamIDs::osc (0, "AmAmount"), 0.55f);
+        route (elder, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.25f);
+        route (elder, "macro1", ParamIDs::osc (0, "AmAmount"), 0.15f);
+        finish (elder, "BRIGHT", RT::cathedral, 0.8f, 0.24f, 40.0f);
+        talkBack (elder, { 100.0f, 0.5f, 2.0f, 0.3f, 0, 0.45f, -0.2f, -8.0f });
+        elder.set (ParamIDs::patchLevel, -9.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        x.add (elder);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto balafon = x.make ("Balafon Run", 13, { "Arp", "Kingdom", "Balafon", "Wood" },
+            juce::String ("The court's balafon (a xylophone over gourds) running through the chord you hold: wooden bars "
+            "(a sine and a triangle two octaves up, struck with a mallet's knock), the gourds' buzz in a narrow pulse, "
+            "up and down two octaves in sixteenths.") + talk + " MOD WHEEL: more buzz. MACROS: BRIGHT, SPACE, TALKBACK.");
+        balafon.osc (0, "Wave", sine).osc (0, "Volume", 0.7f).osc (0, "PhaseRand", 0.0f)
+               .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.0f)
+               .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.08f).osc (2, "Volume", 0.05f)
+               .filter (FilterType::lp12, 3000.0f, 0.1f, 0.3f).set (ParamIDs::fltKey, 0.5f)
+               .filterEnvelope (0.0f, 120.0f, 0.0f, 100.0f)
+               .ampEnvelope (0.5f, 260.0f, 0.1f, 150.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (balafon, 1, 1, 0.3f, 0.08f);
+        pkStrike (balafon, 3, 0, 0.1f, 6.0f, 0.4f);
+        arpOn (balafon, { 0, 1, 2, 3 }, AM::upDown, "1/16", 2.0f, 0.7f);
+        route (balafon, "modWheel", ParamIDs::osc (2, "Volume"), 0.08f);
+        route (balafon, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (balafon, "BRIGHT", RT::room, 0.5f, 0.12f);
+        talkBack (balafon, { 160.0f, 0.55f, 1.0f, 0.6f, 0, 0.3f, -0.3f, -8.0f });
+        balafon.set (ParamIDs::patchLevel, -2.0f);
+        x.add (balafon);
+
+        auto maglev = x.make ("Maglev Arp", 14, { "Arp", "Technology", "Sequence", "Saw" },
+            juce::String ("The maglev trains crossing the city: hold a chord and a bright saw and square run it in "
+            "sixteenths, every fourth step doubled (a ratchet), the filter snapping on each, ping-pong echoes.") + talk
+            + " MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, TALKBACK.");
+        maglev.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.3f)
+              .filter (FilterType::lp24, 1400.0f, 0.3f, 0.5f).set (ParamIDs::fltKey, 0.5f)
+              .filterEnvelope (0.0f, 140.0f, 0.1f, 100.0f)
+              .ampEnvelope (1.0f, 220.0f, 0.3f, 120.0f);
+        arpOn (maglev, { 0, 1 }, AM::up, "1/16", 2.0f, 0.6f);
+        {
+            auto& p = maglev.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].ratchet = (k % 4) == 3 ? 2 : 1;
+        }
+        route (maglev, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (maglev, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (maglev, "1/8 dotted", 0.35f, 0.15f, true, 5.0f);
+        finish (maglev, "BRIGHT", RT::plate, 0.5f, 0.1f);
+        talkBack (maglev, { 200.0f, 0.65f, 1.0f, 0.8f, 0, 0.25f, 0.3f, -8.0f });
+        maglev.set (ParamIDs::patchLevel, -6.0f);
+        x.add (maglev);
+
+        auto fire = x.make ("Fire Circle", 15, { "Arp", "Ritual", "Chant", "Hand Drum" },
+            juce::String ("The circle round the fire: hold a chord and the dancers chant it (saws sung on \"oh\" through "
+            "the VOICE filter) while a hand drum plays its own groove underneath (a sine thumping down from above, a "
+            "slap of skin), whatever keys you hold.") + talk + " MOD WHEEL: the chant opens to \"ah\". MACROS: BRIGHT, "
+            "SPACE, TALKBACK.");
+        fire.osc (0, "Wave", sine).osc (0, "Transpose", -24.0f).osc (0, "Volume", 0.0f).osc (0, "PhaseRand", 0.0f)
+            .osc (0, "Arp", 1.0f).osc (0, "Voice", 0.0f).osc (0, "Filter", 0.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.45f)
+            .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.2f).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f);
+        pkSection (fire, 1, 4, 0.12f, 10.0f, 5.0f, 300.0f);
+        voice (fire, 0.25f, 0.3f, 0.5f);
+        fire.filter (FilterType::lp12, 3500.0f, 0.05f, 0.0f)
+            .ampEnvelope (120.0f, 800.0f, 0.75f, 500.0f);
+        pkShot (fire, 0, { PK { 0.0f, 1.0f, -0.6f }, PK { 0.18f, 0.0f, 0.0f } });
+        route (fire, "env1", ParamIDs::osc (0, "Volume"), 0.9f);
+        pkStrike (fire, 3, 1, 0.15f, 10.0f, 0.3f, false);
+        fire.osc (3, "Arp", 1.0f).osc (3, "Voice", 0.0f);
+        fire.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) AM::up)
+            .set (ParamIDs::arp (0, "Division"), division ("1/16")).set (ParamIDs::arp (0, "Octaves"), 1.0f)
+            .set (ParamIDs::arp (0, "Gate"), 0.6f)
+            .set (ParamIDs::arp (0, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
+        {
+            auto& p = fire.rig.modulation.arps[0].patterns[0];
+            const int hits[] { 0, 3, 6, 8, 10, 12, 14 };
+            for (int k = 0; k < 16; ++k)
+            {
+                p.blocks[(size_t) k].on = std::find (std::begin (hits), std::end (hits), k) != std::end (hits);
+                p.blocks[(size_t) k].velocity = (k == 0 || k == 8) ? 1.0f : 0.7f;
+            }
+        }
+        route (fire, "modWheel", ParamIDs::voiceVowel, 0.3f);
+        route (fire, "macro1", ParamIDs::voiceSharp, 0.3f);
+        finish (fire, "BRIGHT", RT::hall, 0.55f, 0.16f);
+        talkBack (fire, { 120.0f, 0.55f, 2.0f, 0.35f, 0, 0.35f, 0.35f, -8.0f });
+        fire.set (ParamIDs::patchLevel, -7.0f);
+        x.add (fire);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto koraPluck = x.make ("Kora Pluck", 16, { "Pluck", "Kingdom", "Kora", "String" },
+            juce::String ("A single kora string plucked hard: a saw struck a hair sharp and settling (the string's first "
+            "stretch), a closing filter, a fingertip's click, short and dry.") + talk + " MACROS: BRIGHT, SPACE, TALKBACK.");
+        koraPluck.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+                 .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.3f).osc (1, "PhaseRand", 0.0f)
+                 .filter (FilterType::lp24, 900.0f, 0.2f, 0.6f).set (ParamIDs::fltKey, 0.6f)
+                 .filterEnvelope (0.0f, 180.0f, 0.0f, 150.0f)
+                 .ampEnvelope (0.5f, 700.0f, 0.05f, 250.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkBend (koraPluck, 0.4f, 0.05f, -0.5f);
+        pkStrike (koraPluck, 2, 0, 0.1f, 3.0f, 0.2f);
+        pkVelocity (koraPluck, 0.5f, 0.2f, 0.5f);
+        route (koraPluck, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (koraPluck, "BRIGHT", RT::room, 0.45f, 0.12f);
+        talkBack (koraPluck, { 155.0f, 0.6f, 1.2f, 0.55f, 0, 0.3f, -0.25f, -8.0f });
+        pkAdd (x, koraPluck);
+
+        auto mbira = x.make ("Circuit Mbira", 17, { "Pluck", "Technology", "Mbira", "Crushed" },
+            juce::String ("A thumb piano rebuilt from circuit boards: a sine tine with an inharmonic overtone ringing off "
+            "fast, crushed to a few bits so it glitters, ping-pong echoes in sixteenths.") + talk
+            + " MOD WHEEL: more crush. MACROS: BRIGHT, SPACE, TALKBACK.");
+        mbira.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Crush", 0.25f).osc (0, "CrushMode", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 29.0f).osc (1, "Fine", 20.0f).osc (1, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (0.5f, 600.0f, 0.04f, 200.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkPartial (mbira, 1, 0, 0.2f, 0.12f);
+        route (mbira, "modWheel", ParamIDs::osc (0, "Crush"), 0.3f);
+        route (mbira, "macro1", ParamIDs::osc (1, "Volume"), 0.08f);
+        delay (mbira, "1/16", 0.35f, 0.16f, true, 6.0f);
+        finish (mbira, "BRIGHT", RT::digital, 0.45f, 0.1f);
+        talkBack (mbira, { 195.0f, 0.7f, 0.8f, 0.85f, 1, 0.25f, 0.3f, -8.0f });
+        pkAdd (x, mbira);
+
+        auto thumb = x.make ("Thumb Piano", 18, { "Pluck", "Ritual", "Mbira", "Wood" },
+            juce::String ("A warm thumb piano by the fire: a soft triangle tine over a wooden box (a low-passed body), the "
+            "rattle of bottle caps on the board (a little noise after each pluck), a warm room.") + talk
+            + " MACROS: BRIGHT, SPACE, TALKBACK.");
+        thumb.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.2f).osc (1, "PhaseRand", 0.0f)
+             .filter (FilterType::lp12, 1600.0f, 0.1f, 0.2f).set (ParamIDs::fltKey, 0.5f)
+             .filterEnvelope (0.0f, 300.0f, 0.3f, 300.0f)
+             .ampEnvelope (0.5f, 1100.0f, 0.06f, 350.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkStrike (thumb, 2, 0, 0.07f, 60.0f, 0.15f);
+        pkVelocity (thumb, 0.4f, 0.2f, 0.5f);
+        route (thumb, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (thumb, "BRIGHT", RT::room, 0.55f, 0.15f);
+        talkBack (thumb, { 125.0f, 0.55f, 1.8f, 0.4f, 0, 0.35f, -0.2f, -8.0f });
+        pkAdd (x, thumb);
+    }
+
     void nightReign (Expansion x)
     {
         using DM = effects::Drive::Model;
@@ -23028,6 +23500,7 @@ std::vector<Rig> makeExpansionRigs()
     wickedGame ({ Rig::numBanks + 42, rigs });
     ronin ({ Rig::numBanks + 43, rigs });
     nightReign ({ Rig::numBanks + 44, rigs });
+    sunthrone ({ Rig::numBanks + 45, rigs });
     // 1.8.0: the presets that sounded like another bank's, made their own (rigs/DistinctPass.cpp).
     rigpatch::apply (rigs, distinctPassTable());
     return rigs;

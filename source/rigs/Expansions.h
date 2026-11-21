@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 45> list
+    inline constexpr std::array<Expansion, 46> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -303,5 +303,13 @@ namespace expansions
           "beat, a raven's harp. MACRO 3, ORNAMENT: a baroque player's trills, mordents and turns on what you play, in D "
           "harmonic minor and in time with your song. The choirs play real singers when they're downloaded (free). Our own "
           "sounds; no film, game, band or song named." },
+        { "SUNTHRONE", "SU",
+          "An Afrofuturist kingdom hidden from the world, its court, its glowing city and its night ceremonies. The "
+          "kingdom: a griot's sung story, the throne room's horns and strings, a bass like the court drum, the kora, the "
+          "balafon. The technology: a synced lead like a spear of light, a glowing wavetable haze, a trap 808, electric "
+          "keys, a maglev sequence, a thumb piano made of circuits. The ritual: a wooden flute, the savanna at night, a "
+          "heartbeat, deep bells, the fire circle's chant and hand drum, a warm thumb piano. MACRO 3, TALKBACK: a talking "
+          "drum answering each phrase you play on the next bar line, following its rise and fall. Our own sounds; no film, "
+          "character, place or music named." },
     }};
 }
