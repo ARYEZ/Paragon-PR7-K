@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.9.0
+
+SUNTHRONE, a new expansion built round TALKBACK, a talking drum that answers what you play. Also: MIMIC copies each round of a slowly moving sound as it was recorded.
+
+- **TALKBACK**, in the SIGNATURE slot: play a phrase and rest, and on the next bar line (or the next beat, with WAIT) a synthesized talking drum plays it back in the same rhythm. Each stroke rises and falls with your melody, gliding between notes as a player squeezes the drum's cords, and long notes bend up as they're held. AMOUNT answers some of your phrases up to halfway (the same phrase in the same place always gets the same decision, so a song plays back the same every time), every phrase from halfway, and at the top the drummer adds his own grace notes and a falling tag. Its page shows your phrase (CALL) over the drum's reply (ANSWER). It listens to the notes you play, not the sound, so chords and bright patches can't confuse it. While the drum is silent your sound passes through untouched.
+- **SUNTHRONE**, an Afrofuturist kingdom (SU01-SU18), in three columns: the kingdom (Griot Voice, Throne Room, Court Drum Bass, Kora Court, Balafon Run, Kora Pluck), the technology (Sonic Spear, Glowstone Haze, Throne 808, Kinetic Keys, Maglev Arp, Circuit Mbira) and the ritual (Spirit Flute, Night Savanna, Heartbeat Bass, Elder Bells, Fire Circle, Thumb Piano). MACRO 3 is TALKBACK on every preset. Throne Room, Court Drum Bass and Kora Court play the orchestra (horns and strings, timpani, the concert harp) once it's downloaded. Our own sounds; no film, character, place or music named.
+- **MIMIC and slow movement:** when a recording sweeps or pulses in rounds that differ from each other, MIMIC now copies up to four of its rounds in turn, as recorded, instead of one averaged round repeated exactly.
+- I can't listen here: the levels are measured, not heard (the presets about the same loudness as the other banks, the drum about 3 dB under the music).
+
 ## 1.8.0
 
 Every expansion preset its own sound (your ask: "presets that sound basically identical between some different rigs"), and MIMIC learns sounds that move.
