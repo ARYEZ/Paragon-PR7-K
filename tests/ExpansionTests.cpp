@@ -13,6 +13,7 @@
 #include "rigs/Expansions.h"
 #include "rigs/FactoryRigs.h"
 #include "rigs/RigPatch.h"
+#include "rigs/DistinctPass.h"
 #include "ui/RigBrowser.h"
 #include "dsp/synth/Arpeggiator.h"
 
@@ -4767,4 +4768,136 @@ TEST_CASE ("Audit: every expansion preset's sound, as bands over time", "[.audit
     }
     folder.getChildFile ("index-" + version + ".tsv").replaceWithText (index);
     folder.getChildFile (withLibraries ? "settings-lib.txt" : "settings.txt").replaceWithText (settings);
+}
+
+//======================================================================================================================
+// NO TWO ALIKE (1.8.0, the owner's ask after the audit found 57 presets that sounded like another bank's): every
+// expansion preset's synthesized version plays the audit's probe (A3 alone, then A3 C4 E4; the basses an octave
+// down; 120 BPM; macros at rest), its sound as 40 log bands (50 Hz-16 kHz) every 1024 samples; every pair is compared
+// as the audit does: the mean dB apart of each moment's spectrum shape (its own loudness taken out, floored 50 dB
+// under it), where both are within 40 dB of their loudest, plus half the mean dB apart of the level (from each
+// one's loudest, floored at -60). Unrelated presets measure about 19; under 3 sounds like the same preset. A new
+// bank's presets must be their own too. (The library versions are checked by hand: [.audit] with PARAGON_LIBRARIES.)
+namespace
+{
+    struct Probe
+    {
+        std::vector<float> shape, level;   // frames x 40, frames
+        std::vector<char> active;
+        int frames = 0;
+        bool silent = true;
+    };
+
+    Probe probeOf (Plugin& p, const Rig& rig, int frames)
+    {
+        constexpr int size = 2048, bands = 40;
+        static juce::dsp::FFT fft (11);
+        std::vector<float> work (size * 2), window (size);
+        for (int i = 0; i < size; ++i)
+            window[(size_t) i] = 0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / size);
+        std::array<int, bands + 1> edges {};
+        for (int b = 0; b <= bands; ++b)
+            edges[(size_t) b] = juce::jlimit (1, size / 2, (int) std::round (50.0 * std::pow (16000.0 / 50.0, (double) b / bands) * size / rate));
+        p.load (rig.name);
+        const auto low = typeOf (rig) == "Bass" ? -12 : 0;
+        Events e;
+        chord (e, 0.05, 1.55, { 57 + low });
+        chord (e, 1.8, 3.8, { 57 + low, 60 + low, 64 + low });
+        std::vector<float> left, right;
+        p.play (4.8, e, &left, &right);
+        Probe probe;
+        probe.frames = frames;
+        std::vector<double> db ((size_t) frames * bands), total ((size_t) frames);
+        for (int f = 0; f < frames; ++f)
+        {
+            const auto at = (size_t) f * size / 2;
+            for (int i = 0; i < size; ++i)
+                work[(size_t) i] = 0.5f * (left[at + (size_t) i] + right[at + (size_t) i]) * window[(size_t) i];
+            std::fill (work.begin() + size, work.end(), 0.0f);
+            fft.performFrequencyOnlyForwardTransform (work.data(), true);
+            double sum = 0.0;
+            for (int b = 0; b < bands; ++b)
+            {
+                double power = 0.0;
+                for (int k = edges[(size_t) b]; k < juce::jmax (edges[(size_t) b] + 1, edges[(size_t) b + 1]); ++k)
+                    power += (double) work[(size_t) k] * work[(size_t) k];
+                // As the audit: the band's dB kept as a float before anything is worked out from it.
+                const auto d = (double) (float) (10.0 * std::log10 (power + 1.0e-20));
+                db[(size_t) (f * bands + b)] = d;
+                sum += std::pow (10.0, d / 10.0);
+            }
+            total[(size_t) f] = 10.0 * std::log10 (sum + 1.0e-20);
+        }
+        const auto loudest = *std::max_element (total.begin(), total.end());
+        probe.silent = loudest < -100.0;
+        probe.shape.resize ((size_t) frames * bands);
+        probe.level.resize ((size_t) frames);
+        probe.active.resize ((size_t) frames);
+        for (int f = 0; f < frames; ++f)
+        {
+            for (int b = 0; b < bands; ++b)
+                probe.shape[(size_t) (f * bands + b)] = (float) juce::jmax (-50.0, db[(size_t) (f * bands + b)] - total[(size_t) f]);
+            probe.level[(size_t) f] = (float) juce::jmax (-60.0, total[(size_t) f] - loudest);
+            probe.active[(size_t) f] = (char) (total[(size_t) f] - loudest > -40.0);
+        }
+        return probe;
+    }
+
+    double apart (const Probe& a, const Probe& b)
+    {
+        if (a.silent || b.silent)
+            return 99.0;
+        double tone = 0.0, level = 0.0;
+        int both = 0, either = 0;
+        for (int f = 0; f < a.frames; ++f)
+        {
+            if (a.active[(size_t) f] && b.active[(size_t) f])
+            {
+                for (int k = 0; k < 40; ++k)
+                    tone += std::abs ((double) a.shape[(size_t) (f * 40 + k)] - (double) b.shape[(size_t) (f * 40 + k)]);
+                ++both;
+            }
+            if (a.active[(size_t) f] || b.active[(size_t) f])
+            {
+                level += std::abs ((double) a.level[(size_t) f] - (double) b.level[(size_t) f]);
+                ++either;
+            }
+        }
+        if (both < 10)
+            return 99.0;
+        return tone / (both * 40.0) + 0.5 * level / juce::jmax (1, either);
+    }
+}
+
+TEST_CASE ("No two expansion presets sound alike: every pair at least 3 apart on the audit's probe", "[rigs][expansions][distinct]")
+{
+    // The distinct pass's table names only presets and library versions that exist.
+    {
+        auto rigs = makeExpansionRigs();
+        const auto unused = rigpatch::apply (rigs, distinctPassTable());
+        INFO (unused.joinIntoString ("\n"));
+        CHECK (unused.isEmpty());
+    }
+    Plugin p;
+    p.song.bpm = 120.0;
+    const auto rigs = makeExpansionRigs();
+    const int frames = (int) ((4.8 * rate / block * block - 2048) / 1024) + 1;
+    std::vector<Probe> probes;
+    probes.reserve (rigs.size());
+    for (const auto& rig : rigs)
+        probes.push_back (probeOf (p, rig, frames));
+    juce::StringArray alike;
+    double closest = 99.0;
+    for (size_t i = 0; i < probes.size(); ++i)
+        for (size_t j = i + 1; j < probes.size(); ++j)
+        {
+            const auto d = apart (probes[i], probes[j]);
+            closest = juce::jmin (closest, d);
+            if (d < 3.0)
+                alike.add (rigs[i].name + " (" + Rig::bankName (rigs[i].bank) + ") and " + rigs[j].name + " ("
+                           + Rig::bankName (rigs[j].bank) + "): " + juce::String (d, 2));
+        }
+    WARN (rigs.size() << " presets, the closest pair " << closest << " apart");
+    INFO (alike.joinIntoString ("\n"));
+    CHECK (alike.isEmpty());
 }
