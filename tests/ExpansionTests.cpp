@@ -4726,6 +4726,19 @@ TEST_CASE ("Audit: every expansion preset's sound, as bands over time", "[.audit
         chord (e, 1.8, 3.8, { 57 + low, 60 + low, 64 + low });
         std::vector<float> left, right;
         p.play (4.8, e, &left, &right);
+        if (juce::SystemStats::getEnvironmentVariable ("PARAGON_AUDIT_WAV", {}).isNotEmpty())
+        {
+            // The probe as heard (PARAGON_AUDIT_WAV: for clips), named by the preset.
+            juce::AudioBuffer<float> heard (2, (int) left.size());
+            std::copy (left.begin(), left.end(), heard.getWritePointer (0));
+            std::copy (right.begin(), right.end(), heard.getWritePointer (1));
+            const auto file = folder.getChildFile (rig.name.replaceCharacters ("'/ ", "__-") + "-" + version + ".wav");
+            file.deleteFile();
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::AudioFormatWriter> writer (wav.createWriterFor (new juce::FileOutputStream (file), rate, 2, 24, {}, 0));
+            REQUIRE (writer != nullptr);
+            writer->writeFromAudioSampleBuffer (heard, 0, heard.getNumSamples());
+        }
         juce::FileOutputStream out (folder.getChildFile (juce::String (n) + "-" + version + ".bands"));
         out.setPosition (0);
         out.truncate();
