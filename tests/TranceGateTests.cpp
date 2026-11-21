@@ -224,7 +224,7 @@ TEST_CASE ("TRANCE GATE in the plugin: chops the sound and the reverb's tail; ma
         CHECK (ModDestinations::find (id)->group == "FX Trance Gate");
     }
     CHECK (signatureNames()[38] == "TRANCE GATE");
-    CHECK (signatureNames().size() == 39);
+    CHECK (signatureNames().size() >= 39);   // TRANCE GATE was the 39th; later ones join after it
 
     // The share of 5 ms windows that are near silent (60 dB under the loudest) over a stretch.
     const auto shareShut = [] (const std::vector<float>& x)
