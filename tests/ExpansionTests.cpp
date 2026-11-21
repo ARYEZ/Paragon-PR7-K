@@ -4655,3 +4655,84 @@ TEST_CASE ("Expansions: the browser's list scrolls, so every bank can be reached
 }
 
 
+
+//======================================================================================================================
+// THE AUDIT (run by hand, 1.8.0, the owner's ask: "presets that sound basically identical between different rigs"):
+// PARAGON_AUDIT=<folder> "[.audit]". Every expansion preset plays the same probe (A3 alone, then A3 C4 E4, held, then
+// let go; the basses an octave down), at 120 BPM, its sound written as 40 log bands (50 Hz-16 kHz, dB) every 1024
+// samples to <folder>/<n>.bands (float32), with an index (number, bank, type, name, version) and every preset's
+// settings and routes (settings.txt) for comparing by hand. With PARAGON_LIBRARIES the presets that have a version on
+// a library play that version instead (written as "lib"); without, the synthesized one ("synth").
+TEST_CASE ("Audit: every expansion preset's sound, as bands over time", "[.audit]")
+{
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_AUDIT", {}));
+    REQUIRE (folder.getFullPathName().isNotEmpty());
+    folder.createDirectory();
+    const auto withLibraries = juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}).isNotEmpty();
+    const auto version = juce::String (withLibraries ? "lib" : "synth");
+    Plugin p;
+    p.song.bpm = 120.0;
+    juce::String index, settings;
+    constexpr int size = 2048, bands = 40;
+    juce::dsp::FFT fft (11);
+    std::vector<float> work (size * 2), window (size);
+    for (int i = 0; i < size; ++i)
+        window[(size_t) i] = 0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / size);
+    std::array<int, bands + 1> edges {};
+    for (int b = 0; b <= bands; ++b)
+        edges[(size_t) b] = juce::jlimit (1, size / 2, (int) std::round (50.0 * std::pow (16000.0 / 50.0, (double) b / bands) * size / rate));
+    int n = 0;
+    for (const auto& rig : makeExpansionRigs())
+    {
+        ++n;
+        if (withLibraries && rig.sampled == nullptr)
+            continue;
+        const auto type = typeOf (rig);
+        p.load (rig.name);
+        const auto low = type == "Bass" ? -12 : 0;
+        Events e;
+        chord (e, 0.05, 1.55, { 57 + low });
+        chord (e, 1.8, 3.8, { 57 + low, 60 + low, 64 + low });
+        std::vector<float> left, right;
+        p.play (4.8, e, &left, &right);
+        juce::FileOutputStream out (folder.getChildFile (juce::String (n) + "-" + version + ".bands"));
+        out.setPosition (0);
+        out.truncate();
+        for (size_t at = 0; at + size <= left.size(); at += size / 2)
+        {
+            for (int i = 0; i < size; ++i)
+                work[(size_t) i] = 0.5f * (left[at + (size_t) i] + right[at + (size_t) i]) * window[(size_t) i];
+            std::fill (work.begin() + size, work.end(), 0.0f);
+            fft.performFrequencyOnlyForwardTransform (work.data(), true);
+            for (int b = 0; b < bands; ++b)
+            {
+                double power = 0.0;
+                for (int k = edges[(size_t) b]; k < juce::jmax (edges[(size_t) b] + 1, edges[(size_t) b + 1]); ++k)
+                    power += (double) work[(size_t) k] * work[(size_t) k];
+                const auto db = (float) (10.0 * std::log10 (power + 1.0e-20));
+                out.write (&db, sizeof (float));
+            }
+        }
+        double side = 0.0, mid = 0.0;
+        for (size_t i = 0; i < left.size(); ++i)
+        {
+            mid += 0.25 * (left[i] + right[i]) * (left[i] + right[i]);
+            side += 0.25 * (left[i] - right[i]) * (left[i] - right[i]);
+        }
+        index << n << "\t" << rig.bank << "\t" << Rig::bankName (rig.bank) << "\t" << type << "\t" << rig.name << "\t" << version << "\t"
+              << juce::String (10.0 * std::log10 ((side + 1e-20) / (mid + 1e-20)), 1) << "\n";
+        if (! withLibraries)
+        {
+            settings << n << "\t" << rig.name << "\tP\t";
+            for (const auto& [id, value] : rig.parameters)
+                settings << id << "=" << juce::String (value, 4) << ";";
+            settings << "\tR\t";
+            for (const auto& r : rig.modulation.routes)
+                settings << r.source << ">" << r.destination << "@" << juce::String (r.amount, 3) << ";";
+            settings << "\n";
+        }
+    }
+    folder.getChildFile ("index-" + version + ".tsv").replaceWithText (index);
+    if (! withLibraries)
+        folder.getChildFile ("settings.txt").replaceWithText (settings);
+}
