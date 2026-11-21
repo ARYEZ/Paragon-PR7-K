@@ -4914,3 +4914,42 @@ TEST_CASE ("No two expansion presets sound alike: every pair at least 3 apart on
     INFO (alike.joinIntoString ("\n"));
     CHECK (alike.isEmpty());
 }
+
+//======================================================================================================================
+// A PHRASE (run by hand, for sketches): PARAGON_PHRASE_PRESET=<name> PARAGON_PHRASE="beat:beats:note:velocity;..."
+// PARAGON_PHRASE_BPM (default 96) PARAGON_PHRASE_SECONDS (default the phrase + 3 s) PARAGON_RENDER=<file.wav>: the
+// preset plays those notes (beats from the clip's start), the song running, written as a 24-bit stereo WAV.
+TEST_CASE ("A phrase on a preset, written as audio", "[.phrase]")
+{
+    const auto preset = juce::SystemStats::getEnvironmentVariable ("PARAGON_PHRASE_PRESET", {});
+    const juce::File out (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", {}));
+    REQUIRE (preset.isNotEmpty());
+    REQUIRE (out.getFullPathName().isNotEmpty());
+    Plugin p;
+    p.song.bpm = juce::SystemStats::getEnvironmentVariable ("PARAGON_PHRASE_BPM", "96").getDoubleValue();
+    p.load (preset);
+    const auto beat = 60.0 / p.song.bpm;
+    Events e;
+    double end = 0.0;
+    for (const auto& item : juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_PHRASE", {}), ";", ""))
+    {
+        const auto f = juce::StringArray::fromTokens (item, ":", "");
+        if (f.size() < 3)
+            continue;
+        const auto on = f[0].getDoubleValue() * beat, off = on + f[1].getDoubleValue() * beat;
+        chord (e, on, off, { f[2].getIntValue() }, f.size() > 3 ? f[3].getIntValue() : 100);
+        end = juce::jmax (end, off);
+    }
+    REQUIRE (! e.empty());
+    const auto seconds = juce::SystemStats::getEnvironmentVariable ("PARAGON_PHRASE_SECONDS", juce::String (end + 3.0)).getDoubleValue();
+    std::vector<float> left, right;
+    p.play (seconds, e, &left, &right);
+    juce::AudioBuffer<float> b (2, (int) left.size());
+    std::copy (left.begin(), left.end(), b.getWritePointer (0));
+    std::copy (right.begin(), right.end(), b.getWritePointer (1));
+    out.deleteFile();
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::AudioFormatWriter> w (wav.createWriterFor (new juce::FileOutputStream (out), rate, 2, 24, {}, 0));
+    REQUIRE (w != nullptr);
+    w->writeFromAudioSampleBuffer (b, 0, b.getNumSamples());
+}
