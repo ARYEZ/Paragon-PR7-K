@@ -31,7 +31,21 @@ namespace mimic
                 shape.points.push_back ({ 0.0f, 0.0f, 0.0f });
                 if (a.attackFrames > 0)
                     shape.points.push_back ({ attack, roundStart, 0.0f });
-                if (choices.movement)
+                if (choices.movement && ! a.movementRounds.empty() && a.roundFrames > 0)
+                {
+                    // The recording's own rounds (1.8.1): each round's frames over that round's own length, so the
+                    // copy varies from round to round as the recording does; the loop is all of them.
+                    auto at = attack;
+                    for (size_t r = 0; r < a.movementRounds.size(); ++r)
+                    {
+                        at += (float) a.movementRounds[r];
+                        const auto frame = (float) (a.attackFrames + (int) (r + 1) * a.roundFrames);
+                        shape.points.push_back ({ at, juce::jmin (1.0f, frame / last), 0.0f });
+                    }
+                    shape.loopEnd = (int) shape.points.size() - 1;
+                    shape.loopStart = a.attackFrames > 0 ? 1 : 0;
+                }
+                else if (choices.movement)
                 {
                     shape.points.push_back ({ attack + (float) a.movementSeconds, 1.0f, 0.0f });
                     shape.loopEnd = (int) shape.points.size() - 1;
@@ -41,7 +55,10 @@ namespace mimic
                 b.set (ParamIDs::env (0, "Mode"), (float) (choices.movement ? synth::mod::EnvelopeMode::loop : synth::mod::EnvelopeMode::oneShot))
                  .set (ParamIDs::env (0, "Sync"), 0.0f).set (ParamIDs::env (0, "Speed"), 1.0f);
                 b.rig.modulation.routes.push_back ({ true, "env1", ParamIDs::osc (0, "WtIndex"), 1.0f, false, 0.0f, 0.0f });
-                if (choices.movement)
+                if (choices.movement && ! a.movementRounds.empty())
+                    made.add ("its own waves and their slow movement (" + juce::String ((int) a.movementRounds.size())
+                              + " of its own rounds, about " + juce::String (a.movementSeconds, 2) + " s each, looped)");
+                else if (choices.movement)
                     made.add ("its own waves and their slow movement (a round every " + juce::String (a.movementSeconds, 2) + " s, looped)");
                 else
                     made.add ("its own waves (" + juce::String (a.attackFrames + 1) + " frames)");

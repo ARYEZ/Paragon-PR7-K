@@ -158,23 +158,21 @@ namespace synth::mimic
             return { scratch.begin(), scratch.begin() + frameSize };
         }
 
-        // A SLOW MOVEMENT (1.8.0): the brightness (the spectrum's centre, in octaves) and the level every 50 ms between
-        // `from` and `to` (seconds), and whether either goes round at a steady pace between 0.6 and 15 s a round: the
-        // lag where the series best matches itself (normalised over the overlap), at least 0.3 alike, with at least
-        // 2.2 rounds heard. The shortest lag nearly as alike as the best is taken (a round, not two), then made exact
-        // from the furthest whole number of rounds that still match.
-        struct Movement { double seconds = 0.0; float strength = 0.0f, octaves = 0.0f, db = 0.0f; };
+        // The brightness (the spectrum's centre, in octaves) and level (dB) every `step` seconds between `from` and
+        // `to`; false at a gap (not one held sound).
+        constexpr double movementStep = 0.05;
 
-        Movement findMovement (const std::vector<float>& x, double sampleRate, double from, double to)
+        bool movementSeries (const std::vector<float>& x, double sampleRate, double from, double to,
+                             std::vector<double>& bright, std::vector<double>& level)
         {
-            Movement found;
-            constexpr double step = 0.05;
+            constexpr double step = movementStep;
             constexpr int order = 11, size = 1 << order;
             juce::dsp::FFT fft (order);
             std::vector<float> work ((size_t) size * 2), window ((size_t) size);
             for (int i = 0; i < size; ++i)
                 window[(size_t) i] = 0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / (float) size);
-            std::vector<double> bright, level;
+            bright.clear();
+            level.clear();
             for (auto t = from; (t + step) * sampleRate + size < (double) x.size() && t < to; t += step)
             {
                 const auto at = (size_t) (t * sampleRate);
@@ -190,10 +188,27 @@ namespace synth::mimic
                     weighted += p * k;
                 }
                 if (power < 1.0e-12)
-                    return found;   // a gap: not one held sound
+                    return false;   // a gap: not one held sound
                 bright.push_back (std::log2 (weighted / power * sampleRate / size));
                 level.push_back (10.0 * std::log10 (power));
             }
+            return true;
+        }
+
+        // A SLOW MOVEMENT (1.8.0): the brightness (the spectrum's centre, in octaves) and the level every 50 ms between
+        // `from` and `to` (seconds), and whether either goes round at a steady pace between 0.6 and 15 s a round: the
+        // lag where the series best matches itself (normalised over the overlap), at least 0.3 alike, with at least
+        // 2.2 rounds heard. The shortest lag nearly as alike as the best is taken (a round, not two), then made exact
+        // from the furthest whole number of rounds that still match.
+        struct Movement { double seconds = 0.0; float strength = 0.0f, octaves = 0.0f, db = 0.0f; };
+
+        Movement findMovement (const std::vector<float>& x, double sampleRate, double from, double to)
+        {
+            Movement found;
+            constexpr double step = movementStep;
+            std::vector<double> bright, level;
+            if (! movementSeries (x, sampleRate, from, to, bright, level))
+                return found;
             const auto n = (int) bright.size();
             if (n * step < 0.6 * 2.2)
                 return found;
@@ -299,6 +314,81 @@ namespace synth::mimic
             if (found.octaves < 0.1f && found.db < 1.0f)
                 found = {};
             return found;
+        }
+
+        // THE RECORDING'S OWN ROUNDS (1.8.1, the owner's ask: our copy repeated one averaged round exactly, where the
+        // recording's rounds each differ a little): where each round begins, from `from` on, up to `most` whole
+        // rounds before `to`. Round 0 starts at `from`; each next start is looked for 20% either side of a round on,
+        // where the series (the brightness, or the level for a sound that swings in level more than colour) best
+        // matches round 0's first half, so each round keeps its own length. Returns the starts and the last round's
+        // end (at least two rounds' worth), or nothing.
+        std::vector<double> roundStarts (const std::vector<float>& x, double sampleRate, double from, double to,
+                                         double seconds, bool byLevel, int most)
+        {
+            std::vector<double> bright, level;
+            if (most < 2 || ! movementSeries (x, sampleRate, from, to, bright, level))
+                return {};
+            const auto& v = byLevel ? level : bright;
+            const auto n = (int) v.size();
+            const auto lag = seconds / movementStep;
+            const auto length = juce::jmax (4, (int) (lag * 0.5));
+            const auto alike = [&] (int a, int b)
+            {
+                double ma = 0.0, mb = 0.0;
+                for (int i = 0; i < length; ++i)
+                {
+                    ma += v[(size_t) (a + i)];
+                    mb += v[(size_t) (b + i)];
+                }
+                ma /= length;
+                mb /= length;
+                double xy = 0.0, xx = 0.0, yy = 0.0;
+                for (int i = 0; i < length; ++i)
+                {
+                    const auto p = v[(size_t) (a + i)] - ma, q = v[(size_t) (b + i)] - mb;
+                    xy += p * q;
+                    xx += p * p;
+                    yy += q * q;
+                }
+                return xx > 0.0 && yy > 0.0 ? xy / std::sqrt (xx * yy) : 0.0;
+            };
+            std::vector<double> starts { 0.0 };
+            while ((int) starts.size() <= most)
+            {
+                const auto predicted = starts.back() + lag;
+                const auto reach = juce::jmax (1, (int) (lag * 0.2));
+                int best = -1;
+                double bestR = -2.0;
+                std::vector<double> r;
+                for (int c = (int) predicted - reach; c <= (int) predicted + reach; ++c)
+                {
+                    const auto here = c >= 1 && c + length < n ? alike (0, c) : -2.0;
+                    r.push_back (here);
+                    if (here > bestR)
+                    {
+                        bestR = here;
+                        best = c;
+                    }
+                }
+                // The round must end inside what was heard, and look like the first.
+                if (best < 0 || bestR < 0.3 || best + 2 >= n || (double) best + lag * 0.8 > n)
+                    break;
+                // A fraction of a step from the peak's parabola.
+                const auto k = (size_t) (best - ((int) predicted - reach));
+                auto at = (double) best;
+                if (k > 0 && k + 1 < r.size())
+                {
+                    const auto a = r[k - 1], b = r[k], c = r[k + 1], d = a - 2.0 * b + c;
+                    if (d < -1.0e-12)
+                        at += juce::jlimit (-0.5, 0.5, 0.5 * (a - c) / d);
+                }
+                starts.push_back (at);
+            }
+            if (starts.size() < 3)   // fewer than two whole rounds: the averaged round is the better copy
+                return {};
+            for (auto& t : starts)
+                t = from + t * movementStep;
+            return starts;
         }
     }
 
@@ -730,26 +820,53 @@ namespace synth::mimic
                 auto h = frameAt ({ a.start + attackSeconds * f / a.attackFrames }, rms);
                 addFrame (std::move (h), rms > 1.0e-12 ? 1.0 / rms : 0.0);
             }
+            // The recording's own rounds where two or more whole ones were heard (1.8.1): each round's frames at
+            // its own moments, so every round keeps its own colour, depth and length. Each frame from three moments
+            // 30 ms apart, so a single moment's unison beating doesn't stand for the round.
+            const auto room = maxFrames - a.attackFrames - 1;
+            const auto mostRounds = juce::jmin (4, room / 8);
+            const auto starts = roundStarts (x, sampleRate, a.settle, a.releaseStart, a.movementSeconds,
+                                             a.movementOctaves < 0.1f, mostRounds);
             std::vector<std::vector<Complex>> round;
             std::vector<double> levels;
-            for (int k = 0; k < roundFrames; ++k)
+            int perRound = roundFrames;
+            if (starts.size() >= 3)
             {
-                std::vector<double> times;
-                for (auto t = a.settle + a.movementSeconds * k / roundFrames; t + 0.05 < a.releaseStart; t += a.movementSeconds)
-                    times.push_back (t);
-                if (times.empty())
-                    times.push_back (a.settle);
-                double rms = 0.0;
-                round.push_back (frameAt (times, rms));
-                levels.push_back (rms);
+                const auto rounds = (int) starts.size() - 1;
+                perRound = juce::jlimit (8, room / rounds, juce::roundToInt (a.movementSeconds / 0.06));
+                for (int r = 0; r < rounds; ++r)
+                {
+                    a.movementRounds.push_back (starts[(size_t) r + 1] - starts[(size_t) r]);
+                    for (int k = 0; k < perRound; ++k)
+                    {
+                        const auto t = starts[(size_t) r] + (starts[(size_t) r + 1] - starts[(size_t) r]) * k / perRound;
+                        double rms = 0.0;
+                        round.push_back (frameAt ({ juce::jmax (a.settle, t - 0.03), t, t + 0.03 }, rms));
+                        levels.push_back (rms);
+                    }
+                }
             }
+            else
+                for (int k = 0; k < roundFrames; ++k)
+                {
+                    std::vector<double> times;
+                    for (auto t = a.settle + a.movementSeconds * k / roundFrames; t + 0.05 < a.releaseStart; t += a.movementSeconds)
+                        times.push_back (t);
+                    if (times.empty())
+                        times.push_back (a.settle);
+                    double rms = 0.0;
+                    round.push_back (frameAt (times, rms));
+                    levels.push_back (rms);
+                }
+            a.roundFrames = perRound;
+            const auto count = (int) round.size();
             double meanPower = 0.0;
             for (const auto l : levels)
-                meanPower += l * l / roundFrames;
+                meanPower += l * l / count;
             const auto mean = std::sqrt (meanPower);
-            for (int k = 0; k <= roundFrames; ++k)
+            for (int k = 0; k <= count; ++k)
             {
-                const auto i = (size_t) (k % roundFrames);
+                const auto i = (size_t) (k % count);
                 const auto against = mean > 1.0e-9 ? juce::jlimit (0.35, 2.8, levels[i] / mean) : 1.0;
                 addFrame (round[i], levels[i] > 1.0e-12 ? 1.0 / levels[i] * against : 0.0);
             }

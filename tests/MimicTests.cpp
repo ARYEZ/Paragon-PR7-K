@@ -576,7 +576,16 @@ TEST_CASE ("MIMIC's sound for a slow movement: MOD ENVELOPE 1 loops INDEX round 
     CHECK (juce::roundToInt (rig.parameters.at (ParamIDs::env (0, "Mode"))) == (int) synth::mod::EnvelopeMode::loop);
     const auto& shape = rig.modulation.envelopes[0];
     REQUIRE (shape.loopEnd > shape.loopStart);
-    CHECK_THAT (shape.points[(size_t) shape.loopEnd].x - shape.points[(size_t) shape.loopStart].x, Catch::Matchers::WithinRel ((float) a.movementSeconds, 0.001f));
+    // The loop is the recording's own rounds in turn (1.8.1): each as long as its own round (here all alike, 4 s).
+    REQUIRE (a.movementRounds.size() >= 2);
+    double rounds = 0.0;
+    for (const auto r : a.movementRounds)
+    {
+        CHECK_THAT (r, Catch::Matchers::WithinRel (roundSeconds, 0.03));
+        rounds += r;
+    }
+    CHECK_THAT (shape.points[(size_t) shape.loopEnd].x - shape.points[(size_t) shape.loopStart].x, Catch::Matchers::WithinRel ((float) rounds, 0.001f));
+    CHECK (shape.loopEnd - shape.loopStart == (int) a.movementRounds.size());
     bool routed = false;
     for (const auto& r : rig.modulation.routes)
         routed = routed || (r.source == "env1" && r.destination == ParamIDs::osc (0, "WtIndex") && juce::exactlyEqual (r.amount, 1.0f));
@@ -600,4 +609,68 @@ TEST_CASE ("MIMIC's sound for a slow movement: MOD ENVELOPE 1 loops INDEX round 
     const auto plain = refiner.play (stillRig, a);
     const auto flat = centres (plain.data(), (int) plain.size(), MimicRefiner::renderRate, 0.3, 2.0 * roundSeconds);
     CHECK (*std::max_element (flat.begin(), flat.end()) / *std::min_element (flat.begin(), flat.end()) < 1.15);
+}
+
+namespace
+{
+    // Rounds that differ, as a played or recorded sound's do: 3.6, 4.4, 3.8 and 4.2 s long, swinging 1.3, 0.6, 1.1 and
+    // 0.7 octaves either way.
+    constexpr double unevenLengths[] { 3.6, 4.4, 3.8, 4.2 };
+    constexpr double unevenDepths[] { 1.3, 0.6, 1.1, 0.7 };
+    double unevenBrightness (double t)
+    {
+        int r = 0;
+        while (r < 3 && t >= unevenLengths[r])
+            t -= unevenLengths[r++];
+        const auto phase = juce::jmin (1.0, t / unevenLengths[r]);
+        return 6.0 * std::exp2 (unevenDepths[r] * std::sin (juce::MathConstants<double>::twoPi * phase));
+    }
+}
+
+TEST_CASE ("MIMIC (1.8.1): rounds that differ are each kept, at their own length and depth, not one averaged round repeated", "[mimic][match]")
+{
+    const auto sound = note (16.5, steady (110.0), adsr (0.01, 0.05, 1.0, 15.5, 60.0),
+                             [] (int k, double t) { return std::exp (-(k - 1) / unevenBrightness (t)) / k; });
+    const auto a = synth::mimic::analyse (sound, rate, "Uneven");
+    REQUIRE (a.valid);
+    REQUIRE (a.movementSeconds > 0.0);
+    INFO ("round " << a.movementSeconds << " s, " << a.movementRounds.size() << " of its own");
+    REQUIRE (a.movementRounds.size() >= 2);
+    REQUIRE (a.roundFrames >= 8);
+
+    // Each round kept its own depth: the 8th harmonic's swing (brightest less darkest) across each round's frames
+    // differs from round to round by several dB (the rounds swing 0.6 to 1.3 octaves; one averaged round has one depth).
+    std::vector<float> swings;
+    for (size_t r = 0; r < a.movementRounds.size(); ++r)
+    {
+        float brightest = -200.0f, darkest = 0.0f;
+        for (int k = 0; k < a.roundFrames; ++k)
+        {
+            const auto h = frameHarmonics (a, a.attackFrames + (int) r * a.roundFrames + k, 8);
+            brightest = juce::jmax (brightest, h[8]);
+            darkest = juce::jmin (darkest, h[8]);
+        }
+        swings.push_back (brightest - darkest);
+    }
+    const auto [least, most] = std::minmax_element (swings.begin(), swings.end());
+    INFO ("swings " << *least << " to " << *most << " dB");
+    CHECK (*most - *least > 6.0f);
+    // Each round's length is measured from where the first one starts (the note's settle) to the same place a round
+    // on, so here each spans two true rounds and comes out near their mean (4.04-4.08 s measured, the true rounds 3.6
+    // to 4.4 s): within that span. The owner's lead's rounds measured 8.66 to 9.38 s.
+    const auto [shortest, longest] = std::minmax_element (a.movementRounds.begin(), a.movementRounds.end());
+    INFO ("rounds " << *shortest << " to " << *longest << " s");
+    CHECK (*shortest > 3.3);
+    CHECK (*longest < 4.7);
+
+    // Played, the made sound's brightness follows the recording's through those rounds.
+    const auto rig = mimic::makeRig (a, {});
+    MimicRefiner refiner;
+    const auto made = refiner.play (rig, a);
+    const auto span = juce::jmin (MimicRefiner::playSeconds (a) - 0.6, a.releaseStart - a.start - 0.6);
+    const auto heard = centres (a.audio->data(), (int) a.audio->size(), a.sampleRate, a.start + 0.3, span);
+    const auto ours = centres (made.data(), (int) made.size(), MimicRefiner::renderRate, 0.3, span);
+    const auto r = correlation (heard, ours);
+    INFO ("brightness followed over " << span << " s: r = " << r);
+    CHECK (r > 0.85);
 }

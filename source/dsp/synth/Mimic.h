@@ -61,11 +61,17 @@ namespace synth::mimic
         // every `movementSeconds` (0: none found). `movementStrength` how alike each round is to the last (0 to 1),
         // `movementOctaves` how far the brightness swings across a round (peak to peak), `movementDb` the level's.
         // With one, the table holds the attack's frames (`attackFrames` of them, from the start to `settle`) and then
-        // one round of the movement (each of its frames the average of every round at that point), its last frame a
-        // copy of its first so the loop is seamless.
+        // one round of the movement (each of its frames the average of every round at that point), or the recording's
+        // own rounds in turn (below), its last frame a copy of the first round's first so the loop is seamless.
         double movementSeconds = 0.0;
         float movementStrength = 0.0f, movementOctaves = 0.0f, movementDb = 0.0f;
         int attackFrames = 0;
+        // THE RECORDING'S OWN ROUNDS (1.8.1): when two or more whole rounds are heard, the table holds up to four of
+        // them in turn (`roundFrames` frames each, from the recording at those moments) instead of one averaged
+        // round, and `movementRounds` is each one's own length in seconds, so the copy varies from round to round as
+        // the recording does and repeats only after all of them. Empty: the one averaged round.
+        std::vector<double> movementRounds;
+        int roundFrames = 0;
 
         // The tone: the sound's own cycles as a wavetable, walked from first to last frame over `travelSeconds`.
         WavetableSource table;

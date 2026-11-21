@@ -241,6 +241,12 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
     std::printf ("  movement: %.3f s a round (alike %.2f), brightness %.2f oct, level %.1f dB; %d attack frames\n",
                  a.movementSeconds, a.movementStrength, a.movementOctaves, a.movementDb, a.attackFrames);
     {
+        juce::String rounds;
+        for (const auto r : a.movementRounds)
+            rounds << juce::String (r, 3) << " ";
+        std::printf ("  its own rounds: %d (%d frames each): %s\n", (int) a.movementRounds.size(), a.roundFrames, rounds.toRawUTF8());
+    }
+    {
         // The table's own spectrum (round frames, equal weight), in the bands the comparison script uses.
         std::vector<double> power (121, 0.0);
         for (int f = a.attackFrames; f < a.table.numFrames() - 1; ++f)
@@ -332,4 +338,11 @@ TEST_CASE ("MIMIC on a recording", "[.mimicfile]")
     }
     write ("made", refiner.play (made, a), MimicRefiner::renderRate);
     write ("refined", refiner.play (refined, a), MimicRefiner::renderRate);
+    // PARAGON_MIMIC_LONG: the made sound for 30 s too (the refiner's longest play), to hear it go round several times.
+    if (juce::SystemStats::getEnvironmentVariable ("PARAGON_MIMIC_LONG", {}).isNotEmpty())
+    {
+        auto longer = a;
+        longer.movementSeconds = 15.0;   // only lengthens the play: the rig is already made
+        write ("made-30s", refiner.play (refined, longer), MimicRefiner::renderRate);
+    }
 }
