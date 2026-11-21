@@ -2,6 +2,16 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.8.0
+
+Every expansion preset its own sound (your ask: "presets that sound basically identical between some different rigs"), and MIMIC learns sounds that move.
+
+- **The audit:** every one of the 810 expansion presets (synthesized and library versions) played the same test: a note, then a chord. Each was measured as its tone and loudness moment by moment. Two unrelated presets typically measure about 19 apart. 57 measured under 3, which means near-copies by ear, and some under 1. Most were built from one shared recipe (the felt and soft pianos, the sine leads) or used the same library recording with almost the same settings.
+- **The rebuild:** each of those 57 was changed to sound like itself, in the direction its name and bank already pointed. For example, Saloon Piano is now honky-tonk with a second string 22 cents sharp, Unwound Piano drifts out of tune, Rationed Piano rings like worn metal, Elevator Muzak became an electric piano's bell, Host Signal is machine-made with no vibrato, and Mad Theremin warbles wide and unstable. Library versions moved to other recordings where the library has one (Sanctuary Organ now plays VCSL's little Renaissance organ, Founder's Organ the pipe organ's quiet stops, Gospel Choir and Choir of Thousands real singers from epic-choir). Each rebuilt preset was set back to the same loudness as before, within 1 dB. Every pair now measures at least 3 apart (the closest is 3.04).
+- **A test keeps it that way:** the automatic tests now play every expansion preset and fail if any two measure under 3 apart, so a new bank can't bring back a copy of an old sound.
+- **MIMIC and slow movement:** a recording that sweeps or pulses slowly (a filter opening and closing over a few seconds, like your low lead) is now heard as a moving sound, not a decay. MIMIC finds how long one round of the movement is, builds a wavetable of one round, and loops through it in time. A MOVEMENT switch on the panel turns this off. Its tables keep their top end, because the frames line up before they are blended. A wide recording is rebuilt with each side on its own oscillator, so the two sides move independently as in the original.
+- I can't listen here: these are measured, not heard. The clips compare the rebuilt presets with the ones they were near.
+
 ## 1.7.0
 
 The TRANCE GATE (your ask: a proper trance gate, as its own effect).
