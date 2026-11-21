@@ -255,6 +255,7 @@ Gospel Choir|lib|p|osc2Volume=1
 Gospel Choir|lib|p|osc2Filter=0
 Gospel Choir|lib|p|osc1SfzHold=1
 Gospel Choir|lib|p|osc2SfzHold=1
+Gospel Choir|lib|n|The choir here is real singers: epic-choir (from VocalSet), tenors and sopranos held as long as the chord.
 Choir of Thousands|lib|s|0={sfz:epic-choir}/T_oh.sfz
 Choir of Thousands|lib|s|1={sfz:epic-choir}/A_oh.sfz
 Choir of Thousands|lib|p|osc2On=1
