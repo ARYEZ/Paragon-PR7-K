@@ -14,6 +14,7 @@
 #include "Runner.h"
 #include "Press.h"
 #include "Ornament.h"
+#include "Cartridge.h"
 #include "Polymeter.h"
 
 #include <array>
@@ -322,6 +323,7 @@ namespace synth
         runner::Settings runner;     // 1.0.0: RUNNER, every held note struck again, faster by fifths of the knob
         press::Settings press;       // 1.3.0: PRESS, notes pressed up the scale after the strike, in time with the song
         ornament::Settings ornament; // 1.6.0: ORNAMENT, trills, mordents and turns in key, in time with the song
+        cartridge::Settings cartridge;   // 1.10.0: CARTRIDGE, the chip's limits (this half: what's played)
         polymeter::Settings polymeter;   // 1.4.0: POLYMETER, the held notes struck again in several meters at once
         // 0.60.0, AFTERGLOW's voice half: each note its own analog character, as an old polysynth's voice cards.
         // AGE: each note's fixed offsets (tuning, filter, envelope times); DRIFT: each note's slow wander. At 0, nothing.

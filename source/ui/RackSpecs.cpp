@@ -12,6 +12,7 @@
 #include "dsp/synth/Runner.h"
 #include "dsp/synth/Press.h"
 #include "dsp/synth/Ornament.h"
+#include "dsp/synth/Cartridge.h"
 #include "dsp/synth/Polymeter.h"
 
 #include "ui/DownpourPage.h"
@@ -632,19 +633,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE", "TALKBACK" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE", "TALKBACK", "CARTRIDGE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn, ParamIDs::talkOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn, ParamIDs::talkOn, ParamIDs::cartOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 43> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 44> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 43> specs;
+    std::array<RackUnit::Spec, 44> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -2480,6 +2481,54 @@ std::array<RackUnit::Spec, 43> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (42); };
+    }
+
+    // CARTRIDGE (1.10.0): the notes in the chip in big digits, the stage reached, the settings; the keys set AMOUNT:
+    // BLEEP (tuned, taking turns), CHIP (the crunch), GAME OVER (the frames and glitches); the ladder AMOUNT by stage.
+    {
+        auto& s = specs[43];
+        s.name = "CARTRIDGE";
+        s.kind = "THE SOUND  CHIP";
+        s.onParameterIds = { ParamIDs::cartOn };
+        s.powerTooltip = "CARTRIDGE on or off: the synth forced through an old game console's sound chip: its tuning, chords taken "
+                         "in turns, its crunch, its frames and glitches. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "BLEEP", 0.35f, "The chip's tuning, and chords played one note at a time in time with the song" },
+                                            { "CHIP", 0.6f, "...and the chip's coarse output" },
+                                            { "GAME OVER", 1.0f, "Every limit: the notes at 60 Hz frames, a few channels, the cartridge glitching" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::cartAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::cartAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::cartAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::cartCrunch, "CRUNCH" } };
+        s.ladderTitle = "STAGE";
+        s.ladderMarks = { 1.0f, synth::cartridge::framesFrom, 0.5f, synth::cartridge::arpFrom, 0.0f };
+        s.ladderLabels = { "4", "3", "2", "1", "OFF" };
+        s.ladderReading = [&p]
+        {
+            const auto c = p.getCartridgeSettings();
+            return c.active() ? c.amount : 0.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto c = p.getCartridgeSettings();
+            const auto notes = c.active() ? juce::jmax (0, p.getCartridgeNotes()) : 0;
+            const auto end = drawNumber (g, juce::String (notes), left.getTopLeft(), h);
+            line (g, "NOTES", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! c.on ? "OFF" : ! c.active() ? "RESTING" : c.frames() ? "60 HZ FRAMES" : c.amount >= 0.5f ? "CRUNCH"
+                     : c.turns() ? "TAKING TURNS" : "TUNED",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::cartAmount), "RATE " + textOf (p, ParamIDs::cartRate),
+                                  "CHANNELS " + textOf (p, ParamIDs::cartChannels), "GLITCHES " + juce::String (p.getCartridge().getGlitches()) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (43); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

@@ -733,6 +733,15 @@ namespace ParamIDs
     inline constexpr auto ornLength = "ornLength";   // synth::ornament::lengthNames: how long a trill goes on
     inline constexpr auto ornKey    = "ornKey";      // synth::sirocco::keyNames
     inline constexpr auto ornScale  = "ornScale";    // synth::arp::scaleNames
+    // CARTRIDGE (1.10.0, version hint 71, synth::cartridge + effects::Cartridge): GAME OVER's signature: the synth
+    // forced through an old console's sound chip (coarse tuning, chords as arpeggios, 60 Hz frames, crunch, glitches).
+    // In presets.
+    inline constexpr auto cartOn       = "cartOn";
+    inline constexpr auto cartAmount   = "cartAmount";     // 0 to 1 (MACRO 3): the chip's limits, a stage at a time
+    inline constexpr auto cartRate     = "cartRate";       // synth::cartridge::rateNames: the turns' speed
+    inline constexpr auto cartChannels = "cartChannels";   // 2 to 8: notes at once at the top stage
+    inline constexpr auto cartCrunch   = "cartCrunch";     // 0 to 1
+    inline constexpr auto cartGlitch   = "cartGlitch";     // 0 to 1
     // TRANCE GATE (1.7.0, version hint 69, effects::TranceGate): a stepped volume gate in time with the song at the
     // very end of the effects (the reverb, echoes and signature effects chopped with it). In presets.
     // TALKBACK (1.9.0, version hint 70, effects::TalkBack): a talking drum answering your phrases a bar later. In presets.

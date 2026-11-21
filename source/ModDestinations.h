@@ -115,7 +115,9 @@ namespace ModDestinations
                                                  // 1.7.0: TRANCE GATE: how deep it cuts, how much of each step is open
                                                  "tgMix", "tgGate",
                                                  // 1.9.0: TALKBACK: how much it answers, the bends, how loud
-                                                 "talkAmount", "talkBend", "talkLevel" };
+                                                 "talkAmount", "talkBend", "talkLevel",
+                                                 // 1.10.0: CARTRIDGE: how far into the chip, the crunch, the glitches
+                                                 "cartAmount", "cartCrunch", "cartGlitch" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

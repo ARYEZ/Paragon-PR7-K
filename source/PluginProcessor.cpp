@@ -348,6 +348,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->wobble.prepare (sampleRate, preparedBlockSize);
     rack->tranceGate.prepare (sampleRate, preparedBlockSize);
     rack->talkBack.prepare (sampleRate, preparedBlockSize);
+    rack->cartridge.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1100,6 +1101,7 @@ synth::Settings ParagonX1AudioProcessor::getSynthSettings() const noexcept
         s.runner = getRunnerSettings();
         s.press = getPressSettings();
         s.ornament = getOrnamentSettings();
+        s.cartridge = getCartridgeSettings();
         s.polymeter = getPolymeterSettings();
         // AFTERGLOW (0.60.0): each note's character and wander.
         s.afterglow.on = isOn (ParamIDs::afterglowOn);
@@ -1622,6 +1624,18 @@ synth::ornament::Settings ParagonX1AudioProcessor::getOrnamentSettings() const n
     return s;
 }
 
+synth::cartridge::Settings ParagonX1AudioProcessor::getCartridgeSettings() const noexcept
+{
+    synth::cartridge::Settings s;
+    s.on = isOn (ParamIDs::cartOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("cartAmount"), ParamIDs::cartAmount));
+    s.rate = juce::jlimit (0, synth::cartridge::rateNames.size() - 1, juce::roundToInt (param (ParamIDs::cartRate)));
+    s.channels = juce::jlimit (2, 8, juce::roundToInt (param (ParamIDs::cartChannels)));
+    s.crunch = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("cartCrunch"), ParamIDs::cartCrunch));
+    s.glitch = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("cartGlitch"), ParamIDs::cartGlitch));
+    return s;
+}
+
 synth::press::Settings ParagonX1AudioProcessor::getPressSettings() const noexcept
 {
     synth::press::Settings s;
@@ -2060,6 +2074,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         }
         rack->wobble.process (block, getWobbleSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.97.0: the wobble
         rack->talkBack.addTo (block);                          // 1.9.0: the drum's answers
+        rack->cartridge.process (block, getCartridgeSettings());   // 1.10.0: the chip's crunch and glitches
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
         // 1.7.0: the trance gate, last, so the reverb, echoes and signature effects are chopped with the sound.

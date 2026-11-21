@@ -314,6 +314,7 @@ public:
         rack->leviathan.seedRandom ((std::uint32_t) seed);
         rack->hyperJump.seedRandom ((std::uint32_t) seed);
         rack->talkBack.seedRandom ((std::uint32_t) seed);
+        rack->cartridge.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -477,6 +478,7 @@ public:
     const effects::TranceGate& getTranceGate() const noexcept { return rack->tranceGate; }
     effects::TalkBack::Settings getTalkBackSettings() const noexcept;            // TALKBACK (1.9.0)
     const effects::TalkBack& getTalkBack() const noexcept { return rack->talkBack; }
+    const effects::Cartridge& getCartridge() const noexcept { return rack->cartridge; }
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }
@@ -488,7 +490,10 @@ public:
     synth::runner::Settings getRunnerSettings() const noexcept;                  // RUNNER (1.0.0)
     synth::press::Settings getPressSettings() const noexcept;                    // PRESS (1.3.0)
     synth::ornament::Settings getOrnamentSettings() const noexcept;              // ORNAMENT (1.6.0)
+    synth::cartridge::Settings getCartridgeSettings() const noexcept;            // CARTRIDGE (1.10.0)
     int getOrnamentCount() const noexcept { return engine.getOrnamentCount(); }
+    int getCartridgeNotes() const noexcept { return engine.getCartridgeNotes(); }   // CARTRIDGE (1.10.0): notes in the chip
+    int getCartridgeTurn() const noexcept { return engine.getCartridgeTurn(); }     // ...and whose turn (-1 none)
     int getOrnamentLast() const noexcept { return engine.getOrnamentLast(); }
     int getOrnamentNow() const noexcept { return engine.getOrnamentNow(); }
     int getPressCount() const noexcept { return engine.getPressCount(); }

@@ -627,6 +627,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
         addChoice (layout, ornScale, "Ornament Scale", synth::arp::scaleNames, d.scale, stageOrnament);
     }
 
+    // CARTRIDGE (1.10.0): the sound chip; in presets. Off and at 0 by default.
+    {
+        constexpr int stageCartridge = 71;
+        const synth::cartridge::Settings d;
+        addSwitch (layout, cartOn, "Cartridge On", d.on, stageCartridge);
+        add (layout, cartAmount, "Cartridge Amount", { 0.0f, 1.0f }, 0.0f, asPercent, stageCartridge);
+        addChoice (layout, cartRate, "Cartridge Rate", synth::cartridge::rateNames, d.rate, stageCartridge);
+        add (layout, cartChannels, "Cartridge Channels", { 2.0f, 8.0f, 1.0f }, (float) d.channels,
+             [] (float v, int) { return juce::String (juce::roundToInt (v)); }, stageCartridge);
+        add (layout, cartCrunch, "Cartridge Crunch", { 0.0f, 1.0f }, d.crunch, asPercent, stageCartridge);
+        add (layout, cartGlitch, "Cartridge Glitch", { 0.0f, 1.0f }, d.glitch, asPercent, stageCartridge);
+    }
+
     // CONTROLLER TO MOD WHEEL (stage 4f): global, like OUTPUT.
     addSwitch (layout, mwBreath, "Breath To Mod Wheel", false, stage4f);
     addSwitch (layout, mwExpression, "Expression To Mod Wheel", false, stage4f);

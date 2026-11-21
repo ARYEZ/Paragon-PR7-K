@@ -288,6 +288,11 @@ namespace synth
             double ornStart = 0.0;                                           // ...the beat its first step starts on
             int ornStyle = -1;                                               // ...ornament::Style, -1 not ornamented
             int ornNote = -1;                                                // ...the note it was judged for (-1: not yet)
+            float cartGain = 1.0f;                                           // CARTRIDGE (1.10.0): its turn's gain now (1 sounding)
+            float cartHeld = 1.0f;                                           // ...its loudness held for the frame
+            int cartHoldLeft = 0;                                            // ...samples left of the frame
+            int cartRank = -1;                                               // ...its place among the notes taking turns (-1 none)
+            float cartSemis = 0.0f;                                          // ...the chip's tuning for its note
             float ragVelocity = 1.0f;                                        // RAGTIME (0.92.0): the velocity it was played at
             float ragGain = 1.0f;                                            // ...the damper's lift (1: none)
             std::uint8_t polyMask = 0;                                       // POLYMETER (1.4.0): the meters (bits) this note plays
@@ -322,6 +327,7 @@ namespace synth
         void render (float* left, float* right, int numSamples, const Settings&) noexcept;
         void renderPress (Voice&, int n, const press::Settings&, int interval) noexcept;
         void renderOrnament (Voice&, const ornament::Settings&, int interval) noexcept;
+        void assignCartridge (int limit) noexcept;
         void renderVoice (Voice&, float* left, float* right, int numSamples, const Settings&, int interval) noexcept;
         // This note's own copy of the settings with its modulation applied (`interval`: which of render's intervals it is).
         const Settings& modulate (Voice&, int n, const Settings&, int interval) noexcept;
@@ -571,6 +577,14 @@ namespace synth
         bool ornPlaying = false;
         float ornGlide = 1.0f;
         SharedInt ornCountShown {}, ornLastShown {}, ornNowShown {};
+        // CARTRIDGE (1.10.0): each interval's turn (a count: the note sounding is the turn mod the notes), its own
+        // clock while the song is stopped and the frames' clock, how many notes take turns, the turns' edge.
+        std::array<std::int64_t, maxIntervals> cartTurns {};
+        double cartClock = 0.0, cartSeconds = 0.0;
+        bool cartActive = false, cartTurning = false, cartFrames = false;
+        int cartCount = 0;
+        float cartFade = 1.0f;
+        SharedInt cartNotesShown {}, cartTurnShown {};
         // RAGTIME (0.92.0): each interval's strike (bits ragtime::Who, 4 accented) and lift (who's lifted for the
         // strike just after it), its own clock while stopped, the lowest key held (the bass), the step for the page.
         std::array<std::uint8_t, maxIntervals> ragStrikes {}, ragLifts {};
@@ -617,6 +631,9 @@ namespace synth
         int getOrnamentCount() const noexcept { return ornCountShown.load() + 1; }
         int getOrnamentLast() const noexcept { return ornLastShown.load(); }
         int getOrnamentNow() const noexcept { return ornNowShown.load(); }
+        // CARTRIDGE: the notes taking turns now (0 none) and which is sounding (its place from the lowest, -1 none).
+        int getCartridgeNotes() const noexcept { return cartNotesShown.load(); }
+        int getCartridgeTurn() const noexcept { return cartTurnShown.load(); }
         int getRagtimeStep() const noexcept { return ragStepShown.load(); }   // RAGTIME: the roll's step (0-15; -1 not playing)
         int getRagtimeStrikes() const noexcept { return ragStrikeCount.load() + 1; }   // ...strikes so far
         // THE GRID (the front panel's lower half, 0.98.0): where the newest note sounding (a key or an arp; not

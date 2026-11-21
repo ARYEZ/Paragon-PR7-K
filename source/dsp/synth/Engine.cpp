@@ -373,6 +373,7 @@ namespace synth
         crossClock = 0.0;
         pressClock = 0.0;
         ornClock = 0.0;
+        cartClock = cartSeconds = 0.0;
         ragClock = 0.0;
         ragLastStep = std::numeric_limits<std::int64_t>::min();
         runClock = 0.0;
@@ -634,6 +635,7 @@ namespace synth
             crossClock = 0.0;
             pressClock = 0.0;   // ...and PRESS's
             ornClock = 0.0;     // ...and ORNAMENT's
+            cartClock = 0.0;    // ...and CARTRIDGE's
         }
         // ...and RAGTIME's (the roll starts with the first key).
         if (! anyHeld)
@@ -943,6 +945,7 @@ namespace synth
         voice.ornStart = 0.0;
         voice.ornStyle = voice.ornNote = -1;
         voice.ragGain = 1.0f;     // RAGTIME: no lift on a new note
+        voice.cartHoldLeft = 0;   // CARTRIDGE: its loudness taken at once
         // AFTERGLOW: this note's own character (drawn always, from its own numbers: used only while it's on).
         voice.glowTune = nextGlow();
         voice.glowCutoff = nextGlow();
@@ -984,6 +987,31 @@ namespace synth
         }
         for (int j = 0; j < polymeter::numMeters; ++j)
             polyMeterNote[(size_t) j].store (lowest[(size_t) j]);
+    }
+
+    // CARTRIDGE (1.10.0): the notes held (keys' and arps', not answers or tails) take turns from the lowest up; at the
+    // top stage only the newest `limit` of them.
+    void Engine::assignCartridge (int limit) noexcept
+    {
+        std::array<Voice*, maxVoices + 16> held {};
+        int count = 0;
+        for (auto& v : voices)
+        {
+            v.cartRank = -1;
+            if (v.playing && ! v.killing && v.source != answerSource && v.source != tailSource && ! v.amp.isReleasing()
+                && count < (int) held.size())
+                held[(size_t) count++] = &v;
+        }
+        if (count > limit)
+        {
+            std::sort (held.begin(), held.begin() + count, [] (const Voice* a, const Voice* b) { return a->age > b->age; });
+            count = limit;   // the newest
+        }
+        std::sort (held.begin(), held.begin() + count, [] (const Voice* a, const Voice* b)
+                   { return a->note != b->note ? a->note < b->note : a->age < b->age; });
+        for (int r = 0; r < count; ++r)
+            held[(size_t) r]->cartRank = r;
+        cartCount = count;
     }
 
     void Engine::restrike (Voice& voice, float velocity, const Settings& settings) noexcept
@@ -1623,6 +1651,42 @@ namespace synth
                 }
                 polyClock += length * beatsPerSample;
             }
+            // CARTRIDGE (1.10.0): which note sounds in each interval when held notes take turns: in time with the song
+            // at RATE, or at the console's 60 Hz frames at the top stage.
+            {
+                const auto& ct = settings.cartridge;
+                cartActive = ct.active();
+                cartTurning = ct.turns();
+                cartFrames = ct.frames();
+                cartFade = (float) (1.0 - std::exp (-1.0 / (cartridge::fadeSeconds * sampleRate)));
+                const auto beatsPerSample = juce::jmax (1.0, modulation.bpm) / 60.0 / sampleRate;
+                const auto followSong = modulation.ppq >= 0.0;
+                if (cartTurning)
+                {
+                    assignCartridge (ct.voiceLimit());
+                    for (int i = 0, at = 0; at < length; ++i, at += controlInterval)
+                    {
+                        if (cartFrames)
+                            cartTurns[(size_t) i] = (std::int64_t) std::floor ((cartSeconds + at / sampleRate) * cartridge::frameHz);
+                        else
+                        {
+                            const auto beat = followSong ? modulation.ppq + (samplesIntoBlock + start + at) * beatsPerSample : cartClock + at * beatsPerSample;
+                            cartTurns[(size_t) i] = (std::int64_t) std::floor (beat / ct.beatsPerTurn() + 1.0e-9);
+                        }
+                    }
+                    cartTurnShown.store (cartCount > 0 ? (int) (((cartTurns[0] % cartCount) + cartCount) % cartCount) : -1);
+                }
+                else
+                {
+                    cartCount = 0;
+                    for (auto& v : voices)
+                        v.cartRank = -1;
+                    cartTurnShown.store (-1);
+                }
+                cartNotesShown.store (cartCount);
+                cartClock += length * beatsPerSample;
+                cartSeconds += length / sampleRate;
+            }
             for (auto& voice : voices)
             {
                 if (! voice.playing)
@@ -1993,6 +2057,8 @@ namespace synth
         // ORNAMENT: judged the same way; nothing at all while it's off and nothing is ornamented.
         if (ornPlaying || voice.ornStyle >= 0)
             renderOrnament (voice, unmodulated.ornament, interval);
+        // CARTRIDGE: the chip's tuning for this note (0 while it's off).
+        voice.cartSemis = cartActive ? cartridge::tuningSemis (voice.note) : 0.0f;
         if (modulated)
             balance (voice.notePan + settings.amp.pan - unmodulated.amp.pan, voice.panLeft, voice.panRight);
 
@@ -2181,9 +2247,48 @@ namespace synth
         const auto spike = ampSettings.spike * spikeMaxGain * (1.0f - ampSettings.spikeVelocity * velocityDown);
         const auto spikeStep = 1.0f / juce::jmax (1.0f, spikeMs * 0.001f * (float) sampleRate);
         const auto tail = voice.source == tailSource;   // SFZ release samples: past the AMP's envelope, to their end
+        // CARTRIDGE: whether this note has its turn now (the only one held: always; a released note: while nothing is
+        // held); its loudness in 16 steps, held for a frame at the top stage.
+        auto cartTarget = 1.0f;
+        if (cartTurning && ! tail && voice.source != answerSource)
+        {
+            const auto turn = cartTurns[(size_t) juce::jlimit (0, maxIntervals - 1, interval)];
+            if (voice.cartRank >= 0)
+                cartTarget = cartCount <= 1 || ((turn % cartCount) + cartCount) % cartCount == voice.cartRank ? 1.0f : 0.0f;
+            else
+                cartTarget = cartCount == 0 ? 1.0f : 0.0f;
+        }
+        const auto cartStepping = cartActive && ! tail;
+        const auto frameSamples = juce::jmax (1, (int) (sampleRate / cartridge::frameHz));
         for (int i = 0; i < n; ++i)
         {
-            auto gain = tail ? volume : voice.amp.next() * volume;
+            auto gain = 0.0f;
+            if (tail)
+                gain = volume;
+            else if (! cartStepping)
+                gain = voice.amp.next() * volume;
+            else
+            {
+                const auto level = voice.amp.next();
+                if (cartFrames)
+                {
+                    if (--voice.cartHoldLeft <= 0)
+                    {
+                        voice.cartHeld = cartridge::stepped (level);
+                        voice.cartHoldLeft = frameSamples;
+                    }
+                    gain = voice.cartHeld * volume;
+                }
+                else
+                    gain = cartridge::stepped (level) * volume;
+            }
+            if (cartTarget != 1.0f || voice.cartGain != 1.0f)
+            {
+                voice.cartGain += (cartTarget - voice.cartGain) * cartFade;
+                if (cartTarget == 1.0f && voice.cartGain > 0.9999f)
+                    voice.cartGain = 1.0f;
+                gain *= voice.cartGain;
+            }
             if (ragTarget != 1.0f || voice.ragGain != 1.0f)
             {
                 // RAGTIME's damper: down for the strike, back with it.
@@ -3199,7 +3304,7 @@ namespace synth
             // KEYTRACK (from middle C; at 100% the note as played) and the PITCH envelope, if it follows it.
             const auto keyPitch = juce::exactlyEqual (settings.pitch.keytrack, 1.0f) ? voice.pitch : 60.0f + (voice.pitch - 60.0f) * settings.pitch.keytrack;
             const auto basePitch = keyPitch + (s.pitchEnvelope ? voice.pitchSemitones : 0.0f) + bendSemitones + s.transpose + s.fineCents * 0.01f + osc.randomOffset
-                                 + settings.play.tuneCents * 0.01f + voice.naviSemis + voice.crossSemis + voice.pressSemis + voice.ornSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
+                                 + settings.play.tuneCents * 0.01f + voice.naviSemis + voice.crossSemis + voice.pressSemis + voice.ornSemis + voice.cartSemis;   // 0.86.0: NAVICOMPUTER's move (0 while off)
             const auto independent = vibratoDepth > 0.0f && s.vibratoMode == VibratoMode::independent;
             const auto ownVibrato = independent ? vibratoValue (s.vibratoWave, osc.copies[0].vibratoPhase, osc.copies[0].vibratoHeld,
                                                                 vibratoAdvance * osc.copies[0].vibratoRate) * vibratoDepth

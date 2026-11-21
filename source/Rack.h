@@ -42,6 +42,7 @@
 #include "dsp/effects/Wobble.h"
 #include "dsp/effects/TranceGate.h"
 #include "dsp/effects/TalkBack.h"
+#include "dsp/effects/Cartridge.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/MultibandComp.h"
@@ -146,6 +147,7 @@ struct Rack
     effects::Wobble wobble;           // 0.97.0
     effects::TranceGate tranceGate;   // 1.7.0
     effects::TalkBack talkBack;       // 1.9.0
+    effects::Cartridge cartridge;     // 1.10.0
 
     // THE INSERT BUSES (stage 7d): A to D, each PR7-G's DRIVE and GLITCH (mono there: one a side here), MOD and LO-FI,
     // on the oscillators routed to it, before the sends (the bus sends at its own amounts) and the mix.
