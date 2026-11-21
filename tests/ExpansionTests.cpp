@@ -12,6 +12,7 @@
 #include "SampleLibraries.h"
 #include "rigs/Expansions.h"
 #include "rigs/FactoryRigs.h"
+#include "rigs/RigPatch.h"
 #include "ui/RigBrowser.h"
 #include "dsp/synth/Arpeggiator.h"
 
@@ -4672,6 +4673,15 @@ TEST_CASE ("Audit: every expansion preset's sound, as bands over time", "[.audit
     const auto version = juce::String (withLibraries ? "lib" : "synth");
     Plugin p;
     p.song.bpm = 120.0;
+    // PARAGON_AUDIT_SET: a table of changes to try (rigs/RigPatch.h's format) on top of the built presets; with
+    // PARAGON_AUDIT_ONLY set, only the presets it names are rendered.
+    const juce::File setFile (juce::SystemStats::getEnvironmentVariable ("PARAGON_AUDIT_SET", {}));
+    const auto trial = setFile.existsAsFile() ? setFile.loadFileAsString() : juce::String();
+    const auto only = juce::SystemStats::getEnvironmentVariable ("PARAGON_AUDIT_ONLY", {}).isNotEmpty();
+    juce::StringArray named;
+    for (const auto& line : juce::StringArray::fromLines (trial))
+        if (line.trim().isNotEmpty() && ! line.trim().startsWithChar ('#'))
+            named.addIfNotAlreadyThere (line.upToFirstOccurrenceOf ("|", false, false).trim());
     juce::String index, settings;
     constexpr int size = 2048, bands = 40;
     juce::dsp::FFT fft (11);
@@ -4687,8 +4697,28 @@ TEST_CASE ("Audit: every expansion preset's sound, as bands over time", "[.audit
         ++n;
         if (withLibraries && rig.sampled == nullptr)
             continue;
+        if (only && ! named.contains (rig.name))
+            continue;
         const auto type = typeOf (rig);
-        p.load (rig.name);
+        if (trial.isNotEmpty() && named.contains (rig.name))
+        {
+            auto entry = p.entryNamed (rig.name);
+            std::vector<Rig> one { entry.rig };
+            const auto unused = rigpatch::apply (one, trial);
+            for (const auto& line : unused)
+                if (line.startsWith (rig.name + " ") || line.startsWith (rig.name + "|"))
+                    WARN ("not used: " << line);
+            entry.rig = one.front();
+            p.processor.loadRig (entry);
+            REQUIRE (p.processor.waitForSfz (180000));
+            p.processor.prepareToPlay (rate, block);
+            p.processor.finishTableBuilds();
+            p.processor.seedRandomForTest (1);
+            p.song.ppq = 0.0;
+            p.song.playing = true;
+        }
+        else
+            p.load (rig.name);
         const auto low = type == "Bass" ? -12 : 0;
         Events e;
         chord (e, 0.05, 1.55, { 57 + low });
@@ -4721,18 +4751,20 @@ TEST_CASE ("Audit: every expansion preset's sound, as bands over time", "[.audit
         }
         index << n << "\t" << rig.bank << "\t" << Rig::bankName (rig.bank) << "\t" << type << "\t" << rig.name << "\t" << version << "\t"
               << juce::String (10.0 * std::log10 ((side + 1e-20) / (mid + 1e-20)), 1) << "\n";
-        if (! withLibraries)
         {
+            const auto& shown = withLibraries ? *rig.sampled : rig;
             settings << n << "\t" << rig.name << "\tP\t";
-            for (const auto& [id, value] : rig.parameters)
+            for (const auto& [id, value] : shown.parameters)
                 settings << id << "=" << juce::String (value, 4) << ";";
             settings << "\tR\t";
-            for (const auto& r : rig.modulation.routes)
+            for (const auto& r : shown.modulation.routes)
                 settings << r.source << ">" << r.destination << "@" << juce::String (r.amount, 3) << ";";
+            settings << "\tS\t";
+            for (const auto& [osc, ref] : shown.sfz)
+                settings << osc << "=" << ref << ";";
             settings << "\n";
         }
     }
     folder.getChildFile ("index-" + version + ".tsv").replaceWithText (index);
-    if (! withLibraries)
-        folder.getChildFile ("settings.txt").replaceWithText (settings);
+    folder.getChildFile (withLibraries ? "settings-lib.txt" : "settings.txt").replaceWithText (settings);
 }

@@ -1,6 +1,8 @@
 #include "FactoryRigs.h"
 #include "Expansions.h"
 #include "RigBuilder.h"
+#include "RigPatch.h"
+#include "DistinctPass.h"
 #include "SampleLibraries.h"
 
 #include "dsp/eq/EqDesign.h"
@@ -23026,5 +23028,7 @@ std::vector<Rig> makeExpansionRigs()
     wickedGame ({ Rig::numBanks + 42, rigs });
     ronin ({ Rig::numBanks + 43, rigs });
     nightReign ({ Rig::numBanks + 44, rigs });
+    // 1.8.0: the presets that sounded like another bank's, made their own (rigs/DistinctPass.cpp).
+    rigpatch::apply (rigs, distinctPassTable());
     return rigs;
 }

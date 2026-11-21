@@ -120,6 +120,8 @@ target_sources(ParagonX1
         source/rigs/Rig.cpp
         source/rigs/FactoryRigs.cpp
         source/rigs/ExpansionRigs.cpp
+        source/rigs/DistinctPass.cpp
+        source/rigs/RigPatch.cpp
         source/rigs/MimicRig.cpp
         source/rigs/CompPresets.cpp
         source/rigs/DominionPresets.cpp
