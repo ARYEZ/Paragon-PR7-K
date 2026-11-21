@@ -42,6 +42,7 @@
 #include "dsp/effects/Sort.h"
 #include "dsp/effects/Wobble.h"
 #include "dsp/effects/TranceGate.h"
+#include "dsp/effects/TalkBack.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1132,4 +1133,30 @@ void addTranceGateParameters (juce::AudioProcessorValueTreeState::ParameterLayou
             layout.add (makeFloat (ParamIDs::tgStep (side, step),
                                    juce::String ("Trance Gate ") + (side == 0 ? "L" : "R") + " Step " + juce::String (step + 1),
                                    { 0.0f, 1.0f, 0.01f }, T::defaultStep (side, step), v, asPercent));
+}
+
+void addTalkBackParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // TALKBACK (1.9.0, our own design): off by default, so projects and presets from before are unchanged.
+    constexpr int v = 70;
+    using T = effects::TalkBack;
+    const T::Settings d;
+    const ToText asHz = [] (float value, int) { return juce::String (juce::roundToInt (value)) + " Hz"; };
+    const ToText asSemis = [] (float value, int) { return juce::String (value, 1) + " st"; };
+    const ToText asLevel = [] (float value, int) { return juce::String (value, 1) + " dB"; };
+    const ToText asPan = [] (float value, int)
+    {
+        const auto p = juce::roundToInt (value * 100.0f);
+        return p == 0 ? juce::String ("C") : juce::String (std::abs (p)) + (p < 0 ? " L" : " R");
+    };
+    layout.add (makeSwitch (ParamIDs::talkOn, "Talkback On", v, false));
+    layout.add (makeFloat (ParamIDs::talkAmount, "Talkback Amount", { 0.0f, 1.0f, 0.01f }, d.amount, v, asPercent));
+    layout.add (makeFloat (ParamIDs::talkPitch, "Talkback Pitch", { 80.0f, 260.0f, 1.0f }, d.pitchHz, v, asHz));
+    layout.add (makeFloat (ParamIDs::talkRange, "Talkback Range", { 0.2f, 1.0f, 0.01f }, d.range, v, asPercent));
+    layout.add (makeFloat (ParamIDs::talkBend, "Talkback Bend", { 0.0f, 3.0f, 0.01f }, d.bend, v, asSemis));
+    layout.add (makeFloat (ParamIDs::talkTone, "Talkback Tone", { 0.0f, 1.0f, 0.01f }, d.tone, v, asPercent));
+    layout.add (makeChoice (ParamIDs::talkWait, "Talkback Wait", v, T::waitNames, d.wait));
+    layout.add (makeFloat (ParamIDs::talkSpace, "Talkback Space", { 0.0f, 1.0f, 0.01f }, d.space, v, asPercent));
+    layout.add (makeFloat (ParamIDs::talkPan, "Talkback Pan", { -1.0f, 1.0f, 0.01f }, d.pan, v, asPan));
+    layout.add (makeFloat (ParamIDs::talkLevel, "Talkback Level", { -36.0f, 6.0f, 0.1f }, d.levelDb, v, asLevel));
 }

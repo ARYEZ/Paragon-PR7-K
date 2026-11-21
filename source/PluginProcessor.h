@@ -313,6 +313,7 @@ public:
         rack->spectre.seedRandom ((std::uint32_t) seed);
         rack->leviathan.seedRandom ((std::uint32_t) seed);
         rack->hyperJump.seedRandom ((std::uint32_t) seed);
+        rack->talkBack.seedRandom ((std::uint32_t) seed);
         for (auto& bus : rack->buses)
             bus.loFi.seedRandom (seed);
     }
@@ -474,6 +475,8 @@ public:
     const effects::Wobble& getWobble() const noexcept { return rack->wobble; }
     effects::TranceGate::Settings getTranceGateSettings() const noexcept;        // TRANCE GATE (1.7.0)
     const effects::TranceGate& getTranceGate() const noexcept { return rack->tranceGate; }
+    effects::TalkBack::Settings getTalkBackSettings() const noexcept;            // TALKBACK (1.9.0)
+    const effects::TalkBack& getTalkBack() const noexcept { return rack->talkBack; }
     // NAVICOMPUTER (0.86.0): its settings as the engine has them, and the step it is on (-1: not moving).
     synth::navi::Settings getNaviSettings() const noexcept;
     int getNaviStep() const noexcept { return engine.getNaviStep(); }

@@ -735,6 +735,17 @@ namespace ParamIDs
     inline constexpr auto ornScale  = "ornScale";    // synth::arp::scaleNames
     // TRANCE GATE (1.7.0, version hint 69, effects::TranceGate): a stepped volume gate in time with the song at the
     // very end of the effects (the reverb, echoes and signature effects chopped with it). In presets.
+    // TALKBACK (1.9.0, version hint 70, effects::TalkBack): a talking drum answering your phrases a bar later. In presets.
+    inline constexpr auto talkOn     = "talkOn";
+    inline constexpr auto talkAmount = "talkAmount";   // 0 to 1 (MACRO 3): how much it answers
+    inline constexpr auto talkPitch  = "talkPitch";    // 80 to 260 Hz: the drum's centre
+    inline constexpr auto talkRange  = "talkRange";    // 0.2 to 1: the share of each interval followed
+    inline constexpr auto talkBend   = "talkBend";     // 0 to 3 semitones: a held note's bend
+    inline constexpr auto talkTone   = "talkTone";     // 0 to 1
+    inline constexpr auto talkWait   = "talkWait";     // effects::TalkBack::waitNames
+    inline constexpr auto talkSpace  = "talkSpace";    // 0 to 1: into the reverb's send
+    inline constexpr auto talkPan    = "talkPan";      // -1 to 1
+    inline constexpr auto talkLevel  = "talkLevel";    // -36 to +6 dB
     inline constexpr auto tgOn       = "tgOn";
     inline constexpr auto tgMix      = "tgMix";        // 0 to 1: how deep it cuts
     inline constexpr auto tgDivision = "tgDivision";   // effects::TranceGate::divisionNames: each step's length
@@ -872,4 +883,5 @@ void addGearworksParameters (juce::AudioProcessorValueTreeState::ParameterLayout
 void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);         // RackParameters.cpp (0.93.0)
 void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.97.0)
 void addTranceGateParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (1.7.0)
+void addTalkBackParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (1.9.0)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

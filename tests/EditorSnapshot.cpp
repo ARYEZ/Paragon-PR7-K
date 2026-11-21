@@ -35,6 +35,7 @@
 //   PARAGON_SNAPSHOT_LIBRARIES=<folder>  the sample libraries (the Salamander's folder in it) for the piano presets
 //   PARAGON_SNAPSHOT_SFZ=<file>      oscillator 1 playing that SFZ instrument (the rack shown, its key map)
 //   PARAGON_SNAPSHOT_WTREF=<ref>     a preset whose oscillator 1 names that pack table ("{wt:<pack>}/<file>"; 0.76.0)
+//   PARAGON_SNAPSHOT_TALK=1          with RACK=1: a phrase played and TALKBACK answering it (1.9.0)
 //   PARAGON_SNAPSHOT_SORT=1          with RACK=1: a melody played instead of the chord, for SORT's page (0.93.0)
 //   PARAGON_SNAPSHOT_NOTES=1         a chord held on the keyboard (so the PLAY panel counts notes, keys light and THE GRID's sparks run)
 TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
@@ -266,13 +267,34 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
             // PARAGON_SNAPSHOT_SORT=1 (0.93.0): a melody an eighth a note instead of the chord, SORT re-filing it.
             const auto melody = env ("PARAGON_SNAPSHOT_SORT") == "1";
             const int tune[] = { 67, 60, 72, 64, 69, 62, 71, 65 };
-            if (! melody)
+            // PARAGON_SNAPSHOT_TALK=1 (1.9.0): a phrase in the first bar (C4, E4 G4, A4 held), TALKBACK answering it.
+            const auto talking = env ("PARAGON_SNAPSHOT_TALK") == "1";
+            struct Called { double from, to; int note; };
+            const Called call[] = { { 0.0, 0.5, 60 }, { 1.0, 1.4, 64 }, { 1.5, 1.9, 67 }, { 2.0, 3.4, 69 } };
+            if (talking)
+            {
+                set (ParamIDs::talkOn, 1.0f);
+                set (ParamIDs::talkAmount, 1.0f);
+                set (ParamIDs::talkBend, 2.0f);
+            }
+            if (! melody && ! talking)
                 for (const auto note : { 48, 55, 60, 64, 67 })
                     processor.getKeyboardState().noteOn (1, note, 0.85f);
             juce::AudioBuffer<float> buffer (2, 256);
             juce::MidiBuffer midi;
             for (int block = 0; block < 700; ++block)
             {
+                if (talking)
+                {
+                    const auto beat = block * 256 / 24000.0, before = (block - 1) * 256 / 24000.0;   // 120 BPM
+                    for (const auto& c : call)
+                    {
+                        if (beat >= c.from && before < c.from)
+                            processor.getKeyboardState().noteOn (1, c.note, 0.85f);
+                        if (beat >= c.to && before < c.to)
+                            processor.getKeyboardState().noteOff (1, c.note, 0.0f);
+                    }
+                }
                 if (melody)
                 {
                     const auto slice = block * 256 / 12000, before = (block - 1) * 256 / 12000;
@@ -301,7 +323,7 @@ TEST_CASE ("Render the editor to a PNG", "[.][snapshot]")
                      : fx == "mod2" ? FxPage::View::mod2 : fx == "lofi" ? FxPage::View::loFi : fx == "inserts" ? FxPage::View::inserts
                      : fx == "insdrive" ? FxPage::View::insertDrive : fx == "insglitch" ? FxPage::View::insertGlitch
                      : fx == "insmod" ? FxPage::View::insertMod : fx == "inslofi" ? FxPage::View::insertLoFi
-                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : fx == "proximity" ? FxPage::View::proximity : fx == "haze" ? FxPage::View::haze : fx == "spectre" ? FxPage::View::spectre : fx == "leviathan" ? FxPage::View::leviathan : fx == "nuclearspring" ? FxPage::View::nuclearSpring : fx == "hyperjump" ? FxPage::View::hyperJump : fx == "bloom" ? FxPage::View::bloom : fx == "legion" ? FxPage::View::legion : fx == "overcharge" ? FxPage::View::overcharge : fx == "aftermath" ? FxPage::View::aftermath : fx == "submerge" ? FxPage::View::submerge : fx == "lockstep" ? FxPage::View::lockstep : fx == "colossus" ? FxPage::View::colossus : fx == "canyon" ? FxPage::View::canyon : fx == "jackin" ? FxPage::View::jackIn : fx == "navicomputer" ? FxPage::View::naviComputer : fx == "sweep" ? FxPage::View::sweep : fx == "redline" ? FxPage::View::redline : fx == "freezetag" ? FxPage::View::freezeTag : fx == "crossroads" ? FxPage::View::crossroads : fx == "gearworks" ? FxPage::View::gearworks : fx == "ragtime" ? FxPage::View::ragtime : fx == "sort" ? FxPage::View::sort : fx == "wobble" ? FxPage::View::wobble : fx == "runner" ? FxPage::View::runner : fx == "press" ? FxPage::View::press : fx == "polymeter" ? FxPage::View::polymeter : fx == "ornament" ? FxPage::View::ornament : fx == "trancegate" ? FxPage::View::tranceGate : FxPage::View::rack);
+                     : fx == "inswah" ? FxPage::View::insertWah : fx == "echoes" ? FxPage::View::echoes : fx == "crackle" ? FxPage::View::crackle : fx == "downpour" ? FxPage::View::downpour : fx == "sirocco" ? FxPage::View::sirocco : fx == "infernal" ? FxPage::View::infernal : fx == "afterglow" ? FxPage::View::afterglow : fx == "lighttrail" ? FxPage::View::lightTrail : fx == "blackhole" ? FxPage::View::blackHole : fx == "dilation" ? FxPage::View::dilation : fx == "remnant" ? FxPage::View::remnant : fx == "proximity" ? FxPage::View::proximity : fx == "haze" ? FxPage::View::haze : fx == "spectre" ? FxPage::View::spectre : fx == "leviathan" ? FxPage::View::leviathan : fx == "nuclearspring" ? FxPage::View::nuclearSpring : fx == "hyperjump" ? FxPage::View::hyperJump : fx == "bloom" ? FxPage::View::bloom : fx == "legion" ? FxPage::View::legion : fx == "overcharge" ? FxPage::View::overcharge : fx == "aftermath" ? FxPage::View::aftermath : fx == "submerge" ? FxPage::View::submerge : fx == "lockstep" ? FxPage::View::lockstep : fx == "colossus" ? FxPage::View::colossus : fx == "canyon" ? FxPage::View::canyon : fx == "jackin" ? FxPage::View::jackIn : fx == "navicomputer" ? FxPage::View::naviComputer : fx == "sweep" ? FxPage::View::sweep : fx == "redline" ? FxPage::View::redline : fx == "freezetag" ? FxPage::View::freezeTag : fx == "crossroads" ? FxPage::View::crossroads : fx == "gearworks" ? FxPage::View::gearworks : fx == "ragtime" ? FxPage::View::ragtime : fx == "sort" ? FxPage::View::sort : fx == "wobble" ? FxPage::View::wobble : fx == "runner" ? FxPage::View::runner : fx == "press" ? FxPage::View::press : fx == "polymeter" ? FxPage::View::polymeter : fx == "ornament" ? FxPage::View::ornament : fx == "trancegate" ? FxPage::View::tranceGate : fx == "talkback" ? FxPage::View::talkBack : FxPage::View::rack);
         // 0.58.0: the SIGNATURE slot's effect shown (0 ECHOES, 1 CRACKLE, 2 DOWNPOUR, 3 SIROCCO, 4 INFERNAL, 5 AFTERGLOW, 6 LIGHTTRAIL, 7 BLACKHOLE, 8 DILATION, 9 REMNANT, 10 PROXIMITY, 11 HAZE, 12 SPECTRE, 13 LEVIATHAN, 14 NUCLEARSPRING).
         if (const auto signature = env ("PARAGON_SNAPSHOT_SIGNATURE"); signature.isNotEmpty())
             fxPage.showSignature (signature.getIntValue());

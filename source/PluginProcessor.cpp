@@ -347,6 +347,7 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->sort.prepare (sampleRate, preparedBlockSize);
     rack->wobble.prepare (sampleRate, preparedBlockSize);
     rack->tranceGate.prepare (sampleRate, preparedBlockSize);
+    rack->talkBack.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1499,6 +1500,23 @@ effects::Wobble::Settings ParagonX1AudioProcessor::getWobbleSettings() const noe
     return s;
 }
 
+effects::TalkBack::Settings ParagonX1AudioProcessor::getTalkBackSettings() const noexcept
+{
+    using T = effects::TalkBack;
+    T::Settings s;
+    s.on = isOn (ParamIDs::talkOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("talkAmount"), ParamIDs::talkAmount));
+    s.pitchHz = param (ParamIDs::talkPitch);
+    s.range = param (ParamIDs::talkRange);
+    s.bend = juce::jlimit (0.0f, 3.0f, effectParam (ModDestinations::effect ("talkBend"), ParamIDs::talkBend));
+    s.tone = param (ParamIDs::talkTone);
+    s.wait = juce::jlimit (0, T::waitNames.size() - 1, juce::roundToInt (param (ParamIDs::talkWait)));
+    s.space = param (ParamIDs::talkSpace);
+    s.pan = param (ParamIDs::talkPan);
+    s.levelDb = juce::jlimit (-36.0f, 6.0f, effectParam (ModDestinations::effect ("talkLevel"), ParamIDs::talkLevel));
+    return s;
+}
+
 effects::TranceGate::Settings ParagonX1AudioProcessor::getTranceGateSettings() const noexcept
 {
     using T = effects::TranceGate;
@@ -1901,6 +1919,10 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             rack->proximity.addTouch (offset, touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
             if (touches[(size_t) k].kind == synth::Engine::Touch::Kind::press)   // COLOSSUS (0.82.0): a boom under each note
                 rack->colossus.addNote (offset, touches[(size_t) k].velocity);
+            // TALKBACK (1.9.0): the phrases it answers, from the keys (and arps) pressed and let go.
+            if (touches[(size_t) k].kind == synth::Engine::Touch::Kind::press || touches[(size_t) k].kind == synth::Engine::Touch::Kind::release)
+                rack->talkBack.addNote (offset, touches[(size_t) k].note, touches[(size_t) k].velocity,
+                                        touches[(size_t) k].kind == synth::Engine::Touch::Kind::press);
         }
     }
     if (sendsReady)
@@ -1952,6 +1974,15 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             if (! rack->downpour.isSilent() && rain.space > 0.0f)
                 for (int c = 0; c < 2; ++c)
                     rack->sends[1].addFrom (c, 0, rack->downpour.getOutput (c), juce::jmin (numSamples, rack->downpour.getRenderedSamples()), rain.space);
+        }
+        // TALKBACK (1.9.0): this piece's drum, answering the phrases heard; SPACE's share into the REVERB's send now,
+        // the drum itself added after WOBBLE.
+        {
+            const auto talk = getTalkBackSettings();
+            rack->talkBack.render (numSamples, talk, juce::jmax (20.0, hostBpm.load()), piecePpq);
+            if (! rack->talkBack.isSilent() && talk.space > 0.0f)
+                for (int c = 0; c < 2; ++c)
+                    rack->sends[1].addFrom (c, 0, rack->talkBack.getOutput (c), juce::jmin (numSamples, rack->talkBack.getRenderedSamples()), talk.space);
         }
         processSends (block);
         processModFx (block);   // stage 7c: after the returns, so the echoes and reverb are part of what they shape
@@ -2025,6 +2056,7 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
                 rack->sort.process (block, sorting, juce::jmax (20.0, hostBpm.load()), piecePpq);
         }
         rack->wobble.process (block, getWobbleSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.97.0: the wobble
+        rack->talkBack.addTo (block);                          // 1.9.0: the drum's answers
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
         // 1.7.0: the trance gate, last, so the reverb, echoes and signature effects are chopped with the sound.

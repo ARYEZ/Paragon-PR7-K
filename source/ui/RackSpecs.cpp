@@ -632,19 +632,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE", "TALKBACK" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn, ParamIDs::talkOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 42> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 43> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 42> specs;
+    std::array<RackUnit::Spec, 43> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -2435,6 +2435,51 @@ std::array<RackUnit::Spec, 42> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (41); };
+    }
+
+    // TALKBACK (1.9.0): the answers so far in big digits, what it's doing, the settings; the keys set AMOUNT: REPLY,
+    // ANSWER, CONVERSE; the ladder the drum's pitch now against its centre.
+    {
+        auto& s = specs[42];
+        s.name = "TALKBACK";
+        s.kind = "THE TALKING  DRUM";
+        s.onParameterIds = { ParamIDs::talkOn };
+        s.powerTooltip = "TALKBACK on or off: a talking drum answers each phrase you play on the next bar line, following its rise "
+                         "and fall. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "REPLY", 0.25f, "Now and then: half your phrases answered" },
+                                            { "ANSWER", 0.5f, "Every phrase answered, plainly" },
+                                            { "CONVERSE", 1.0f, "Every phrase, and the drummer's own flams, tags and bigger bends" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::talkAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::talkAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::talkAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::talkBend, "BEND" } };
+        s.ladderTitle = "PITCH";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "+12", "+6", "0", "-6", "-12" };
+        s.ladderReading = [&p]
+        {
+            return p.getTalkBackSettings().on ? juce::jlimit (0.0f, 1.0f, 0.5f + p.getTalkBack().getPitchNow() / 24.0f) : 0.5f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getTalkBack();
+            const auto end = drawNumber (g, juce::String (fx.getAnswers()), left.getTopLeft(), h);
+            line (g, "ANSWERS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            line (g, ! p.getTalkBackSettings().on ? "OFF" : fx.isAnswering() ? "ANSWERING" : "LISTENING",
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::talkAmount), "WAIT " + textOf (p, ParamIDs::talkWait),
+                                  "BEND " + textOf (p, ParamIDs::talkBend), "PITCH " + textOf (p, ParamIDs::talkPitch) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (42); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

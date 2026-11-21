@@ -113,7 +113,9 @@ namespace ModDestinations
                                                  // 1.6.0: ORNAMENT: how many notes
                                                  "ornAmount",
                                                  // 1.7.0: TRANCE GATE: how deep it cuts, how much of each step is open
-                                                 "tgMix", "tgGate" };
+                                                 "tgMix", "tgGate",
+                                                 // 1.9.0: TALKBACK: how much it answers, the bends, how loud
+                                                 "talkAmount", "talkBend", "talkLevel" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.
