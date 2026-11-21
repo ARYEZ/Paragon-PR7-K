@@ -16158,11 +16158,12 @@ namespace
         x.add (court);
 
         auto eight = x.make ("Throne 808", 8, { "Bass", "Technology", "808", "Glide" },
-            juce::String ("The city's trap bass: a long sine 808, its pitch dropping an octave into each note, a little "
-            "drive for grit, slides between held notes (play legato to glide).") + talk
+            juce::String ("The city's trap bass: a long sine 808, its pitch dropping an octave into each note, a quiet "
+            "square an octave up and a diode's drive for a growl, slides between held notes (play legato to glide).") + talk
             + " MOD WHEEL: more drive. MACROS: BRIGHT, SPACE, TALKBACK.");
         eight.osc (0, "Wave", sine).osc (0, "Volume", 0.9f).osc (0, "PhaseRand", 0.0f)
-             .shaper (0, synth::ShaperModel::soft, 0.25f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.08f)
+             .shaper (0, synth::ShaperModel::diode, 0.45f)
              .set (ParamIDs::fltOn, 0.0f)
              .ampEnvelope (1.0f, 2200.0f, 0.35f, 400.0f).set (ParamIDs::ampDecayCurve, -0.4f)
              .mono (90.0f).set (ParamIDs::glideMode, (float) synth::GlideMode::legato);
@@ -16171,7 +16172,7 @@ namespace
         route (eight, "macro1", ParamIDs::shp (0, "Drive"), 0.2f);
         finish (eight, "BRIGHT", RT::room, 0.4f, 0.06f);
         talkBack (eight, { 175.0f, 0.65f, 1.0f, 0.75f, 0, 0.2f, -0.3f, 3.4f });
-        eight.set (ParamIDs::patchLevel, -6.9f);
+        eight.set (ParamIDs::patchLevel, -5.1f);
         x.add (eight);
 
         auto heart = x.make ("Heartbeat Bass", 9, { "Bass", "Ritual", "Pulse", "Sub" },
