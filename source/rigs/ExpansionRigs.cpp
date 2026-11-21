@@ -265,6 +265,7 @@ namespace
             { "Wire Shamisen", -5.3f },
             { "Bell Tower", -13.0f }, { "Pizzicato Masque", -2.7f }, { "Raven Pluck", -2.0f },
             { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
+            { "Kora Pluck", 0.0f }, { "Circuit Mbira", -4.2f }, { "Thumb Piano", -4.7f },
             { "Breath Hit", -4.0f }, { "Struck Sculpture", -6.0f }, { "Fretless Slide", 4.0f },
         };
         const auto found = levels.find (name);
@@ -16013,8 +16014,8 @@ namespace
         route (griot, "macro1", ParamIDs::voiceSharp, 0.35f);
         delay (griot, "1/4 dotted", 0.3f, 0.12f, true, 4.0f);
         finish (griot, "BRIGHT", RT::hall, 0.6f, 0.2f);
-        talkBack (griot, { 150.0f, 0.6f, 1.5f, 0.5f, 0, 0.3f, 0.3f, -8.0f });
-        griot.set (ParamIDs::patchLevel, -5.0f);
+        talkBack (griot, { 150.0f, 0.6f, 1.5f, 0.5f, 0, 0.3f, 0.3f, 2.6f });
+        griot.set (ParamIDs::patchLevel, -2.6f);
         x.add (griot);
 
         auto spear = x.make ("Sonic Spear", 2, { "Lead", "Technology", "Sync", "Bright" },
@@ -16032,8 +16033,8 @@ namespace
         route (spear, "macro1", ParamIDs::fltCutoff, 0.2f);
         delay (spear, "1/8 dotted", 0.35f, 0.16f, true, 5.0f);
         finish (spear, "BRIGHT", RT::plate, 0.5f, 0.12f);
-        talkBack (spear, { 190.0f, 0.7f, 1.0f, 0.8f, 0, 0.25f, -0.3f, -8.0f });
-        spear.set (ParamIDs::patchLevel, -6.0f);
+        talkBack (spear, { 190.0f, 0.7f, 1.0f, 0.8f, 0, 0.25f, -0.3f, 2.9f });
+        spear.set (ParamIDs::patchLevel, -1.4f);
         x.add (spear);
 
         auto flute = x.make ("Spirit Flute", 3, { "Lead", "Ritual", "Flute", "Breath" },
@@ -16053,8 +16054,8 @@ namespace
         route (flute, "macro1", ParamIDs::fltCutoff, 0.25f);
         delay (flute, "1/4", 0.25f, 0.1f, false, 3.5f);
         finish (flute, "BRIGHT", RT::hall, 0.75f, 0.24f, 35.0f);
-        talkBack (flute, { 115.0f, 0.55f, 2.0f, 0.3f, 0, 0.45f, 0.2f, -8.0f });
-        flute.set (ParamIDs::patchLevel, -4.0f);
+        talkBack (flute, { 115.0f, 0.55f, 2.0f, 0.3f, 0, 0.45f, 0.2f, 2.4f });
+        flute.set (ParamIDs::patchLevel, -4.3f);
         x.add (flute);
 
         // ---- PADS --------------------------------------------------------------------------------------------
@@ -16075,11 +16076,11 @@ namespace
         route (throne, "modWheel", ParamIDs::fltCutoff, 0.25f);
         route (throne, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (throne, "BRIGHT", RT::hall, 0.8f, 0.26f, 35.0f);
-        talkBack (throne, { 140.0f, 0.6f, 1.5f, 0.5f, 0, 0.35f, 0.2f, -8.0f });
-        throne.set (ParamIDs::patchLevel, -12.0f);
+        talkBack (throne, { 140.0f, 0.6f, 1.5f, 0.5f, 0, 0.35f, 0.2f, 3.1f });
+        throne.set (ParamIDs::patchLevel, -11.1f);
         orchestra (throne, { { { 3, "Brass - Notation/Horns Sustain.sfz", 0.8f, -0.15f, true },
                                { 4, "Strings - Notation/All Strings Sustain.sfz", 1.0f, 0.1f, true } },
-                             { 0, 1 }, -6.0f,
+                             { 0, 1 }, -8.1f,
                              "The throne room's fanfare held as a chord: the orchestra's horns over its whole string "
                              "section, held as long as you hold the keys (SFZ HOLD), the synth's high voices far behind.",
                              250.0f, 1000.0f, 1.0f, 1200.0f, -1.0f,
@@ -16104,8 +16105,8 @@ namespace
         route (haze, "modWheel", ParamIDs::osc (0, "TrStrength"), 0.4f);
         route (haze, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (haze, "BRIGHT", RT::digital, 0.85f, 0.32f, 40.0f);
-        talkBack (haze, { 180.0f, 0.65f, 1.2f, 0.7f, 0, 0.4f, -0.25f, -8.0f });
-        haze.set (ParamIDs::patchLevel, -10.0f);
+        talkBack (haze, { 180.0f, 0.65f, 1.2f, 0.7f, 0, 0.4f, -0.25f, 3.1f });
+        haze.set (ParamIDs::patchLevel, -9.6f);
         x.add (haze);
 
         auto savanna = x.make ("Night Savanna", 6, { "Pad", "Ritual", "Drone", "Night" },
@@ -16128,8 +16129,8 @@ namespace
         route (savanna, "modWheel", ParamIDs::osc (2, "Volume"), 0.03f);
         route (savanna, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (savanna, "BRIGHT", RT::hall, 0.9f, 0.28f, 40.0f);
-        talkBack (savanna, { 105.0f, 0.5f, 2.0f, 0.25f, 0, 0.5f, 0.15f, -8.0f });
-        savanna.set (ParamIDs::patchLevel, -8.0f);
+        talkBack (savanna, { 105.0f, 0.5f, 2.0f, 0.25f, 0, 0.5f, 0.15f, 2.9f });
+        savanna.set (ParamIDs::patchLevel, -12.7f);
         x.add (savanna);
 
         // ---- BASSES ------------------------------------------------------------------------------------------
@@ -16147,10 +16148,10 @@ namespace
         route (court, "modWheel", ParamIDs::pitchEnvRange, 4.0f);
         route (court, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (court, "BRIGHT", RT::room, 0.5f, 0.1f);
-        talkBack (court, { 130.0f, 0.6f, 1.5f, 0.4f, 0, 0.25f, 0.3f, -8.0f });
-        court.set (ParamIDs::patchLevel, -4.0f);
+        talkBack (court, { 130.0f, 0.6f, 1.5f, 0.4f, 0, 0.25f, 0.3f, 3.3f });
+        court.set (ParamIDs::patchLevel, -2.7f);
         orchestra (court, { { { 3, "Percussion/Timpani.sfz", 0.9f, 0.0f, false } },
-                            { 1, 2 }, -2.0f,
+                            { 1, 2 }, -4.0f,
                             "A bass played like the court's great drum: the orchestra's timpani on every note, the synth's "
                             "thumping sine under it.",
                             -1.0f, 900.0f, 0.45f, 300.0f, -1.0f, {} });
@@ -16169,8 +16170,8 @@ namespace
         route (eight, "modWheel", ParamIDs::shp (0, "Drive"), 0.35f);
         route (eight, "macro1", ParamIDs::shp (0, "Drive"), 0.2f);
         finish (eight, "BRIGHT", RT::room, 0.4f, 0.06f);
-        talkBack (eight, { 175.0f, 0.65f, 1.0f, 0.75f, 0, 0.2f, -0.3f, -8.0f });
-        eight.set (ParamIDs::patchLevel, -6.0f);
+        talkBack (eight, { 175.0f, 0.65f, 1.0f, 0.75f, 0, 0.2f, -0.3f, 3.4f });
+        eight.set (ParamIDs::patchLevel, -6.9f);
         x.add (eight);
 
         auto heart = x.make ("Heartbeat Bass", 9, { "Bass", "Ritual", "Pulse", "Sub" },
@@ -16197,8 +16198,8 @@ namespace
         route (heart, "modWheel", ParamIDs::fltCutoff, 0.25f);
         route (heart, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (heart, "BRIGHT", RT::room, 0.5f, 0.08f);
-        talkBack (heart, { 110.0f, 0.5f, 2.0f, 0.3f, 0, 0.35f, 0.2f, -8.0f });
-        heart.set (ParamIDs::patchLevel, -3.0f);
+        talkBack (heart, { 110.0f, 0.5f, 2.0f, 0.3f, 0, 0.35f, 0.2f, 3.2f });
+        heart.set (ParamIDs::patchLevel, 1.9f);
         x.add (heart);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -16215,10 +16216,10 @@ namespace
         route (kora, "macro1", ParamIDs::fltCutoff, 0.25f);
         delay (kora, "1/8", 0.25f, 0.1f, true, 4.5f);
         finish (kora, "BRIGHT", RT::room, 0.55f, 0.14f);
-        talkBack (kora, { 150.0f, 0.6f, 1.5f, 0.55f, 0, 0.3f, -0.25f, -8.0f });
-        kora.set (ParamIDs::patchLevel, -4.0f);
+        talkBack (kora, { 150.0f, 0.6f, 1.5f, 0.55f, 0, 0.3f, -0.25f, 0.1f });
+        kora.set (ParamIDs::patchLevel, -0.6f);
         orchestra (kora, { { { 0, "Concert Harp.sfz", 1.0f, 0.0f, true } },
-                           { 0, 1 }, 2.0f,
+                           { 0, 1 }, 1.5f,
                            "The court's kora as keys: the orchestra's concert harp, plucked bright and dry.",
                            0.0f, 2500.0f, 1.0f, 600.0f, -1.0f, [] (Builder& s) { s.set (ParamIDs::fltCutoff, 6000.0f); } });
         x.add (kora);
@@ -16241,8 +16242,8 @@ namespace
         chorus (kinetic, ParamIDs::modIds, MT::autoPan, 1.0f, 0.35f, 1.0f);
         chorus (kinetic, ParamIDs::mod2Ids, MT::chorus, 0.6f, 0.4f, 0.5f);
         finish (kinetic, "BRIGHT", RT::plate, 0.5f, 0.14f);
-        talkBack (kinetic, { 185.0f, 0.65f, 1.0f, 0.7f, 0, 0.25f, 0.3f, -8.0f });
-        kinetic.set (ParamIDs::patchLevel, -7.0f);
+        talkBack (kinetic, { 185.0f, 0.65f, 1.0f, 0.7f, 0, 0.25f, 0.3f, 1.1f });
+        kinetic.set (ParamIDs::patchLevel, -8.1f);
         x.add (kinetic);
 
         auto elder = x.make ("Elder Bells", 12, { "Keys", "Ritual", "Bell", "Metal" },
@@ -16259,8 +16260,8 @@ namespace
         route (elder, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.25f);
         route (elder, "macro1", ParamIDs::osc (0, "AmAmount"), 0.15f);
         finish (elder, "BRIGHT", RT::cathedral, 0.8f, 0.24f, 40.0f);
-        talkBack (elder, { 100.0f, 0.5f, 2.0f, 0.3f, 0, 0.45f, -0.2f, -8.0f });
-        elder.set (ParamIDs::patchLevel, -9.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        talkBack (elder, { 100.0f, 0.5f, 2.0f, 0.3f, 0, 0.45f, -0.2f, 0.7f });
+        elder.set (ParamIDs::patchLevel, -3.4f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         x.add (elder);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -16280,8 +16281,8 @@ namespace
         route (balafon, "modWheel", ParamIDs::osc (2, "Volume"), 0.08f);
         route (balafon, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (balafon, "BRIGHT", RT::room, 0.5f, 0.12f);
-        talkBack (balafon, { 160.0f, 0.55f, 1.0f, 0.6f, 0, 0.3f, -0.3f, -8.0f });
-        balafon.set (ParamIDs::patchLevel, -2.0f);
+        talkBack (balafon, { 160.0f, 0.55f, 1.0f, 0.6f, 0, 0.3f, -0.3f, -2.1f });
+        balafon.set (ParamIDs::patchLevel, 2.1f);
         x.add (balafon);
 
         auto maglev = x.make ("Maglev Arp", 14, { "Arp", "Technology", "Sequence", "Saw" },
@@ -16303,8 +16304,8 @@ namespace
         route (maglev, "macro1", ParamIDs::fltCutoff, 0.2f);
         delay (maglev, "1/8 dotted", 0.35f, 0.15f, true, 5.0f);
         finish (maglev, "BRIGHT", RT::plate, 0.5f, 0.1f);
-        talkBack (maglev, { 200.0f, 0.65f, 1.0f, 0.8f, 0, 0.25f, 0.3f, -8.0f });
-        maglev.set (ParamIDs::patchLevel, -6.0f);
+        talkBack (maglev, { 200.0f, 0.65f, 1.0f, 0.8f, 0, 0.25f, 0.3f, -2.3f });
+        maglev.set (ParamIDs::patchLevel, -0.2f);
         x.add (maglev);
 
         auto fire = x.make ("Fire Circle", 15, { "Arp", "Ritual", "Chant", "Hand Drum" },
@@ -16340,8 +16341,8 @@ namespace
         route (fire, "modWheel", ParamIDs::voiceVowel, 0.3f);
         route (fire, "macro1", ParamIDs::voiceSharp, 0.3f);
         finish (fire, "BRIGHT", RT::hall, 0.55f, 0.16f);
-        talkBack (fire, { 120.0f, 0.55f, 2.0f, 0.35f, 0, 0.35f, 0.35f, -8.0f });
-        fire.set (ParamIDs::patchLevel, -7.0f);
+        talkBack (fire, { 120.0f, 0.55f, 2.0f, 0.35f, 0, 0.35f, 0.35f, 1.5f });
+        fire.set (ParamIDs::patchLevel, -9.3f);
         x.add (fire);
 
         // ---- PLUCKS ------------------------------------------------------------------------------------------
@@ -16358,7 +16359,7 @@ namespace
         pkVelocity (koraPluck, 0.5f, 0.2f, 0.5f);
         route (koraPluck, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (koraPluck, "BRIGHT", RT::room, 0.45f, 0.12f);
-        talkBack (koraPluck, { 155.0f, 0.6f, 1.2f, 0.55f, 0, 0.3f, -0.25f, -8.0f });
+        talkBack (koraPluck, { 155.0f, 0.6f, 1.2f, 0.55f, 0, 0.3f, -0.25f, 0.3f });
         pkAdd (x, koraPluck);
 
         auto mbira = x.make ("Circuit Mbira", 17, { "Pluck", "Technology", "Mbira", "Crushed" },
@@ -16374,7 +16375,7 @@ namespace
         route (mbira, "macro1", ParamIDs::osc (1, "Volume"), 0.08f);
         delay (mbira, "1/16", 0.35f, 0.16f, true, 6.0f);
         finish (mbira, "BRIGHT", RT::digital, 0.45f, 0.1f);
-        talkBack (mbira, { 195.0f, 0.7f, 0.8f, 0.85f, 1, 0.25f, 0.3f, -8.0f });
+        talkBack (mbira, { 195.0f, 0.7f, 0.8f, 0.85f, 1, 0.25f, 0.3f, 1.2f });
         pkAdd (x, mbira);
 
         auto thumb = x.make ("Thumb Piano", 18, { "Pluck", "Ritual", "Mbira", "Wood" },
@@ -16390,7 +16391,7 @@ namespace
         pkVelocity (thumb, 0.4f, 0.2f, 0.5f);
         route (thumb, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (thumb, "BRIGHT", RT::room, 0.55f, 0.15f);
-        talkBack (thumb, { 125.0f, 0.55f, 1.8f, 0.4f, 0, 0.35f, -0.2f, -8.0f });
+        talkBack (thumb, { 125.0f, 0.55f, 1.8f, 0.4f, 0, 0.35f, -0.2f, 0.1f });
         pkAdd (x, thumb);
     }
 
