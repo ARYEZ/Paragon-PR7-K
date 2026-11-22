@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.10.0
+
+GAME OVER, a new expansion built round CARTRIDGE, which forces the synth through an old game console's sound chip. Also: a fix for FREEZE TAG.
+
+- **CARTRIDGE**, in the SIGNATURE slot: one knob, AMOUNT (MACRO 3 on GAME OVER), takes your sound into the chip a limit at a time. Just above 0, the notes snap to the chip's coarse tuning (low notes barely move, high ones come out audibly off) and their loudness moves in 16 small steps. From a quarter, a held chord plays one note at a time, lowest first, in time with your song (RATE: 1/16, 1/32 or 1/64), the way old consoles faked chords. From half, the output gets the chip's crunch. From three quarters, the notes take turns 60 times a second, the buzzing "chip chord"; only the newest few notes sound (CHANNELS, 2 to 8), and now and then the sound skips like a wiggled cartridge (GLITCH). The chords and arps are moved inside the synth, so it works on held chords and on the arpeggiator alike. At 0 your sound is untouched. Its page shows a pixel screen, with the four stages lit as AMOUNT passes them and the notes in the chip, the one sounding now lit.
+- **GAME OVER**, a pixel world where 8-bit chiptune crashes into garage rock (GO01-GO18), in three columns: the console (Pulse Hero, Save Room, Triangle Bass, Pixel Organ, Overworld Run, Coin Pickup), the garage (Fuzz Hook, Amp Hum Wall, Garage Fuzz Bass, Practice Amp Keys, Power Chord Chug, Garage Pluck) and the boss fight, both at once (Combo Breaker, Level Map, Boss Bass, Coin Keys, Rival Battle, Extra Life). MACRO 3 is CARTRIDGE on every preset. Fuzz Hook and Garage Pluck play a real Gretsch guitar (Black And Green Guitars) once it's downloaded. Our own sounds; no film, game, character or music named.
+- **FREEZE TAG fix:** turning FREEZE TAG up during the frozen beats of a cycle (MACRO 3 on a PLAYGROUND preset, at the wrong moment) switched to the frozen sound with nothing caught: the first time the sound could cut out, after that it replayed an old moment. It now waits for the next freeze.
+- I can't listen here: the levels are measured, not heard (the presets about the same loudness as the other banks; full CARTRIDGE takes held chords 4 to 6 dB down, since one note of the chord sounds at a time).
+
 ## 1.9.0
 
 SUNTHRONE, a new expansion built round TALKBACK, a talking drum that answers what you play. Also: MIMIC copies each round of a slowly moving sound as it was recorded.
