@@ -124,6 +124,27 @@ TEST_CASE ("FREEZE TAG: frozen, the new note is cut and a ghost holds the old on
     CHECK (std::abs (ghost - before - db (0.8)) < 4.0);
 }
 
+TEST_CASE ("FREEZE TAG: woken inside a freeze, it waits for the next one", "[freezetag]")
+{
+    // 1.10.0: turned up during the frozen beats of the first cycle (beat 6.5 of 6-8 at 120 BPM), it used to open the
+    // gate on no moment caught: the grain length was still 0 and the output NaN (found by the fuzz test). It must stay
+    // untouched until the next freeze (beat 14) catches its moment.
+    const auto in = sine (220.0, 8.0);
+    auto off = full();
+    off.amount = 0.0f;
+    const auto run = runFreeze (in, in, off, 120.0, (int) (3.25 * sampleRate), full());
+    for (auto v : run.out[0])
+        REQUIRE (std::isfinite (v));
+    for (size_t i = 0; i < (size_t) (6.99 * sampleRate); ++i)
+        REQUIRE (run.out[0][i] == in[i]);
+    // The next freeze still comes.
+    CHECK (rms (run.out[0], (size_t) (7.1 * sampleRate), (size_t) (7.9 * sampleRate)) > 0.05);
+    bool changed = false;
+    for (auto i = (size_t) (7.0 * sampleRate); i < (size_t) (7.9 * sampleRate); ++i)
+        changed = changed || run.out[0][i] != in[i];
+    CHECK (changed);
+}
+
 TEST_CASE ("FREEZE TAG: CAUGHT sinks the ghost", "[freezetag]")
 {
     const auto in = sine (220.0, 4.2);

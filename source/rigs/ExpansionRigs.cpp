@@ -266,6 +266,7 @@ namespace
             { "Bell Tower", -13.0f }, { "Pizzicato Masque", -2.7f }, { "Raven Pluck", -2.0f },
             { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
             { "Kora Pluck", 0.0f }, { "Circuit Mbira", -4.2f }, { "Thumb Piano", -4.7f },
+            { "Coin Pickup", -8.0f }, { "Garage Pluck", 7.0f }, { "Extra Life", -1.0f },
             { "Breath Hit", -4.0f }, { "Struck Sculpture", -6.0f }, { "Fretless Slide", 4.0f },
         };
         const auto found = levels.find (name);
@@ -16396,6 +16397,447 @@ namespace
         pkAdd (x, thumb);
     }
 
+    // GAME OVER (1.10.0, the owner's theme and name: a pixel world where 8-bit chiptune crashes into garage rock; our
+    // own sounds, no film, game, character or music named). Three columns in every category: the console (the pure
+    // chip: squares, a triangle, coins), the garage (the band: fuzz, an amp, a practice room), the boss fight (both at
+    // once). MACRO 3 CARTRIDGE on every preset: the synth forced through an old console's sound chip, a limit at a time
+    // (its tuning, chords taken in turns, its crunch, 60 Hz frames and glitches).
+    struct Chip
+    {
+        int rate = 1;          // synth::cartridge::rateNames: 1/32
+        int channels = 3;      // notes at once at the top stage
+        float crunch = 0.6f, glitch = 0.4f;
+    };
+    void cartridge (Builder& b, Chip c)
+    {
+        b.set (ParamIDs::cartOn, 1.0f).set (ParamIDs::cartAmount, 0.0f).set (ParamIDs::cartRate, (float) c.rate)
+         .set (ParamIDs::cartChannels, (float) c.channels).set (ParamIDs::cartCrunch, c.crunch).set (ParamIDs::cartGlitch, c.glitch);
+        route (b, "macro3", ParamIDs::cartAmount, 1.0f);   // the macro is AMOUNT: the chip's limits, one stage at a time
+    }
+
+    void gameOver (Expansion x)
+    {
+        using DM = effects::Drive::Model;
+        using AM = synth::arp::Mode;
+        using LW = synth::mod::LfoWave;
+        const auto& guitars = libraries::blackAndGreenGuitars();
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.6f);
+        };
+        const auto square = [] (Builder& b, int o, float width, float volume)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Wave", pulse).osc (o, "Width", width).osc (o, "Volume", volume).osc (o, "PhaseRand", 0.0f);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        const auto finish = [] (Builder& b, const char* one, RT room, float size, float mix, float preDelay = 15.0f)
+        {
+            macros (b, one, "SPACE", "CARTRIDGE");
+            reverb (b, room, size, mix, preDelay, 5.0f);
+            space (b);
+        };
+        const auto chip = " Turn up CARTRIDGE (MACRO 3) and it goes into an old game console's sound chip a limit at a time: "
+                          "its coarse tuning and stepped loudness, then chords played one note at a time, then its crunch, "
+                          "and at the top the buzzing 60 Hz \"chip chord\", a few channels and a glitching cartridge.";
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto hero = x.make ("Pulse Hero", 1, { "Lead", "Console", "Square", "Chip" },
+            juce::String ("The hero's theme on the console: a thin square (an eighth-wide pulse) and nothing else, no "
+            "filter, a vibrato that only comes in once a note is held, a quick slide between notes, a short echo.") + chip
+            + " MOD WHEEL: a wider pulse, fuller. MACROS: VIBRATO, SPACE, CARTRIDGE.");
+        hero.osc (0, "Wave", pulse).osc (0, "Width", 0.125f).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+            .set (ParamIDs::fltOn, 0.0f)
+            .ampEnvelope (1.0f, 300.0f, 0.85f, 60.0f)
+            .mono (25.0f);
+        vibrato (hero, 0, 22.0f, 6.0f, 350.0f);
+        route (hero, "modWheel", ParamIDs::osc (0, "Width"), 0.3f);
+        route (hero, "macro1", ParamIDs::osc (0, "VibAmount"), 0.3f);
+        delay (hero, "1/8 dotted", 0.25f, 0.12f, false, 5.0f);
+        finish (hero, "VIBRATO", RT::room, 0.35f, 0.08f);
+        cartridge (hero, { 1, 2, 0.5f, 0.3f });
+        hero.set (ParamIDs::patchLevel, -3.0f);
+        x.add (hero);
+
+        auto fuzz = x.make ("Fuzz Hook", 2, { "Lead", "Garage", "Guitar", "Fuzz" },
+            "The garage band's guitar hook: a saw and a pulse picked (each note struck a hair sharp, a scratch of the pick) "
+            "into a fuzz pedal turned all the way up, a dark little amp, the room around it."
+            + juce::String (chip) + " MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        fuzz.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.35f)
+            .osc (1, "Insert", 1.0f)
+            .filter (FilterType::lp12, 2400.0f, 0.1f, 0.2f).set (ParamIDs::fltKey, 0.4f)
+            .filterEnvelope (0.0f, 400.0f, 0.6f, 200.0f)
+            .ampEnvelope (1.0f, 900.0f, 0.8f, 180.0f)
+            .mono (20.0f);
+        pkStrike (fuzz, 2, 0, 0.15f, 6.0f, 0.1f);
+        fuzz.osc (2, "Insert", 1.0f);
+        pkBend (fuzz, 0.25f, 0.05f, -0.5f);
+        vibrato (fuzz, 0, 12.0f, 5.5f, 500.0f);
+        drive (fuzz, 0, DM::muff, 7.0f, 4.5f, 8.0f, 0.15f, 0.2f);   // about unity: the switch-on fade from dry stays level
+        route (fuzz, "modWheel", ParamIDs::fltCutoff, 0.2f);
+        route (fuzz, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (fuzz, "BRIGHT", RT::room, 0.4f, 0.1f, 8.0f);
+        cartridge (fuzz, { 1, 3, 0.6f, 0.4f });
+        fuzz.set (ParamIDs::patchLevel, 0.0f);
+        orchestra (fuzz, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
+                           { 0, 1, 2 }, 0.6f,
+                           "The garage band's guitar hook: a real Gretsch Anniversary (Black And Green Guitars) into a fuzz "
+                           "pedal turned all the way up.",
+                           1.0f, 900.0f, 0.8f, 180.0f, 0.0f,
+                           [] (Builder& s) { s.osc (0, "Insert", 1.0f).set (ParamIDs::fltCutoff, 5000.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        x.add (fuzz);
+
+        auto combo = x.make ("Combo Breaker", 3, { "Lead", "Boss Fight", "Power-Up", "Unison" },
+            juce::String ("The boss fight's lead, chip and band at once: a square and a saw in unison, three copies wide, "
+            "every note launched with a power-up sweep (it starts an octave under and shoots up to the note), a hot amp "
+            "under it.") + chip + " MOD WHEEL: more grit (a shaper after the filter). MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        combo.osc (0, "Wave", pulse).osc (0, "Width", 0.25f).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Volume", 0.4f).osc (1, "Insert", 1.0f)
+             .filter (FilterType::lp24, 5000.0f, 0.15f, 0.0f)
+             .ampEnvelope (1.0f, 500.0f, 0.85f, 150.0f)
+             .mono (30.0f);
+        unison (combo, 1, 3, 0.55f, 0.14f, 0.8f);
+        pkBend (combo, -12.0f, 0.07f, 0.5f);
+        drive (combo, 0, DM::screamer, 5.0f, 5.5f, 0.0f, 0.2f, 0.2f);
+        combo.shaper (0, synth::ShaperModel::soft, 0.0f, true);
+        route (combo, "modWheel", ParamIDs::shp (0, "Drive"), 0.5f);
+        route (combo, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (combo, "1/8", 0.3f, 0.1f, true, 5.0f);
+        finish (combo, "BRIGHT", RT::plate, 0.45f, 0.1f);
+        cartridge (combo, { 1, 3, 0.7f, 0.5f });
+        combo.set (ParamIDs::patchLevel, -0.5f);
+        x.add (combo);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto save = x.make ("Save Room", 4, { "Pad", "Console", "Triangle", "Calm" },
+            juce::String ("The quiet room where you save your game: soft triangles and a half-wide square far behind, "
+            "swelling in and fading slowly, a gentle tremolo like a sleeping console's hum, a warm hall. Hold chords.")
+            + chip + " MOD WHEEL: more of the square. MACROS: WARM, SPACE, CARTRIDGE.");
+        save.osc (0, "Wave", triangle).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f);
+        square (save, 1, 0.5f, 0.1f);
+        save.osc (1, "Transpose", 12.0f);
+        save.set (ParamIDs::fltOn, 0.0f)
+            .ampEnvelope (500.0f, 1000.0f, 0.9f, 1500.0f);
+        chorus (save, ParamIDs::modIds, MT::tremolo, 0.25f, 0.25f, 1.0f);
+        route (save, "modWheel", ParamIDs::osc (1, "Volume"), 0.2f);
+        route (save, "macro1", ParamIDs::osc (0, "Volume"), 0.2f);
+        finish (save, "WARM", RT::hall, 0.7f, 0.25f, 30.0f);
+        cartridge (save, { 0, 4, 0.5f, 0.3f });
+        save.set (ParamIDs::patchLevel, -6.5f);
+        x.add (save);
+
+        auto wall = x.make ("Amp Hum Wall", 5, { "Pad", "Garage", "Feedback", "Fuzz" },
+            juce::String ("The band holding a chord and leaning into the amps: saws in a wide section through a fuzz, the "
+            "filter opening as you hold, and a high whine of feedback (a sine two octaves up) creeping in behind. Hold "
+            "power chords or open chords.") + chip + " MOD WHEEL: more feedback. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        wall.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 0.0f)
+            .osc (1, "Filter", 0.0f).osc (1, "PhaseRand", 0.0f);
+        unison (wall, 0, 5, 0.7f, 0.18f, 1.0f);
+        wall.filter (FilterType::lp24, 600.0f, 0.15f, 0.5f)
+            .filterEnvelope (1500.0f, 2000.0f, 0.7f, 1200.0f)
+            .ampEnvelope (250.0f, 1000.0f, 0.9f, 900.0f);
+        pkShot (wall, 0, { PK { 0.0f, 0.0f, 0.4f }, PK { 3.0f, 1.0f, 0.0f } });
+        route (wall, "env1", ParamIDs::osc (1, "Volume"), 0.06f);
+        drive (wall, 0, DM::muff, 5.0f, 4.0f, -4.5f, 0.2f, 0.4f);
+        route (wall, "modWheel", ParamIDs::osc (1, "Volume"), 0.1f);
+        route (wall, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (wall, "BRIGHT", RT::hall, 0.6f, 0.2f);
+        cartridge (wall, { 1, 4, 0.6f, 0.4f });
+        wall.set (ParamIDs::patchLevel, 3.7f);
+        x.add (wall);
+
+        auto map = x.make ("Level Map", 6, { "Pad", "Boss Fight", "Shoegaze", "Chip" },
+            juce::String ("The world map between levels, in a haze: squares whose width slowly swings, detuned against "
+            "each other, a warbling tape (the pitch wandering a few cents), a huge, dark shimmering hall. Hold chords.")
+            + chip + " MOD WHEEL: more warble. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        map.osc (0, "Wave", pulse).osc (0, "Width", 0.35f).osc (0, "Volume", 0.45f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.2f).osc (1, "Transpose", 12.0f).osc (1, "Fine", -9.0f)
+           .osc (1, "Volume", 0.2f);
+        unison (map, 0, 4, 0.6f, 0.12f, 0.9f);
+        map.set (ParamIDs::lfo (0, "Wave"), (float) LW::sine).set (ParamIDs::lfo (0, "Rate"), 0.15f)
+           .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        route (map, "lfo1", ParamIDs::osc (0, "Width"), 0.2f);
+        map.filter (FilterType::lp12, 2500.0f, 0.1f, 0.0f)
+           .ampEnvelope (700.0f, 1500.0f, 0.9f, 2500.0f);
+        chorus (map, ParamIDs::modIds, MT::vibrato, 0.6f, 0.25f, 1.0f);
+        route (map, "modWheel", ParamIDs::modDepth, 0.4f);
+        route (map, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (map, "BRIGHT", RT::cathedral, 0.85f, 0.35f, 40.0f);
+        cartridge (map, { 0, 4, 0.5f, 0.3f });
+        map.set (ParamIDs::patchLevel, -10.6f);
+        x.add (map);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto tri = x.make ("Triangle Bass", 7, { "Bass", "Console", "Triangle", "Chip" },
+            juce::String ("The console's bass channel: a triangle with nothing on it, flat and round, no velocity, no "
+            "filter, cut off clean when you let go. Play driving eighths.") + chip
+            + " MOD WHEEL: a square an octave up for bite. MACROS: SUB, SPACE, CARTRIDGE.");
+        tri.osc (0, "Wave", triangle).osc (0, "Volume", 0.8f).osc (0, "PhaseRand", 0.0f);
+        square (tri, 1, 0.5f, 0.0f);
+        tri.osc (1, "Transpose", 12.0f);
+        tri.set (ParamIDs::fltOn, 0.0f).set (ParamIDs::ampVel, 0.0f)
+           .ampEnvelope (1.0f, 300.0f, 1.0f, 15.0f)
+           .mono (0.0f);
+        route (tri, "modWheel", ParamIDs::osc (1, "Volume"), 0.15f);
+        route (tri, "macro1", ParamIDs::osc (0, "Volume"), 0.2f);
+        finish (tri, "SUB", RT::room, 0.3f, 0.0f);
+        cartridge (tri, { 1, 2, 0.4f, 0.3f });
+        tri.set (ParamIDs::patchLevel, -4.5f);
+        x.add (tri);
+
+        auto garageBass = x.make ("Garage Fuzz Bass", 8, { "Bass", "Garage", "Fuzz", "Pick" },
+            juce::String ("A bass player in a basement, played with a pick through a fuzz: a saw and a sine an octave "
+            "under, the pick's click, the fuzz on the saw only so the low end stays solid.") + chip
+            + " MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        garageBass.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
+                  .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.45f)
+                  .osc (1, "Filter", 0.0f).osc (1, "PhaseRand", 0.0f)
+                  .filter (FilterType::lp24, 900.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.4f)
+                  .filterEnvelope (0.0f, 250.0f, 0.4f, 150.0f)
+                  .ampEnvelope (1.0f, 600.0f, 0.8f, 80.0f)
+                  .mono (10.0f);
+        pkStrike (garageBass, 2, 0, 0.12f, 5.0f, 0.15f);
+        drive (garageBass, 0, DM::muff, 5.5f, 3.5f, -8.0f, 0.0f, 0.05f);
+        route (garageBass, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (garageBass, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (garageBass, "BRIGHT", RT::room, 0.3f, 0.04f);
+        cartridge (garageBass, { 1, 2, 0.6f, 0.4f });
+        garageBass.set (ParamIDs::patchLevel, -2.0f);
+        x.add (garageBass);
+
+        auto boss = x.make ("Boss Bass", 9, { "Bass", "Boss Fight", "Square", "Driven" },
+            juce::String ("The boss's theme in the low end: a square and the same square an octave up, through a resonant "
+            "filter that snaps on every note and a driven shaper, tight and mean.") + chip
+            + " MOD WHEEL: more resonance. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        square (boss, 0, 0.5f, 0.5f);
+        square (boss, 1, 0.3f, 0.3f);
+        boss.osc (1, "Transpose", 12.0f);
+        boss.filter (FilterType::lp24, 500.0f, 0.4f, 0.55f).set (ParamIDs::fltKey, 0.3f)
+            .filterEnvelope (0.0f, 180.0f, 0.2f, 120.0f)
+            .ampEnvelope (1.0f, 400.0f, 0.85f, 60.0f)
+            .shaper (0, synth::ShaperModel::hard, 0.4f, true)
+            .mono (0.0f);
+        route (boss, "modWheel", ParamIDs::fltRes, 0.3f);
+        route (boss, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (boss, "BRIGHT", RT::room, 0.3f, 0.04f);
+        cartridge (boss, { 2, 2, 0.7f, 0.5f });
+        boss.set (ParamIDs::patchLevel, -8.9f);
+        x.add (boss);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto organ = x.make ("Pixel Organ", 10, { "Keys", "Console", "Organ", "Square" },
+            juce::String ("The console's organ: three squares stacked like drawbars (the note, the octave, the octave and a "
+            "fifth), on at once and off at once, a slow vibrato wheel. Play chords.") + chip
+            + " MOD WHEEL: the vibrato. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        square (organ, 0, 0.5f, 0.4f);
+        square (organ, 1, 0.5f, 0.25f);
+        organ.osc (1, "Transpose", 12.0f);
+        square (organ, 2, 0.5f, 0.15f);
+        organ.osc (2, "Transpose", 19.0f);
+        organ.filter (FilterType::lp12, 4500.0f, 0.0f, 0.0f)
+             .ampEnvelope (2.0f, 100.0f, 1.0f, 40.0f);
+        chorus (organ, ParamIDs::modIds, MT::vibrato, 5.5f, 0.0f, 1.0f);
+        route (organ, "modWheel", ParamIDs::modDepth, 0.35f);
+        route (organ, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (organ, "BRIGHT", RT::room, 0.45f, 0.1f);
+        cartridge (organ, { 1, 3, 0.5f, 0.3f });
+        organ.set (ParamIDs::patchLevel, -7.5f);
+        x.add (organ);
+
+        auto practice = x.make ("Practice Amp Keys", 11, { "Keys", "Garage", "Electric Piano", "Amp" },
+            juce::String ("The band's beat-up electric piano through a small practice amp: a sine struck by a sine twice "
+            "its pitch (FM, bright at the strike, settling), a bark when played hard, the amp's tremolo wobbling the "
+            "chords.") + chip + " MOD WHEEL: more bark. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        practice.osc (0, "Wave", sine).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f).osc (0, "Insert", 1.0f)
+                .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.05f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 12.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+                .set (ParamIDs::fltOn, 0.0f)
+                .ampEnvelope (2.0f, 2200.0f, 0.3f, 400.0f).set (ParamIDs::ampVel, 0.5f);
+        pkShot (practice, 0, { PK { 0.0f, 1.0f, -0.5f }, PK { 0.6f, 0.0f, 0.0f } });
+        route (practice, "env1", ParamIDs::osc (0, "FmAmount"), 0.12f);
+        route (practice, "velocity", ParamIDs::osc (0, "FmAmount"), 0.08f);
+        drive (practice, 0, DM::skyline, 4.0f, 5.0f, -2.0f, 0.1f, 0.2f);
+        chorus (practice, ParamIDs::modIds, MT::tremolo, 4.5f, 0.35f, 1.0f);
+        route (practice, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.08f);
+        route (practice, "macro1", ParamIDs::osc (0, "FmAmount"), 0.06f);
+        finish (practice, "BRIGHT", RT::room, 0.4f, 0.12f);
+        cartridge (practice, { 1, 4, 0.5f, 0.3f });
+        practice.set (ParamIDs::patchLevel, 2.0f);
+        x.add (practice);
+
+        auto coinKeys = x.make ("Coin Keys", 12, { "Keys", "Boss Fight", "Bell", "Square" },
+            juce::String ("Bells over chip squares, a shop counter in a pixel town: a bell (a sine struck by a sine 3.5 "
+            "times its pitch, ringing off) over a quiet square that holds, a bright echo.") + chip
+            + " MOD WHEEL: more bell. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        coinKeys.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f)
+                .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.0f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 21.69f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f);
+        square (coinKeys, 2, 0.25f, 0.12f);
+        coinKeys.set (ParamIDs::fltOn, 0.0f)
+                .ampEnvelope (1.0f, 1800.0f, 0.35f, 500.0f).set (ParamIDs::ampVel, 0.4f);
+        pkShot (coinKeys, 0, { PK { 0.0f, 1.0f, -0.6f }, PK { 0.9f, 0.0f, 0.0f } });
+        route (coinKeys, "env1", ParamIDs::osc (0, "FmAmount"), 0.09f);
+        route (coinKeys, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.05f);
+        route (coinKeys, "macro1", ParamIDs::osc (2, "Volume"), 0.1f);
+        delay (coinKeys, "1/8 dotted", 0.3f, 0.14f, true, 6.0f);
+        finish (coinKeys, "BRIGHT", RT::plate, 0.45f, 0.12f);
+        cartridge (coinKeys, { 1, 4, 0.5f, 0.4f });
+        coinKeys.set (ParamIDs::patchLevel, -6.7f);
+        x.add (coinKeys);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto overworld = x.make ("Overworld Run", 13, { "Arp", "Console", "Square", "Run" },
+            juce::String ("Running across the overworld: hold a chord and a quarter-wide square runs it up two octaves "
+            "in sixteenths, short and bouncy, a triangle under it on the lowest key.") + chip
+            + " MOD WHEEL: more of the triangle under it. MACROS: WIDTH, SPACE, CARTRIDGE.");
+        square (overworld, 0, 0.25f, 0.5f);
+        overworld.osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f).osc (1, "PhaseRand", 0.0f)
+                 .set (ParamIDs::fltOn, 0.0f)
+                 .ampEnvelope (1.0f, 300.0f, 0.6f, 60.0f);
+        arpOn (overworld, { 0 }, AM::up, "1/16", 2.0f, 0.55f);
+        route (overworld, "modWheel", ParamIDs::osc (1, "Volume"), 0.3f);
+        route (overworld, "macro1", ParamIDs::osc (0, "Width"), 0.25f);
+        delay (overworld, "1/8 dotted", 0.25f, 0.1f, true, 5.0f);
+        finish (overworld, "WIDTH", RT::room, 0.35f, 0.06f);
+        cartridge (overworld, { 1, 3, 0.5f, 0.3f });
+        overworld.set (ParamIDs::patchLevel, -3.8f);
+        x.add (overworld);
+
+        auto chug = x.make ("Power Chord Chug", 14, { "Arp", "Garage", "Guitar", "Palm Mute" },
+            juce::String ("The rhythm guitar chugging along: every key a power chord (the chorder adds the fifth and the "
+            "octave), palm-muted eighths through a hot amp, the fourth of each beat let ring. Hold a note or a chord.")
+            + chip + " MOD WHEEL: opens the palm mute. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        chug.osc (0, "Wave", saw).osc (0, "Volume", 0.4f).osc (0, "Insert", 1.0f)
+            .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 7.0f).osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 12.0f).osc (0, "Ch2Vol", 0.6f)
+            .filter (FilterType::lp12, 700.0f, 0.15f, 0.5f).set (ParamIDs::fltKey, 0.4f)
+            .filterEnvelope (0.0f, 120.0f, 0.1f, 80.0f)
+            .ampEnvelope (1.0f, 250.0f, 0.4f, 70.0f);
+        arpOn (chug, { 0 }, AM::up, "1/8", 1.0f, 0.5f);
+        {
+            auto& p = chug.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                p.blocks[(size_t) k].velocity = (k % 4) == 3 ? 1.0f : 0.75f;
+                p.blocks[(size_t) k].transpose = 0;
+            }
+        }
+        chug.set (ParamIDs::arp (0, "Mode"), (float) AM::poly);
+        drive (chug, 0, DM::rabid, 6.0f, 5.0f, 0.0f, 0.1f, 0.15f);
+        route (chug, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (chug, "macro1", ParamIDs::fltEnv, 0.2f);
+        finish (chug, "BRIGHT", RT::room, 0.35f, 0.06f, 8.0f);
+        cartridge (chug, { 1, 3, 0.6f, 0.4f });
+        chug.set (ParamIDs::patchLevel, 3.7f);
+        x.add (chug);
+
+        auto rival = x.make ("Rival Battle", 15, { "Arp", "Boss Fight", "Square", "Fast" },
+            juce::String ("Facing your rival: hold a chord and a thin square races it up and down two octaves in 32nds, "
+            "a driven saw an octave under on the downbeats, ping-pong echoes.") + chip
+            + " MOD WHEEL: opens the filter. MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        square (rival, 0, 0.125f, 0.45f);
+        rival.osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f).osc (1, "Insert", 1.0f)
+             .filter (FilterType::lp24, 3500.0f, 0.2f, 0.3f).filterEnvelope (0.0f, 150.0f, 0.3f, 100.0f)
+             .ampEnvelope (1.0f, 200.0f, 0.5f, 50.0f);
+        arpOn (rival, { 0, 1 }, AM::upDown, "1/32", 2.0f, 0.6f);
+        {
+            auto& p = rival.rig.modulation.arps[0].patterns[0];
+            for (int k = 0; k < 16; ++k)
+                p.blocks[(size_t) k].velocity = (k % 4) == 0 ? 1.0f : 0.7f;
+        }
+        drive (rival, 0, DM::screamer, 4.0f, 5.0f, 0.0f, 0.1f, 0.1f);
+        route (rival, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (rival, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (rival, "1/8", 0.3f, 0.1f, true, 5.0f);
+        finish (rival, "BRIGHT", RT::room, 0.35f, 0.06f);
+        cartridge (rival, { 2, 3, 0.6f, 0.5f });
+        rival.set (ParamIDs::patchLevel, 1.5f);
+        x.add (rival);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto coin = x.make ("Coin Pickup", 16, { "Pluck", "Console", "Square", "Two-Note" },
+            juce::String ("Picking up a coin: each key a quick two-note blip (the note, then a fourth above it 60 ms later, "
+            "ringing off), two squares, nothing else.") + chip + " MACROS: WIDTH, SPACE, CARTRIDGE.");
+        square (coin, 0, 0.5f, 0.0f);
+        square (coin, 1, 0.5f, 0.0f);
+        coin.osc (1, "Transpose", 5.0f);
+        coin.set (ParamIDs::fltOn, 0.0f)
+            .ampEnvelope (0.5f, 600.0f, 0.2f, 120.0f);
+        pkShot (coin, 0, { PK { 0.0f, 1.0f, 0.0f }, PK { 0.06f, 1.0f, 0.0f }, PK { 0.062f, 0.0f, 0.0f } });
+        route (coin, "env1", ParamIDs::osc (0, "Volume"), 0.55f);
+        pkShot (coin, 1, { PK { 0.0f, 0.0f, 0.0f }, PK { 0.06f, 0.0f, 0.0f }, PK { 0.062f, 1.0f, -0.5f }, PK { 0.5f, 0.0f, 0.0f } });
+        route (coin, "env2", ParamIDs::osc (1, "Volume"), 0.55f);
+        route (coin, "macro1", ParamIDs::osc (0, "Width"), 0.25f);
+        delay (coin, "1/16", 0.2f, 0.08f, true, 6.0f);
+        finish (coin, "WIDTH", RT::room, 0.3f, 0.05f);
+        cartridge (coin, { 1, 3, 0.5f, 0.3f });
+        pkAdd (x, coin);
+
+        auto garagePluck = x.make ("Garage Pluck", 17, { "Pluck", "Garage", "Guitar", "Muted" },
+            juce::String ("A muted strum in the garage: a saw and a pulse struck a hair sharp, the filter snapping shut "
+            "like a palm on the strings, a scratch of the pick, a small amp.") + chip + " MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        garagePluck.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "Insert", 1.0f)
+                   .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Fine", 6.0f).osc (1, "Volume", 0.3f)
+                   .osc (1, "Insert", 1.0f)
+                   .filter (FilterType::lp24, 800.0f, 0.15f, 0.6f).set (ParamIDs::fltKey, 0.5f)
+                   .filterEnvelope (0.0f, 110.0f, 0.0f, 80.0f)
+                   .ampEnvelope (0.5f, 350.0f, 0.05f, 120.0f).set (ParamIDs::ampDecayCurve, -0.6f);
+        pkStrike (garagePluck, 2, 0, 0.12f, 4.0f, 0.15f);
+        garagePluck.osc (2, "Insert", 1.0f);
+        pkBend (garagePluck, 0.3f, 0.04f, -0.5f);
+        pkVelocity (garagePluck, 0.5f, 0.2f, 0.5f);
+        drive (garagePluck, 0, DM::skyline, 5.0f, 5.0f, -3.0f, 0.1f, 0.15f);
+        route (garagePluck, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (garagePluck, "BRIGHT", RT::room, 0.35f, 0.08f, 8.0f);
+        cartridge (garagePluck, { 1, 3, 0.6f, 0.4f });
+        orchestra (garagePluck, { { { 0, "Programs/05-green_staccato.sfz", 1.0f, 0.0f, true, &guitars } },
+                                  { 0, 1, 2 }, 9.3f,
+                                  "A muted strum in the garage: a real Gretsch Anniversary played short (Black And Green "
+                                  "Guitars) through a small amp.",
+                                  1.0f, 350.0f, 0.05f, 120.0f, -1.0f,
+                                  [] (Builder& s)
+                                  {
+                                      s.osc (0, "Insert", 1.0f).set (ParamIDs::fltCutoff, 6000.0f).set (ParamIDs::fltEnv, 0.0f)
+                                       .set (ParamIDs::ins (0, "DriveLevel"), 3.5f);   // the recording is soft (measured)
+                                  } });
+        pkAdd (x, garagePluck);
+
+        auto extra = x.make ("Extra Life", 18, { "Pluck", "Boss Fight", "Chime", "Rising" },
+            juce::String ("The extra life: each key a chime that runs up into its note in quick chip steps (from an octave "
+            "under), a bell on top of a square, a sparkling echo.") + chip + " MACROS: BRIGHT, SPACE, CARTRIDGE.");
+        extra.osc (0, "Wave", sine).osc (0, "Volume", 0.55f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", 24.0f).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f);
+        square (extra, 2, 0.25f, 0.18f);
+        extra.set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (0.5f, 800.0f, 0.1f, 300.0f).set (ParamIDs::ampDecayCurve, -0.5f);
+        pkBend (extra, -12.0f, 0.12f, 0.0f);
+        extra.set (ParamIDs::pitchEnvSteps, 4.0f);
+        pkShot (extra, 0, { PK { 0.0f, 1.0f, -0.6f }, PK { 0.5f, 0.0f, 0.0f } });
+        route (extra, "env1", ParamIDs::osc (0, "FmAmount"), 0.06f);
+        route (extra, "macro1", ParamIDs::osc (0, "FmAmount"), 0.04f);
+        delay (extra, "1/16", 0.35f, 0.12f, true, 6.0f);
+        finish (extra, "BRIGHT", RT::plate, 0.4f, 0.1f);
+        cartridge (extra, { 1, 3, 0.5f, 0.4f });
+        pkAdd (x, extra);
+    }
+
     void nightReign (Expansion x)
     {
         using DM = effects::Drive::Model;
@@ -23503,6 +23945,7 @@ std::vector<Rig> makeExpansionRigs()
     ronin ({ Rig::numBanks + 43, rigs });
     nightReign ({ Rig::numBanks + 44, rigs });
     sunthrone ({ Rig::numBanks + 45, rigs });
+    gameOver ({ Rig::numBanks + 46, rigs });
     // 1.8.0: the presets that sounded like another bank's, made their own (rigs/DistinctPass.cpp).
     rigpatch::apply (rigs, distinctPassTable());
     return rigs;

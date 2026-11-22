@@ -103,6 +103,7 @@ namespace effects
         std::array<Grain, numGrains> grains {};   // shared by both sides, so the image holds
         int sliceLength = 0, grainLength = 0;
         bool frozen = false, caught = false;
+        bool waiting = false;   // (1.10.0) woken inside a freeze: the gate stays shut until the next one catches a moment
         float gate = 0.0f, gateIn = 0.0f, gateOut = 0.0f;
         double tremblePhase = 0.0, sink = 1.0, sinkPerSample = 1.0;
         int crushCount = 0;

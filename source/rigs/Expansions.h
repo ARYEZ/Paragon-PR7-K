@@ -15,7 +15,7 @@ namespace expansions
         const char* description;
     };
 
-    inline constexpr std::array<Expansion, 46> list
+    inline constexpr std::array<Expansion, 47> list
     {{
         { "NEON RAIN", "NR",
           "Inspired by the 1982 neo-noir sci-fi film score: CS-80-style brass, rain-soaked pads, smoky leads, glassy "
@@ -311,5 +311,13 @@ namespace expansions
           "heartbeat, deep bells, the fire circle's chant and hand drum, a warm thumb piano. MACRO 3, TALKBACK: a talking "
           "drum answering each phrase you play on the next bar line, following its rise and fall. Our own sounds; no film, "
           "character, place or music named." },
+        { "GAME OVER", "GO",
+          "A pixel world where 8-bit chiptune crashes into garage rock. The console: a thin square hero's theme, a quiet "
+          "save room, the triangle bass, a square organ, a run across the overworld, a coin. The garage: a fuzz guitar "
+          "hook, a wall of amp hum, a fuzz bass played with a pick, an electric piano through a practice amp, power-chord "
+          "chugs, a muted strum. The boss fight, both at once: a power-up lead, a hazy level map, the boss's bass, bells "
+          "over squares, a rival's race, an extra life. MACRO 3, CARTRIDGE: the synth forced through an old game "
+          "console's sound chip a limit at a time, up to chords played as buzzing 60 Hz arpeggios and a glitching "
+          "cartridge. Our own sounds; no game, film, character or music named." },
     }};
 }

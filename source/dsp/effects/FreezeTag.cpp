@@ -48,7 +48,7 @@ namespace effects
         resting = true;
         amountNow = 0.0f;
         ownBeats = 0.0;
-        frozen = caught = false;
+        frozen = caught = waiting = false;
         gate = 0.0f;
         tremblePhase = 0.0;
         sink = sinkPerSample = 1.0;
@@ -120,6 +120,7 @@ namespace effects
             settledSamples = 0;
             // Waking inside a freeze waits for the next one.
             frozen = frozenAt (ppq >= 0.0 ? ppq : ownBeats, s.cycle, s.hold);
+            waiting = frozen;   // (1.10.0) it opened the gate on no moment caught: a NaN on a first wake, a stale ghost after
             return;
         }
         const auto start = ppq >= 0.0 ? ppq : ownBeats;
@@ -147,8 +148,8 @@ namespace effects
                 caughtShown.store (caught, std::memory_order_relaxed);
             }
             else if (! f && frozen)
-                frozen = false;
-            gate = frozen ? juce::jmin (1.0f, gate + gateIn) : juce::jmax (0.0f, gate - gateOut);
+                frozen = waiting = false;
+            gate = frozen && ! waiting ? juce::jmin (1.0f, gate + gateIn) : juce::jmax (0.0f, gate - gateOut);
 
             float* io[] = { &left[i], right != nullptr ? &right[i] : nullptr };
             const float dry[] = { left[i], right != nullptr ? right[i] : left[i] };
