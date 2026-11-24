@@ -193,8 +193,7 @@ namespace effects
         const auto mix = juce::jlimit (0.0f, 1.0f, s.mix);
         const auto fade = 0.0015 * sampleRate;
         const auto gateStep = 1.0f / (float) (0.003 * sampleRate);
-        const auto attack = (float) (1.0 - std::exp (-1.0 / (0.05 * sampleRate)));
-        const auto release = (float) (1.0 - std::exp (-1.0 / (2.0 * sampleRate)));
+        const auto inputFollow = (float) (1.0 - std::exp (-1.0 / (0.4 * sampleRate)));   // an average, as SCRATCH's
         const auto wetFollow = (float) (1.0 - std::exp (-1.0 / (0.3 * sampleRate)));
         const auto gainGlide = (float) (1.0 - std::exp (-1.0 / (0.05 * sampleRate)));
         const auto lowPole = (float) std::exp (-juce::MathConstants<double>::twoPi * 60.0 / sampleRate);
@@ -207,7 +206,7 @@ namespace effects
             write = write + 1 < size ? write + 1 : 0;
             ++clock;
             const auto power = 0.5f * (x[0] * x[0] + x[channels > 1 ? 1 : 0] * x[channels > 1 ? 1 : 0]);
-            inputPower += (power - inputPower) * (power > inputPower ? attack : release);
+            inputPower += (power - inputPower) * inputFollow;
 
             const auto bar = (std::int64_t) std::floor (beat / 4.0);
             const auto sixteenthNow = (beat - (double) bar * 4.0) * 4.0;
@@ -297,10 +296,10 @@ namespace effects
                 out[c] = w;
                 wetSum += w * w;
             }
-            if (active)
+            if (active && env > 0.99f)   // only while a pad is sounding: its gaps would read as a quiet flip
                 wetPower += (wetSum / (float) channels - wetPower) * wetFollow;
             const auto ref = std::sqrt (inputPower);
-            const auto target = juce::jlimit (0.1f, 10.0f, ref / std::sqrt (juce::jmax (1.0e-9f, wetPower)));
+            const auto target = juce::jlimit (0.25f, 4.0f, ref / std::sqrt (juce::jmax (1.0e-9f, wetPower)));
             wetGain += (target - wetGain) * gainGlide;
             const auto dry = 1.0f - mix * gate;
             left[i] = x[0] * dry + out[0] * wetGain * gate;

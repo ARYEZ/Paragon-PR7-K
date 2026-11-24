@@ -425,9 +425,11 @@ namespace effects
             bite[(size_t) c] = peak (1800.0, 1.0, 5.0 + 4.0 * s.dirt, sampleRate);
         const auto faderStep = 1.0f / (float) (0.0005 * sampleRate);
         const auto gateStep = 1.0f / (float) (0.002 * sampleRate);
-        const auto attack = (float) (1.0 - std::exp (-1.0 / (0.05 * sampleRate)));
-        const auto release = (float) (1.0 - std::exp (-1.0 / (2.0 * sampleRate)));
-        const auto wetFollow = (float) (1.0 - std::exp (-1.0 / (0.3 * sampleRate)));
+        // The input's level (its power over about 0.4 s, the same up and down: an average, not the peaks) and the
+        // scratch's, measured only while the fader is open and the record moving: measured through the cuts, the
+        // silence read as a quiet scratch and the gain rose to meet it, bursting 20 dB over when the fader opened.
+        const auto inputFollow = (float) (1.0 - std::exp (-1.0 / (0.4 * sampleRate)));
+        const auto wetFollow = (float) (1.0 - std::exp (-1.0 / (0.4 * sampleRate)));
         const auto gainGlide = (float) (1.0 - std::exp (-1.0 / (0.05 * sampleRate)));
         const auto dcPole = (float) std::exp (-juce::MathConstants<double>::twoPi * 10.0 / sampleRate);
         const auto mix = juce::jlimit (0.0f, 1.0f, s.mix);
@@ -449,7 +451,7 @@ namespace effects
             write = write + 1 < size ? write + 1 : 0;
             ++clock;
             const auto power = 0.5f * (x[0] * x[0] + x[channels > 1 ? 1 : 0] * x[channels > 1 ? 1 : 0]);
-            inputPower += (power - inputPower) * (power > inputPower ? attack : release);
+            inputPower += (power - inputPower) * inputFollow;
 
             // The song: a new bar's routine, and the next move when its sixteenth comes.
             const auto bar = (std::int64_t) std::floor (beat / 4.0);
@@ -547,8 +549,9 @@ namespace effects
                 out[c] = w;
                 wetSum += w * w;
             }
-            wetPower += (wetSum / (float) channels - wetPower) * wetFollow;
-            const auto target = juce::jlimit (0.1f, 10.0f, 1.25f * ref / std::sqrt (juce::jmax (1.0e-9f, wetPower)));
+            if (active && fader > 0.99f && cartridge > 0.99f)
+                wetPower += (wetSum / (float) channels - wetPower) * wetFollow;
+            const auto target = juce::jlimit (0.25f, 4.0f, 1.25f * ref / std::sqrt (juce::jmax (1.0e-9f, wetPower)));
             wetGain += (target - wetGain) * gainGlide;
             const auto dry = 1.0f - mix * gate;
             left[i] = x[0] * dry + out[0] * wetGain * gate;
