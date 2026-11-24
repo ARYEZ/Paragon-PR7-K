@@ -16067,7 +16067,7 @@ namespace
         scratchMacro (razor, { 0.16f, 0.3f, 1.0f });
         razor.set (ParamIDs::patchLevel, 5.3f);
         orchestra (razor, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
-                            { 0, 1, 2, 3 }, 0.0f,
+                            { 0, 1, 2, 3 }, 6.0f,
                             "An industrial guitar riff: a real Gretsch Anniversary (Black And Green Guitars) through RABID, "
                             "a high-gain amp, tight at the bottom.",
                             1.0f, 600.0f, 0.75f, 140.0f, -1.0f,
@@ -16363,7 +16363,7 @@ namespace
         orchestra (gun, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
                             { 1, "Programs/01-full.sfz", 0.85f, 0.0f, false, &rusty },
                             { 2, "Programs/01-full.sfz", 0.5f, 0.0f, false, &rusty } },
-                          { 0, 1, 2, 3 }, 0.0f,
+                          { 0, 1, 2, 3 }, 6.4f,   // by its peaks (short hits: its loudness reads about -25)
                           "A machine gang of drums: a real kick, snare and closed hats (Big Rusty Drums') in a chopped "
                           "breakbeat. The key you hold doesn't change it.",
                           0.5f, 900.0f, 0.0f, 400.0f, -1.0f,

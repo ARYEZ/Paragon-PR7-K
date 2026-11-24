@@ -471,3 +471,41 @@ TEST_CASE ("SCRATCH in the plugin: parameters, matrix destinations, a chord cut 
     }
     CHECK (difference > 0.1 * power);
 }
+
+TEST_CASE ("SCRATCH keeps about the level of what it replaces: no bursts", "[scratch]")
+{
+    // (The first builds' level followers turned up in quiet moments and the next hit came 10-20 dB over.) A riff of
+    // plucked notes, a quarter beat each with gaps, at full AMOUNT: over the bars it takes, the level within 4.5 dB of
+    // the riff's and no peak more than 2.5 times the riff's loudest.
+    const auto riff = [] (int i)
+    {
+        const auto inNote = i % 6000;
+        const auto hz = 220.0 * std::exp2 (((i / 6000) % 5) * 3.0 / 12.0);
+        const auto v = 0.3f * (float) std::exp (-inNote / 2500.0) * (float) std::sin (juce::MathConstants<double>::twoPi * hz * i / sampleRate);
+        return std::pair { v, v };
+    };
+    Scratch::Settings s;
+    s.on = true;
+    s.amount = 1.0f;
+    std::vector<double> presses;
+    for (int k = 0; k < 64; ++k)
+        presses.push_back (k * 0.25);
+    for (const auto dirt : { 0.0f, 1.0f })
+    {
+        s.dirt = dirt;
+        const auto r = play (riff, s, 120.0, 16.0, presses);
+        double inPower = 0.0, outPower = 0.0;
+        float inPeak = 0.0f, outPeak = 0.0f;
+        for (size_t i = (size_t) (2.0 * sampleRate); i < r.left.size(); ++i)
+        {
+            inPower += (double) r.inLeft[i] * r.inLeft[i];
+            outPower += (double) r.left[i] * r.left[i];
+            inPeak = std::max (inPeak, std::abs (r.inLeft[i]));
+            outPeak = std::max (outPeak, std::abs (r.left[i]));
+        }
+        const auto db = 10.0 * std::log10 (outPower / inPower);
+        INFO ("level " << db << " dB, peak x" << outPeak / inPeak);
+        CHECK (std::abs (db) < 4.5);
+        CHECK (outPeak < 2.5f * inPeak);
+    }
+}
