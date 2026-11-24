@@ -220,7 +220,7 @@ TEST_CASE ("FLIP: what the pads play: LOOP the bar before's first beat, CHOP its
             // A stretch inside the cell, and inside what of the grab plays (the faster pads end sooner).
             const auto speed = std::exp2 (cell.semitones / 12.0);
             const auto start = (int) (bar + cell.start * six);
-            const auto lasts = std::min (cell.length * six, (4.0 - cell.offset) * six / speed);
+            const auto lasts = std::min ((double) cell.length * six, (4.0 - cell.offset) * six / speed);
             if (lasts < 1500)
                 continue;
             // What it should be: the grabbed sixteenth's tone, at the sampler's speed; backwards from B's end.

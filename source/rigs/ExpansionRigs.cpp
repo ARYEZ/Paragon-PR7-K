@@ -2730,536 +2730,6 @@ namespace
         pkAdd (x, kalimba);
     }
 
-    // HARDWIRED (the owner's theme and name, replacing SIMULACRUM: "it never really worked... keep it cyberpunk but base
-    // that version of cyberpunk on some of the bands of the time"): late-'90s cyberpunk as its records sounded, rave
-    // breakbeat punk, big beat and industrial rock (bands named by the owner, never on the plugin). Three columns in
-    // every category: the rave (sirens, hoovers, reese, stabs), the block party (acid, fuzz-funk, phased loops, dusty
-    // keys, scratches), the machine (crunchy guitars, cold steel, a distorted organ, a gang of drums). MACRO 3 is one of
-    // the bank's two signature effects: SCRATCH on the sounds that hit (a turntablist cutting up what you played), FLIP
-    // on the sounds that groove (a 90s sampler flipping a beat of it). Our own sounds and phrases.
-    struct Cut
-    {
-        float stroke = 0.15f, dirt = 0.0f, mix = 1.0f;   // the approved sketch: 150 ms strokes, its drive, replacing
-    };
-    void scratchMacro (Builder& b, Cut c)
-    {
-        b.set (ParamIDs::scratchOn, 1.0f).set (ParamIDs::scratchAmount, 0.0f).set (ParamIDs::scratchStroke, c.stroke)
-         .set (ParamIDs::scratchDirt, c.dirt).set (ParamIDs::scratchMix, c.mix);
-        route (b, "macro3", ParamIDs::scratchAmount, 1.0f);   // the macro is AMOUNT: fills, then cuts, then whole bars
-    }
-
-    struct Sampler
-    {
-        float pitch = 5.0f, crunch = 0.5f, pump = 0.45f, mix = 1.0f;   // the approved sketch
-    };
-    void flipMacro (Builder& b, Sampler s)
-    {
-        b.set (ParamIDs::flipOn, 1.0f).set (ParamIDs::flipAmount, 0.0f).set (ParamIDs::flipPitch, s.pitch)
-         .set (ParamIDs::flipCrunch, s.crunch).set (ParamIDs::flipPump, s.pump).set (ParamIDs::flipMix, s.mix);
-        route (b, "macro3", ParamIDs::flipAmount, 1.0f);   // the macro is AMOUNT: a tag, then the bar's end, then whole bars
-    }
-
-    void hardwired (Expansion x)
-    {
-        using DM = effects::Drive::Model;
-        using AM = synth::arp::Mode;
-        using LW = synth::mod::LfoWave;
-        using SP3 = synth::mod::ShapePoint;
-        const auto& guitars = libraries::blackAndGreenGuitars();
-        const auto& rusty = libraries::bigRustyDrums();
-        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
-        {
-            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
-             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
-        };
-        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
-        {
-            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
-        };
-        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
-        {
-            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.5f);
-        };
-        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
-        {
-            for (const auto o : oscs)
-                b.osc (o, "Arp", 1.0f);
-            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
-             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
-             .set (ParamIDs::arp (0, "Gate"), gate);
-        };
-        const auto lofi = [] (Builder& b, effects::LoFi::Type type, float amount, float mix)
-        {
-            b.set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) type).set (ParamIDs::lofiAmount, amount)
-             .set (ParamIDs::lofiMix, mix).set (ParamIDs::lofiNoise, 0.0f);   // no hiss: a preset must go silent
-        };
-        const auto pinned = [] (Builder& s, int o, int key)
-        {
-            s.osc (o, "SfzKey", (float) (key + 1)).osc (o, "SfzKeyTrack", 0.0f).osc (o, "PitchEnv", 0.0f);
-        };
-        const auto drumArp = [] (Builder& b, int arp, std::initializer_list<int> hits, std::initializer_list<int> accents = {})
-        {
-            b.set (ParamIDs::arp (arp, "On"), 1.0f).set (ParamIDs::arp (arp, "Mode"), (float) synth::arp::Mode::up)
-             .set (ParamIDs::arp (arp, "Division"), division ("1/16")).set (ParamIDs::arp (arp, "Octaves"), 1.0f)
-             .set (ParamIDs::arp (arp, "Gate"), 0.9f)
-             .set (ParamIDs::arp (arp, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
-            auto& p = b.rig.modulation.arps[(size_t) arp].patterns[0];
-            for (int k = 0; k < 16; ++k)
-            {
-                const auto on = std::find (hits.begin(), hits.end(), k) != hits.end();
-                const auto accent = std::find (accents.begin(), accents.end(), k) != accents.end();
-                p.blocks[(size_t) k].on = on;
-                p.blocks[(size_t) k].velocity = accent ? 1.0f : 0.7f;
-            }
-        };
-        const auto finish = [] (Builder& b, const char* one, const char* three, RT room, float size, float mix, float preDelay = 10.0f)
-        {
-            macros (b, one, "SPACE", three);
-            reverb (b, room, size, mix, preDelay, 5.0f);
-            space (b);
-        };
-        const auto cut = " Turn up SCRATCH (MACRO 3) and a DJ takes the record: a scratch fill and a rewind into every other "
-                         "bar line, then the end of every bar cut up, then whole bars of chirps, flares, crabs, transformers "
-                         "and juggles of what you just played, through a mixer in the red.";
-        const auto flipped = " Turn up FLIP (MACRO 3) and a 90s sampler catches a beat of what you just played and flips it on "
-                             "the pads: a stutter into every other bar line, then the end of every bar, then whole bars "
-                             "looped, pitched up, pitched down, reversed and re-chopped, crunchy and pumping.";
-
-        // ---- LEADS -------------------------------------------------------------------------------------------
-        auto siren = x.make ("Siren Lead", 1, { "Lead", "Rave", "Siren", "Scratch" },
-            juce::String ("The rave's air-raid siren: a saw and a square an octave down, three copies wide, every note "
-            "swooping up from a fifth under, a wide vibrato that winds up the longer you hold, a hard shaper and a short "
-            "echo.") + cut + " MOD WHEEL: the siren's wail (a deep, slow sweep). MACROS: BRIGHT, SPACE, SCRATCH.");
-        siren.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
-             .filter (FilterType::lp24, 4200.0f, 0.2f, 0.1f)
-             .ampEnvelope (3.0f, 400.0f, 0.85f, 220.0f)
-             .mono (45.0f);
-        unison (siren, 0, 3, 0.6f, 0.12f, 0.7f);
-        vibrato (siren, 0, 30.0f, 5.5f, 700.0f);
-        vibrato (siren, 1, 30.0f, 5.5f, 700.0f);
-        pkBend (siren, -7.0f, 0.22f, 0.4f);
-        siren.shaper (0, synth::ShaperModel::hard, 0.35f, true);
-        route (siren, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.6f);
-        route (siren, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.6f);
-        route (siren, "macro1", ParamIDs::fltCutoff, 0.2f);
-        delay (siren, "1/8 dotted", 0.3f, 0.12f, true, 5.0f);
-        finish (siren, "BRIGHT", "SCRATCH", RT::plate, 0.45f, 0.1f);
-        scratchMacro (siren, { 0.14f, 0.0f, 1.0f });
-        siren.set (ParamIDs::patchLevel, 0.0f);
-        x.add (siren);
-
-        auto acid = x.make ("Acid Line", 2, { "Lead", "Block Party", "Acid", "Flip" },
-            juce::String ("A squelching acid line: one saw through a screaming resonant filter that snaps shut on every "
-            "note, harder notes (accents) snapping it wider, legato notes sliding into each other, a diode shaper after "
-            "it, a dotted echo.") + flipped + " MOD WHEEL: opens the filter. MACROS: CUTOFF, SPACE, FLIP.");
-        acid.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
-            .filter (FilterType::lp24, 420.0f, 0.78f, 0.55f).set (ParamIDs::fltKey, 0.3f)
-            .filterEnvelope (0.0f, 190.0f, 0.0f, 120.0f)
-            .ampEnvelope (1.0f, 300.0f, 0.75f, 80.0f)
-            .mono (70.0f);
-        acid.set (ParamIDs::legato, 1.0f).set (ParamIDs::fltEnvVel, 0.6f).set (ParamIDs::ampVel, 0.3f);
-        acid.shaper (0, synth::ShaperModel::diode, 0.4f, true);
-        route (acid, "modWheel", ParamIDs::fltCutoff, 0.3f);
-        route (acid, "macro1", ParamIDs::fltCutoff, 0.3f);
-        delay (acid, "1/8 dotted", 0.35f, 0.15f, true, 4.0f);
-        finish (acid, "CUTOFF", "FLIP", RT::room, 0.35f, 0.06f);
-        flipMacro (acid, { 5.0f, 0.5f, 0.45f, 1.0f });
-        acid.set (ParamIDs::patchLevel, 0.0f);
-        x.add (acid);
-
-        auto razor = x.make ("Razor Riff", 3, { "Lead", "Machine", "Guitar", "Scratch" },
-            juce::String ("An industrial guitar riff: two saws a few cents apart and a pulse, struck a hair sharp with a "
-            "pick's scratch, through RABID on insert bus A (a high-gain amp), tight and palm-muted at the bottom, a "
-            "small room.") + cut + " MOD WHEEL: the mute lifted (a brighter, longer note). MACROS: BRIGHT, SPACE, SCRATCH.");
-        razor.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 9.0f).osc (1, "Volume", 0.4f).osc (1, "Insert", 1.0f)
-             .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.35f).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f)
-             .osc (2, "Insert", 1.0f)
-             .filter (FilterType::lp12, 1800.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.4f)
-             .filterEnvelope (0.0f, 180.0f, 0.35f, 150.0f)
-             .ampEnvelope (1.0f, 500.0f, 0.7f, 120.0f);
-        pkStrike (razor, 3, 0, 0.12f, 6.0f, 0.1f);
-        razor.osc (3, "Insert", 1.0f);
-        pkBend (razor, 0.3f, 0.05f, -0.5f);
-        drive (razor, 0, DM::rabid, 7.5f, 5.5f, -3.0f, 0.15f, 0.2f);
-        route (razor, "modWheel", ParamIDs::fltCutoff, 0.25f);
-        route (razor, "macro1", ParamIDs::fltCutoff, 0.2f);
-        finish (razor, "BRIGHT", "SCRATCH", RT::room, 0.3f, 0.08f, 5.0f);
-        scratchMacro (razor, { 0.16f, 0.3f, 1.0f });
-        razor.set (ParamIDs::patchLevel, 0.0f);
-        orchestra (razor, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
-                            { 0, 1, 2, 3 }, 0.0f,
-                            "An industrial guitar riff: a real Gretsch Anniversary (Black And Green Guitars) through RABID, "
-                            "a high-gain amp, tight at the bottom.",
-                            1.0f, 600.0f, 0.75f, 140.0f, -1.0f,
-                            [] (Builder& s) { s.osc (0, "Insert", 1.0f).set (ParamIDs::fltCutoff, 4500.0f).set (ParamIDs::fltEnv, 0.0f); } });
-        x.add (razor);
-
-        // ---- PADS --------------------------------------------------------------------------------------------
-        auto haze = x.make ("Warehouse Haze", 4, { "Pad", "Rave", "Supersaw", "Flip" },
-            juce::String ("Four in the morning in a warehouse: seven detuned saws through a filter that breathes open and "
-            "shut over two bars, a square an octave down holding the floor, smoke and a big hall. Hold chords.") + flipped
-            + " MOD WHEEL: wider. MACROS: BRIGHT, SPACE, FLIP.");
-        haze.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
-            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.2f)
-            .filter (FilterType::lp24, 900.0f, 0.25f, 0.2f)
-            .filterEnvelope (600.0f, 1500.0f, 0.6f, 1200.0f)
-            .ampEnvelope (400.0f, 1000.0f, 0.9f, 1400.0f)
-            .set (ParamIDs::lfo (0, "Wave"), (float) LW::sine).set (ParamIDs::lfo (0, "Sync"), 1.0f)
-            .set (ParamIDs::lfo (0, "Division"), (float) synth::mod::lfoDivisionNames.indexOf ("2/1"))
-            .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
-        unison (haze, 0, 7, 0.8f, 0.2f, 0.9f);
-        route (haze, "lfo1", ParamIDs::fltCutoff, 0.15f);
-        route (haze, "modWheel", ParamIDs::osc (0, "UniSpread"), 0.1f);
-        route (haze, "modWheel", ParamIDs::osc (0, "UniDetune"), 0.15f);
-        route (haze, "macro1", ParamIDs::fltCutoff, 0.25f);
-        finish (haze, "BRIGHT", "FLIP", RT::hall, 0.75f, 0.22f, 25.0f);
-        flipMacro (haze, { 7.0f, 0.45f, 0.5f, 1.0f });
-        haze.set (ParamIDs::patchLevel, 0.0f);
-        x.add (haze);
-
-        auto trip = x.make ("Phase Trip", 5, { "Pad", "Block Party", "Phaser", "Flip" },
-            juce::String ("A psychedelic wash from the block party's last record: a pulse whose width swirls and a saw a "
-            "fifth up, through a slow, deep phaser and ping-pong echoes, the sound turning inside out as you hold.")
-            + flipped + " MOD WHEEL: a faster swirl. MACROS: SWIRL, SPACE, FLIP.");
-        trip.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.5f)
-            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 7.0f).osc (1, "Volume", 0.22f)
-            .filter (FilterType::lp12, 2400.0f, 0.2f, 0.0f)
-            .ampEnvelope (250.0f, 800.0f, 0.9f, 1100.0f)
-            .set (ParamIDs::lfo (0, "Wave"), (float) LW::triangle).set (ParamIDs::lfo (0, "Rate"), 0.3f)
-            .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
-        unison (trip, 0, 3, 0.5f, 0.1f, 0.6f);
-        route (trip, "lfo1", ParamIDs::osc (0, "Width"), 0.3f);
-        chorus (trip, ParamIDs::modIds, MT::phaser, 0.18f, 0.85f, 0.8f);
-        route (trip, "modWheel", ParamIDs::modRate, 0.4f);
-        route (trip, "macro1", ParamIDs::modDepth, 0.15f);
-        delay (trip, "1/4 dotted", 0.45f, 0.2f, true, 4.0f);
-        finish (trip, "SWIRL", "FLIP", RT::hall, 0.6f, 0.18f, 20.0f);
-        flipMacro (trip, { 5.0f, 0.55f, 0.4f, 1.0f });
-        trip.set (ParamIDs::patchLevel, 0.0f);
-        x.add (trip);
-
-        auto choir = x.make ("Static Choir", 6, { "Pad", "Machine", "Choir", "Scratch" },
-            juce::String ("A choir heard through a broken machine: saws and a breath of noise sung through the VOICE "
-            "filter (an open AH), each singer drifting on their own, crushed by a bitcrusher and a little drive, a cold "
-            "hall.") + cut + " MOD WHEEL: more crushed. MACROS: VOWEL, SPACE, SCRATCH.");
-        choir.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "Voice", 1.0f)
-             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.45f)
-             .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 1.0f)
-             .set (ParamIDs::fltOn, 0.0f)
-             .ampEnvelope (350.0f, 1000.0f, 0.9f, 1300.0f);
-        pkSection (choir, 0, 5, 0.12f, 14.0f, 5.0f, 300.0f);
-        noiseOsc (choir, 1, 0.05f, 0.15f);
-        choir.osc (1, "Voice", 1.0f);
-        lofi (choir, effects::LoFi::Type::bitcrusher, 4.0f, 0.35f);
-        choir.shaper (0, synth::ShaperModel::tube, 0.25f, true);
-        route (choir, "modWheel", ParamIDs::lofiMix, 0.4f);
-        route (choir, "macro1", ParamIDs::voiceVowel, 0.4f);
-        finish (choir, "VOWEL", "SCRATCH", RT::hall, 0.7f, 0.22f, 30.0f);
-        scratchMacro (choir, { 0.2f, 0.2f, 1.0f });
-        choir.set (ParamIDs::patchLevel, 0.0f);
-        orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
-                            { 0, 1 }, 0.0f,
-                            "A choir heard through a broken machine: the orchestra's large choir (looped), crushed by a "
-                            "bitcrusher and a little drive, a cold hall.",
-                            250.0f, 800.0f, 1.0f, 1200.0f, -1.0f,
-                            [] (Builder& s)
-                            {
-                                s.set (ParamIDs::voiceOn, 0.0f);
-                                s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
-                                    [] (const auto& r) { return r.destination == ParamIDs::voiceVowel; }), s.rig.modulation.routes.end());
-                                route (s, "macro1", ParamIDs::lofiMix, 0.3f);
-                                s.rig.modulation.macroNames[0] = "CRUSH";
-                            } });
-        x.add (choir);
-
-        // ---- BASSES ------------------------------------------------------------------------------------------
-        auto reese = x.make ("Reese Snarl", 7, { "Bass", "Rave", "Reese", "Scratch" },
-            juce::String ("The rave's reese: two saws pulling against each other (a slow beat between them), a sine "
-            "under it all, a tube shaper and a filter that growls open as you play harder.") + cut
-            + " MOD WHEEL: wider apart (a faster, nastier beat). MACROS: GROWL, SPACE, SCRATCH.");
-        reese.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 18.0f).osc (1, "Volume", 0.45f)
-             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.5f)
-             .osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f)
-             .filter (FilterType::lp24, 650.0f, 0.3f, 0.3f)
-             .filterEnvelope (5.0f, 400.0f, 0.4f, 200.0f)
-             .ampEnvelope (2.0f, 300.0f, 0.9f, 120.0f)
-             .mono (20.0f);
-        reese.set (ParamIDs::fltEnvVel, 0.5f);
-        reese.shaper (0, synth::ShaperModel::tube, 0.45f, false);
-        route (reese, "modWheel", ParamIDs::osc (1, "Fine"), 0.3f);
-        route (reese, "macro1", ParamIDs::fltCutoff, 0.25f);
-        finish (reese, "GROWL", "SCRATCH", RT::room, 0.3f, 0.05f);
-        scratchMacro (reese, { 0.12f, 0.15f, 1.0f });
-        reese.set (ParamIDs::patchLevel, 0.0f);
-        x.add (reese);
-
-        auto block = x.make ("Block Rocker Bass", 8, { "Bass", "Block Party", "Fuzz", "Flip" },
-            juce::String ("The big-beat fuzz-funk bass: a square and a saw an octave up, plucked (a filter that snaps "
-            "open and falls back), through COSMONAUT on insert bus A, a fuzz pedal dimed, fat and woolly.") + flipped
-            + " MOD WHEEL: brighter. MACROS: FUZZ TONE, SPACE, FLIP.");
-        block.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f).osc (1, "Insert", 1.0f)
-             .filter (FilterType::lp12, 700.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.3f)
-             .filterEnvelope (0.0f, 220.0f, 0.25f, 120.0f)
-             .ampEnvelope (1.0f, 400.0f, 0.75f, 100.0f)
-             .mono (0.0f);
-        drive (block, 0, DM::muff, 6.5f, 4.0f, 7.0f, 0.1f, 0.1f);   // about unity: the switch-on fade from dry stays level
-        route (block, "modWheel", ParamIDs::fltCutoff, 0.25f);
-        route (block, "macro1", ParamIDs::ins (0, "DriveTone"), 0.25f);
-        finish (block, "FUZZ TONE", "FLIP", RT::room, 0.25f, 0.04f);
-        flipMacro (block, { 7.0f, 0.5f, 0.35f, 1.0f });
-        block.set (ParamIDs::patchLevel, 0.0f);
-        x.add (block);
-
-        auto steel = x.make ("Cold Steel Bass", 9, { "Bass", "Machine", "Metal", "Flip" },
-            juce::String ("Industrial steel: a pulse rung like a struck girder (ring modulation at a bar's 2.76), FM from "
-            "a sine that bites on each hit, a hard shaper and a low-pass that clanks shut.") + flipped
-            + " MOD WHEEL: more metal. MACROS: CLANK, SPACE, FLIP.");
-        steel.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.55f)
-             .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.683f).osc (0, "AmAmount", 0.2f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f).osc (1, "Filter", 0.0f)
-             .osc (1, "PhaseRand", 0.0f)
-             .filter (FilterType::lp24, 900.0f, 0.35f, 0.45f)
-             .filterEnvelope (0.0f, 160.0f, 0.2f, 100.0f)
-             .ampEnvelope (1.0f, 350.0f, 0.6f, 90.0f)
-             .mono (0.0f);
-        steel.shaper (0, synth::ShaperModel::hard, 0.4f, true);
-        pkShot (steel, 0, { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.12f, 0.0f, 0.0f } });
-        route (steel, "env1", ParamIDs::osc (0, "AmAmount"), 0.25f);
-        route (steel, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.3f);
-        route (steel, "macro1", ParamIDs::fltCutoff, 0.2f);
-        finish (steel, "CLANK", "FLIP", RT::room, 0.3f, 0.05f);
-        flipMacro (steel, { 3.0f, 0.6f, 0.45f, 1.0f });
-        steel.set (ParamIDs::patchLevel, 0.0f);
-        x.add (steel);
-
-        // ---- KEYS --------------------------------------------------------------------------------------------
-        auto stab = x.make ("Rave Stab", 10, { "Keys", "Rave", "Stab", "Scratch" },
-            juce::String ("The rave's chord stab: one key plays a whole minor-seventh chord (the chorder), saws and a "
-            "square, the filter slamming open and shut on each hit, a plate.") + cut
-            + " MOD WHEEL: a longer stab. MACROS: BRIGHT, SPACE, SCRATCH.");
-        stab.osc (0, "Wave", saw).osc (0, "Volume", 0.35f)
-            .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 3.0f).osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 7.0f)
-            .osc (0, "Ch3On", 1.0f).osc (0, "Ch3Coarse", 10.0f).osc (0, "Ch4On", 1.0f).osc (0, "Ch4Coarse", 12.0f)
-            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
-            .filter (FilterType::lp24, 1100.0f, 0.3f, 0.55f)
-            .filterEnvelope (0.0f, 220.0f, 0.0f, 150.0f)
-            .ampEnvelope (1.0f, 380.0f, 0.15f, 200.0f);
-        route (stab, "modWheel", ParamIDs::fltEnv, 0.2f);
-        route (stab, "macro1", ParamIDs::fltCutoff, 0.25f);
-        finish (stab, "BRIGHT", "SCRATCH", RT::plate, 0.45f, 0.14f);
-        scratchMacro (stab, { 0.15f, 0.0f, 1.0f });
-        stab.set (ParamIDs::patchLevel, 0.0f);
-        x.add (stab);
-
-        auto crate = x.make ("Crate Keys", 11, { "Keys", "Block Party", "Electric Piano", "Flip" },
-            juce::String ("Dusty keys dug out of a record crate: an FM electric piano (a sine modulated by a sine, bright "
-            "at the strike and settling), a tremolo, a worn cassette and a little crush, as if sampled off old vinyl.")
-            + flipped + " MOD WHEEL: more bark. MACROS: DUST, SPACE, FLIP.");
-        crate.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
-             .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.06f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
-             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.08f)
-             .set (ParamIDs::fltOn, 0.0f)
-             .ampEnvelope (2.0f, 2200.0f, 0.25f, 400.0f).set (ParamIDs::ampVel, 0.6f);
-        pkShot (crate, 0, { SP3 { 0.0f, 1.0f, -0.5f }, SP3 { 0.8f, 0.15f, 0.0f } });
-        route (crate, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
-        route (crate, "velocity", ParamIDs::osc (0, "FmAmount"), 0.15f);
-        route (crate, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
-        chorus (crate, ParamIDs::modIds, MT::tremolo, 0.4f, 0.35f, 1.0f);
-        lofi (crate, effects::LoFi::Type::cassette, 4.0f, 0.4f);
-        route (crate, "macro1", ParamIDs::lofiMix, 0.4f);
-        finish (crate, "DUST", "FLIP", RT::room, 0.4f, 0.1f);
-        flipMacro (crate, { 5.0f, 0.65f, 0.4f, 1.0f });
-        crate.set (ParamIDs::patchLevel, 0.0f);
-        x.add (crate);
-
-        auto organ = x.make ("Distortion Organ", 12, { "Keys", "Machine", "Organ", "Scratch" },
-            juce::String ("An organ played through a wall of amps: sines at 16', 8', 4' and 2 2/3' (drawbars), a click "
-            "on each key, the rotary speaker, then RABID on insert bus A, the organ screaming as hard as the guitars.")
-            + cut + " MOD WHEEL: the rotary speeding up. MACROS: DRIVE, SPACE, SCRATCH.");
-        organ.osc (0, "Wave", sine).osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f).osc (0, "PhaseRand", 0.0f)
-             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.5f).osc (1, "Insert", 1.0f).osc (1, "PhaseRand", 0.0f)
-             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.35f).osc (2, "Insert", 1.0f)
-             .osc (2, "PhaseRand", 0.0f)
-             .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 19.0f).osc (3, "Volume", 0.25f).osc (3, "Insert", 1.0f)
-             .osc (3, "PhaseRand", 0.0f)
-             .set (ParamIDs::fltOn, 0.0f)
-             .ampEnvelope (2.0f, 200.0f, 1.0f, 60.0f);
-        pkStrike (organ, 4, 0, 0.08f, 4.0f, 0.0f, false);
-        organ.osc (4, "Insert", 1.0f);
-        chorus (organ, ParamIDs::modIds, MT::rotary, 0.3f, 0.6f, 1.0f);
-        drive (organ, 0, DM::rabid, 6.0f, 5.0f, -4.0f, 0.1f, 0.2f);
-        route (organ, "modWheel", ParamIDs::modRate, 0.6f);
-        route (organ, "macro1", ParamIDs::ins (0, "DriveGain"), 0.2f);
-        finish (organ, "DRIVE", "SCRATCH", RT::room, 0.4f, 0.1f);
-        scratchMacro (organ, { 0.17f, 0.25f, 1.0f });
-        organ.set (ParamIDs::patchLevel, 0.0f);
-        x.add (organ);
-
-        // ---- ARPS --------------------------------------------------------------------------------------------
-        auto hardcore = x.make ("Hardcore Arp", 13, { "Arp", "Rave", "Sequence", "Flip" },
-            juce::String ("A hardcore rave arpeggio: a pulse and a saw up two octaves of the held chord in sixteenths, the "
-            "filter snapping on each step, a chorus and a short echo. Hold a chord.") + flipped
-            + " MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, FLIP.");
-        hardcore.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.5f)
-                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.35f)
-                .filter (FilterType::lp24, 1500.0f, 0.35f, 0.4f).set (ParamIDs::fltKey, 0.5f)
-                .filterEnvelope (0.0f, 150.0f, 0.1f, 100.0f)
-                .ampEnvelope (1.0f, 200.0f, 0.3f, 100.0f);
-        arpOn (hardcore, { 0, 1 }, AM::up, "1/16", 2.0f, 0.6f);
-        chorus (hardcore, ParamIDs::modIds, MT::chorus, 0.5f, 0.4f, 0.4f);
-        route (hardcore, "modWheel", ParamIDs::fltCutoff, 0.25f);
-        route (hardcore, "macro1", ParamIDs::fltCutoff, 0.25f);
-        delay (hardcore, "1/8", 0.25f, 0.1f, true, 5.0f);
-        finish (hardcore, "BRIGHT", "FLIP", RT::plate, 0.4f, 0.1f);
-        flipMacro (hardcore, { 5.0f, 0.5f, 0.45f, 1.0f });
-        hardcore.set (ParamIDs::patchLevel, 0.0f);
-        x.add (hardcore);
-
-        auto acidSeq = x.make ("Acid Sequence", 14, { "Arp", "Block Party", "Acid", "Flip" },
-            juce::String ("An acid line that plays itself: hold one key and a saw runs a 16-step pattern on it (octaves, a "
-            "minor third, a fifth, slides and accents), through the screaming resonant filter, a diode shaper after it.")
-            + flipped + " MOD WHEEL: opens the filter. MACROS: CUTOFF, SPACE, FLIP.");
-        acidSeq.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
-               .filter (FilterType::lp24, 380.0f, 0.8f, 0.55f).set (ParamIDs::fltKey, 0.3f)
-               .filterEnvelope (0.0f, 170.0f, 0.0f, 100.0f)
-               .ampEnvelope (1.0f, 250.0f, 0.7f, 60.0f)
-               .set (ParamIDs::fltEnvVel, 0.7f).set (ParamIDs::glide, 60.0f);
-        arpOn (acidSeq, { 0 }, AM::up, "1/16", 1.0f, 0.55f);
-        {
-            auto& p = acidSeq.rig.modulation.arps[0].patterns[0];
-            const int transpose[16] = { 0, 0, 12, 0, 3, 0, 7, 12, 0, 0, 15, 12, 0, 10, 7, 3 };
-            const bool slide[16] = { false, false, true, false, false, false, true, false, false, false, true, false, false, true, false, false };
-            const bool accent[16] = { true, false, false, true, false, false, true, false, true, false, false, true, false, false, true, false };
-            for (int k = 0; k < 16; ++k)
-            {
-                auto& block = p.blocks[(size_t) k];
-                block.on = true;
-                block.transpose = transpose[k];
-                block.slide = slide[k];
-                block.velocity = accent[k] ? 1.0f : 0.6f;
-            }
-        }
-        acidSeq.shaper (0, synth::ShaperModel::diode, 0.45f, true);
-        route (acidSeq, "modWheel", ParamIDs::fltCutoff, 0.3f);
-        route (acidSeq, "macro1", ParamIDs::fltCutoff, 0.3f);
-        delay (acidSeq, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
-        finish (acidSeq, "CUTOFF", "FLIP", RT::room, 0.3f, 0.05f);
-        flipMacro (acidSeq, { 7.0f, 0.5f, 0.4f, 1.0f });
-        acidSeq.set (ParamIDs::patchLevel, 0.0f);
-        x.add (acidSeq);
-
-        auto gun = x.make ("Machine Gun Arp", 15, { "Arp", "Machine", "Drums", "Flip" },
-            juce::String ("A machine gang of drums: hold any key and a kick (a sine falling into its note), a snare (a "
-            "crack of noise over a tone) and metal hats (ring-modulated noise) play a chopped breakbeat in sixteenths, "
-            "through a hard shaper. The key you hold doesn't change it.") + flipped
-            + " MOD WHEEL: brighter hats. MACROS: BRIGHT, SPACE, FLIP.");
-        gun.osc (0, "Wave", sine).osc (0, "Transpose", -24.0f).osc (0, "Volume", 0.95f).osc (0, "PhaseRand", 0.0f)
-           .osc (0, "Arp", 1.0f).osc (0, "Filter", 0.0f)
-           .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -5.0f).osc (1, "Volume", 0.35f)
-           .osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 2.0f).osc (1, "Filter", 0.0f)
-           .filter (FilterType::hp12, 6000.0f, 0.25f, 0.0f).set (ParamIDs::fltKey, 0.0f)
-           .ampEnvelope (0.5f, 220.0f, 0.0f, 120.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.6f)
-           .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchKeytrack, 0.0f).set (ParamIDs::pitchEnvRange, 12.0f)
-           .set (ParamIDs::arpsTogether, 1.0f);
-        gun.rig.modulation.pitchEnvelope = { { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.05f, 0.5f, 0.0f } }, -1, -1, -1 };
-        noiseOsc (gun, 2, 0.45f, 0.1f);
-        gun.osc (2, "Arp", 2.0f).osc (2, "PitchEnv", 0.0f).osc (2, "Filter", 0.0f);
-        noiseOsc (gun, 3, 0.3f, 0.0f);
-        gun.osc (3, "Arp", 3.0f).osc (3, "PitchEnv", 0.0f)
-           .osc (3, "AmShape", 0.0f).osc (3, "ModGrid", 0.0f).osc (3, "ModRate", 0.683f).osc (3, "AmAmount", 0.4f);
-        drumArp (gun, 0, { 0, 6, 8, 10 }, { 0, 8 });                                  // the kick: a broken beat
-        drumArp (gun, 1, { 4, 12, 15 }, { 4, 12 });                                   // the snare, a ghost before the bar
-        drumArp (gun, 2, { 0, 2, 3, 4, 6, 8, 10, 11, 12, 14 }, { 2, 6, 10, 14 });     // the hats
-        gun.shaper (0, synth::ShaperModel::hard, 0.3f, true);
-        route (gun, "modWheel", ParamIDs::fltCutoff, -0.2f);
-        route (gun, "macro1", ParamIDs::fltCutoff, -0.15f);
-        finish (gun, "BRIGHT", "FLIP", RT::room, 0.3f, 0.08f, 5.0f);
-        flipMacro (gun, { 5.0f, 0.5f, 0.3f, 1.0f });
-        gun.set (ParamIDs::patchLevel, 0.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
-        orchestra (gun, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
-                            { 1, "Programs/01-full.sfz", 0.85f, 0.0f, false, &rusty },
-                            { 2, "Programs/01-full.sfz", 0.5f, 0.0f, false, &rusty } },
-                          { 0, 1, 2, 3 }, 0.0f,
-                          "A machine gang of drums: a real kick, snare and closed hats (Big Rusty Drums') in a chopped "
-                          "breakbeat. The key you hold doesn't change it.",
-                          0.5f, 900.0f, 0.0f, 400.0f, -1.0f,
-                          [pinned] (Builder& s)
-                          {
-                              pinned (s, 0, 36); pinned (s, 1, 38); pinned (s, 2, 42);
-                              s.osc (0, "Arp", 1.0f).osc (1, "Arp", 2.0f).osc (2, "Arp", 3.0f);
-                              s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
-                                  [] (const auto& r) { return r.destination == ParamIDs::fltCutoff; }), s.rig.modulation.routes.end());
-                              route (s, "macro1", ParamIDs::reverbSize, 0.3f);
-                              s.rig.modulation.macroNames[0] = "ROOM";
-                          } });
-        x.add (gun);
-
-        // ---- PLUCKS ------------------------------------------------------------------------------------------
-        auto hoover = x.make ("Hoover Pluck", 16, { "Pluck", "Rave", "Hoover", "Scratch" },
-            juce::String ("A short blast of the rave's hoover: saws in a wide, detuned section whose pulse swirls, every "
-            "note diving in from above and the filter snapping shut, a chorus.") + cut
-            + " MOD WHEEL: a longer blast. MACROS: BRIGHT, SPACE, SCRATCH.");
-        hoover.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
-              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
-              .filter (FilterType::lp24, 1400.0f, 0.2f, 0.5f)
-              .filterEnvelope (0.0f, 260.0f, 0.0f, 150.0f)
-              .ampEnvelope (1.0f, 420.0f, 0.0f, 200.0f)
-              .set (ParamIDs::lfo (0, "Wave"), (float) LW::triangle).set (ParamIDs::lfo (0, "Rate"), 5.0f);
-        unison (hoover, 0, 5, 0.75f, 0.2f, 0.9f);
-        route (hoover, "lfo1", ParamIDs::osc (1, "Width"), 0.2f);
-        pkBend (hoover, 5.0f, 0.12f, 0.4f);
-        pkVelocity (hoover, 0.5f, 0.2f, 0.5f);
-        chorus (hoover, ParamIDs::modIds, MT::chorus, 0.6f, 0.5f, 0.5f);
-        route (hoover, "modWheel", ParamIDs::fltEnv, 0.2f);
-        route (hoover, "macro1", ParamIDs::fltCutoff, 0.25f);
-        finish (hoover, "BRIGHT", "SCRATCH", RT::plate, 0.4f, 0.12f);
-        scratchMacro (hoover, { 0.14f, 0.0f, 1.0f });
-        pkAdd (x, hoover);
-
-        auto shout = x.make ("Scratch Pluck", 17, { "Pluck", "Block Party", "Vocal", "Scratch" },
-            juce::String ("The shout a DJ cuts up: a short, punchy \"HAH\" (a saw and a breath of noise sung through the "
-            "VOICE filter, the vowel opening as it's struck), the record's favourite thing to scratch.") + cut
-            + " MOD WHEEL: the vowel brighter (an EH). MACROS: VOWEL, SPACE, SCRATCH.");
-        shout.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "Voice", 1.0f)
-             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.25f).set (ParamIDs::voiceSize, 0.35f)
-             .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 1.0f)
-             .set (ParamIDs::fltOn, 0.0f)
-             .ampEnvelope (1.0f, 280.0f, 0.0f, 150.0f);
-        noiseOsc (shout, 1, 0.08f, 0.1f);
-        shout.osc (1, "Voice", 1.0f);
-        pkShot (shout, 0, { SP3 { 0.0f, 0.0f, 0.5f }, SP3 { 0.06f, 1.0f, 0.0f } });
-        route (shout, "env1", ParamIDs::voiceVowel, 0.25f);
-        pkBend (shout, -2.0f, 0.08f, 0.4f);
-        shout.shaper (0, synth::ShaperModel::tube, 0.3f, true);
-        route (shout, "modWheel", ParamIDs::voiceVowel, 0.25f);
-        route (shout, "macro1", ParamIDs::voiceVowel, 0.2f);
-        finish (shout, "VOWEL", "SCRATCH", RT::room, 0.35f, 0.08f);
-        scratchMacro (shout, { 0.15f, 0.1f, 1.0f });
-        pkAdd (x, shout);
-
-        auto crunch = x.make ("Crunch Pluck", 18, { "Pluck", "Machine", "Bitcrush", "Scratch" },
-            juce::String ("A machine's crushed pluck: a saw and a pulse a fifth up, bit-crushed hard and sample-rate "
-            "reduced, a hard shaper, the filter snapping shut.") + cut
-            + " MOD WHEEL: coarser. MACROS: BRIGHT, SPACE, SCRATCH.");
-        crunch.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "CrushMode", 2.0f).osc (0, "Crush", 0.5f)
-              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", 7.0f).osc (1, "Volume", 0.25f)
-              .filter (FilterType::lp24, 2200.0f, 0.25f, 0.45f)
-              .filterEnvelope (0.0f, 180.0f, 0.0f, 120.0f)
-              .ampEnvelope (1.0f, 320.0f, 0.0f, 150.0f);
-        lofi (crunch, effects::LoFi::Type::bitcrusher, 5.0f, 0.4f);
-        crunch.shaper (0, synth::ShaperModel::hard, 0.35f, true);
-        pkVelocity (crunch, 0.5f, 0.2f, 0.5f);
-        route (crunch, "modWheel", ParamIDs::osc (0, "Crush"), 0.4f);
-        route (crunch, "macro1", ParamIDs::fltCutoff, 0.25f);
-        finish (crunch, "BRIGHT", "SCRATCH", RT::room, 0.3f, 0.08f);
-        scratchMacro (crunch, { 0.13f, 0.4f, 1.0f });
-        pkAdd (x, crunch);
-    }
 
     // DREAMSTATE's centrepiece (0.64.0, the owner's ask): REMNANT on every preset, MACRO 3 DREAM. Each preset gets its
     // own layers (how many, how far down each, how long a stretch, how much quieter and darker, how wide) at MIX 0, so
@@ -16435,6 +15905,537 @@ namespace
         finish (thumb, "BRIGHT", RT::room, 0.55f, 0.15f);
         talkBack (thumb, { 125.0f, 0.55f, 1.8f, 0.4f, 0, 0.35f, -0.2f, 0.1f });
         pkAdd (x, thumb);
+    }
+
+    // HARDWIRED (the owner's theme and name, replacing SIMULACRUM: "it never really worked... keep it cyberpunk but base
+    // that version of cyberpunk on some of the bands of the time"): late-'90s cyberpunk as its records sounded, rave
+    // breakbeat punk, big beat and industrial rock (bands named by the owner, never on the plugin). Three columns in
+    // every category: the rave (sirens, hoovers, reese, stabs), the block party (acid, fuzz-funk, phased loops, dusty
+    // keys, scratches), the machine (crunchy guitars, cold steel, a distorted organ, a gang of drums). MACRO 3 is one of
+    // the bank's two signature effects: SCRATCH on the sounds that hit (a turntablist cutting up what you played), FLIP
+    // on the sounds that groove (a 90s sampler flipping a beat of it). Our own sounds and phrases.
+    struct Cut
+    {
+        float stroke = 0.15f, dirt = 0.0f, mix = 1.0f;   // the approved sketch: 150 ms strokes, its drive, replacing
+    };
+    void scratchMacro (Builder& b, Cut c)
+    {
+        b.set (ParamIDs::scratchOn, 1.0f).set (ParamIDs::scratchAmount, 0.0f).set (ParamIDs::scratchStroke, c.stroke)
+         .set (ParamIDs::scratchDirt, c.dirt).set (ParamIDs::scratchMix, c.mix);
+        route (b, "macro3", ParamIDs::scratchAmount, 1.0f);   // the macro is AMOUNT: fills, then cuts, then whole bars
+    }
+
+    struct Sampler
+    {
+        float pitch = 5.0f, crunch = 0.5f, pump = 0.45f, mix = 1.0f;   // the approved sketch
+    };
+    void flipMacro (Builder& b, Sampler s)
+    {
+        b.set (ParamIDs::flipOn, 1.0f).set (ParamIDs::flipAmount, 0.0f).set (ParamIDs::flipPitch, s.pitch)
+         .set (ParamIDs::flipCrunch, s.crunch).set (ParamIDs::flipPump, s.pump).set (ParamIDs::flipMix, s.mix);
+        route (b, "macro3", ParamIDs::flipAmount, 1.0f);   // the macro is AMOUNT: a tag, then the bar's end, then whole bars
+    }
+
+    void hardwired (Expansion x)
+    {
+        using DM = effects::Drive::Model;
+        using AM = synth::arp::Mode;
+        using LW = synth::mod::LfoWave;
+        using SP3 = synth::mod::ShapePoint;
+        const auto& guitars = libraries::blackAndGreenGuitars();
+        const auto& rusty = libraries::bigRustyDrums();
+        const auto noiseOsc = [] (Builder& b, int o, float volume, float colour)
+        {
+            b.osc (o, "On", 1.0f).osc (o, "Gain", 0.0f).osc (o, "Noise", 0.5f).osc (o, "NoiseColour", colour)
+             .osc (o, "NoiseWidth", 2.0f).osc (o, "Volume", volume);
+        };
+        const auto unison = [] (Builder& b, int o, int voices, float mix, float detune, float spread)
+        {
+            b.osc (o, "UniVoices", (float) voices).osc (o, "UniMix", mix).osc (o, "UniDetune", detune).osc (o, "UniSpread", spread);
+        };
+        const auto vibrato = [] (Builder& b, int o, float cents, float rate, float fadeMs)
+        {
+            b.osc (o, "VibAmount", cents).osc (o, "VibRate", rate).osc (o, "VibFade", fadeMs).osc (o, "VibCurve", 0.5f);
+        };
+        const auto arpOn = [] (Builder& b, std::initializer_list<int> oscs, AM mode, const char* step, float octaves, float gate)
+        {
+            for (const auto o : oscs)
+                b.osc (o, "Arp", 1.0f);
+            b.set (ParamIDs::arp (0, "On"), 1.0f).set (ParamIDs::arp (0, "Mode"), (float) mode)
+             .set (ParamIDs::arp (0, "Division"), division (step)).set (ParamIDs::arp (0, "Octaves"), octaves)
+             .set (ParamIDs::arp (0, "Gate"), gate);
+        };
+        const auto lofi = [] (Builder& b, effects::LoFi::Type type, float amount, float mix)
+        {
+            b.set (ParamIDs::lofiOn, 1.0f).set (ParamIDs::lofiType, (float) (int) type).set (ParamIDs::lofiAmount, amount)
+             .set (ParamIDs::lofiMix, mix).set (ParamIDs::lofiNoise, 0.0f);   // no hiss: a preset must go silent
+        };
+        const auto pinned = [] (Builder& s, int o, int key)
+        {
+            s.osc (o, "SfzKey", (float) (key + 1)).osc (o, "SfzKeyTrack", 0.0f).osc (o, "PitchEnv", 0.0f);
+        };
+        const auto drumArp = [] (Builder& b, int arp, std::initializer_list<int> hits, std::initializer_list<int> accents = {})
+        {
+            b.set (ParamIDs::arp (arp, "On"), 1.0f).set (ParamIDs::arp (arp, "Mode"), (float) synth::arp::Mode::up)
+             .set (ParamIDs::arp (arp, "Division"), division ("1/16")).set (ParamIDs::arp (arp, "Octaves"), 1.0f)
+             .set (ParamIDs::arp (arp, "Gate"), 0.9f)
+             .set (ParamIDs::arp (arp, "NoteSource"), (float) synth::arp::NoteSource::fixedNote);
+            auto& p = b.rig.modulation.arps[(size_t) arp].patterns[0];
+            for (int k = 0; k < 16; ++k)
+            {
+                const auto on = std::find (hits.begin(), hits.end(), k) != hits.end();
+                const auto accent = std::find (accents.begin(), accents.end(), k) != accents.end();
+                p.blocks[(size_t) k].on = on;
+                p.blocks[(size_t) k].velocity = accent ? 1.0f : 0.7f;
+            }
+        };
+        const auto finish = [] (Builder& b, const char* one, const char* three, RT room, float size, float mix, float preDelay = 10.0f)
+        {
+            macros (b, one, "SPACE", three);
+            reverb (b, room, size, mix, preDelay, 5.0f);
+            space (b);
+        };
+        const auto cut = " Turn up SCRATCH (MACRO 3) and a DJ takes the record: a scratch fill and a rewind into every other "
+                         "bar line, then the end of every bar cut up, then whole bars of chirps, flares, crabs, transformers "
+                         "and juggles of what you just played, through a mixer in the red.";
+        const auto flipped = " Turn up FLIP (MACRO 3) and a 90s sampler catches a beat of what you just played and flips it on "
+                             "the pads: a stutter into every other bar line, then the end of every bar, then whole bars "
+                             "looped, pitched up, pitched down, reversed and re-chopped, crunchy and pumping.";
+
+        // ---- LEADS -------------------------------------------------------------------------------------------
+        auto siren = x.make ("Siren Lead", 1, { "Lead", "Rave", "Siren", "Scratch" },
+            juce::String ("The rave's air-raid siren: a saw and a square an octave down, three copies wide, every note "
+            "swooping up from a fifth under, a wide vibrato that winds up the longer you hold, a hard shaper and a short "
+            "echo.") + cut + " MOD WHEEL: the siren's wail (a deep, slow sweep). MACROS: BRIGHT, SPACE, SCRATCH.");
+        siren.osc (0, "Wave", saw).osc (0, "Volume", 0.5f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.35f)
+             .filter (FilterType::lp24, 4200.0f, 0.2f, 0.1f)
+             .ampEnvelope (3.0f, 400.0f, 0.85f, 220.0f)
+             .mono (45.0f);
+        unison (siren, 0, 3, 0.6f, 0.12f, 0.7f);
+        vibrato (siren, 0, 30.0f, 5.5f, 700.0f);
+        vibrato (siren, 1, 30.0f, 5.5f, 700.0f);
+        pkBend (siren, -7.0f, 0.22f, 0.4f);
+        siren.shaper (0, synth::ShaperModel::hard, 0.35f, true);
+        route (siren, "modWheel", ParamIDs::osc (0, "VibAmount"), 0.6f);
+        route (siren, "modWheel", ParamIDs::osc (1, "VibAmount"), 0.6f);
+        route (siren, "macro1", ParamIDs::fltCutoff, 0.2f);
+        delay (siren, "1/8 dotted", 0.3f, 0.12f, true, 5.0f);
+        finish (siren, "BRIGHT", "SCRATCH", RT::plate, 0.45f, 0.1f);
+        scratchMacro (siren, { 0.14f, 0.0f, 1.0f });
+        siren.set (ParamIDs::patchLevel, 0.0f);
+        x.add (siren);
+
+        auto acid = x.make ("Acid Line", 2, { "Lead", "Block Party", "Acid", "Flip" },
+            juce::String ("A squelching acid line: one saw through a screaming resonant filter that snaps shut on every "
+            "note, harder notes (accents) snapping it wider, legato notes sliding into each other, a diode shaper after "
+            "it, a dotted echo.") + flipped + " MOD WHEEL: opens the filter. MACROS: CUTOFF, SPACE, FLIP.");
+        acid.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+            .filter (FilterType::lp24, 420.0f, 0.78f, 0.55f).set (ParamIDs::fltKey, 0.3f)
+            .filterEnvelope (0.0f, 190.0f, 0.0f, 120.0f)
+            .ampEnvelope (1.0f, 300.0f, 0.75f, 80.0f)
+            .mono (70.0f);
+        acid.set (ParamIDs::legato, 1.0f).set (ParamIDs::fltEnvVel, 0.6f).set (ParamIDs::ampVel, 0.3f);
+        acid.shaper (0, synth::ShaperModel::diode, 0.4f, true);
+        route (acid, "modWheel", ParamIDs::fltCutoff, 0.3f);
+        route (acid, "macro1", ParamIDs::fltCutoff, 0.3f);
+        delay (acid, "1/8 dotted", 0.35f, 0.15f, true, 4.0f);
+        finish (acid, "CUTOFF", "FLIP", RT::room, 0.35f, 0.06f);
+        flipMacro (acid, { 5.0f, 0.5f, 0.45f, 1.0f });
+        acid.set (ParamIDs::patchLevel, 0.0f);
+        x.add (acid);
+
+        auto razor = x.make ("Razor Riff", 3, { "Lead", "Machine", "Guitar", "Scratch" },
+            juce::String ("An industrial guitar riff: two saws a few cents apart and a pulse, struck a hair sharp with a "
+            "pick's scratch, through RABID on insert bus A (a high-gain amp), tight and palm-muted at the bottom, a "
+            "small room.") + cut + " MOD WHEEL: the mute lifted (a brighter, longer note). MACROS: BRIGHT, SPACE, SCRATCH.");
+        razor.osc (0, "Wave", saw).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 9.0f).osc (1, "Volume", 0.4f).osc (1, "Insert", 1.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", pulse).osc (2, "Width", 0.35f).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.3f)
+             .osc (2, "Insert", 1.0f)
+             .filter (FilterType::lp12, 1800.0f, 0.1f, 0.35f).set (ParamIDs::fltKey, 0.4f)
+             .filterEnvelope (0.0f, 180.0f, 0.35f, 150.0f)
+             .ampEnvelope (1.0f, 500.0f, 0.7f, 120.0f);
+        pkStrike (razor, 3, 0, 0.12f, 6.0f, 0.1f);
+        razor.osc (3, "Insert", 1.0f);
+        pkBend (razor, 0.3f, 0.05f, -0.5f);
+        drive (razor, 0, DM::rabid, 7.5f, 5.5f, -3.0f, 0.15f, 0.2f);
+        route (razor, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (razor, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (razor, "BRIGHT", "SCRATCH", RT::room, 0.3f, 0.08f, 5.0f);
+        scratchMacro (razor, { 0.16f, 0.3f, 1.0f });
+        razor.set (ParamIDs::patchLevel, 0.0f);
+        orchestra (razor, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
+                            { 0, 1, 2, 3 }, 0.0f,
+                            "An industrial guitar riff: a real Gretsch Anniversary (Black And Green Guitars) through RABID, "
+                            "a high-gain amp, tight at the bottom.",
+                            1.0f, 600.0f, 0.75f, 140.0f, -1.0f,
+                            [] (Builder& s) { s.osc (0, "Insert", 1.0f).set (ParamIDs::fltCutoff, 4500.0f).set (ParamIDs::fltEnv, 0.0f); } });
+        x.add (razor);
+
+        // ---- PADS --------------------------------------------------------------------------------------------
+        auto haze = x.make ("Warehouse Haze", 4, { "Pad", "Rave", "Supersaw", "Flip" },
+            juce::String ("Four in the morning in a warehouse: seven detuned saws through a filter that breathes open and "
+            "shut over two bars, a square an octave down holding the floor, smoke and a big hall. Hold chords.") + flipped
+            + " MOD WHEEL: wider. MACROS: BRIGHT, SPACE, FLIP.");
+        haze.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.2f)
+            .filter (FilterType::lp24, 900.0f, 0.25f, 0.2f)
+            .filterEnvelope (600.0f, 1500.0f, 0.6f, 1200.0f)
+            .ampEnvelope (400.0f, 1000.0f, 0.9f, 1400.0f)
+            .set (ParamIDs::lfo (0, "Wave"), (float) LW::sine).set (ParamIDs::lfo (0, "Sync"), 1.0f)
+            .set (ParamIDs::lfo (0, "Division"), (float) synth::mod::lfoDivisionNames.indexOf ("2/1"))
+            .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        unison (haze, 0, 7, 0.8f, 0.2f, 0.9f);
+        route (haze, "lfo1", ParamIDs::fltCutoff, 0.15f);
+        route (haze, "modWheel", ParamIDs::osc (0, "UniSpread"), 0.1f);
+        route (haze, "modWheel", ParamIDs::osc (0, "UniDetune"), 0.15f);
+        route (haze, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (haze, "BRIGHT", "FLIP", RT::hall, 0.75f, 0.22f, 25.0f);
+        flipMacro (haze, { 7.0f, 0.45f, 0.5f, 1.0f });
+        haze.set (ParamIDs::patchLevel, 0.0f);
+        x.add (haze);
+
+        auto trip = x.make ("Phase Trip", 5, { "Pad", "Block Party", "Phaser", "Flip" },
+            juce::String ("A psychedelic wash from the block party's last record: a pulse whose width swirls and a saw a "
+            "fifth up, through a slow, deep phaser and ping-pong echoes, the sound turning inside out as you hold.")
+            + flipped + " MOD WHEEL: a faster swirl. MACROS: SWIRL, SPACE, FLIP.");
+        trip.osc (0, "Wave", pulse).osc (0, "Width", 0.4f).osc (0, "Volume", 0.5f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 7.0f).osc (1, "Volume", 0.22f)
+            .filter (FilterType::lp12, 2400.0f, 0.2f, 0.0f)
+            .ampEnvelope (250.0f, 800.0f, 0.9f, 1100.0f)
+            .set (ParamIDs::lfo (0, "Wave"), (float) LW::triangle).set (ParamIDs::lfo (0, "Rate"), 0.3f)
+            .set (ParamIDs::lfo (0, "Trigger"), (float) synth::mod::LfoTrigger::global);
+        unison (trip, 0, 3, 0.5f, 0.1f, 0.6f);
+        route (trip, "lfo1", ParamIDs::osc (0, "Width"), 0.3f);
+        chorus (trip, ParamIDs::modIds, MT::phaser, 0.18f, 0.85f, 0.8f);
+        route (trip, "modWheel", ParamIDs::modRate, 0.4f);
+        route (trip, "macro1", ParamIDs::modDepth, 0.15f);
+        delay (trip, "1/4 dotted", 0.45f, 0.2f, true, 4.0f);
+        finish (trip, "SWIRL", "FLIP", RT::hall, 0.6f, 0.18f, 20.0f);
+        flipMacro (trip, { 5.0f, 0.55f, 0.4f, 1.0f });
+        trip.set (ParamIDs::patchLevel, 0.0f);
+        x.add (trip);
+
+        auto choir = x.make ("Static Choir", 6, { "Pad", "Machine", "Choir", "Scratch" },
+            juce::String ("A choir heard through a broken machine: saws and a breath of noise sung through the VOICE "
+            "filter (an open AH), each singer drifting on their own, crushed by a bitcrusher and a little drive, a cold "
+            "hall.") + cut + " MOD WHEEL: more crushed. MACROS: VOWEL, SPACE, SCRATCH.");
+        choir.osc (0, "Wave", saw).osc (0, "Volume", 0.55f).osc (0, "Voice", 1.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.5f).set (ParamIDs::voiceSize, 0.45f)
+             .set (ParamIDs::voiceSharp, 0.55f).set (ParamIDs::voiceMix, 1.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (350.0f, 1000.0f, 0.9f, 1300.0f);
+        pkSection (choir, 0, 5, 0.12f, 14.0f, 5.0f, 300.0f);
+        noiseOsc (choir, 1, 0.05f, 0.15f);
+        choir.osc (1, "Voice", 1.0f);
+        lofi (choir, effects::LoFi::Type::bitcrusher, 4.0f, 0.35f);
+        choir.shaper (0, synth::ShaperModel::tube, 0.25f, true);
+        route (choir, "modWheel", ParamIDs::lofiMix, 0.4f);
+        route (choir, "macro1", ParamIDs::voiceVowel, 0.4f);
+        finish (choir, "VOWEL", "SCRATCH", RT::hall, 0.7f, 0.22f, 30.0f);
+        scratchMacro (choir, { 0.2f, 0.2f, 1.0f });
+        choir.set (ParamIDs::patchLevel, 0.0f);
+        orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
+                            { 0, 1 }, 0.0f,
+                            "A choir heard through a broken machine: the orchestra's large choir (looped), crushed by a "
+                            "bitcrusher and a little drive, a cold hall.",
+                            250.0f, 800.0f, 1.0f, 1200.0f, -1.0f,
+                            [] (Builder& s)
+                            {
+                                s.set (ParamIDs::voiceOn, 0.0f);
+                                s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                    [] (const auto& r) { return r.destination == ParamIDs::voiceVowel; }), s.rig.modulation.routes.end());
+                                route (s, "macro1", ParamIDs::lofiMix, 0.3f);
+                                s.rig.modulation.macroNames[0] = "CRUSH";
+                            } });
+        x.add (choir);
+
+        // ---- BASSES ------------------------------------------------------------------------------------------
+        auto reese = x.make ("Reese Snarl", 7, { "Bass", "Rave", "Reese", "Scratch" },
+            juce::String ("The rave's reese: two saws pulling against each other (a slow beat between them), a sine "
+            "under it all, a tube shaper and a filter that growls open as you play harder.") + cut
+            + " MOD WHEEL: wider apart (a faster, nastier beat). MACROS: GROWL, SPACE, SCRATCH.");
+        reese.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 18.0f).osc (1, "Volume", 0.45f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", -12.0f).osc (2, "Volume", 0.5f)
+             .osc (2, "Filter", 0.0f).osc (2, "PhaseRand", 0.0f)
+             .filter (FilterType::lp24, 650.0f, 0.3f, 0.3f)
+             .filterEnvelope (5.0f, 400.0f, 0.4f, 200.0f)
+             .ampEnvelope (2.0f, 300.0f, 0.9f, 120.0f)
+             .mono (20.0f);
+        reese.set (ParamIDs::fltEnvVel, 0.5f);
+        reese.shaper (0, synth::ShaperModel::tube, 0.45f, false);
+        route (reese, "modWheel", ParamIDs::osc (1, "Fine"), 0.3f);
+        route (reese, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (reese, "GROWL", "SCRATCH", RT::room, 0.3f, 0.05f);
+        scratchMacro (reese, { 0.12f, 0.15f, 1.0f });
+        reese.set (ParamIDs::patchLevel, 0.0f);
+        x.add (reese);
+
+        auto block = x.make ("Block Rocker Bass", 8, { "Bass", "Block Party", "Fuzz", "Flip" },
+            juce::String ("The big-beat fuzz-funk bass: a square and a saw an octave up, plucked (a filter that snaps "
+            "open and falls back), through COSMONAUT on insert bus A, a fuzz pedal dimed, fat and woolly.") + flipped
+            + " MOD WHEEL: brighter. MACROS: FUZZ TONE, SPACE, FLIP.");
+        block.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f).osc (1, "Insert", 1.0f)
+             .filter (FilterType::lp12, 700.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.3f)
+             .filterEnvelope (0.0f, 220.0f, 0.25f, 120.0f)
+             .ampEnvelope (1.0f, 400.0f, 0.75f, 100.0f)
+             .mono (0.0f);
+        drive (block, 0, DM::muff, 6.5f, 4.0f, 7.0f, 0.1f, 0.1f);   // about unity: the switch-on fade from dry stays level
+        route (block, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (block, "macro1", ParamIDs::ins (0, "DriveTone"), 0.25f);
+        finish (block, "FUZZ TONE", "FLIP", RT::room, 0.25f, 0.04f);
+        flipMacro (block, { 7.0f, 0.5f, 0.35f, 1.0f });
+        block.set (ParamIDs::patchLevel, 0.0f);
+        x.add (block);
+
+        auto steel = x.make ("Cold Steel Bass", 9, { "Bass", "Machine", "Metal", "Flip" },
+            juce::String ("Industrial steel: a pulse rung like a struck girder (ring modulation at a bar's 2.76), FM from "
+            "a sine that bites on each hit, a hard shaper and a low-pass that clanks shut.") + flipped
+            + " MOD WHEEL: more metal. MACROS: CLANK, SPACE, FLIP.");
+        steel.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.55f)
+             .osc (0, "AmShape", 0.0f).osc (0, "ModGrid", 0.0f).osc (0, "ModRate", 0.683f).osc (0, "AmAmount", 0.2f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.5f).osc (1, "Filter", 0.0f)
+             .osc (1, "PhaseRand", 0.0f)
+             .filter (FilterType::lp24, 900.0f, 0.35f, 0.45f)
+             .filterEnvelope (0.0f, 160.0f, 0.2f, 100.0f)
+             .ampEnvelope (1.0f, 350.0f, 0.6f, 90.0f)
+             .mono (0.0f);
+        steel.shaper (0, synth::ShaperModel::hard, 0.4f, true);
+        pkShot (steel, 0, { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.12f, 0.0f, 0.0f } });
+        route (steel, "env1", ParamIDs::osc (0, "AmAmount"), 0.25f);
+        route (steel, "modWheel", ParamIDs::osc (0, "AmAmount"), 0.3f);
+        route (steel, "macro1", ParamIDs::fltCutoff, 0.2f);
+        finish (steel, "CLANK", "FLIP", RT::room, 0.3f, 0.05f);
+        flipMacro (steel, { 3.0f, 0.6f, 0.45f, 1.0f });
+        steel.set (ParamIDs::patchLevel, 0.0f);
+        x.add (steel);
+
+        // ---- KEYS --------------------------------------------------------------------------------------------
+        auto stab = x.make ("Rave Stab", 10, { "Keys", "Rave", "Stab", "Scratch" },
+            juce::String ("The rave's chord stab: one key plays a whole minor-seventh chord (the chorder), saws and a "
+            "square, the filter slamming open and shut on each hit, a plate.") + cut
+            + " MOD WHEEL: a longer stab. MACROS: BRIGHT, SPACE, SCRATCH.");
+        stab.osc (0, "Wave", saw).osc (0, "Volume", 0.35f)
+            .osc (0, "Ch1On", 1.0f).osc (0, "Ch1Coarse", 3.0f).osc (0, "Ch2On", 1.0f).osc (0, "Ch2Coarse", 7.0f)
+            .osc (0, "Ch3On", 1.0f).osc (0, "Ch3Coarse", 10.0f).osc (0, "Ch4On", 1.0f).osc (0, "Ch4Coarse", 12.0f)
+            .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.5f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.25f)
+            .filter (FilterType::lp24, 1100.0f, 0.3f, 0.55f)
+            .filterEnvelope (0.0f, 220.0f, 0.0f, 150.0f)
+            .ampEnvelope (1.0f, 380.0f, 0.15f, 200.0f);
+        route (stab, "modWheel", ParamIDs::fltEnv, 0.2f);
+        route (stab, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (stab, "BRIGHT", "SCRATCH", RT::plate, 0.45f, 0.14f);
+        scratchMacro (stab, { 0.15f, 0.0f, 1.0f });
+        stab.set (ParamIDs::patchLevel, 0.0f);
+        x.add (stab);
+
+        auto crate = x.make ("Crate Keys", 11, { "Keys", "Block Party", "Electric Piano", "Flip" },
+            juce::String ("Dusty keys dug out of a record crate: an FM electric piano (a sine modulated by a sine, bright "
+            "at the strike and settling), a tremolo, a worn cassette and a little crush, as if sampled off old vinyl.")
+            + flipped + " MOD WHEEL: more bark. MACROS: DUST, SPACE, FLIP.");
+        crate.osc (0, "Wave", sine).osc (0, "Volume", 0.65f).osc (0, "PhaseRand", 0.0f)
+             .osc (0, "FmSource", (float) (synth::fmFirstOscillator + 1)).osc (0, "FmAmount", 0.06f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 1.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", triangle).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.08f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (2.0f, 2200.0f, 0.25f, 400.0f).set (ParamIDs::ampVel, 0.6f);
+        pkShot (crate, 0, { SP3 { 0.0f, 1.0f, -0.5f }, SP3 { 0.8f, 0.15f, 0.0f } });
+        route (crate, "env1", ParamIDs::osc (0, "FmAmount"), 0.25f);
+        route (crate, "velocity", ParamIDs::osc (0, "FmAmount"), 0.15f);
+        route (crate, "modWheel", ParamIDs::osc (0, "FmAmount"), 0.2f);
+        chorus (crate, ParamIDs::modIds, MT::tremolo, 0.4f, 0.35f, 1.0f);
+        lofi (crate, effects::LoFi::Type::cassette, 4.0f, 0.4f);
+        route (crate, "macro1", ParamIDs::lofiMix, 0.4f);
+        finish (crate, "DUST", "FLIP", RT::room, 0.4f, 0.1f);
+        flipMacro (crate, { 5.0f, 0.65f, 0.4f, 1.0f });
+        crate.set (ParamIDs::patchLevel, 0.0f);
+        x.add (crate);
+
+        auto organ = x.make ("Distortion Organ", 12, { "Keys", "Machine", "Organ", "Scratch" },
+            juce::String ("An organ played through a wall of amps: sines at 16', 8', 4' and 2 2/3' (drawbars), a click "
+            "on each key, the rotary speaker, then RABID on insert bus A, the organ screaming as hard as the guitars.")
+            + cut + " MOD WHEEL: the rotary speeding up. MACROS: DRIVE, SPACE, SCRATCH.");
+        organ.osc (0, "Wave", sine).osc (0, "Transpose", -12.0f).osc (0, "Volume", 0.45f).osc (0, "Insert", 1.0f).osc (0, "PhaseRand", 0.0f)
+             .osc (1, "On", 1.0f).osc (1, "Wave", sine).osc (1, "Volume", 0.5f).osc (1, "Insert", 1.0f).osc (1, "PhaseRand", 0.0f)
+             .osc (2, "On", 1.0f).osc (2, "Wave", sine).osc (2, "Transpose", 12.0f).osc (2, "Volume", 0.35f).osc (2, "Insert", 1.0f)
+             .osc (2, "PhaseRand", 0.0f)
+             .osc (3, "On", 1.0f).osc (3, "Wave", sine).osc (3, "Transpose", 19.0f).osc (3, "Volume", 0.25f).osc (3, "Insert", 1.0f)
+             .osc (3, "PhaseRand", 0.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (2.0f, 200.0f, 1.0f, 60.0f);
+        pkStrike (organ, 4, 0, 0.08f, 4.0f, 0.0f, false);
+        organ.osc (4, "Insert", 1.0f);
+        chorus (organ, ParamIDs::modIds, MT::rotary, 0.3f, 0.6f, 1.0f);
+        drive (organ, 0, DM::rabid, 6.0f, 5.0f, -4.0f, 0.1f, 0.2f);
+        route (organ, "modWheel", ParamIDs::modRate, 0.6f);
+        route (organ, "macro1", ParamIDs::ins (0, "DriveGain"), 0.2f);
+        finish (organ, "DRIVE", "SCRATCH", RT::room, 0.4f, 0.1f);
+        scratchMacro (organ, { 0.17f, 0.25f, 1.0f });
+        organ.set (ParamIDs::patchLevel, 0.0f);
+        x.add (organ);
+
+        // ---- ARPS --------------------------------------------------------------------------------------------
+        auto hardcore = x.make ("Hardcore Arp", 13, { "Arp", "Rave", "Sequence", "Flip" },
+            juce::String ("A hardcore rave arpeggio: a pulse and a saw up two octaves of the held chord in sixteenths, the "
+            "filter snapping on each step, a chorus and a short echo. Hold a chord.") + flipped
+            + " MOD WHEEL: brighter. MACROS: BRIGHT, SPACE, FLIP.");
+        hardcore.osc (0, "Wave", pulse).osc (0, "Width", 0.3f).osc (0, "Volume", 0.5f)
+                .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Fine", 7.0f).osc (1, "Volume", 0.35f)
+                .filter (FilterType::lp24, 1500.0f, 0.35f, 0.4f).set (ParamIDs::fltKey, 0.5f)
+                .filterEnvelope (0.0f, 150.0f, 0.1f, 100.0f)
+                .ampEnvelope (1.0f, 200.0f, 0.3f, 100.0f);
+        arpOn (hardcore, { 0, 1 }, AM::up, "1/16", 2.0f, 0.6f);
+        chorus (hardcore, ParamIDs::modIds, MT::chorus, 0.5f, 0.4f, 0.4f);
+        route (hardcore, "modWheel", ParamIDs::fltCutoff, 0.25f);
+        route (hardcore, "macro1", ParamIDs::fltCutoff, 0.25f);
+        delay (hardcore, "1/8", 0.25f, 0.1f, true, 5.0f);
+        finish (hardcore, "BRIGHT", "FLIP", RT::plate, 0.4f, 0.1f);
+        flipMacro (hardcore, { 5.0f, 0.5f, 0.45f, 1.0f });
+        hardcore.set (ParamIDs::patchLevel, 0.0f);
+        x.add (hardcore);
+
+        auto acidSeq = x.make ("Acid Sequence", 14, { "Arp", "Block Party", "Acid", "Flip" },
+            juce::String ("An acid line that plays itself: hold one key and a saw runs a 16-step pattern on it (octaves, a "
+            "minor third, a fifth, slides and accents), through the screaming resonant filter, a diode shaper after it.")
+            + flipped + " MOD WHEEL: opens the filter. MACROS: CUTOFF, SPACE, FLIP.");
+        acidSeq.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "PhaseRand", 0.0f)
+               .filter (FilterType::lp24, 380.0f, 0.8f, 0.55f).set (ParamIDs::fltKey, 0.3f)
+               .filterEnvelope (0.0f, 170.0f, 0.0f, 100.0f)
+               .ampEnvelope (1.0f, 250.0f, 0.7f, 60.0f)
+               .set (ParamIDs::fltEnvVel, 0.7f).set (ParamIDs::glide, 60.0f);
+        arpOn (acidSeq, { 0 }, AM::up, "1/16", 1.0f, 0.55f);
+        {
+            auto& p = acidSeq.rig.modulation.arps[0].patterns[0];
+            const int transpose[16] = { 0, 0, 12, 0, 3, 0, 7, 12, 0, 0, 15, 12, 0, 10, 7, 3 };
+            const bool slide[16] = { false, false, true, false, false, false, true, false, false, false, true, false, false, true, false, false };
+            const bool accent[16] = { true, false, false, true, false, false, true, false, true, false, false, true, false, false, true, false };
+            for (int k = 0; k < 16; ++k)
+            {
+                auto& step = p.blocks[(size_t) k];
+                step.on = true;
+                step.transpose = transpose[k];
+                step.slide = slide[k];
+                step.velocity = accent[k] ? 1.0f : 0.6f;
+            }
+        }
+        acidSeq.shaper (0, synth::ShaperModel::diode, 0.45f, true);
+        route (acidSeq, "modWheel", ParamIDs::fltCutoff, 0.3f);
+        route (acidSeq, "macro1", ParamIDs::fltCutoff, 0.3f);
+        delay (acidSeq, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
+        finish (acidSeq, "CUTOFF", "FLIP", RT::room, 0.3f, 0.05f);
+        flipMacro (acidSeq, { 7.0f, 0.5f, 0.4f, 1.0f });
+        acidSeq.set (ParamIDs::patchLevel, 0.0f);
+        x.add (acidSeq);
+
+        auto gun = x.make ("Machine Gun Arp", 15, { "Arp", "Machine", "Drums", "Flip" },
+            juce::String ("A machine gang of drums: hold any key and a kick (a sine falling into its note), a snare (a "
+            "crack of noise over a tone) and metal hats (ring-modulated noise) play a chopped breakbeat in sixteenths, "
+            "through a hard shaper. The key you hold doesn't change it.") + flipped
+            + " MOD WHEEL: brighter hats. MACROS: BRIGHT, SPACE, FLIP.");
+        gun.osc (0, "Wave", sine).osc (0, "Transpose", -24.0f).osc (0, "Volume", 0.95f).osc (0, "PhaseRand", 0.0f)
+           .osc (0, "Arp", 1.0f).osc (0, "Filter", 0.0f)
+           .osc (1, "On", 1.0f).osc (1, "Wave", triangle).osc (1, "Transpose", -5.0f).osc (1, "Volume", 0.35f)
+           .osc (1, "PhaseRand", 0.0f).osc (1, "Arp", 2.0f).osc (1, "Filter", 0.0f)
+           .filter (FilterType::hp12, 6000.0f, 0.25f, 0.0f).set (ParamIDs::fltKey, 0.0f)
+           .ampEnvelope (0.5f, 220.0f, 0.0f, 120.0f).set (ParamIDs::ampDecayCurve, -0.6f).set (ParamIDs::ampVel, 0.6f)
+           .set (ParamIDs::pitchEnvOn, 1.0f).set (ParamIDs::pitchKeytrack, 0.0f).set (ParamIDs::pitchEnvRange, 12.0f)
+           .set (ParamIDs::arpsTogether, 1.0f);
+        gun.rig.modulation.pitchEnvelope = { { SP3 { 0.0f, 1.0f, -0.6f }, SP3 { 0.05f, 0.5f, 0.0f } }, -1, -1, -1 };
+        noiseOsc (gun, 2, 0.45f, 0.1f);
+        gun.osc (2, "Arp", 2.0f).osc (2, "PitchEnv", 0.0f).osc (2, "Filter", 0.0f);
+        noiseOsc (gun, 3, 0.3f, 0.0f);
+        gun.osc (3, "Arp", 3.0f).osc (3, "PitchEnv", 0.0f)
+           .osc (3, "AmShape", 0.0f).osc (3, "ModGrid", 0.0f).osc (3, "ModRate", 0.683f).osc (3, "AmAmount", 0.4f);
+        drumArp (gun, 0, { 0, 6, 8, 10 }, { 0, 8 });                                  // the kick: a broken beat
+        drumArp (gun, 1, { 4, 12, 15 }, { 4, 12 });                                   // the snare, a ghost before the bar
+        drumArp (gun, 2, { 0, 2, 3, 4, 6, 8, 10, 11, 12, 14 }, { 2, 6, 10, 14 });     // the hats
+        gun.shaper (0, synth::ShaperModel::hard, 0.3f, true);
+        route (gun, "modWheel", ParamIDs::fltCutoff, -0.2f);
+        route (gun, "macro1", ParamIDs::fltCutoff, -0.15f);
+        finish (gun, "BRIGHT", "FLIP", RT::room, 0.3f, 0.08f, 5.0f);
+        flipMacro (gun, { 5.0f, 0.5f, 0.3f, 1.0f });
+        gun.set (ParamIDs::patchLevel, 0.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        orchestra (gun, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
+                            { 1, "Programs/01-full.sfz", 0.85f, 0.0f, false, &rusty },
+                            { 2, "Programs/01-full.sfz", 0.5f, 0.0f, false, &rusty } },
+                          { 0, 1, 2, 3 }, 0.0f,
+                          "A machine gang of drums: a real kick, snare and closed hats (Big Rusty Drums') in a chopped "
+                          "breakbeat. The key you hold doesn't change it.",
+                          0.5f, 900.0f, 0.0f, 400.0f, -1.0f,
+                          [pinned] (Builder& s)
+                          {
+                              pinned (s, 0, 36); pinned (s, 1, 38); pinned (s, 2, 42);
+                              s.osc (0, "Arp", 1.0f).osc (1, "Arp", 2.0f).osc (2, "Arp", 3.0f);
+                              s.rig.modulation.routes.erase (std::remove_if (s.rig.modulation.routes.begin(), s.rig.modulation.routes.end(),
+                                  [] (const auto& r) { return r.destination == ParamIDs::fltCutoff; }), s.rig.modulation.routes.end());
+                              route (s, "macro1", ParamIDs::reverbSize, 0.3f);
+                              s.rig.modulation.macroNames[0] = "ROOM";
+                          } });
+        x.add (gun);
+
+        // ---- PLUCKS ------------------------------------------------------------------------------------------
+        auto hoover = x.make ("Hoover Pluck", 16, { "Pluck", "Rave", "Hoover", "Scratch" },
+            juce::String ("A short blast of the rave's hoover: saws in a wide, detuned section whose pulse swirls, every "
+            "note diving in from above and the filter snapping shut, a chorus.") + cut
+            + " MOD WHEEL: a longer blast. MACROS: BRIGHT, SPACE, SCRATCH.");
+        hoover.osc (0, "Wave", saw).osc (0, "Volume", 0.45f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.3f).osc (1, "Transpose", -12.0f).osc (1, "Volume", 0.3f)
+              .filter (FilterType::lp24, 1400.0f, 0.2f, 0.5f)
+              .filterEnvelope (0.0f, 260.0f, 0.0f, 150.0f)
+              .ampEnvelope (1.0f, 420.0f, 0.0f, 200.0f)
+              .set (ParamIDs::lfo (0, "Wave"), (float) LW::triangle).set (ParamIDs::lfo (0, "Rate"), 5.0f);
+        unison (hoover, 0, 5, 0.75f, 0.2f, 0.9f);
+        route (hoover, "lfo1", ParamIDs::osc (1, "Width"), 0.2f);
+        pkBend (hoover, 5.0f, 0.12f, 0.4f);
+        pkVelocity (hoover, 0.5f, 0.2f, 0.5f);
+        chorus (hoover, ParamIDs::modIds, MT::chorus, 0.6f, 0.5f, 0.5f);
+        route (hoover, "modWheel", ParamIDs::fltEnv, 0.2f);
+        route (hoover, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (hoover, "BRIGHT", "SCRATCH", RT::plate, 0.4f, 0.12f);
+        scratchMacro (hoover, { 0.14f, 0.0f, 1.0f });
+        pkAdd (x, hoover);
+
+        auto shout = x.make ("Scratch Pluck", 17, { "Pluck", "Block Party", "Vocal", "Scratch" },
+            juce::String ("The shout a DJ cuts up: a short, punchy \"HAH\" (a saw and a breath of noise sung through the "
+            "VOICE filter, the vowel opening as it's struck), the record's favourite thing to scratch.") + cut
+            + " MOD WHEEL: the vowel brighter (an EH). MACROS: VOWEL, SPACE, SCRATCH.");
+        shout.osc (0, "Wave", saw).osc (0, "Volume", 0.6f).osc (0, "Voice", 1.0f)
+             .set (ParamIDs::voiceOn, 1.0f).set (ParamIDs::voiceVowel, 0.25f).set (ParamIDs::voiceSize, 0.35f)
+             .set (ParamIDs::voiceSharp, 0.6f).set (ParamIDs::voiceMix, 1.0f)
+             .set (ParamIDs::fltOn, 0.0f)
+             .ampEnvelope (1.0f, 280.0f, 0.0f, 150.0f);
+        noiseOsc (shout, 1, 0.08f, 0.1f);
+        shout.osc (1, "Voice", 1.0f);
+        pkShot (shout, 0, { SP3 { 0.0f, 0.0f, 0.5f }, SP3 { 0.06f, 1.0f, 0.0f } });
+        route (shout, "env1", ParamIDs::voiceVowel, 0.25f);
+        pkBend (shout, -2.0f, 0.08f, 0.4f);
+        shout.shaper (0, synth::ShaperModel::tube, 0.3f, true);
+        route (shout, "modWheel", ParamIDs::voiceVowel, 0.25f);
+        route (shout, "macro1", ParamIDs::voiceVowel, 0.2f);
+        finish (shout, "VOWEL", "SCRATCH", RT::room, 0.35f, 0.08f);
+        scratchMacro (shout, { 0.15f, 0.1f, 1.0f });
+        pkAdd (x, shout);
+
+        auto crunch = x.make ("Crunch Pluck", 18, { "Pluck", "Machine", "Bitcrush", "Scratch" },
+            juce::String ("A machine's crushed pluck: a saw and a pulse a fifth up, bit-crushed hard and sample-rate "
+            "reduced, a hard shaper, the filter snapping shut.") + cut
+            + " MOD WHEEL: coarser. MACROS: BRIGHT, SPACE, SCRATCH.");
+        crunch.osc (0, "Wave", saw).osc (0, "Volume", 0.5f).osc (0, "CrushMode", 2.0f).osc (0, "Crush", 0.5f)
+              .osc (1, "On", 1.0f).osc (1, "Wave", pulse).osc (1, "Width", 0.4f).osc (1, "Transpose", 7.0f).osc (1, "Volume", 0.25f)
+              .filter (FilterType::lp24, 2200.0f, 0.25f, 0.45f)
+              .filterEnvelope (0.0f, 180.0f, 0.0f, 120.0f)
+              .ampEnvelope (1.0f, 320.0f, 0.0f, 150.0f);
+        lofi (crunch, effects::LoFi::Type::bitcrusher, 5.0f, 0.4f);
+        crunch.shaper (0, synth::ShaperModel::hard, 0.35f, true);
+        pkVelocity (crunch, 0.5f, 0.2f, 0.5f);
+        route (crunch, "modWheel", ParamIDs::osc (0, "Crush"), 0.4f);
+        route (crunch, "macro1", ParamIDs::fltCutoff, 0.25f);
+        finish (crunch, "BRIGHT", "SCRATCH", RT::room, 0.3f, 0.08f);
+        scratchMacro (crunch, { 0.13f, 0.4f, 1.0f });
+        pkAdd (x, crunch);
     }
 
     // GAME OVER (1.10.0, the owner's theme and name: a pixel world where 8-bit chiptune crashes into garage rock; our
