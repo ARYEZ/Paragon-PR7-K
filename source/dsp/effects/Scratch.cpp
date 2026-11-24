@@ -428,6 +428,7 @@ namespace effects
         // The input's level (its power over about 0.4 s, the same up and down: an average, not the peaks) and the
         // scratch's, measured only while the fader is open and the record moving: measured through the cuts, the
         // silence read as a quiet scratch and the gain rose to meet it, bursting 20 dB over when the fader opened.
+        constexpr float scratchRms = 0.6f;   // the drive's output at DIRT 0, measured on a held tone
         const auto inputFollow = (float) (1.0 - std::exp (-1.0 / (0.4 * sampleRate)));
         const auto wetFollow = (float) (1.0 - std::exp (-1.0 / (0.4 * sampleRate)));
         const auto gainGlide = (float) (1.0 - std::exp (-1.0 / (0.05 * sampleRate)));
@@ -549,9 +550,12 @@ namespace effects
                 out[c] = w;
                 wetSum += w * w;
             }
-            if (active && fader > 0.99f && cartridge > 0.99f)
-                wetPower += (wetSum / (float) channels - wetPower) * wetFollow;
-            const auto target = juce::jlimit (0.25f, 4.0f, 1.25f * ref / std::sqrt (juce::jmax (1.0e-9f, wetPower)));
+            // The drive squares the record off to about the same level whatever goes in (it's driven from the input's
+            // own level), so the scratch's level is known without measuring it: about `scratchRms` of full scale, set
+            // here to 1.25 x the input's (the sketch's balance). A follower of the scratch itself turned up in its quiet
+            // moments and the next hit came 10 dB over.
+            juce::ignoreUnused (wetSum, wetFollow);
+            const auto target = 1.25f * ref / scratchRms;
             wetGain += (target - wetGain) * gainGlide;
             const auto dry = 1.0f - mix * gate;
             left[i] = x[0] * dry + out[0] * wetGain * gate;
