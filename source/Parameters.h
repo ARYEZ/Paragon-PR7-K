@@ -755,6 +755,21 @@ namespace ParamIDs
     inline constexpr auto talkSpace  = "talkSpace";    // 0 to 1: into the reverb's send
     inline constexpr auto talkPan    = "talkPan";      // -1 to 1
     inline constexpr auto talkLevel  = "talkLevel";    // -36 to +6 dB
+    // SCRATCH (HARDWIRED, version hint 72, effects::Scratch): a turntablist cutting up what you just played, in time
+    // with the song. In presets.
+    inline constexpr auto scratchOn     = "scratchOn";
+    inline constexpr auto scratchAmount = "scratchAmount";   // 0 to 1 (MACRO 3): how much of the song is scratched
+    inline constexpr auto scratchStroke = "scratchStroke";   // 0.06 to 0.3 s of record each stroke
+    inline constexpr auto scratchDirt   = "scratchDirt";     // 0 (the approved drive) to 1
+    inline constexpr auto scratchMix    = "scratchMix";      // 0 over the sound to 1 replacing it
+    // FLIP (HARDWIRED, version hint 73, effects::Flip): a 90s sampler flipping a beat of what you just played, in time
+    // with the song. In presets.
+    inline constexpr auto flipOn     = "flipOn";
+    inline constexpr auto flipAmount = "flipAmount";   // 0 to 1 (MACRO 3): how much of the song is flipped
+    inline constexpr auto flipPitch  = "flipPitch";    // 1 to 12 semitones: UP's and DOWN's step
+    inline constexpr auto flipCrunch = "flipCrunch";   // 0 clean, 0.5 12 bits at 26.04 kHz, 1 8 bits at 13 kHz
+    inline constexpr auto flipPump   = "flipPump";     // 0 to 1
+    inline constexpr auto flipMix    = "flipMix";      // 0 over the sound to 1 replacing it
     inline constexpr auto tgOn       = "tgOn";
     inline constexpr auto tgMix      = "tgMix";        // 0 to 1: how deep it cuts
     inline constexpr auto tgDivision = "tgDivision";   // effects::TranceGate::divisionNames: each step's length
@@ -893,4 +908,6 @@ void addSortParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);  
 void addWobbleParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);       // RackParameters.cpp (0.97.0)
 void addTranceGateParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);   // RackParameters.cpp (1.7.0)
 void addTalkBackParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);    // RackParameters.cpp (1.9.0)
+void addScratchParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);     // RackParameters.cpp (HARDWIRED)
+void addFlipParameters (juce::AudioProcessorValueTreeState::ParameterLayout&);        // RackParameters.cpp (HARDWIRED)
    // RackParameters.cpp (0.53.0)   // RackParameters.cpp (stage 7d)

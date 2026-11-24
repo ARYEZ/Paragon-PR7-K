@@ -78,6 +78,8 @@ target_sources(ParagonX1
         source/dsp/effects/Downpour.cpp
         source/dsp/effects/TalkBack.cpp
         source/dsp/effects/Cartridge.cpp
+        source/dsp/effects/Scratch.cpp
+        source/dsp/effects/Flip.cpp
         source/dsp/effects/Infernal.cpp
         source/dsp/effects/Afterglow.cpp
         source/dsp/effects/LightTrail.cpp
@@ -176,6 +178,8 @@ target_sources(ParagonX1
         source/ui/TranceGatePage.cpp
         source/ui/TalkBackPage.cpp
         source/ui/CartridgePage.cpp
+        source/ui/ScratchPage.cpp
+        source/ui/FlipPage.cpp
         source/ui/RunnerPage.cpp
         source/ui/PressPage.cpp
         source/ui/PolymeterPage.cpp

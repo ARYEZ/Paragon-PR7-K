@@ -13,6 +13,8 @@
 #include "dsp/synth/Press.h"
 #include "dsp/synth/Ornament.h"
 #include "dsp/synth/Cartridge.h"
+#include "dsp/effects/Scratch.h"
+#include "dsp/effects/Flip.h"
 #include "dsp/synth/Polymeter.h"
 
 #include "ui/DownpourPage.h"
@@ -633,19 +635,19 @@ namespace
 
 const juce::StringArray& signatureNames()
 {
-    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE", "TALKBACK", "CARTRIDGE" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
+    static const juce::StringArray names { "ECHOES", "CRACKLE", "DOWNPOUR", "SIROCCO", "INFERNAL", "AFTERGLOW", "LIGHTTRAIL", "BLACKHOLE", "DILATION", "REMNANT", "PROXIMITY", "HAZE", "SPECTRE", "LEVIATHAN", "NUCLEARSPRING", "HYPERJUMP", "BLOOM", "LEGION", "OVERCHARGE", "AFTERMATH", "SUBMERGE", "LOCKSTEP", "COLOSSUS", "CANYON", "JACK-IN", "NAVICOMPUTER", "SWEEP", "REDLINE", "FREEZE TAG", "CROSSROADS", "GEARWORKS", "RAGTIME", "SORT", "WOBBLE", "RUNNER", "PRESS", "POLYMETER", "ORNAMENT", "TRANCE GATE", "TALKBACK", "CARTRIDGE", "SCRATCH", "FLIP" };   // never reorder (0.86.0: HYPERJUMP took LIGHTSPEED's place; none of this is saved)
     return names;
 }
 
 bool signatureOn (ParagonX1AudioProcessor& p, int signature)
 {
-    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn, ParamIDs::talkOn, ParamIDs::cartOn };
+    const char* ids[] = { ParamIDs::echoOn, ParamIDs::crackleOn, ParamIDs::downpourOn, ParamIDs::siroccoOn, ParamIDs::infernalOn, ParamIDs::afterglowOn, ParamIDs::trailOn, ParamIDs::blackholeOn, ParamIDs::dilationOn, ParamIDs::remnantOn, ParamIDs::proximityOn, ParamIDs::hazeOn, ParamIDs::spectreOn, ParamIDs::leviathanOn, ParamIDs::springOn, ParamIDs::hyperjumpOn, ParamIDs::bloomOn, ParamIDs::legionOn, ParamIDs::overchargeOn, ParamIDs::aftermathOn, ParamIDs::submergeOn, ParamIDs::lockstepOn, ParamIDs::colossusOn, ParamIDs::canyonOn, ParamIDs::jackinOn, ParamIDs::naviOn, ParamIDs::sweepOn, ParamIDs::redlineOn, ParamIDs::freezeOn, ParamIDs::crossOn, ParamIDs::gearOn, ParamIDs::ragtimeOn, ParamIDs::sortOn, ParamIDs::wobbleOn, ParamIDs::runnerOn, ParamIDs::pressOn, ParamIDs::polyOn, ParamIDs::ornOn, ParamIDs::tgOn, ParamIDs::talkOn, ParamIDs::cartOn, ParamIDs::scratchOn, ParamIDs::flipOn };
     return signature >= 0 && signature < (int) std::size (ids) && valueOf (p, ids[signature]) > 0.5f;
 }
 
-std::array<RackUnit::Spec, 44> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
+std::array<RackUnit::Spec, 46> makeModFxSpecs (ParagonX1AudioProcessor& p, std::function<void (int)> openPage, std::function<void()> chooseSignature)
 {
-    std::array<RackUnit::Spec, 44> specs;
+    std::array<RackUnit::Spec, 46> specs;
     for (int which = 0; which < 2; ++which)
         specs[(size_t) which] = makeModSpec (p, which == 0 ? ParamIDs::modIds : ParamIDs::mod2Ids, which + 1, which == 0 ? "MOD" : "MOD 2",
                                              "PR7-K SERIES  INSERT " + juce::String (which + 1),
@@ -2529,6 +2531,107 @@ std::array<RackUnit::Spec, 44> makeModFxSpecs (ParagonX1AudioProcessor& p, std::
                     content.getHeight() * 0.16f);
         };
         s.onEdit = [openPage] { openPage (43); };
+    }
+
+    // SCRATCH (HARDWIRED): the moves so far in big digits, the move playing, the settings; the keys set AMOUNT: FILLS
+    // (a fill every other bar), CUTS (the end of every bar), BATTLE (whole bars); the ladder how much is taken.
+    {
+        auto& s = specs[44];
+        s.name = "SCRATCH";
+        s.kind = "THE  TURNTABLE";
+        s.onParameterIds = { ParamIDs::scratchOn };
+        s.powerTooltip = "SCRATCH on or off: a turntablist cutting up what you just played, in time with the song. "
+                         "Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "FILLS", 0.3f, "A scratch fill on the last beat of every other bar, rewinding into the bar line" },
+                                            { "CUTS", 0.6f, "The last two beats of every bar cut up" },
+                                            { "BATTLE", 1.0f, "Whole bars scratched: the DJ takes over" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::scratchAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::scratchAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::scratchAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::scratchDirt, "DIRT" } };
+        s.ladderTitle = "TAKEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "3/4", "1/2", "1/4", "0" };
+        s.ladderReading = [&p]
+        {
+            const auto sc = p.getScratchSettings();
+            if (! sc.on)
+                return 0.0f;
+            const auto a = effects::Scratch::sixteenthsFor (sc.amount, 0), b = effects::Scratch::sixteenthsFor (sc.amount, 1);
+            return (float) (a + b) / 32.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getScratch();
+            const auto sc = p.getScratchSettings();
+            const auto end = drawNumber (g, juce::String (fx.getMoveCount()), left.getTopLeft(), h);
+            line (g, "MOVES", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            const auto move = sc.on ? fx.getMoveNow() : -1;
+            line (g, ! sc.on ? juce::String ("OFF") : move >= 0 ? effects::Scratch::moveNames[move] : juce::String ("LISTENING"),
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::scratchAmount), "STROKE " + textOf (p, ParamIDs::scratchStroke),
+                                  "DIRT " + textOf (p, ParamIDs::scratchDirt), "MIX " + textOf (p, ParamIDs::scratchMix) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (44); };
+    }
+
+    // FLIP (HARDWIRED): the pads played so far in big digits, how this bar flips, the settings; the keys set AMOUNT:
+    // TAG (a stutter every other bar), FLIP (the end of every bar), CHOP SHOP (whole bars); the ladder how much is taken.
+    {
+        auto& s = specs[45];
+        s.name = "FLIP";
+        s.kind = "THE  SAMPLER";
+        s.onParameterIds = { ParamIDs::flipOn };
+        s.powerTooltip = "FLIP on or off: a 90s sampler catching a beat of what you just played and flipping it on the pads, "
+                         "in time with the song. Click POWER (the word) or EDIT for its page";
+        struct Stage { const char* name; float amount; const char* tip; };
+        static constexpr Stage stages[] = { { "TAG", 0.3f, "A stutter into the bar line every other bar" },
+                                            { "FLIP", 0.6f, "The last two beats of every bar flipped" },
+                                            { "CHOP SHOP", 1.0f, "Whole bars flipped: looped, pitched, reversed, re-chopped" } };
+        for (int k = 0; k < 3; ++k)
+        {
+            const auto& t = stages[k];
+            s.keys[(size_t) k] = RackUnit::Key { t.name, t.tip,
+                                                 [&p, t] { return std::abs (valueOf (p, ParamIDs::flipAmount) - t.amount) < 0.01f; },
+                                                 [&p, t] { setValue (p, ParamIDs::flipAmount, t.amount); } };
+        }
+        s.knobs = { RackUnit::Knob { ParamIDs::flipAmount, "AMOUNT" }, RackUnit::Knob { ParamIDs::flipCrunch, "CRUNCH" } };
+        s.ladderTitle = "TAKEN";
+        s.ladderMarks = { 1.0f, 0.75f, 0.5f, 0.25f, 0.0f };
+        s.ladderLabels = { "ALL", "3/4", "1/2", "1/4", "0" };
+        s.ladderReading = [&p]
+        {
+            const auto f = p.getFlipSettings();
+            if (! f.on)
+                return 0.0f;
+            return (float) (effects::Flip::sixteenthsFor (f.amount, 0) + effects::Flip::sixteenthsFor (f.amount, 1)) / 32.0f;
+        };
+        s.paintReadout = [&p] (juce::Graphics& g, juce::Rectangle<float> glass)
+        {
+            auto content = glass.reduced (glass.getWidth() * 0.045f, glass.getHeight() * 0.14f);
+            auto left = content.removeFromLeft (content.getWidth() * 0.5f);
+            const auto h = left.getHeight() * 0.56f;
+            const auto& fx = p.getFlip();
+            const auto f = p.getFlipSettings();
+            const auto end = drawNumber (g, juce::String (fx.getFlips()), left.getTopLeft(), h);
+            line (g, "PADS", { end + 6.0f, left.getY(), left.getRight() - end, h * 0.5f }, h * 0.24f);
+            const auto kind = f.on ? fx.getKindNow() : -1;
+            line (g, ! f.on ? juce::String ("OFF") : kind >= 0 ? effects::Flip::flipNames[kind] : juce::String ("LISTENING"),
+                  left.withTop (left.getY() + h * 1.1f).withHeight (h * 0.4f), h * 0.22f);
+            column (g, content, { "AMOUNT " + textOf (p, ParamIDs::flipAmount), "PITCH " + textOf (p, ParamIDs::flipPitch),
+                                  "CRUNCH " + textOf (p, ParamIDs::flipCrunch), "PUMP " + textOf (p, ParamIDs::flipPump) },
+                    content.getHeight() * 0.16f);
+        };
+        s.onEdit = [openPage] { openPage (45); };
     }
 
     // The SIGNATURE slot (0.58.0, the owner's design): ECHOES, CRACKLE, DOWNPOUR and SIROCCO take turns in the fourth

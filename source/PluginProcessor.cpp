@@ -349,6 +349,8 @@ void ParagonX1AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rack->tranceGate.prepare (sampleRate, preparedBlockSize);
     rack->talkBack.prepare (sampleRate, preparedBlockSize);
     rack->cartridge.prepare (sampleRate, preparedBlockSize);
+    rack->scratch.prepare (sampleRate, preparedBlockSize);
+    rack->flip.prepare (sampleRate, preparedBlockSize);
     rack->infernalBefore.setSize (2, preparedBlockSize);
     for (auto& bus : rack->buses)
     {
@@ -1522,6 +1524,29 @@ effects::TalkBack::Settings ParagonX1AudioProcessor::getTalkBackSettings() const
     return s;
 }
 
+effects::Scratch::Settings ParagonX1AudioProcessor::getScratchSettings() const noexcept
+{
+    effects::Scratch::Settings s;
+    s.on = isOn (ParamIDs::scratchOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("scratchAmount"), ParamIDs::scratchAmount));
+    s.stroke = param (ParamIDs::scratchStroke);
+    s.dirt = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("scratchDirt"), ParamIDs::scratchDirt));
+    s.mix = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("scratchMix"), ParamIDs::scratchMix));
+    return s;
+}
+
+effects::Flip::Settings ParagonX1AudioProcessor::getFlipSettings() const noexcept
+{
+    effects::Flip::Settings s;
+    s.on = isOn (ParamIDs::flipOn);
+    s.amount = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("flipAmount"), ParamIDs::flipAmount));
+    s.pitch = param (ParamIDs::flipPitch);
+    s.crunch = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("flipCrunch"), ParamIDs::flipCrunch));
+    s.pump = juce::jlimit (0.0f, 1.0f, effectParam (ModDestinations::effect ("flipPump"), ParamIDs::flipPump));
+    s.mix = param (ParamIDs::flipMix);
+    return s;
+}
+
 effects::TranceGate::Settings ParagonX1AudioProcessor::getTranceGateSettings() const noexcept
 {
     using T = effects::TranceGate;
@@ -1935,7 +1960,10 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
             const auto offset = (int) juce::jlimit<std::int64_t> (0, numSamples - 1, touches[(size_t) k].clock - chunkClock);
             rack->proximity.addTouch (offset, touches[(size_t) k].note, touches[(size_t) k].velocity, (effects::Proximity::Kind) touches[(size_t) k].kind);
             if (touches[(size_t) k].kind == synth::Engine::Touch::Kind::press)   // COLOSSUS (0.82.0): a boom under each note
+            {
                 rack->colossus.addNote (offset, touches[(size_t) k].velocity);
+                rack->scratch.addNote (offset);   // SCRATCH: where the hits are on the record
+            }
             // TALKBACK (1.9.0): the phrases it answers, from the keys (and arps) pressed and let go.
             if (touches[(size_t) k].kind == synth::Engine::Touch::Kind::press || touches[(size_t) k].kind == synth::Engine::Touch::Kind::release)
                 rack->talkBack.addNote (offset, touches[(size_t) k].note, touches[(size_t) k].velocity,
@@ -2075,6 +2103,8 @@ void ParagonX1AudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, co
         rack->wobble.process (block, getWobbleSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // 0.97.0: the wobble
         rack->talkBack.addTo (block);                          // 1.9.0: the drum's answers
         rack->cartridge.process (block, getCartridgeSettings());   // 1.10.0: the chip's crunch and glitches
+        rack->scratch.process (block, getScratchSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);   // the DJ's cuts
+        rack->flip.process (block, getFlipSettings(), juce::jmax (20.0, hostBpm.load()), piecePpq);         // the sampler's flips
         rack->crackle.process (block, getCrackleSettings());   // 0.56.0: a counter's clicks
         rack->downpour.addTo (block);                          // 0.57.0: the rain
         // 1.7.0: the trance gate, last, so the reverb, echoes and signature effects are chopped with the sound.

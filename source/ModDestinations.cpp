@@ -117,7 +117,9 @@ namespace ModDestinations
                 { "FX Ornament", "Amount" },
                 { "FX Trance Gate", "Mix" }, { "FX Trance Gate", "Gate" },
                 { "FX Talkback", "Amount" }, { "FX Talkback", "Bend" }, { "FX Talkback", "Level" },
-                { "FX Cartridge", "Amount" }, { "FX Cartridge", "Crunch" }, { "FX Cartridge", "Glitch" } };
+                { "FX Cartridge", "Amount" }, { "FX Cartridge", "Crunch" }, { "FX Cartridge", "Glitch" },
+                { "FX Scratch", "Amount" }, { "FX Scratch", "Dirt" }, { "FX Scratch", "Mix" },
+                { "FX Flip", "Amount" }, { "FX Flip", "Crunch" }, { "FX Flip", "Pump" } };
             static_assert (std::size (effects) == (size_t) numEffects);
             for (int k = 0; k < numEffects; ++k)
                 d.push_back ({ effectIds[k], effects[k].first, effects[k].second, {}, k });

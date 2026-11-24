@@ -366,24 +366,59 @@ TEST_CASE ("SANDSEA: MACRO 3 is POLYMETER on every preset, resting at its left; 
     CHECK (used.size() == 4);   // the orchestra (its cello and choir), Squidpipes, VCSL and Big Rusty Drums
 }
 
-TEST_CASE ("SIMULACRUM: MACRO 3 is DILATE on every preset, time unslowed at its left", "[rigs][expansions][dilation]")
+TEST_CASE ("HARDWIRED: MACRO 3 is SCRATCH on the sounds that hit, FLIP on those that groove, its versions too", "[rigs][expansions][scratch][flip]")
 {
-    int count = 0;
+    // SCRATCH or FLIP on at AMOUNT 0 (the macro's left is the preset as built), MACRO 3 straight to its AMOUNT at 1 and
+    // to nothing else; nine of each, never both.
+    const juce::StringArray scratched { "Siren Lead", "Razor Riff", "Static Choir", "Reese Snarl", "Rave Stab", "Distortion Organ",
+                                        "Hoover Pluck", "Scratch Pluck", "Crunch Pluck" };
+    int count = 0, versions = 0, scratches = 0, flips = 0;
     for (const auto& rig : makeExpansionRigs())
     {
-        if (rig.bank != Rig::numBanks + 6)   // SIMULACRUM: the seventh expansion
+        if (rig.bank != Rig::numBanks + 6)   // HARDWIRED: the seventh expansion (SIMULACRUM's place)
             continue;
         ++count;
         INFO (rig.name);
-        CHECK (rig.modulation.macroNames[2] == "DILATE");
-        CHECK (rig.notes.contains ("DILATE (time slowing down, plus "));
-        CHECK (rig.parameters.at (ParamIDs::dilationOn) == 1.0f);
-        CHECK (rig.parameters.at (ParamIDs::dilationSlow) == 0.0f);   // not slowed until the macro: the sound as approved
-        const auto routed = std::any_of (rig.modulation.routes.begin(), rig.modulation.routes.end(), [] (const auto& r)
-                                         { return r.source == "macro3" && r.destination == ParamIDs::dilationSlow && r.amount >= 0.25f; });
-        CHECK (routed);
+        const auto scratch = scratched.contains (rig.name);
+        (scratch ? scratches : flips) += 1;
+        for (const auto* version : { &rig, rig.sampled.get() })
+        {
+            if (version == nullptr)
+                continue;
+            versions += version != &rig ? 1 : 0;
+            const auto value = [&] (const juce::String& id, float otherwise)
+            {
+                const auto it = version->parameters.find (id);
+                return it == version->parameters.end() ? otherwise : it->second;
+            };
+            CHECK (value (ParamIDs::scratchOn, 0.0f) == (scratch ? 1.0f : 0.0f));
+            CHECK (value (ParamIDs::flipOn, 0.0f) == (scratch ? 0.0f : 1.0f));
+            CHECK (value (scratch ? ParamIDs::scratchAmount : ParamIDs::flipAmount, 1.0f) == 0.0f);
+            CHECK (version->modulation.macroNames[2] == (scratch ? "SCRATCH" : "FLIP"));
+            CHECK (version->notes.contains (scratch ? "SCRATCH" : "FLIP"));
+            CHECK (value (ParamIDs::lofiNoise, 0.0f) == 0.0f);
+            int toAmount = 0;
+            for (const auto& r : version->modulation.routes)
+                if (r.source == "macro3")
+                {
+                    CHECK (r.destination == (scratch ? ParamIDs::scratchAmount : ParamIDs::flipAmount));
+                    CHECK (r.amount == 1.0f);
+                    ++toAmount;
+                }
+            CHECK (toAmount == 1);
+            for (const auto& r : version->modulation.routes)
+            {
+                CHECK (synth::mod::sourceFromId (r.source) != synth::mod::Source::none);
+                CHECK (ModDestinations::find (r.destination) != nullptr);
+            }
+        }
     }
     CHECK (count == 18);
+    CHECK (scratches == 9);
+    CHECK (flips == 9);
+    CHECK (versions == 3);   // Razor Riff, Static Choir, Machine Gun Arp
+    CHECK (juce::String (expansions::list[6].name) == "HARDWIRED");
+    CHECK (juce::String (expansions::list[6].code) == "HW");
 }
 
 TEST_CASE ("DREAMSTATE: MACRO 3 is DREAM on every preset, no layers at its left", "[rigs][expansions][remnant]")
@@ -2034,7 +2069,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto sand = rig.bank == Rig::numBanks + 3;   // SANDSEA: 90 BPM in D, Phrygian dominant
         const auto data = rig.bank == Rig::numBanks + 4;   // DATASTREAM: 120 BPM in E minor
         const auto last = rig.bank == Rig::numBanks + 5;   // LAST LIGHT: 70 BPM in A minor, slow and sad
-        const auto sim = rig.bank == Rig::numBanks + 6;    // SIMULACRUM: 130 BPM in E minor (E Phrygian for the runs)
+        const auto sim = rig.bank == Rig::numBanks + 6;    // HARDWIRED (SIMULACRUM's place): 130 BPM in E minor, big-beat riffs
         const auto dream = rig.bank == Rig::numBanks + 7;  // DREAMSTATE: 80 BPM in G minor, slow and heavy
         const auto negative = rig.bank == Rig::numBanks + 8;   // NEGATIVE SPACE: 85 BPM in D minor
         const auto night = rig.bank == Rig::numBanks + 9;      // NIGHTDRIVE: 100 BPM in A minor, synthwave
@@ -4306,62 +4341,58 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
             chord (e, at (8), at (15.9), { 51, 55, 58 }, 100);
             length = 20.0 * beat;
         }
-        else if (sim && type == "Lead")
-        {
-            // E minor, the flat second (F) for menace.
-            line ({ { 0, 1.5, 64 }, { 1.5, 0.5, 65 }, { 2, 2, 64 }, { 4, 1, 67 }, { 5, 1, 71 }, { 6, 2, 72 }, { 8, 1, 71 },
-                    { 9, 1, 67 }, { 10, 1, 65 }, { 11, 1, 67 }, { 12, 4, 64 } }, 100);
-            if (rig.name != "Phantom Line")
-                wheel (8.0, 14.0, 110);
-            length = 19.0 * beat;
-        }
-        else if (sim && type == "Pad")
-        {
-            chord (e, at (0), at (7.8), { 40, 52, 55, 59 }, 95);   // E minor
-            chord (e, at (8), at (15.8), { 41, 53, 57, 60 }, 95);  // F: the flat second
-            length = 22.0 * beat;
-        }
-        else if (sim && type == "Bass")
-        {
-            if (rig.name == "Industrial Pulse")
-            {
-                chord (e, at (0), at (7.9), { 28 }, 110);
-                chord (e, at (8), at (11.9), { 29 }, 110);
-                chord (e, at (12), at (15.9), { 31 }, 110);
-            }
-            else
-            {
-                const int notes[] = { 28, 28, 31, 28, 29, 28, 35, 33 };
-                for (int bar = 0; bar < 4; ++bar)
-                    for (int k = 0; k < 8; ++k)
-                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { notes[k] }, k % 2 == 0 ? 110 : 90);
-                if (rig.name == "Breakbeat Bass")
-                    wheel (8.0, 16.0, 120);
-            }
-            length = 18.0 * beat;
-        }
-        else if (sim && type == "Keys")
-        {
-            const std::initializer_list<int> chords[] = { { 64, 67, 71 }, { 65, 69, 72 }, { 64, 67, 71 }, { 62, 65, 69 } };
-            int c = 0;
-            for (const auto& notes : chords)
-            {
-                for (const auto offset : { 0.0, 1.5, 3.0 })
-                    chord (e, at (c * 4 + offset), at (c * 4 + offset + 1.0), notes, offset == 0.0 ? 105 : 85);
-                ++c;
-            }
-            if (rig.name == "Warped Keys")
-                wheel (6.0, 14.0, 127);
-            length = 19.0 * beat;
-        }
         else if (sim)
         {
-            if (rig.name == "Rain Cascade")
-                chord (e, at (0), at (15.9), { 64 }, 100);
-            else if (rig.name == "System Breach")
-                chord (e, at (0), at (15.9), { 64, 67 }, 105);
+            // HARDWIRED: 130 BPM in E minor, big-beat riffs with gaps (so SCRATCH has hits to cut up and FLIP has beats to
+            // catch), four bars and a tail.
+            // (Its plucks play every bank's pluck riff, above.)
+            if (type == "Lead")
+            {
+                for (int bar = 0; bar < 4; ++bar)
+                {
+                    const auto b = bar * 4.0;
+                    const auto top = bar == 3 ? 67 : 64;
+                    line ({ { b, 0.75, top }, { b + 0.75, 0.25, 64 }, { b + 1.5, 0.5, 67 }, { b + 2.0, 0.75, 64 },
+                            { b + 2.75, 0.25, 62 }, { b + 3.0, 1.0, bar % 2 == 0 ? 59 : 71 } }, 110);
+                }
+                wheel (8.0, 14.0, 110);
+            }
+            else if (type == "Pad")
+            {
+                chord (e, at (0), at (7.8), { 40, 52, 55, 59 }, 95);   // E minor
+                chord (e, at (8), at (11.8), { 36, 48, 52, 55 }, 95);  // C
+                chord (e, at (12), at (15.8), { 38, 50, 54, 57 }, 95); // D
+            }
+            else if (type == "Bass")
+            {
+                for (int bar = 0; bar < 4; ++bar)
+                {
+                    const auto b = bar * 4.0;
+                    line ({ { b, 0.5, 28 }, { b + 0.75, 0.25, 28 }, { b + 1.0, 0.5, 40 }, { b + 1.5, 0.5, 28 },
+                            { b + 2.0, 0.5, 31 }, { b + 2.5, 0.5, 33 }, { b + 3.0, 0.75, 28 }, { b + 3.75, 0.25, bar == 3 ? 35 : 26 } }, 110);
+                }
+            }
+            else if (rig.name == "Rave Stab")
+            {
+                const int roots[] = { 64, 64, 60, 62 };   // one key, the chorder's minor seventh on it
+                for (int bar = 0; bar < 4; ++bar)
+                    line ({ { bar * 4.0, 0.4, roots[bar] }, { bar * 4.0 + 1.5, 0.4, roots[bar] }, { bar * 4.0 + 3.0, 0.4, roots[bar] } }, 115);
+            }
+            else if (type == "Keys")
+            {
+                const std::vector<int> chords[] = { { 52, 55, 59, 64 }, { 52, 55, 59, 64 }, { 48, 52, 55, 60 }, { 50, 54, 57, 62 } };
+                for (int bar = 0; bar < 4; ++bar)
+                    for (const auto& [on, len] : { std::pair { 0.0, 0.9 }, std::pair { 1.5, 0.4 }, std::pair { 2.0, 0.9 }, std::pair { 3.5, 0.4 } })
+                        chord (e, at (bar * 4.0 + on), at (bar * 4.0 + on + len), chords[bar], 105);
+            }
+            else if (rig.name == "Acid Sequence" || rig.name == "Machine Gun Arp")
+                chord (e, at (0), at (15.9), { 40 }, 110);   // one key: the pattern plays itself
             else
-                chord (e, at (0), at (15.9), { 64, 67, 71 }, 100);
+            {
+                chord (e, at (0), at (7.9), { 52, 55, 59 }, 100);
+                chord (e, at (8), at (11.9), { 48, 52, 55 }, 100);
+                chord (e, at (12), at (15.9), { 50, 54, 57 }, 100);
+            }
             length = 19.0 * beat;
         }
         else if (last && type == "Keys" && rig.name != "Music Box Elegy")

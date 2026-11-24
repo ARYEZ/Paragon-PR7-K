@@ -44,6 +44,8 @@
 #include "ui/TranceGatePage.h"
 #include "ui/TalkBackPage.h"
 #include "ui/CartridgePage.h"
+#include "ui/ScratchPage.h"
+#include "ui/FlipPage.h"
 #include "ui/EqPage.h"
 #include "ui/InsertPages.h"
 #include "ui/LimiterPage.h"
@@ -83,7 +85,7 @@ public:
                       haze,                                                 // 0.66.0 (the SIGNATURE slot)
                       spectre,                                              // 0.67.0 (the SIGNATURE slot)
                       leviathan,                                            // 0.68.0 (the SIGNATURE slot)
-                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks, ragtime, sort, wobble, runner, press, polymeter, ornament, tranceGate, talkBack, cartridge };                                      // 0.69.0 (the SIGNATURE slot)
+                      nuclearSpring, hyperJump, bloom, legion, overcharge, aftermath, submerge, lockstep, colossus, canyon, jackIn, naviComputer, sweep, redline, freezeTag, crossroads, gearworks, ragtime, sort, wobble, runner, press, polymeter, ornament, tranceGate, talkBack, cartridge, scratch, flip };                                      // 0.69.0 (the SIGNATURE slot)
     void show (View);
     View getView() const noexcept { return view; }
 
@@ -127,6 +129,8 @@ public:
     TranceGatePage& getTranceGatePage() noexcept { return tranceGatePage; }
     TalkBackPage& getTalkBackPage() noexcept { return talkBackPage; }
     CartridgePage& getCartridgePage() noexcept { return cartridgePage; }
+    ScratchPage& getScratchPage() noexcept { return scratchPage; }
+    FlipPage& getFlipPage() noexcept { return flipPage; }
     BloomPage& getBloomPage() noexcept { return bloomPage; }
     LegionPage& getLegionPage() noexcept { return legionPage; }
     OverchargePage& getOverchargePage() noexcept { return overchargePage; }
@@ -161,7 +165,7 @@ private:
     View view = View::rack;
     std::array<std::unique_ptr<RackUnit>, 4> units;
     std::array<std::unique_ptr<RackUnit>, 2> sendUnits;
-    std::array<std::unique_ptr<RackUnit>, 44> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
+    std::array<std::unique_ptr<RackUnit>, 46> modFxUnits;   // MOD, MOD 2, LO-FI, then the SIGNATURE slot's four
     int signatureShown = 0;
     juce::String followedRig;
     void chooseSignature();
@@ -214,6 +218,8 @@ private:
     TranceGatePage tranceGatePage;       // 1.7.0
     TalkBackPage talkBackPage;           // 1.9.0
     CartridgePage cartridgePage;         // 1.10.0
+    ScratchPage scratchPage;             // HARDWIRED
+    FlipPage flipPage;                   // HARDWIRED
     EqPage eqPage;
     DominionPage dominionPage;
     CompPage compPage;

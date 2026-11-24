@@ -712,5 +712,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addWobbleParameters (layout);          // WOBBLE (0.97.0, version hint 63): RackParameters.cpp
     addTranceGateParameters (layout);      // TRANCE GATE (1.7.0, version hint 69): RackParameters.cpp
     addTalkBackParameters (layout);        // TALKBACK (1.9.0, version hint 70): RackParameters.cpp
+    addScratchParameters (layout);         // SCRATCH (version hint 72): RackParameters.cpp
+    addFlipParameters (layout);            // FLIP (version hint 73): RackParameters.cpp
     return layout;
 }

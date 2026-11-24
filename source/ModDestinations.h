@@ -117,7 +117,11 @@ namespace ModDestinations
                                                  // 1.9.0: TALKBACK: how much it answers, the bends, how loud
                                                  "talkAmount", "talkBend", "talkLevel",
                                                  // 1.10.0: CARTRIDGE: how far into the chip, the crunch, the glitches
-                                                 "cartAmount", "cartCrunch", "cartGlitch" };
+                                                 "cartAmount", "cartCrunch", "cartGlitch",
+                                                 // SCRATCH (HARDWIRED): how much is scratched, the dirt, the mix
+                                                 "scratchAmount", "scratchDirt", "scratchMix",
+                                                 // FLIP (HARDWIRED): how much is flipped, the crunch, the pump
+                                                 "flipAmount", "flipCrunch", "flipPump" };
     inline constexpr int numEffects = (int) std::size (effectIds);
     // A source only a note has (it can't move an effect). LFOs and envelopes set to VOICE are a note's too, but that's
     // a setting, checked as they play.

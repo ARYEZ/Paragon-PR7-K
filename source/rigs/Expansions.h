@@ -44,11 +44,11 @@ namespace expansions
           "Inspired by the score of a film about space, time and leaving the people you love: a soft cinematic felt "
           "piano, an enormous church organ, aching strings, a ticking clock and vast cold spaces. Sad and longing. "
           "Built round BLACKHOLE (0.62.0), the last moments stretched into a haze, and MACRO 3, GRAVITY. Our own sounds." },
-        { "SIMULACRUM", "SM",
-          "Inspired by the score and soundtrack of a 1999 film about a simulated world: a dark, atonal orchestra with "
-          "brass in clashing keys, late-'90s industrial and big-beat basses and breaks, fast trance arpeggios, falling "
-          "digital rain and time slowing down. Built round DILATION (0.63.0), time itself slowing, and MACRO 3, DILATE. "
-          "Our own sounds." },
+        { "HARDWIRED", "HW",
+          "Late-'90s cyberpunk as its records sounded: rave breakbeat punk (sirens, hoovers, reese basses, chord "
+          "stabs), big beat (acid lines, fuzz-funk basses, phased loops, dusty keys) and industrial rock (crunchy "
+          "guitars, cold steel, a screaming organ, a gang of drums). Built round SCRATCH, a turntablist cutting up what "
+          "you play, and FLIP, a 90s sampler flipping a beat of it: MACRO 3. Our own sounds." },
         { "DREAMSTATE", "DR",
           "Inspired by the score of a 2010 film about dreams within dreams: a huge low brass blast, time slowed to a "
           "crawl and running at different speeds at once, relentless string ostinatos over heavy minor chords, a twangy "

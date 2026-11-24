@@ -43,6 +43,8 @@
 #include "dsp/effects/Wobble.h"
 #include "dsp/effects/TranceGate.h"
 #include "dsp/effects/TalkBack.h"
+#include "dsp/effects/Scratch.h"
+#include "dsp/effects/Flip.h"
 #include "dsp/effects/Modulation.h"
 #include "dsp/effects/MasterLimiter.h"
 #include "dsp/effects/Reverb.h"
@@ -1159,4 +1161,34 @@ void addTalkBackParameters (juce::AudioProcessorValueTreeState::ParameterLayout&
     layout.add (makeFloat (ParamIDs::talkSpace, "Talkback Space", { 0.0f, 1.0f, 0.01f }, d.space, v, asPercent));
     layout.add (makeFloat (ParamIDs::talkPan, "Talkback Pan", { -1.0f, 1.0f, 0.01f }, d.pan, v, asPan));
     layout.add (makeFloat (ParamIDs::talkLevel, "Talkback Level", { -36.0f, 6.0f, 0.1f }, d.levelDb, v, asLevel));
+}
+
+void addScratchParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // SCRATCH (HARDWIRED, our own design): off by default, so projects and presets from before are unchanged. DIRT 0
+    // and MIX 1 are the sound of the sketch the owner approved.
+    constexpr int v = 72;
+    using S = effects::Scratch;
+    const S::Settings d;
+    const ToText asMs = [] (float value, int) { return juce::String (juce::roundToInt (value * 1000.0f)) + " ms"; };
+    layout.add (makeSwitch (ParamIDs::scratchOn, "Scratch On", v, false));
+    layout.add (makeFloat (ParamIDs::scratchAmount, "Scratch Amount", { 0.0f, 1.0f, 0.01f }, d.amount, v, asPercent));
+    layout.add (makeFloat (ParamIDs::scratchStroke, "Scratch Stroke", { 0.06f, 0.3f, 0.001f }, d.stroke, v, asMs));
+    layout.add (makeFloat (ParamIDs::scratchDirt, "Scratch Dirt", { 0.0f, 1.0f, 0.01f }, d.dirt, v, asPercent));
+    layout.add (makeFloat (ParamIDs::scratchMix, "Scratch Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
+}
+
+void addFlipParameters (juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+{
+    // FLIP (HARDWIRED, our own design): off by default. PITCH 5, CRUNCH 0.5, PUMP 0.45 and MIX 1 are the sketch's sound.
+    constexpr int v = 73;
+    using F = effects::Flip;
+    const F::Settings d;
+    const ToText asSemis = [] (float value, int) { return juce::String (juce::roundToInt (value)) + " st"; };
+    layout.add (makeSwitch (ParamIDs::flipOn, "Flip On", v, false));
+    layout.add (makeFloat (ParamIDs::flipAmount, "Flip Amount", { 0.0f, 1.0f, 0.01f }, d.amount, v, asPercent));
+    layout.add (makeFloat (ParamIDs::flipPitch, "Flip Pitch", { 1.0f, 12.0f, 1.0f }, d.pitch, v, asSemis));
+    layout.add (makeFloat (ParamIDs::flipCrunch, "Flip Crunch", { 0.0f, 1.0f, 0.01f }, d.crunch, v, asPercent));
+    layout.add (makeFloat (ParamIDs::flipPump, "Flip Pump", { 0.0f, 1.0f, 0.01f }, d.pump, v, asPercent));
+    layout.add (makeFloat (ParamIDs::flipMix, "Flip Mix", { 0.0f, 1.0f, 0.01f }, d.mix, v, asPercent));
 }
