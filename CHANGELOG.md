@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.11.0
+
+**HARDWIRED: a new expansion in SIMULACRUM's place, and two new signature effects, SCRATCH and FLIP.**
+
+- **HARDWIRED** (HW01-HW18) replaces SIMULACRUM: late-'90s cyberpunk as its records sounded. Three columns in every category: the rave (Siren Lead, Warehouse Haze, Reese Snarl, Rave Stab, Hardcore Arp, Hoover Pluck), the block party (Acid Line, Phase Trip, Block Rocker Bass, Crate Keys, Acid Sequence, Scratch Pluck) and the machine (Razor Riff, Static Choir, Cold Steel Bass, Distortion Organ, Machine Gun Arp, Crunch Pluck). Razor Riff, Static Choir and Machine Gun Arp also have versions on real recordings (Black And Green Guitars, the orchestra's choir, Big Rusty Drums) when those libraries are installed. SIMULACRUM's presets are gone; DILATION stays in the SIGNATURE slot.
+- **SCRATCH** (MACRO 3 on the nine that hit): a turntablist cutting up what you just played, in time with the song. Baby scratches, chirps, flares, crabs, tears, transformers, scribbles, juggles and rewinds into the bar line, through a mixer pushed into the red. AMOUNT takes a fill every other bar, then the end of every bar, then whole bars. **DIRT** pushes the mixer harder; **MIX** lets the scratches sit over your playing instead of replacing it. Its page: a deck from above, the record turning with the hand, the crossfader and the bar's routine.
+- **FLIP** (MACRO 3 on the nine that groove): a 90s sampler catching a beat of the bar you just played and flipping it on the pads: looped, pitched up, pitched down, reversed, re-chopped and stuttered, with 12-bit crunch and a pumping compressor. CRUNCH, PUMP, PITCH and MIX to taste. Its page: a grey sampler with an LCD and sixteen pads.
+- Both are our own designs, built from sketches you approved; the same place in the song always gets the same routine. Nothing is touched outside the bars they take.
+
 ## 1.10.0
 
 GAME OVER, a new expansion built round CARTRIDGE, which forces the synth through an old game console's sound chip. Also: a fix for FREEZE TAG.
