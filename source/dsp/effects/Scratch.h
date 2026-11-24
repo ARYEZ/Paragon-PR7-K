@@ -143,6 +143,7 @@ namespace effects
         std::array<Biquad, 2> lowCut, bite, top, hissLow, hissHigh;
         std::array<float, 2> dcIn {}, dcOut {}, readLevelNow {};
         float inputPower = 0.0f, wetPower = 0.1f, wetGain = 1.0f;
+        bool snapGain = true;
         bool resting = true;
         std::uint32_t noise = 0x9e3779b9u;
 

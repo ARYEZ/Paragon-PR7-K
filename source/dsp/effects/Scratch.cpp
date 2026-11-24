@@ -378,6 +378,8 @@ namespace effects
         if (! active)
             startChain();
         spanStarted = true;
+        snapGain = true;   // the level set at once for a new stretch (gliding from where it was left, the first
+                           // stroke after a rest came 18 dB hot)
     }
 
     void Scratch::startMove (const Planned& p, double sixteenthSamples) noexcept
@@ -556,6 +558,11 @@ namespace effects
             // moments and the next hit came 10 dB over.
             juce::ignoreUnused (wetSum, wetFollow);
             const auto target = ref / scratchRms;
+            if (snapGain)
+            {
+                wetGain = target;
+                snapGain = false;
+            }
             wetGain += (target - wetGain) * gainGlide;
             const auto dry = 1.0f - mix * gate;
             left[i] = x[0] * dry + out[0] * wetGain * gate;
