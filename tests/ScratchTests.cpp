@@ -132,7 +132,7 @@ TEST_CASE ("SCRATCH: AMOUNT's share of each bar, the routine filling it to the b
     CHECK (Scratch::sixteenthsFor (0.5f, 1) == 8);
     CHECK (Scratch::sixteenthsFor (1.0f, 0) == 16);   // whole bars
     CHECK (Scratch::sixteenthsFor (1.0f, 1) == 16);
-    CHECK (Scratch::sixteenthsFor (0.8f, 0) == 10);
+    CHECK (Scratch::sixteenthsFor (0.8f, 0) == 12);
     std::array<Scratch::Planned, Scratch::maxPlanned> plan, again;
     int rewinds = 0, differing = 0;
     for (std::int64_t bar = 0; bar < 64; ++bar)

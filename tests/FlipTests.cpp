@@ -77,6 +77,19 @@ namespace
         return count > 0 ? count * sampleRate / (last - first) : 0.0;
     }
 
+    double goertzel (const std::vector<float>& x, int from, int to, double hz)
+    {
+        const auto w = juce::MathConstants<double>::twoPi * hz / sampleRate, c = 2.0 * std::cos (w);
+        double s1 = 0.0, s2 = 0.0;
+        for (int i = from; i < to; ++i)
+        {
+            const auto s0 = x[(size_t) i] + c * s1 - s2;
+            s2 = s1;
+            s1 = s0;
+        }
+        return std::sqrt (s1 * s1 + s2 * s2 - c * s1 * s2) / (to - from);
+    }
+
     double rms (const std::vector<float>& x, int from, int to)
     {
         double sum = 0.0;
@@ -183,9 +196,10 @@ TEST_CASE ("FLIP starts each flip on its sixteenth, at two tempos and while stop
         {
             const auto beat = 60.0 / bpm;
             const auto r = play ([] (int i) { const auto v = 0.3f * (float) std::sin (0.06 * i); return std::pair { v, v }; },
-                                 s, bpm, 8.0 * beat, stopped ? -1.0 : 1.0);
-            // Playing from beat 1: bar 1 starts 3 beats in, its flip 2 beats later; stopped, its own count from 0.
-            const auto expected = (stopped ? 6.0 : 5.0) * beat * sampleRate;
+                                 s, bpm, 12.0 * beat, stopped ? -1.0 : 1.0);
+            // Playing from beat 1, bar 1's bar before wasn't heard from its start: bar 2 (7 beats in) is the first to
+            // flip, 2 beats later. Stopped, its own count from 0: bar 1, 4 beats in, 2 beats later.
+            const auto expected = (stopped ? 6.0 : 9.0) * beat * sampleRate;
             INFO ("bpm " << bpm << (stopped ? " stopped" : " playing"));
             const auto change = firstChange (r);
             CHECK (change >= (int) expected);
@@ -226,7 +240,8 @@ TEST_CASE ("FLIP: what the pads play: LOOP the bar before's first beat, CHOP its
             // What it should be: the grabbed sixteenth's tone, at the sampler's speed; backwards from B's end.
             const auto readFirst = cell.reversed ? 8 + 3 : (int) cell.offset;   // the sixteenth of the bar before it starts in
             const auto expected = Staircase::hz (readFirst) * speed;
-            const auto f = crossingRate (r.left, start + 200, start + std::min ((int) lasts, six) - 200);
+            // (only as long as it reads the first grabbed sixteenth: a faster pad reaches the next one sooner)
+            const auto f = crossingRate (r.left, start + 200, start + std::min ((int) lasts, (int) (six / speed)) - 200);
             CHECK_THAT (f, Catch::Matchers::WithinRel (expected, 0.04));
             ++checked;
         }
@@ -254,24 +269,17 @@ TEST_CASE ("FLIP: MIX, CRUNCH and PUMP", "[flip]")
         worst = std::max (worst, std::abs (under.left[(size_t) i] - replaced.left[(size_t) i] - under.inLeft[(size_t) i]));
     CHECK (worst < 1.0e-5f);
 
-    // CRUNCH: at 1 the sampler holds each sample about 3.7 times (13 kHz), at 0 not at all.
-    for (const auto [crunch, minShare, maxShare] : { std::tuple { 0.0f, 0.0, 0.05 }, std::tuple { 1.0f, 0.6, 0.8 } })
+    // CRUNCH: at 1 the sampler holds each sample at 13.02 kHz, which mirrors the 440 Hz tone round its rate (an image
+    // at 12.58 kHz); at 0 it holds nothing (52 kHz is past the host's rate), so no image.
+    double image[2] {};
+    for (int k = 0; k < 2; ++k)
     {
         s.mix = 1.0f;
-        s.crunch = crunch;
+        s.crunch = (float) k;
         const auto r = play (tone, s, 120.0, 4.4, (double) (b - 1) * 4.0);
-        int same = 0, total = 0;
-        for (int i = bar + 2000; i < bar + 20000; ++i, ++total)
-            same += r.left[(size_t) i] == r.left[(size_t) i - 1] ? 1 : 0;
-        // (the low cut after the hold moves a held value only a little: count steps under a hair as held)
-        int nearly = 0;
-        for (int i = bar + 2000; i < bar + 20000; ++i)
-            nearly += std::abs (r.left[(size_t) i] - r.left[(size_t) i - 1]) < 2.0e-4f ? 1 : 0;
-        INFO ("CRUNCH " << crunch);
-        CHECK ((double) nearly / total >= minShare);
-        CHECK ((double) nearly / total <= maxShare);
-        juce::ignoreUnused (same);
+        image[k] = goertzel (r.left, bar + 2000, bar + 20000, Flip::rateFor (1.0f) - 440.0);
     }
+    CHECK (image[1] > 30.0 * image[0]);
 
     // PUMP: ducked just after each beat, back by the end of its eighth.
     s.crunch = 0.5f;

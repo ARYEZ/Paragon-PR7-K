@@ -16176,7 +16176,7 @@ namespace
         auto block = x.make ("Block Rocker Bass", 8, { "Bass", "Block Party", "Fuzz", "Flip" },
             juce::String ("The big-beat fuzz-funk bass: a square and a saw an octave up, plucked (a filter that snaps "
             "open and falls back), through COSMONAUT on insert bus A, a fuzz pedal dimed, fat and woolly.") + flipped
-            + " MOD WHEEL: brighter. MACROS: FUZZ TONE, SPACE, FLIP.");
+            + " MOD WHEEL: brighter. MACROS: SNARL, SPACE, FLIP.");
         block.osc (0, "Wave", pulse).osc (0, "Width", 0.5f).osc (0, "Volume", 0.55f).osc (0, "Insert", 1.0f)
              .osc (1, "On", 1.0f).osc (1, "Wave", saw).osc (1, "Transpose", 12.0f).osc (1, "Volume", 0.2f).osc (1, "Insert", 1.0f)
              .filter (FilterType::lp12, 700.0f, 0.15f, 0.4f).set (ParamIDs::fltKey, 0.3f)
@@ -16185,8 +16185,8 @@ namespace
              .mono (0.0f);
         drive (block, 0, DM::muff, 6.5f, 4.0f, 7.0f, 0.1f, 0.1f);   // about unity: the switch-on fade from dry stays level
         route (block, "modWheel", ParamIDs::fltCutoff, 0.25f);
-        route (block, "macro1", ParamIDs::ins (0, "DriveTone"), 0.25f);
-        finish (block, "FUZZ TONE", "FLIP", RT::room, 0.25f, 0.04f);
+        route (block, "macro1", ParamIDs::osc (1, "Volume"), 0.25f);   // the saw an octave up: more snarl into the fuzz
+        finish (block, "SNARL", "FLIP", RT::room, 0.25f, 0.04f);
         flipMacro (block, { 7.0f, 0.5f, 0.35f, 1.0f });
         block.set (ParamIDs::patchLevel, 0.0f);
         x.add (block);
@@ -16271,7 +16271,8 @@ namespace
         chorus (organ, ParamIDs::modIds, MT::rotary, 0.3f, 0.6f, 1.0f);
         drive (organ, 0, DM::rabid, 6.0f, 5.0f, -4.0f, 0.1f, 0.2f);
         route (organ, "modWheel", ParamIDs::modRate, 0.6f);
-        route (organ, "macro1", ParamIDs::ins (0, "DriveGain"), 0.2f);
+        organ.shaper (0, synth::ShaperModel::soft, 0.0f, true);   // MACRO 1: more drive before the amp (the bus drive isn't a destination)
+        route (organ, "macro1", ParamIDs::shp (0, "Drive"), 0.5f);
         finish (organ, "DRIVE", "SCRATCH", RT::room, 0.4f, 0.1f);
         scratchMacro (organ, { 0.17f, 0.25f, 1.0f });
         organ.set (ParamIDs::patchLevel, 0.0f);
