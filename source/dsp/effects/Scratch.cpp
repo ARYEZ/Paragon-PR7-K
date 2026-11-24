@@ -552,10 +552,10 @@ namespace effects
             }
             // The drive squares the record off to about the same level whatever goes in (it's driven from the input's
             // own level), so the scratch's level is known without measuring it: about `scratchRms` of full scale, set
-            // here to 1.25 x the input's (the sketch's balance). A follower of the scratch itself turned up in its quiet
+            // here to the input's (the sketch had 1.25x: it filled a riff's gaps 3-6 dB louder). A follower of the scratch itself turned up in its quiet
             // moments and the next hit came 10 dB over.
             juce::ignoreUnused (wetSum, wetFollow);
-            const auto target = 1.25f * ref / scratchRms;
+            const auto target = ref / scratchRms;
             wetGain += (target - wetGain) * gainGlide;
             const auto dry = 1.0f - mix * gate;
             left[i] = x[0] * dry + out[0] * wetGain * gate;

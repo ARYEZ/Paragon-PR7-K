@@ -264,6 +264,7 @@ namespace
             { "Falling Petal", 2.5f }, { "Bowstring", -3.0f }, { "Ship's Bell", -12.5f },
             { "Kora Pluck", 0.0f }, { "Circuit Mbira", -4.2f }, { "Thumb Piano", -4.7f },
             { "Coin Pickup", -8.0f }, { "Garage Pluck", 7.0f }, { "Extra Life", -1.0f },
+            { "Hoover Pluck", -8.1f }, { "Scratch Pluck", -2.2f }, { "Crunch Pluck", -8.7f },
             { "Breath Hit", -4.0f }, { "Struck Sculpture", -6.0f }, { "Fretless Slide", 4.0f },
         };
         const auto found = levels.find (name);
@@ -16023,7 +16024,7 @@ namespace
         delay (siren, "1/8 dotted", 0.3f, 0.12f, true, 5.0f);
         finish (siren, "BRIGHT", "SCRATCH", RT::plate, 0.45f, 0.1f);
         scratchMacro (siren, { 0.14f, 0.0f, 1.0f });
-        siren.set (ParamIDs::patchLevel, 0.0f);
+        siren.set (ParamIDs::patchLevel, -8.3f);
         x.add (siren);
 
         auto acid = x.make ("Acid Line", 2, { "Lead", "Block Party", "Acid", "Flip" },
@@ -16042,7 +16043,7 @@ namespace
         delay (acid, "1/8 dotted", 0.35f, 0.15f, true, 4.0f);
         finish (acid, "CUTOFF", "FLIP", RT::room, 0.35f, 0.06f);
         flipMacro (acid, { 5.0f, 0.5f, 0.45f, 1.0f });
-        acid.set (ParamIDs::patchLevel, 0.0f);
+        acid.set (ParamIDs::patchLevel, -6.1f);
         x.add (acid);
 
         auto razor = x.make ("Razor Riff", 3, { "Lead", "Machine", "Guitar", "Scratch" },
@@ -16064,7 +16065,7 @@ namespace
         route (razor, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (razor, "BRIGHT", "SCRATCH", RT::room, 0.3f, 0.08f, 5.0f);
         scratchMacro (razor, { 0.16f, 0.3f, 1.0f });
-        razor.set (ParamIDs::patchLevel, 0.0f);
+        razor.set (ParamIDs::patchLevel, 5.3f);
         orchestra (razor, { { { 0, "Programs/04-green_twang.sfz", 1.0f, 0.0f, true, &guitars } },
                             { 0, 1, 2, 3 }, 0.0f,
                             "An industrial guitar riff: a real Gretsch Anniversary (Black And Green Guitars) through RABID, "
@@ -16093,7 +16094,7 @@ namespace
         route (haze, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (haze, "BRIGHT", "FLIP", RT::hall, 0.75f, 0.22f, 25.0f);
         flipMacro (haze, { 7.0f, 0.45f, 0.5f, 1.0f });
-        haze.set (ParamIDs::patchLevel, 0.0f);
+        haze.set (ParamIDs::patchLevel, -12.0f);
         x.add (haze);
 
         auto trip = x.make ("Phase Trip", 5, { "Pad", "Block Party", "Phaser", "Flip" },
@@ -16114,7 +16115,7 @@ namespace
         delay (trip, "1/4 dotted", 0.45f, 0.2f, true, 4.0f);
         finish (trip, "SWIRL", "FLIP", RT::hall, 0.6f, 0.18f, 20.0f);
         flipMacro (trip, { 5.0f, 0.55f, 0.4f, 1.0f });
-        trip.set (ParamIDs::patchLevel, 0.0f);
+        trip.set (ParamIDs::patchLevel, -8.2f);
         x.add (trip);
 
         auto choir = x.make ("Static Choir", 6, { "Pad", "Machine", "Choir", "Scratch" },
@@ -16135,7 +16136,7 @@ namespace
         route (choir, "macro1", ParamIDs::voiceVowel, 0.4f);
         finish (choir, "VOWEL", "SCRATCH", RT::hall, 0.7f, 0.22f, 30.0f);
         scratchMacro (choir, { 0.2f, 0.2f, 1.0f });
-        choir.set (ParamIDs::patchLevel, 0.0f);
+        choir.set (ParamIDs::patchLevel, -9.3f);
         orchestra (choir, { { { 0, "Chorus - Notation/Large Chrous.sfz", 1.0f, 0.0f } },
                             { 0, 1 }, 0.0f,
                             "A choir heard through a broken machine: the orchestra's large choir (looped), crushed by a "
@@ -16170,7 +16171,7 @@ namespace
         route (reese, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (reese, "GROWL", "SCRATCH", RT::room, 0.3f, 0.05f);
         scratchMacro (reese, { 0.12f, 0.15f, 1.0f });
-        reese.set (ParamIDs::patchLevel, 0.0f);
+        reese.set (ParamIDs::patchLevel, -8.8f);
         x.add (reese);
 
         auto block = x.make ("Block Rocker Bass", 8, { "Bass", "Block Party", "Fuzz", "Flip" },
@@ -16188,7 +16189,7 @@ namespace
         route (block, "macro1", ParamIDs::osc (1, "Volume"), 0.25f);   // the saw an octave up: more snarl into the fuzz
         finish (block, "SNARL", "FLIP", RT::room, 0.25f, 0.04f);
         flipMacro (block, { 7.0f, 0.5f, 0.35f, 1.0f });
-        block.set (ParamIDs::patchLevel, 0.0f);
+        block.set (ParamIDs::patchLevel, -15.8f);
         x.add (block);
 
         auto steel = x.make ("Cold Steel Bass", 9, { "Bass", "Machine", "Metal", "Flip" },
@@ -16210,7 +16211,7 @@ namespace
         route (steel, "macro1", ParamIDs::fltCutoff, 0.2f);
         finish (steel, "CLANK", "FLIP", RT::room, 0.3f, 0.05f);
         flipMacro (steel, { 3.0f, 0.6f, 0.45f, 1.0f });
-        steel.set (ParamIDs::patchLevel, 0.0f);
+        steel.set (ParamIDs::patchLevel, -11.3f);
         x.add (steel);
 
         // ---- KEYS --------------------------------------------------------------------------------------------
@@ -16229,7 +16230,7 @@ namespace
         route (stab, "macro1", ParamIDs::fltCutoff, 0.25f);
         finish (stab, "BRIGHT", "SCRATCH", RT::plate, 0.45f, 0.14f);
         scratchMacro (stab, { 0.15f, 0.0f, 1.0f });
-        stab.set (ParamIDs::patchLevel, 0.0f);
+        stab.set (ParamIDs::patchLevel, -2.3f);
         x.add (stab);
 
         auto crate = x.make ("Crate Keys", 11, { "Keys", "Block Party", "Electric Piano", "Flip" },
@@ -16251,7 +16252,7 @@ namespace
         route (crate, "macro1", ParamIDs::lofiMix, 0.4f);
         finish (crate, "DUST", "FLIP", RT::room, 0.4f, 0.1f);
         flipMacro (crate, { 5.0f, 0.65f, 0.4f, 1.0f });
-        crate.set (ParamIDs::patchLevel, 0.0f);
+        crate.set (ParamIDs::patchLevel, -5.8f);
         x.add (crate);
 
         auto organ = x.make ("Distortion Organ", 12, { "Keys", "Machine", "Organ", "Scratch" },
@@ -16275,7 +16276,7 @@ namespace
         route (organ, "macro1", ParamIDs::shp (0, "Drive"), 0.5f);
         finish (organ, "DRIVE", "SCRATCH", RT::room, 0.4f, 0.1f);
         scratchMacro (organ, { 0.17f, 0.25f, 1.0f });
-        organ.set (ParamIDs::patchLevel, 0.0f);
+        organ.set (ParamIDs::patchLevel, 7.4f);
         x.add (organ);
 
         // ---- ARPS --------------------------------------------------------------------------------------------
@@ -16295,7 +16296,7 @@ namespace
         delay (hardcore, "1/8", 0.25f, 0.1f, true, 5.0f);
         finish (hardcore, "BRIGHT", "FLIP", RT::plate, 0.4f, 0.1f);
         flipMacro (hardcore, { 5.0f, 0.5f, 0.45f, 1.0f });
-        hardcore.set (ParamIDs::patchLevel, 0.0f);
+        hardcore.set (ParamIDs::patchLevel, -3.6f);
         x.add (hardcore);
 
         auto acidSeq = x.make ("Acid Sequence", 14, { "Arp", "Block Party", "Acid", "Flip" },
@@ -16328,7 +16329,7 @@ namespace
         delay (acidSeq, "1/8 dotted", 0.3f, 0.12f, true, 4.0f);
         finish (acidSeq, "CUTOFF", "FLIP", RT::room, 0.3f, 0.05f);
         flipMacro (acidSeq, { 7.0f, 0.5f, 0.4f, 1.0f });
-        acidSeq.set (ParamIDs::patchLevel, 0.0f);
+        acidSeq.set (ParamIDs::patchLevel, -2.6f);
         x.add (acidSeq);
 
         auto gun = x.make ("Machine Gun Arp", 15, { "Arp", "Machine", "Drums", "Flip" },
@@ -16358,7 +16359,7 @@ namespace
         route (gun, "macro1", ParamIDs::fltCutoff, -0.15f);
         finish (gun, "BRIGHT", "FLIP", RT::room, 0.3f, 0.08f, 5.0f);
         flipMacro (gun, { 5.0f, 0.5f, 0.3f, 1.0f });
-        gun.set (ParamIDs::patchLevel, 0.0f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
+        gun.set (ParamIDs::patchLevel, -1.1f).set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f);
         orchestra (gun, { { { 0, "Programs/01-full.sfz", 1.0f, 0.0f, false, &rusty },
                             { 1, "Programs/01-full.sfz", 0.85f, 0.0f, false, &rusty },
                             { 2, "Programs/01-full.sfz", 0.5f, 0.0f, false, &rusty } },
