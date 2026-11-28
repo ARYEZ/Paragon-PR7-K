@@ -63,7 +63,10 @@ namespace
             // sampled piano play it (without it they play their synthesized fallback).
             const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
             // 0.73.0: every library there (the Sonatina Symphonic Orchestra too, for HYPERDRIVE).
-            for (const auto* library : libraries::all())
+            auto known = libraries::all();
+            for (const auto* own : libraries::personal())   // 1.12.0: Starwave, for LIGHTCYCLE
+                known.push_back (own);
+            for (const auto* library : known)
                 if (libraries.getChildFile (library->folder).isDirectory())
                 {
                     processor.getLibrariesFolder().createDirectory();
@@ -87,6 +90,12 @@ namespace
             processor.seedRandomForTest (1);
             song.ppq = 0.0;
             song.playing = true;
+        }
+        // (1.12.0) A preset on a library of the owner's own (LIGHTCYCLE's Starwave) that isn't here: it can't be heard.
+        bool waitsForOwnLibrary (const Rig& rig) const
+        {
+            const auto* missing = processor.missingLibraryOf (rig);
+            return missing != nullptr && missing->personal;
         }
         // Plays `seconds` with MIDI events (seconds, message) into `out` (left, right), the song running.
         void play (double seconds, std::vector<std::pair<double, juce::MidiMessage>> events, std::vector<float>* left = nullptr,
@@ -173,6 +182,24 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
     {
         const auto rigs = expansionRigs (x);
         INFO (expansions::list[(size_t) x].name);
+        if (x == 4)
+        {
+            // LIGHTCYCLE (1.12.0): the 34 Starwave patches the owner chose, not the 18-preset shape.
+            REQUIRE (rigs.size() == 34);
+            std::map<juce::String, int> perType;
+            for (size_t i = 0; i < rigs.size(); ++i)
+            {
+                CHECK (rigs[i].number == (int) i + 1);
+                CHECK (rigs[i].getSlotName() == "LC" + juce::String (i + 1).paddedLeft ('0', 2));
+                CHECK (rigs[i].tags.contains ("LIGHTCYCLE"));
+                ++perType[typeOf (rigs[i])];
+            }
+            CHECK (perType["Lead"] == 16);
+            CHECK (perType["Pad"] == 8);
+            CHECK (perType["Bass"] == 7);
+            CHECK (perType["Keys"] == 3);
+            continue;
+        }
         REQUIRE (rigs.size() == 18);
         std::map<juce::String, int> perType;
         for (size_t i = 0; i < rigs.size(); ++i)
@@ -1977,6 +2004,40 @@ TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left;
     CHECK (count == 18);
 }
 
+TEST_CASE ("LIGHTCYCLE: the owner's Starwave patches as sampled, no stand-ins, MACRO 3 DATASTREAM resting at its left", "[rigs][expansions][lighttrail]")
+{
+    const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    const auto bank = libraries.getChildFile (libraries::zamplerStarwave().folder);
+    const auto rigs = expansionRigs (4);
+    REQUIRE (rigs.size() == 34);
+    for (const auto& rig : rigs)
+    {
+        INFO (rig.name);
+        CHECK (rig.sampled == nullptr);
+        REQUIRE (rig.sfz.size() == 1);
+        const auto& ref = rig.sfz.at (0);
+        CHECK (libraries::libraryFor (ref) == &libraries::zamplerStarwave());
+        if (bank.isDirectory())
+            CHECK (bank.getChildFile (ref.fromFirstOccurrenceOf ("}/", false, false)).existsAsFile());
+        const auto value = [&rig] (const juce::String& id) { const auto it = rig.parameters.find (id); return it != rig.parameters.end() ? it->second : -99.0f; };
+        CHECK (value (ParamIDs::osc (0, "Wave")) == (float) (int) synth::OscWave::sfz);
+        CHECK (value (ParamIDs::osc (0, "Filter")) == 0.0f);
+        CHECK (value (ParamIDs::delayOn) == 1.0f);
+        CHECK (value (ParamIDs::reverbOn) == 1.0f);
+        CHECK (value (ParamIDs::trailOn) == 1.0f);
+        CHECK (value (ParamIDs::trailMix) == 0.0f);   // at the macro's left, untouched
+        CHECK (rig.modulation.macroNames[2] == "DATASTREAM");
+        int trail = 0;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                CHECK ((r.destination == ParamIDs::trailMix || r.destination == ParamIDs::trailLength));
+                trail += r.destination == ParamIDs::trailMix ? 1 : 0;
+            }
+        CHECK (trail == 1);
+    }
+}
+
 TEST_CASE ("Expansion presets come after the user's banks and can't be filed into: a copy goes in A", "[rigs][expansions]")
 {
     Plugin p;
@@ -2020,6 +2081,16 @@ TEST_CASE ("Every expansion preset plays in time with a song: it sounds, stays c
         p.load (rig.name);
         Events e;
         const auto bass = typeOf (rig) == "Bass", lead = typeOf (rig) == "Lead";
+        if (p.waitsForOwnLibrary (rig))
+        {
+            // 1.12.0: no stand-in: silent, and the oscillator names what it needs.
+            CHECK (p.processor.missingLibrary (0) == &libraries::zamplerStarwave());
+            chord (e, 0.0, 1.0, { 60 });
+            float loudest = 1.0f;
+            p.play (1.5, e, nullptr, nullptr, &loudest);
+            CHECK (loudest < 1.0e-6f);
+            continue;
+        }
         if (bass || lead)
             chord (e, 0.0, 5.0, { lead ? 64 : 40 });
         else
@@ -2067,7 +2138,7 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         const auto hell = rig.bank == Rig::numBanks + 1;
         const auto star = rig.bank == Rig::numBanks + 2;   // STARCOURT: 100 BPM in C minor
         const auto sand = rig.bank == Rig::numBanks + 3;   // SANDSEA: 90 BPM in D, Phrygian dominant
-        const auto data = rig.bank == Rig::numBanks + 4;   // DATASTREAM: 120 BPM in E minor
+        const auto data = rig.bank == Rig::numBanks + 4;   // LIGHTCYCLE (DATASTREAM's place): 120 BPM in E minor
         const auto last = rig.bank == Rig::numBanks + 5;   // LAST LIGHT: 70 BPM in A minor, slow and sad
         const auto sim = rig.bank == Rig::numBanks + 6;    // HARDWIRED (SIMULACRUM's place): 130 BPM in E minor, big-beat riffs
         const auto dream = rig.bank == Rig::numBanks + 7;  // DREAMSTATE: 80 BPM in G minor, slow and heavy
@@ -4471,50 +4542,18 @@ TEST_CASE ("Render a clip of each expansion preset", "[.render]")
         }
         else if (data && type == "Bass")
         {
-            if (rig.name == "Pulse Engine")
-            {
-                chord (e, at (0), at (7.9), { 28 }, 105);
-                chord (e, at (8), at (15.9), { 24 }, 105);
-            }
-            else if (rig.name == "Bitfall Bass")
-            {
-                const int notes[] = { 28, 28, 40, 28, 31, 28, 33, 31 };
-                for (int bar = 0; bar < 4; ++bar)
-                    for (int k = 0; k < 8; ++k)
-                        chord (e, at (bar * 4 + k * 0.5), at (bar * 4 + k * 0.5 + 0.4), { notes[k] }, k % 2 == 0 ? 110 : 90);
-                wheel (8.0, 15.0, 120);
-            }
-            else
-                line ({ { 0, 4, 28 }, { 4, 4, 24 }, { 8, 4, 26 }, { 12, 4, 23 } }, 105);
+            line ({ { 0, 4, 28 }, { 4, 4, 24 }, { 8, 4, 26 }, { 12, 4, 23 } }, 105);
             length = 18.0 * beat;
-        }
-        else if (data && type == "Keys")
-        {
-            if (rig.name == "Bit Chimes")
-                line ({ { 0, 0.5, 76 }, { 0.75, 0.5, 79 }, { 1.5, 0.5, 83 }, { 3, 0.5, 81 }, { 4, 0.5, 79 }, { 4.75, 0.5, 76 },
-                        { 5.5, 0.5, 74 }, { 7, 1, 76 } }, 90);
-            else
-            {
-                const std::initializer_list<int> chords[] = { { 64, 67, 71 }, { 60, 64, 67 }, { 59, 62, 67 }, { 62, 66, 69 } };
-                int c = 0;
-                for (const auto& notes : chords)
-                {
-                    if (rig.name == "Brass Protocol")
-                        for (const auto offset : { 0.0, 1.5, 2.5 })
-                            chord (e, at (c * 4 + offset), at (c * 4 + offset + 0.7), notes, offset == 0.0 ? 115 : 95);
-                    else
-                        chord (e, at (c * 4), at (c * 4 + 3.8), notes, 95);
-                    ++c;
-                }
-            }
-            length = 19.0 * beat;
         }
         else if (data)
         {
-            if (rig.name == "Circuit Run")
-                chord (e, at (0), at (15.9), { 64 }, 100);
-            else
-                chord (e, at (0), at (15.9), { 64, 67, 71 }, 100);
+            const std::initializer_list<int> chords[] = { { 64, 67, 71 }, { 60, 64, 67 }, { 59, 62, 67 }, { 62, 66, 69 } };
+            int c = 0;
+            for (const auto& notes : chords)
+            {
+                chord (e, at (c * 4), at (c * 4 + 3.8), notes, 95);
+                ++c;
+            }
             length = 19.0 * beat;
         }
         else if (sand && type == "Lead")
@@ -5090,7 +5129,10 @@ TEST_CASE ("No two expansion presets sound alike: every pair at least 3 apart on
     }
     Plugin p;
     p.song.bpm = 120.0;
-    const auto rigs = makeExpansionRigs();
+    auto rigs = makeExpansionRigs();
+    // 1.12.0: LIGHTCYCLE's presets play the owner's own Starwave, silent without it (and Zampler's patches as they
+    // are): left out unless it's here.
+    rigs.erase (std::remove_if (rigs.begin(), rigs.end(), [&p] (const Rig& r) { return p.waitsForOwnLibrary (r); }), rigs.end());
     const int frames = (int) ((4.8 * rate / block * block - 2048) / 1024) + 1;
     std::vector<Probe> probes;
     probes.reserve (rigs.size());

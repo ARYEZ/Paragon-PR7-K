@@ -36,10 +36,10 @@ namespace expansions
           "heat, the cold, the dream. Built round POLYMETER (1.4.0) and MACRO 3, POLYMETER: the held notes struck "
           "again in 4, 3, 5 and 7 at once. Some play free sample libraries (Squidpipes, VCSL, Big Rusty Drums, the "
           "Sonatina orchestra's cello and choir). Our own sounds." },
-        { "DATASTREAM", "DS",
-          "Inspired by the scores of a digital-world science-fiction film and its sequel: precise glowing pulses, "
-          "throbbing analog basses, orchestral-electronic swells, robotic voices and digital bleeps. Built round "
-          "LIGHTTRAIL (0.61.0), every note's glowing trail, and MACRO 3, TRAIL. Our own sounds." },
+        { "LIGHTCYCLE", "LC",
+          "Zampler's Starwave (1.12.0): 34 of its '80s and synthwave synth patches, chosen by ear, each exactly as it was "
+          "sampled, with echoes and reverb. Needs your own copy of Starwave in PR7-K's Libraries folder (silent without "
+          "it). MACRO 3, DATASTREAM: every note's echo climbing in time with the song (LIGHTTRAIL)." },
         { "LAST LIGHT", "LL",
           "Inspired by the score of a film about space, time and leaving the people you love: a soft cinematic felt "
           "piano, an enormous church organ, aching strings, a ticking clock and vast cold spaces. Sad and longing. "

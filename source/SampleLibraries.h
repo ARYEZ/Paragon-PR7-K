@@ -52,6 +52,10 @@ namespace libraries
         bool flat = false;
         // (1.6.0) Files besides `sfz` it isn't complete without (one from each of `moreUrls`' archives).
         juce::StringArray alsoNeeds;
+        // (1.12.0, the owner's rule for Zampler banks) A library the owner buys and puts in the Libraries folder
+        // themselves: no `url`, never downloaded or offered for download. A preset on it plays nothing until its
+        // folder is there, and PR7-K says what it needs (NEEDS STARWAVE). Its files never go in this repository.
+        bool personal = false;
     };
 
     // (0.89.1) Written into a library's folder once its audio has been put back as stored (`rawBase`): without it the
@@ -101,11 +105,17 @@ namespace libraries
     // Every library PR7-K can download.
     std::vector<const Library*> all();
 
+    // (1.12.0) Zampler's Starwave (bought by the owner from Zampler; SampleRobot SFZ, 97 synth patches): LIGHTCYCLE
+    // plays it. Personal: it's never downloaded, the folder "Zampler Starwave" goes in the Libraries folder by hand.
+    const Library& zamplerStarwave();
+    // Every library a preset can need that PR7-K doesn't download (personal ones).
+    std::vector<const Library*> personal();
+
     // "{sfz:<folder>}/<sfz>": how presets name the library's instrument; with `sfzPath`, another instrument in it.
     juce::String refFor (const Library&);
     juce::String refFor (const Library&, const juce::String& sfzPath);
 
-    // The library a preset's SFZ reference is in (null: none PR7-K downloads).
+    // The library a preset's SFZ reference is in (null: none PR7-K knows; personal ones included, 1.12.0).
     const Library* libraryFor (const juce::String& ref);
 
     // Unpacks a .tar.gz into `destination` (regular files and folders; links and anything naming a place outside it

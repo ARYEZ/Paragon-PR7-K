@@ -473,6 +473,65 @@ namespace synth::sfz
         return loop;
     }
 
+    // (1.12.0) A WAV's loop (its smpl chunk's first) where JUCE finds none: 25 of Zampler's Starwave patches write the
+    // smpl chunk straight after an odd-sized data chunk without the pad byte RIFF asks for, so a reader stepping over
+    // the pad lands a byte late and never sees it. Here each step tries the padded place, then the unpadded one.
+    void wavLoopUnpadded (const juce::File& file, juce::int64& loopStart, juce::int64& loopEnd)
+    {
+        juce::FileInputStream in (file);
+        if (! in.openedOk() || in.getTotalLength() < 12)
+            return;
+        char riff[12];
+        if (in.read (riff, 12) != 12 || std::memcmp (riff, "RIFF", 4) != 0 || std::memcmp (riff + 8, "WAVE", 4) != 0)
+            return;
+        const auto total = in.getTotalLength();
+        const auto idAt = [&in, total] (juce::int64 at, char* id) -> bool
+        {
+            if (at + 8 > total || ! in.setPosition (at) || in.read (id, 4) != 4)
+                return false;
+            for (int k = 0; k < 4; ++k)
+                if (id[k] < 32 || id[k] > 126)
+                    return false;
+            return true;
+        };
+        juce::int64 at = 12;
+        for (int chunks = 0; chunks < 64; ++chunks)
+        {
+            char id[4];
+            if (! idAt (at, id))
+                return;
+            const auto size = (juce::int64) (juce::uint32) in.readInt();
+            if (std::memcmp (id, "smpl", 4) == 0)
+            {
+                if (size < 36 + 24 || ! in.setPosition (at + 8 + 28) || in.readInt() <= 0 || ! in.setPosition (at + 8 + 36 + 8))
+                    return;
+                const auto start = (juce::int64) (juce::uint32) in.readInt();
+                const auto end = (juce::int64) (juce::uint32) in.readInt();
+                if (end > start)
+                {
+                    loopStart = start;
+                    loopEnd = end;
+                }
+                return;
+            }
+            const auto unpadded = at + 8 + size;
+            const auto padded = unpadded + (size & 1);
+            // Which is the next chunk: a known name first (a byte off can still read as printable letters).
+            const auto known = [&idAt] (juce::int64 where)
+            {
+                char next[4];
+                if (! idAt (where, next))
+                    return false;
+                for (const auto* name : { "smpl", "LIST", "cue ", "fact", "data", "fmt ", "bext", "inst", "acid", "id3 ", "ID3 ", "JUNK", "PAD ", "junk" })
+                    if (std::memcmp (next, name, 4) == 0)
+                        return true;
+                return false;
+            };
+            char next[4];
+            at = known (padded) ? padded : known (unpadded) ? unpadded : idAt (padded, next) ? padded : unpadded;
+        }
+    }
+
     void applyHold (float* left, float* right, const HoldLoop& loop)
     {
         if (! loop.found)
@@ -641,6 +700,8 @@ namespace synth::sfz
                         s->fileLoopStart = reader->metadataValues.getValue ("Loop0Start", "-1").getLargeIntValue();
                         s->fileLoopEnd = reader->metadataValues.getValue ("Loop0End", "-1").getLargeIntValue();
                     }
+                    else if (file.hasFileExtension ("wav"))
+                        wavLoopUnpadded (file, s->fileLoopStart, s->fileLoopEnd);   // (1.12.0) Starwave's
                     const auto channels = juce::jlimit (1, 2, (int) reader->numChannels);
                     juce::AudioBuffer<float> buffer (channels, s->headFrames);
                     reader->read (&buffer, 0, s->headFrames, 0, true, channels > 1);

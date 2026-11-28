@@ -612,6 +612,54 @@ TEST_CASE ("SFZ: loops hold a note for as long as it's held; LOOP_SUSTAIN lets g
         REQUIRE (off != nullptr);
         CHECK_FALSE (off->regions[0].loops());
     }
+    // (1.12.0) Zampler's Starwave: a 24-bit mono WAV with an odd number of frames, its smpl chunk written straight
+    // after the odd-sized data chunk with no pad byte (RIFF wants one). Its loop is found all the same; and with the
+    // pad byte, as before.
+    for (const auto pad : { false, true })
+    {
+        INFO ("pad byte " << (pad ? "written" : "missing"));
+        const int frames = 24001;
+        juce::MemoryOutputStream data;
+        for (int i = 0; i < frames; ++i)
+        {
+            const auto v = (int) std::lround (0.5 * 8388607.0 * std::sin (juce::MathConstants<double>::twoPi * 480.0 * i / sampleRate));
+            data.writeByte ((char) (v & 0xff));
+            data.writeByte ((char) ((v >> 8) & 0xff));
+            data.writeByte ((char) ((v >> 16) & 0xff));
+        }
+        juce::MemoryOutputStream smpl;
+        for (const auto word : { 0, 0, 0, 60, 0, 0, 0, 1, 0, /* the loop: */ 0, 0, (int) loopStart, (int) loopEnd, 0, 0 })
+            smpl.writeInt (word);
+        juce::MemoryOutputStream out;
+        const auto dataSize = (int) data.getDataSize();
+        out.write ("RIFF", 4);
+        out.writeInt (4 + 24 + 8 + dataSize + (pad ? 1 : 0) + 8 + (int) smpl.getDataSize());
+        out.write ("WAVEfmt ", 8);
+        out.writeInt (16);
+        out.writeShort (1);
+        out.writeShort (1);
+        out.writeInt ((int) sampleRate);
+        out.writeInt ((int) sampleRate * 3);
+        out.writeShort (3);
+        out.writeShort (24);
+        out.write ("data", 4);
+        out.writeInt (dataSize);
+        out.write (data.getData(), data.getDataSize());
+        if (pad)
+            out.writeByte (0);
+        out.write ("smpl", 4);
+        out.writeInt ((int) smpl.getDataSize());
+        out.write (smpl.getData(), smpl.getDataSize());
+        const auto file = f.dir.getChildFile (pad ? "padded.wav" : "unpadded.wav");
+        file.replaceWithData (out.getData(), out.getDataSize());
+        const auto inst = synth::sfz::load (writeSfz (f.dir, "<region> sample=" + file.getFileName() + " key=60 amp_veltrack=0\n",
+                                                     pad ? "padded.sfz" : "unpadded.sfz"));
+        REQUIRE (inst != nullptr);
+        CHECK (inst->regions[0].loops());
+        CHECK (inst->regions[0].loopStart == loopStart);
+        CHECK (inst->regions[0].loopEnd == loopEnd);
+        CHECK (rms (sustained (*inst, 2.0, 2.2, 50.0f), at (1.0), at (1.5)) > 0.3);
+    }
 }
 
 TEST_CASE ("SFZ: velocity crossfades (XFIN / XFOUT_LOVEL / HIVEL) blend layers, equal power or straight", "[sfz]")
@@ -2184,4 +2232,238 @@ TEST_CASE ("SFZ HOLD: in the plugin a held note lasts as long as the key, and of
     const auto again = playNote (*processor, 57, 10.0);
     REQUIRE (again.size() == offNote.size());
     CHECK (std::equal (again.begin(), again.end(), offNote.begin()));
+}
+
+namespace bankcheck
+{
+    // A bought bank's patches (a Zampler bank, say), played to hear them: each a phrase by its type (the bank's
+    // two-letter prefix): BS a bass riff, LD a lead line, PD / KY / SY chords, AR held notes (their samples already
+    // move), at 100 BPM in A minor, dry, through a plain AMP.
+    struct Event { double at; int note; bool on; };
+
+    std::vector<Event> phraseFor (const juce::String& type)
+    {
+        constexpr auto beat = 0.6;
+        std::vector<Event> e;
+        const auto note = [&e] (double from, double length, int n) { e.push_back ({ from, n, true }); e.push_back ({ from + length, n, false }); };
+        if (type == "BS")
+        {
+            const int riff[] = { 33, 33, 45, 33, 36, 33, 38, 40 };
+            for (int bar = 0; bar < 2; ++bar)
+                for (int k = 0; k < 8; ++k)
+                    note ((bar * 8 + k) * beat / 2, beat * 0.42, riff[k] - (bar == 1 && k > 5 ? 2 : 0));
+            note (8 * beat, 4 * beat, 33);
+        }
+        else if (type == "LD")
+        {
+            const int line[] = { 57, 60, 64, 62, 60, 59, 57, 64 };
+            for (int k = 0; k < 8; ++k)
+                note (k * beat, beat * 0.9, line[k]);
+            note (8 * beat, 4 * beat, 69);
+        }
+        else if (type == "AR")
+        {
+            note (0.0, 6 * beat, 45);
+            note (6 * beat, 6 * beat, 52);
+        }
+        else
+        {
+            const std::vector<std::vector<int>> chords { { 57, 60, 64 }, { 53, 57, 60 }, { 55, 59, 62 }, { 57, 60, 64 } };
+            for (size_t c = 0; c < chords.size(); ++c)
+                for (const auto n : chords[c])
+                    note ((double) c * 3 * beat, (c + 1 == chords.size() ? 4.0 : 2.85) * beat, n);
+        }
+        std::stable_sort (e.begin(), e.end(), [] (const Event& a, const Event& b) { return a.at < b.at; });
+        return e;
+    }
+
+    std::array<std::vector<float>, 2> play (const synth::sfz::Instrument* inst, const juce::String& type)
+    {
+        SfzPlayer p (inst);
+        p.settings.amp.envelope.releaseMs = 250.0f;
+        const auto events = phraseFor (type);
+        std::array<std::vector<float>, 2> clip;
+        double now = 0.0;
+        for (size_t i = 0; i <= events.size(); ++i)
+        {
+            const auto until = i < events.size() ? events[i].at : now + 2.0;
+            if (until > now)
+            {
+                const auto piece = p.render (until - now);
+                for (int c = 0; c < 2; ++c)
+                    clip[(size_t) c].insert (clip[(size_t) c].end(), piece[(size_t) c].begin(), piece[(size_t) c].end());
+                now = until;
+            }
+            if (i < events.size())
+            {
+                if (events[i].on) p.on (events[i].note, 0.8f);
+                else              p.off (events[i].note);
+            }
+        }
+        return clip;
+    }
+
+    float rmsDbOf (const std::array<std::vector<float>, 2>& clip)
+    {
+        double power = 0.0;
+        for (const auto& ch : clip)
+            for (const auto v : ch)
+                power += (double) v * v;
+        return juce::Decibels::gainToDecibels ((float) std::sqrt (power / (2.0 * (double) juce::jmax<size_t> (1, clip[0].size()))));
+    }
+
+    float peakOf (const std::array<std::vector<float>, 2>& clip)
+    {
+        float peak = 0.0f;
+        for (const auto& ch : clip)
+            for (const auto v : ch)
+                peak = juce::jmax (peak, std::abs (v));
+        return peak;
+    }
+
+    juce::Array<juce::File> patchesIn (const juce::File& folder)
+    {
+        juce::Array<juce::File> files;
+        folder.findChildFiles (files, juce::File::findFiles, false, "*.sfz");
+        files.sort();
+        return files;
+    }
+}
+
+TEST_CASE ("SFZ: a bought bank's patches load, loop and play (report, and a clip of each)", "[.bankcheck]")
+{
+    // PARAGON_BANK: a folder of SFZ patches; PARAGON_RENDER: where the clips go (each at rms -18 dB, peaks under -1).
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_BANK", {}));
+    const juce::File out (juce::SystemStats::getEnvironmentVariable ("PARAGON_RENDER", {}));
+    REQUIRE (folder.isDirectory());
+    const auto files = bankcheck::patchesIn (folder);
+    int loaded = 0;
+    for (const auto& file : files)
+    {
+        const auto name = file.getFileNameWithoutExtension();
+        const auto inst = synth::sfz::load (file);
+        if (inst == nullptr)
+        {
+            std::printf ("DIDN'T LOAD: %s\n", name.toRawUTF8());
+            continue;
+        }
+        ++loaded;
+        int looped = 0;
+        for (const auto& region : inst->regions)
+            looped += region.loop != synth::sfz::Region::Loop::none ? 1 : 0;
+        const auto clip = bankcheck::play (inst.get(), name.substring (0, 2).toUpperCase());
+        const auto peak = bankcheck::peakOf (clip);
+        const auto rmsDb = bankcheck::rmsDbOf (clip);
+        std::printf ("%-34s %3d regions, keys %3d-%3d, looped %3d, peak %6.1f dBFS, rms %6.1f dB%s%s\n", name.toRawUTF8(),
+                     (int) inst->regions.size(), inst->loKey, inst->hiKey, looped, juce::Decibels::gainToDecibels (peak), rmsDb,
+                     inst->problems.isEmpty() ? "" : "  PROBLEMS: ", inst->problems.joinIntoString ("; ").toRawUTF8());
+        if (out == juce::File())
+            continue;
+        out.createDirectory();
+        const auto gain = juce::jmin (juce::Decibels::decibelsToGain (-18.0f - rmsDb), juce::Decibels::decibelsToGain (-1.0f) / juce::jmax (1.0e-6f, peak));
+        juce::AudioBuffer<float> buffer (2, (int) clip[0].size());
+        for (int c = 0; c < 2; ++c)
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                buffer.setSample (c, i, clip[(size_t) c][(size_t) i] * gain);
+        const auto wavFile = out.getChildFile (name + ".wav");
+        wavFile.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> writer (wav.createWriterFor (new juce::FileOutputStream (wavFile), sampleRate, 2, 24, {}, 0));
+        REQUIRE (writer != nullptr);
+        writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples());
+    }
+    std::printf ("%d of %d patches loaded\n", loaded, files.size());
+    CHECK (loaded == files.size());
+}
+
+#include "rigs/RigBuilder.h"
+#include "rigs/RigLibrary.h"
+
+TEST_CASE ("SFZ: a bought bank made into user presets, one a patch, each loading and sounding in the plugin", "[.bankpresets]")
+{
+    // PARAGON_BANK: the bank's folder (its name is how the presets find it: "{sfz:<folder>}/<patch>.sfz", looked for in
+    // the presets folder's Libraries); PARAGON_PRESETS: where the preset files go; PARAGON_BANK_TITLE: the bank's name
+    // for the notes. The patches as sampled: no filter, the DELAY and REVERB on, the AMP only shaping the end of a note; each at
+    // the same loudness on its phrase (rms -18 dB, by PRESET LEVEL); the LIMITER as a -1 dBFS ceiling for chords.
+    // Leads, pads and keys in bank D, basses, synths and arps in bank E.
+    const juce::File folder (juce::SystemStats::getEnvironmentVariable ("PARAGON_BANK", {}));
+    const juce::File out (juce::SystemStats::getEnvironmentVariable ("PARAGON_PRESETS", {}));
+    const auto title = juce::SystemStats::getEnvironmentVariable ("PARAGON_BANK_TITLE", folder.getFileName());
+    REQUIRE (folder.isDirectory());
+    REQUIRE (out != juce::File());
+    out.createDirectory();
+    struct Kind { const char* prefix; const char* tag; int bank; float releaseMs; };
+    const Kind kinds[] { { "LD", "Lead", 3, 300.0f }, { "PD", "Pad", 3, 1200.0f }, { "KY", "Keys", 3, 600.0f },
+                         { "BS", "Bass", 4, 200.0f }, { "SY", "Synth", 4, 600.0f }, { "AR", "Arp", 4, 600.0f } };
+    int numbers[5] {};
+    RigLibrary library (out);
+    std::vector<std::pair<Rig, juce::File>> made;
+    for (const auto& kind : kinds)
+        for (const auto& file : bankcheck::patchesIn (folder))
+        {
+            const auto name = file.getFileNameWithoutExtension();
+            if (! name.startsWithIgnoreCase (juce::String (kind.prefix) + " "))
+                continue;
+            const auto inst = synth::sfz::load (file);
+            REQUIRE (inst != nullptr);
+            const auto rmsDb = bankcheck::rmsDbOf (bankcheck::play (inst.get(), kind.prefix));
+            rigbuilder::Builder b (name, ++numbers[kind.bank], { kind.tag, "Sampled", title },
+                                   title + ": the patch \"" + name + "\" as it was sampled, a note every 4 semitones from C1 to C5. "
+                                   "No filter; the DELAY and REVERB on. Needs the " + folder.getFileName()
+                                   + " folder in PR7-K's Libraries folder (your presets folder's Libraries).");
+            b.rig.bank = kind.bank;
+            b.osc (0, "Wave", (float) synth::OscWave::sfz).osc (0, "Filter", 0.0f)
+             .set (ParamIDs::ampVel, 0.0f).ampEnvelope (0.0f, 300.0f, 1.0f, kind.releaseMs).set (ParamIDs::ampReleaseCurve, -1.0f)
+             .set (ParamIDs::voices, 32.0f)
+             .set (ParamIDs::limitOn, 1.0f).set (ParamIDs::limitCeiling, -1.0f)
+             // (the owner's ask) the DELAY and REVERB on at their own settings: 1/4 at 35% into 25%, a 50% digital room at 28%
+             .set (ParamIDs::delayOn, 1.0f).set (ParamIDs::reverbOn, 1.0f)
+             .set (ParamIDs::patchLevel, juce::jlimit (ParamRanges::gainMinDb, ParamRanges::gainMaxDb, -18.0f - rmsDb));
+            b.rig.sfz[0] = "{sfz:" + folder.getFileName() + "}/" + file.getFileName();
+            // PARAGON_FAVOURITES: the patches starred so far (a "|" list), kept starred in the new files.
+            b.rig.favourite = juce::StringArray::fromTokens (juce::SystemStats::getEnvironmentVariable ("PARAGON_FAVOURITES", {}), "|", "").contains (name);
+            const auto saved = library.saveAsNew (b.rig);
+            REQUIRE (saved.existsAsFile());
+            made.push_back ({ b.rig, saved });
+        }
+    std::printf ("%d presets written to %s\n", (int) made.size(), out.getFullPathName().toRawUTF8());
+
+    // Each one, read back from its file, in a plugin whose Libraries folder holds the bank: it loads and sounds.
+    const juce::File temp = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("PR7K-bankpresets-" + juce::Uuid().toString());
+    temp.getChildFile ("Libraries").createDirectory();
+    REQUIRE (folder.createSymbolicLink (temp.getChildFile ("Libraries").getChildFile (folder.getFileName()), true));
+    int silent = 0;
+    for (const auto& [rig, file] : made)
+    {
+        INFO (rig.name);
+        const auto xml = juce::XmlDocument::parse (file);
+        REQUIRE (xml != nullptr);
+        const auto read = Rig::fromXml (*xml);
+        REQUIRE (read.has_value());
+        ParagonX1AudioProcessor p;
+        p.useRigFolder (temp);
+        p.setPlayConfigDetails (0, 2, sampleRate, 512);
+        p.prepareToPlay (sampleRate, 512);
+        p.loadRig (RigLibrary::Entry { *read, file, false });
+        REQUIRE (p.waitForSfz());
+        juce::AudioBuffer<float> buffer (2, 512);
+        double power = 0.0;
+        for (int block = 0; block < 100; ++block)
+        {
+            juce::MidiBuffer midi;
+            if (block == 0)
+                midi.addEvent (juce::MidiMessage::noteOn (1, rig.tags.contains ("Bass") ? 36 : 57, 0.8f), 0);
+            buffer.clear();
+            p.processBlock (buffer, midi);
+            power += buffer.getRMSLevel (0, 0, 512) * buffer.getRMSLevel (0, 0, 512);
+        }
+        const auto db = juce::Decibels::gainToDecibels ((float) std::sqrt (power / 100.0));
+        if (db < -60.0f)
+        {
+            ++silent;
+            std::printf ("SILENT: %s (%.1f dB)\n", rig.name.toRawUTF8(), db);
+        }
+    }
+    temp.deleteRecursively();
+    CHECK (silent == 0);
 }

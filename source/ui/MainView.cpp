@@ -301,6 +301,14 @@ void MainView::refreshRig()
         }
         else
             downloadFailureSeen = false;
+        // (1.12.0) A preset waiting for a library of the owner's own says so on the screen.
+        if (! download.isRunning())
+            for (int i = 0; i < ParamIDs::numOscillators; ++i)
+                if (const auto* missing = audioProcessor.missingLibrary (i); missing != nullptr && missing->personal)
+                {
+                    screen.status = "NEEDS " + missing->what + " (ITS FOLDER IN LIBRARIES)";
+                    break;
+                }
     }
     face.setScreen (screen);
     fxPage.followSignature (rig.name + "|" + rig.file.getFullPathName());   // 0.58.0: the SIGNATURE slot shows the preset's own
@@ -330,6 +338,26 @@ void MainView::offerMissingLibrary()
     if (missing == nullptr)
         return;
     libraryOfferedFor = key;
+    // (1.12.0) A library of the owner's own (a Zampler bank): nothing to download. The preset is silent until its
+    // folder is in the Libraries folder; PR7-K finds it there within a couple of seconds.
+    if (missing->personal)
+    {
+        juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::InfoIcon, "NEEDS " + missing->what,
+            "\"" + rig.name + "\" plays " + missing->name + ", a sample library of your own that isn't in PR7-K's Libraries "
+            "folder yet, so it's silent for now.\n\nCopy the \"" + missing->folder + "\" folder into the Libraries folder ("
+            + audioProcessor.getLibrariesFolder().getFullPathName() + "). PR7-K finds it there on its own.",
+            "OPEN THE LIBRARIES FOLDER", "OK", this,
+            juce::ModalCallbackFunction::create ([safe = juce::Component::SafePointer<MainView> (this)] (int result)
+            {
+                if (safe != nullptr && result == 1)
+                {
+                    const auto folder = safe->audioProcessor.getLibrariesFolder();
+                    folder.createDirectory();
+                    folder.startAsProcess();
+                }
+            }));
+        return;
+    }
     const auto kind = missing->what.toLowerCase();
     juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon, "GET THE " + missing->what,
         (fallback ? "\"" + rig.name + "\" can play the " + missing->name + ", a free sampled " + kind + " that isn't on this computer "

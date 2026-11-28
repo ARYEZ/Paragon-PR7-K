@@ -2,6 +2,16 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.12.0
+
+**LIGHTCYCLE: a new expansion in DATASTREAM's place, playing your own copy of Zampler's Starwave.**
+
+- **LIGHTCYCLE** (LC01-LC34) replaces DATASTREAM: the 34 Starwave patches you picked after playing all 97, each exactly as it was sampled, with the DELAY and REVERB on. 16 leads (2 Much Saw, Uplift Lead, Bassbath, Briar Patch, Bright Lead, Bright Side, Hard For The Core, Inside Job, Jump Higher, Monster Pulse, Piccardy, Chip Guitar, Sharp Lead, Squarestack, Sync Pulse, Waveshaper), 8 pads (80ies Pad, Bright Pad, Intro Maker, Luxor Pad, Moving Elements, Old Strings, Rich Strings, Warmpad), 7 basses (Atlantis, Brightfull, Casablanca, Delta Bass, Heavy Bass, Prodigious, Synthwave Classic) and 3 synths (Crystalline, Digital Koto, Niceguy). Four names lose a trademark or a person's name (Starwave's "DX7 Hard For The Core", "SID Guitar", "DX7 Koto IV" and "Armins Lead"). DATASTREAM's presets are gone; LIGHTTRAIL stays in the SIGNATURE slot.
+- **MACRO 3 is DATASTREAM** on every preset: LIGHTTRAIL's tempo-synced echo, each repeat climbing in pitch (leads a fifth every eighth, pads an octave every quarter, basses an octave every sixteenth, synths a fourth every eighth-note triplet). At the macro's left the preset sounds exactly as you approved it. MACRO 1 is ECHO (more and longer echoes), MACRO 2 SPACE (more and bigger reverb).
+- **The rule for Zampler banks: no synthesized stand-ins.** Starwave isn't shipped or downloaded: it's yours. Put the "Zampler Starwave" folder in PR7-K's Libraries folder (your presets folder's Libraries). Until it's there the presets are silent, the oscillator and the front panel's screen say NEEDS STARWAVE, and loading one tells you where the folder goes (with a button that opens the Libraries folder). Once it's there, PR7-K finds it within two seconds, no restart.
+- **SFZ fix:** 25 of Starwave's patches store their loop right after an odd-sized audio chunk without the pad byte the WAV format asks for, so their loops were missed and those notes ended when the recording did. PR7-K now finds such a loop.
+- I can't listen here: the levels are the ones measured for the presets you approved.
+
 ## 1.11.0
 
 **HARDWIRED: a new expansion in SIMULACRUM's place, and two new signature effects, SCRATCH and FLIP.**

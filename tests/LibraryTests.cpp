@@ -1062,3 +1062,63 @@ TEST_CASE ("Libraries: the real epic-choir download (its four zips from GitHub's
     CHECK (folder.findChildFiles (juce::File::findFiles, false, "*.sfz").size() == 20);
     CHECK (folder.findChildFiles (juce::File::findFiles, true, "*.wav").size() == 598);
 }
+
+TEST_CASE ("Libraries: Starwave is the owner's own: never offered for download, silent and named until its folder is in, then played (1.12.0)", "[library][plugin]")
+{
+    // The owner's rule for Zampler banks: no synthesized stand-ins. A stand-in Starwave here: its folder name and a
+    // patch's file name, a sine for every key.
+    MainView::offerLibrary = false;
+    const auto& starwave = libraries::zamplerStarwave();
+    CHECK (starwave.personal);
+    CHECK (starwave.url.isEmpty());
+    const auto downloadable = libraries::all();
+    CHECK (std::find (downloadable.begin(), downloadable.end(), &starwave) == downloadable.end());
+    CHECK (libraries::libraryFor ("{sfz:Zampler Starwave}/LD 2 Much Saw.sfz") == &starwave);
+
+    TempFolder t;
+    const auto presets = t.dir.getChildFile ("presets");
+    presets.createDirectory();
+    ParagonX1AudioProcessor processor;
+    processor.useRigFolder (presets);
+    processor.setPlayConfigDetails (0, 2, 48000.0, 256);
+    processor.prepareToPlay (48000.0, 256);
+    processor.setNonRealtime (true);
+    const auto loudest = [&processor]
+    {
+        processor.prepareToPlay (48000.0, 256);
+        juce::AudioBuffer<float> buffer (2, 256);
+        juce::MidiBuffer midi;
+        midi.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 0);
+        auto most = 0.0f;
+        for (int block = 0; block < 60; ++block)
+        {
+            processor.processBlock (buffer, midi);
+            midi.clear();
+            most = juce::jmax (most, buffer.getMagnitude (0, 0, 256));
+        }
+        return most;
+    };
+
+    const auto* preset = processor.getRigLibrary().findFactory ("2 Much Saw");
+    REQUIRE (preset != nullptr);
+    CHECK (preset->rig.sampled == nullptr);   // no stand-in to fall back on
+    processor.loadRig (*preset);
+    processor.waitForSfz();
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::failed);
+    CHECK (processor.missingLibrary (0) == &starwave);
+    CHECK_FALSE (processor.isLibraryInstalled (starwave));
+    CHECK (loudest() < 1.0e-6f);
+
+    // Its folder goes into Libraries: found and played.
+    const auto folder = processor.getLibrariesFolder().getChildFile (starwave.folder);
+    folder.createDirectory();
+    folder.getChildFile ("C4.wav").replaceWithData (sineWav().getData(), sineWav().getSize());
+    folder.getChildFile (starwave.sfz).replaceWithText ("<region> sample=C4.wav lokey=0 hikey=127 pitch_keycenter=60\n");
+    folder.getChildFile ("LD 2 Much Saw.sfz").replaceWithText ("<region> sample=C4.wav lokey=0 hikey=127 pitch_keycenter=60\n");
+    CHECK (processor.isLibraryInstalled (starwave));
+    processor.lookForLibraries();
+    processor.waitForSfz();
+    CHECK (processor.getSfzState (0) == ParagonX1AudioProcessor::SfzState::loaded);
+    CHECK (processor.missingLibrary (0) == nullptr);
+    CHECK (loudest() > 0.05f);
+}

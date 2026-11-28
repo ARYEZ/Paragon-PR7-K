@@ -263,6 +263,28 @@ namespace libraries
                  &blackAndGreenGuitars(), &shinyguitar(), &meatbass(), &ganjo(), &kayBanjo(), &unrealKoto(), &epicChoir() };
     }
 
+    const Library& zamplerStarwave()
+    {
+        static const Library library = []
+        {
+            Library l;
+            l.name = "Starwave";
+            l.folder = "Zampler Starwave";
+            l.sfz = "LD Sharp Lead.sfz";
+            l.credit = "Starwave by Zampler (your own copy: not shipped with PR7-K)";
+            l.what = "STARWAVE";
+            l.exactSize = false;
+            l.personal = true;
+            return l;
+        }();
+        return library;
+    }
+
+    std::vector<const Library*> personal()
+    {
+        return { &zamplerStarwave() };
+    }
+
     juce::String refFor (const Library& library)
     {
         return refFor (library, library.sfz);
@@ -276,6 +298,9 @@ namespace libraries
     const Library* libraryFor (const juce::String& ref)
     {
         for (const auto* library : all())
+            if (ref.startsWith ("{sfz:" + library->folder + "}/"))
+                return library;
+        for (const auto* library : personal())
             if (ref.startsWith ("{sfz:" + library->folder + "}/"))
                 return library;
         return nullptr;

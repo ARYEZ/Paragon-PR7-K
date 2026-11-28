@@ -226,7 +226,9 @@ public:
                 return library;
         return nullptr;
     }
-    // The library an oscillator's SFZ couldn't be found for, if it's one PR7-K can download (else null).
+    // (1.12.0) Oscillators waiting for a library load it if it's there now (personal ones only, unless `everyLibrary`).
+    void lookForLibraries (bool everyLibrary = true);
+    // The library an oscillator's SFZ couldn't be found for, if it's one PR7-K knows (else null).
     const libraries::Library* missingLibrary (int osc) const;
     int getSfzUnderruns() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getUnderruns() : 0; }
     int getSfzStreams() const noexcept { return sfzStreamer != nullptr ? sfzStreamer->getActiveStreams() : 0; }
@@ -550,6 +552,7 @@ public:
     }
 
 private:
+    juce::uint32 personalLookedAt = 0;             // (1.12.0) when waiting oscillators last looked for a personal library
     std::set<juce::String> incompleteLibraries;   // (0.89.2) library folders found missing samples (message thread)
     bool fellBackForIncomplete = false;
     std::array<std::atomic<std::uint8_t>, 128> soundingNotes {};   // for SIROCCO's page (getSoundingNoteFlags)

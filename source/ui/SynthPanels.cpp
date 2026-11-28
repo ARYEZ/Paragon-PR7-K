@@ -163,6 +163,8 @@ void SfzChooser::refresh()
     if (download.isRunning() && missing != nullptr && missing->folder == download.getLibrary().folder)
         text = (download.getState() == libraries::Download::State::downloading ? "DOWNLOADING THE " : "UNPACKING THE ") + missing->what + " "
              + juce::String (juce::roundToInt (100.0f * download.getProgress())) + "%";
+    else if (missing != nullptr && missing->personal)
+        text = "NEEDS " + missing->what;   // (1.12.0) the owner's own library: put in the Libraries folder by hand
     else if (missing != nullptr)
         text = "GET THE " + missing->what + " (" + juce::String (missing->bytes / 1000000) + " MB)...";
     else switch (processor.getSfzState (oscillator))
@@ -196,6 +198,13 @@ void SfzChooser::showMenu()
     if (download.isRunning())
     {
         menu.addItem (4, "Cancel the download");
+        menu.addSeparator();
+    }
+    else if (const auto* library = processor.missingLibrary (oscillator); library != nullptr && library->personal)
+    {
+        menu.addItem (103, "Needs " + library->name + ": its folder \"" + library->folder + "\" in PR7-K's Libraries folder", false, false);
+        menu.addItem (6, "Open the Libraries folder");
+        menu.addItem (7, "Look for it again");
         menu.addSeparator();
     }
     else if (const auto* library = processor.missingLibrary (oscillator))
@@ -266,6 +275,17 @@ void SfzChooser::showMenu()
                             }
                             else if (result == 4)
                                 safe->processor.cancelLibraryDownload();
+                            else if (result == 6)
+                            {
+                                const auto folder = safe->processor.getLibrariesFolder();
+                                folder.createDirectory();
+                                folder.startAsProcess();
+                            }
+                            else if (result == 7)
+                            {
+                                safe->processor.lookForLibraries();
+                                safe->refresh();
+                            }
                             else if (result == 5)
                             {
                                 if (auto* p = safe->processor.getParameters().getParameter (ParamIDs::osc (safe->oscillator, "SfzHold")))

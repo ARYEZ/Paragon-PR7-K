@@ -2823,12 +2823,32 @@ bool ParagonX1AudioProcessor::sfzHoldWanted (int osc) const noexcept
     return slot != nullptr && slot->value != nullptr && slot->value->load() > 0.5f;
 }
 
+void ParagonX1AudioProcessor::lookForLibraries (bool everyLibrary)
+{
+    for (int i = 0; i < ParamIDs::numOscillators; ++i)
+        if (sfzStates[(size_t) i] == SfzState::failed && sfzRefs[(size_t) i].isNotEmpty())
+            if (const auto* library = libraries::libraryFor (sfzRefs[(size_t) i]); library != nullptr && (everyLibrary || library->personal))
+            {
+                if (everyLibrary)
+                    incompleteLibraries.erase (library->folder);   // asked by hand: try it whole again
+                if (isLibraryInstalled (*library))
+                    startSfzLoad (i, sfzRefs[(size_t) i]);
+            }
+}
+
 void ParagonX1AudioProcessor::installSfzLoads()
 {
     // SFZ HOLD (1.6.0) switched: the oscillator's instrument read again with it (or without).
     for (int i = 0; i < ParamIDs::numOscillators; ++i)
         if (sfzRefs[(size_t) i].isNotEmpty() && sfzStates[(size_t) i] != SfzState::failed && sfzHoldWanted (i) != sfzHoldLoaded[(size_t) i])
             startSfzLoad (i, sfzRefs[(size_t) i]);
+    // (1.12.0) A personal library (Starwave) put in the Libraries folder by hand: every 2 s, the oscillators waiting for
+    // one look again once its folder is there (`lookForLibraries` at once, from the menu).
+    if (const auto now = juce::Time::getMillisecondCounter(); now - personalLookedAt > 2000)
+    {
+        personalLookedAt = now;
+        lookForLibraries (false);
+    }
     // A library just downloaded: the oscillators that couldn't find it load it now.
     if (const auto state = libraryDownload.getState(); state != libraryStateSeen)
     {
@@ -2871,7 +2891,7 @@ void ParagonX1AudioProcessor::installSfzLoads()
                 sfzStates[index] = SfzState::failed;
                 sfzProblems[index] = "Its library (" + library->name + ") is incomplete: "
                                    + (loaded.instrument != nullptr ? juce::String (loaded.instrument->unreadable) + " samples" : juce::String ("its samples"))
-                                   + " couldn't be read. Download it again.";
+                                   + " couldn't be read. " + (library->personal ? "Copy its folder into the Libraries folder again." : "Download it again.");
                 loaded.instrument = nullptr;
                 fellBackForIncomplete = true;
             }
