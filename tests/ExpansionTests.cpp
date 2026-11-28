@@ -2086,7 +2086,7 @@ TEST_CASE ("Every expansion preset plays in time with a song: it sounds, stays c
             // 1.12.0: no stand-in: silent, and the oscillator names what it needs.
             CHECK (p.processor.missingLibrary (0) == &libraries::zamplerStarwave());
             chord (e, 0.0, 1.0, { 60 });
-            float loudest = 1.0f;
+            float loudest = 0.0f;   // (play only raises it)
             p.play (1.5, e, nullptr, nullptr, &loudest);
             CHECK (loudest < 1.0e-6f);
             continue;
