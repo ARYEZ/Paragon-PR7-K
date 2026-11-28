@@ -2,6 +2,15 @@
 
 Each version's notes appear on its GitHub Release page.
 
+## 1.13.0
+
+**HELLFORGE rebuilt on your own copy of Zampler's Viral Injection.**
+
+- **HELLFORGE** (HF01-HF27) is now the 27 Viral Injection patches you starred after playing all 77, each exactly as it was sampled, with the DELAY and REVERB on: 13 leads (Afterburner, Biting, Delirius, Filterizer, Hyper, Kraftprotz, Meet Her, No Glitter Needed, Oxygenic, Passive Aggressive, Pullover, Ultra, What You Want), 4 pads (Drivers Pad, Lonelyness, Simple Sweeper, That String), 2 effects (From None To Nothing, Metallator) and 8 synths (Arpish I, Bright Bells, Emblem Ensemble, Glass Piano, Glassy Classic, Snowflakes I, Tree Oh Tree, White Line). The old HELLFORGE presets are gone; INFERNAL stays in the SIGNATURE slot.
+- **MACRO 3 is still DESTROY**: INFERNAL's parallel distortion. At the macro's left INFERNAL sits at MIX 0 and adds nothing at all, so each preset is the sample exactly as you starred it. A new test renders every preset of HELLFORGE and LIGHTCYCLE with and without its MACRO 3 effect and requires the two to match sample for sample. MACRO 1 is ECHO, MACRO 2 SPACE.
+- **Your Zampler rules apply:** no synthesized stand-ins. Put the "Zampler Viral Injection" folder (the one holding the .sfz files) in PR7-K's Libraries folder. Until it's there the presets are silent and PR7-K says NEEDS VIRAL INJECTION.
+- I can't listen here: the levels are the ones measured for the presets you approved.
+
 ## 1.12.0
 
 **LIGHTCYCLE: a new expansion in DATASTREAM's place, playing your own copy of Zampler's Starwave.**

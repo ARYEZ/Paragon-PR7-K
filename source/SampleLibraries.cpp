@@ -280,9 +280,26 @@ namespace libraries
         return library;
     }
 
+    const Library& zamplerViralInjection()
+    {
+        static const Library library = []
+        {
+            Library l;
+            l.name = "Viral Injection";
+            l.folder = "Zampler Viral Injection";
+            l.sfz = "LD Hyper.sfz";
+            l.credit = "Viral Injection by Zampler (your own copy: not shipped with PR7-K)";
+            l.what = "VIRAL INJECTION";
+            l.exactSize = false;
+            l.personal = true;
+            return l;
+        }();
+        return library;
+    }
+
     std::vector<const Library*> personal()
     {
-        return { &zamplerStarwave() };
+        return { &zamplerStarwave(), &zamplerViralInjection() };
     }
 
     juce::String refFor (const Library& library)

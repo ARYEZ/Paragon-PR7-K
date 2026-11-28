@@ -143,7 +143,7 @@ namespace
 
     juce::String typeOf (const Rig& rig)
     {
-        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp", "Pluck" })
+        for (const auto* type : { "Lead", "Pad", "Bass", "Keys", "Arp", "Pluck", "FX" })
             if (rig.tags[0] == type)
                 return type;
         return {};
@@ -182,6 +182,24 @@ TEST_CASE ("Each expansion is a bank of its own after E: named, with two-letter 
     {
         const auto rigs = expansionRigs (x);
         INFO (expansions::list[(size_t) x].name);
+        if (x == 1)
+        {
+            // HELLFORGE (1.13.0): the 27 Viral Injection patches the owner chose, not the 18-preset shape.
+            REQUIRE (rigs.size() == 27);
+            std::map<juce::String, int> perType;
+            for (size_t i = 0; i < rigs.size(); ++i)
+            {
+                CHECK (rigs[i].number == (int) i + 1);
+                CHECK (rigs[i].getSlotName() == "HF" + juce::String (i + 1).paddedLeft ('0', 2));
+                CHECK (rigs[i].tags.contains ("HELLFORGE"));
+                ++perType[typeOf (rigs[i])];
+            }
+            CHECK (perType["Lead"] == 13);
+            CHECK (perType["Pad"] == 4);
+            CHECK (perType["FX"] == 2);
+            CHECK (perType["Keys"] == 8);
+            continue;
+        }
         if (x == 4)
         {
             // LIGHTCYCLE (1.12.0): the 34 Starwave patches the owner chose, not the 18-preset shape.
@@ -2004,6 +2022,105 @@ TEST_CASE ("GRAND CINEMA: MACRO 3 is BLOOM on every preset, resting at its left;
     CHECK (count == 18);
 }
 
+TEST_CASE ("HELLFORGE: the owner's Viral Injection patches as sampled, no stand-ins, MACRO 3 DESTROY resting at its left", "[rigs][expansions][infernal]")
+{
+    const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
+    const auto bank = libraries.getChildFile (libraries::zamplerViralInjection().folder);
+    const auto rigs = expansionRigs (1);
+    REQUIRE (rigs.size() == 27);
+    for (const auto& rig : rigs)
+    {
+        INFO (rig.name);
+        CHECK (rig.sampled == nullptr);
+        REQUIRE (rig.sfz.size() == 1);
+        const auto& ref = rig.sfz.at (0);
+        CHECK (libraries::libraryFor (ref) == &libraries::zamplerViralInjection());
+        if (bank.isDirectory())
+            CHECK (bank.getChildFile (ref.fromFirstOccurrenceOf ("}/", false, false)).existsAsFile());
+        const auto value = [&rig] (const juce::String& id) { const auto it = rig.parameters.find (id); return it != rig.parameters.end() ? it->second : -99.0f; };
+        CHECK (value (ParamIDs::osc (0, "Wave")) == (float) (int) synth::OscWave::sfz);
+        CHECK (value (ParamIDs::osc (0, "Filter")) == 0.0f);
+        CHECK (value (ParamIDs::delayOn) == 1.0f);
+        CHECK (value (ParamIDs::reverbOn) == 1.0f);
+        CHECK (value (ParamIDs::infernalOn) == 1.0f);
+        CHECK (value (ParamIDs::infernalMix) == 0.0f);   // at the macro's left, nothing added
+        CHECK (rig.modulation.macroNames[2] == "DESTROY");
+        int mix = 0;
+        for (const auto& r : rig.modulation.routes)
+            if (r.source == "macro3")
+            {
+                CHECK (r.destination.startsWith ("infernal"));
+                mix += r.destination == ParamIDs::infernalMix ? 1 : 0;
+            }
+        CHECK (mix == 1);
+    }
+}
+
+namespace
+{
+    // A stand-in for a bought bank: a one-second sine and an SFZ for every patch its presets name (the real bank
+    // isn't in the repository). Not written when the real one is linked in from PARAGON_LIBRARIES.
+    void writeStandInBank (const juce::File& libraries, const libraries::Library& library, const std::vector<Rig>& rigs)
+    {
+        const auto folder = libraries.getChildFile (library.folder);
+        if (folder.exists())
+            return;
+        folder.createDirectory();
+        {
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::OutputStream> out (folder.getChildFile ("sine.wav").createOutputStream().release());
+            auto writer = wav.createWriterFor (out, juce::AudioFormatWriterOptions{}.withSampleRate (48000.0).withNumChannels (1).withBitsPerSample (24));
+            juce::AudioBuffer<float> buffer (1, 48000);
+            for (int i = 0; i < 48000; ++i)
+                buffer.setSample (0, i, 0.5f * (float) std::sin (juce::MathConstants<double>::twoPi * 220.0 * i / 48000.0) * (1.0f - (float) i / 48000.0f));
+            writer->writeFromAudioSampleBuffer (buffer, 0, 48000);
+        }
+        for (const auto& rig : rigs)
+            for (const auto& [osc, ref] : rig.sfz)
+                folder.getChildFile (ref.fromFirstOccurrenceOf ("}/", false, false))
+                      .replaceWithText ("<region> sample=sine.wav lokey=0 hikey=127 pitch_keycenter=57\n");
+    }
+}
+
+TEST_CASE ("Zampler banks: at MACRO 3's left every preset is the sample exactly as starred, bit for bit", "[rigs][expansions]")
+{
+    // The owner's rule ("at the macro's left each preset sounds exactly as you starred it: this is crucial"): each
+    // preset rendered as loaded, and again with its MACRO 3 effect switched off altogether; the two must be the same
+    // to the last bit, and it must sound. With PARAGON_LIBRARIES holding the real banks, on the real samples.
+    struct Bank { int expansion; const libraries::Library* library; const char* effectOn; };
+    const Bank banks[] { { 1, &libraries::zamplerViralInjection(), ParamIDs::infernalOn },
+                         { 4, &libraries::zamplerStarwave(), ParamIDs::trailOn } };
+    Plugin p;
+    p.processor.getLibrariesFolder().createDirectory();
+    for (const auto& bank : banks)
+        writeStandInBank (p.processor.getLibrariesFolder(), *bank.library, expansionRigs (bank.expansion));
+    for (const auto& bank : banks)
+        for (const auto& rig : expansionRigs (bank.expansion))
+        {
+            INFO (rig.name);
+            const auto render = [&] (bool effect)
+            {
+                p.load (rig.name);
+                if (! effect)
+                    p.processor.getParameters().getParameter (bank.effectOn)->setValueNotifyingHost (0.0f);
+                Events e;
+                chord (e, 0.0, 2.0, { 57, 60, 64 });
+                std::vector<float> left, right;
+                p.play (3.0, e, &left, &right);
+                left.insert (left.end(), right.begin(), right.end());
+                return left;
+            };
+            const auto as = render (true);
+            const auto without = render (false);
+            REQUIRE (as.size() == without.size());
+            CHECK (std::equal (as.begin(), as.end(), without.begin()));
+            float loudest = 0.0f;
+            for (const auto v : as)
+                loudest = juce::jmax (loudest, std::abs (v));
+            CHECK (loudest > 0.01f);
+        }
+}
+
 TEST_CASE ("LIGHTCYCLE: the owner's Starwave patches as sampled, no stand-ins, MACRO 3 DATASTREAM resting at its left", "[rigs][expansions][lighttrail]")
 {
     const juce::File libraries (juce::SystemStats::getEnvironmentVariable ("PARAGON_LIBRARIES", {}));
@@ -2084,7 +2201,7 @@ TEST_CASE ("Every expansion preset plays in time with a song: it sounds, stays c
         if (p.waitsForOwnLibrary (rig))
         {
             // 1.12.0: no stand-in: silent, and the oscillator names what it needs.
-            CHECK (p.processor.missingLibrary (0) == &libraries::zamplerStarwave());
+            CHECK (p.processor.missingLibrary (0) == libraries::libraryFor (rig.sfz.at (0)));
             chord (e, 0.0, 1.0, { 60 });
             float loudest = 0.0f;   // (play only raises it)
             p.play (1.5, e, nullptr, nullptr, &loudest);

@@ -108,6 +108,8 @@ namespace libraries
     // (1.12.0) Zampler's Starwave (bought by the owner from Zampler; SampleRobot SFZ, 97 synth patches): LIGHTCYCLE
     // plays it. Personal: it's never downloaded, the folder "Zampler Starwave" goes in the Libraries folder by hand.
     const Library& zamplerStarwave();
+    // (1.13.0) Zampler's Viral Injection (bought by the owner; SampleRobot SFZ, 77 patches): HELLFORGE plays it.
+    const Library& zamplerViralInjection();
     // Every library a preset can need that PR7-K doesn't download (personal ones).
     std::vector<const Library*> personal();
 

@@ -2261,10 +2261,17 @@ namespace bankcheck
                 note (k * beat, beat * 0.9, line[k]);
             note (8 * beat, 4 * beat, 69);
         }
-        else if (type == "AR")
+        else if (type == "AR" || type == "FX")   // (FX: Viral Injection's effects, held notes as the arps)
         {
             note (0.0, 6 * beat, 45);
             note (6 * beat, 6 * beat, 52);
+        }
+        else if (type == "DR")   // (Viral Injection's one drum patch: a beat on a few keys)
+        {
+            const int hits[] = { 48, 50, 52, 50, 48, 48, 52, 53 };
+            for (int bar = 0; bar < 2; ++bar)
+                for (int k = 0; k < 8; ++k)
+                    note ((bar * 8 + k) * beat / 2, beat * 0.4, hits[k]);
         }
         else
         {
@@ -2394,7 +2401,8 @@ TEST_CASE ("SFZ: a bought bank made into user presets, one a patch, each loading
     out.createDirectory();
     struct Kind { const char* prefix; const char* tag; int bank; float releaseMs; };
     const Kind kinds[] { { "LD", "Lead", 3, 300.0f }, { "PD", "Pad", 3, 1200.0f }, { "KY", "Keys", 3, 600.0f },
-                         { "BS", "Bass", 4, 200.0f }, { "SY", "Synth", 4, 600.0f }, { "AR", "Arp", 4, 600.0f } };
+                         { "BS", "Bass", 4, 200.0f }, { "SY", "Synth", 4, 600.0f }, { "AR", "Arp", 4, 600.0f },
+                         { "FX", "FX", 3, 1200.0f }, { "DR", "Drum", 4, 300.0f } };
     int numbers[5] {};
     RigLibrary library (out);
     std::vector<std::pair<Rig, juce::File>> made;

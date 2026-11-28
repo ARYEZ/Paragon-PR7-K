@@ -22,9 +22,9 @@ namespace expansions
           "keys and slow neon pulses. Built round DOWNPOUR (0.57.0), rain on the glass whose drops ring on the notes you "
           "play, and MACRO 3, STORM: from dry to a downpour. Our own sounds." },
         { "HELLFORGE", "HF",
-          "Inspired by modern industrial-metal game scores: synths as heavy as down-tuned guitars, leads played like a "
-          "guitar, clean subs under noise that growls in tune, a screaming choir, a cathedral organ, a chainsaw. Built "
-          "round INFERNAL (0.59.0), parallel destruction, and MACRO 3, DESTROY. Our own sounds." },
+          "Zampler's Viral Injection (1.13.0): 27 of its leads, pads, effects and synths, chosen by ear, each exactly as "
+          "it was sampled, with echoes and reverb. Needs your own copy of Viral Injection in PR7-K's Libraries folder "
+          "(silent without it). MACRO 3, DESTROY: INFERNAL's parallel distortion, none at all at its left." },
         { "STARCOURT", "SC",
           "Inspired by the dark '80s analog-synth score of a supernatural mystery series: rising arpeggios over minor "
           "chords, string-machine and polysynth pads, haunting leads, eighth-note basses. Built round AFTERGLOW (0.60.0), "
