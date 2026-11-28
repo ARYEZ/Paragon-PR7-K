@@ -2261,7 +2261,7 @@ namespace bankcheck
                 note (k * beat, beat * 0.9, line[k]);
             note (8 * beat, 4 * beat, 69);
         }
-        else if (type == "AR" || type == "FX")   // (FX: Viral Injection's effects, held notes as the arps)
+        else if (type == "AR" || type == "FX" || type == "VOX" || type == "AT" || type == "Xtra" || type == "")   // held notes (effects, vocals, atmospheres, extras: their samples move)
         {
             note (0.0, 6 * beat, 45);
             note (6 * beat, 6 * beat, 52);
@@ -2358,7 +2358,9 @@ TEST_CASE ("SFZ: a bought bank's patches load, loop and play (report, and a clip
         int looped = 0;
         for (const auto& region : inst->regions)
             looped += region.loop != synth::sfz::Region::Loop::none ? 1 : 0;
-        const auto clip = bankcheck::play (inst.get(), name.substring (0, 2).toUpperCase());
+        // The patch's type: its first word (LD, BS, VOX, Xtra...).
+        const auto word = name.upToFirstOccurrenceOf (" ", false, false);
+        const auto clip = bankcheck::play (inst.get(), word.equalsIgnoreCase ("Xtra") ? juce::String ("Xtra") : word.toUpperCase());
         const auto peak = bankcheck::peakOf (clip);
         const auto rmsDb = bankcheck::rmsDbOf (clip);
         std::printf ("%-34s %3d regions, keys %3d-%3d, looped %3d, peak %6.1f dBFS, rms %6.1f dB%s%s\n", name.toRawUTF8(),
@@ -2402,7 +2404,9 @@ TEST_CASE ("SFZ: a bought bank made into user presets, one a patch, each loading
     struct Kind { const char* prefix; const char* tag; int bank; float releaseMs; };
     const Kind kinds[] { { "LD", "Lead", 3, 300.0f }, { "PD", "Pad", 3, 1200.0f }, { "KY", "Keys", 3, 600.0f },
                          { "BS", "Bass", 4, 200.0f }, { "SY", "Synth", 4, 600.0f }, { "AR", "Arp", 4, 600.0f },
-                         { "FX", "FX", 3, 1200.0f }, { "DR", "Drum", 4, 300.0f } };
+                         { "FX", "FX", 3, 1200.0f }, { "DR", "Drum", 4, 300.0f }, { "PL", "Pluck", 3, 600.0f },
+                         { "VOX", "Vox", 3, 1200.0f }, { "AT", "Atmos", 3, 1200.0f }, { "Xtra", "Xtra", 4, 600.0f },
+                         { "", "Other", 4, 600.0f } };   // "": anything no other prefix takes (Trickster's "1 Welcome")
     int numbers[5] {};
     RigLibrary library (out);
     std::vector<std::pair<Rig, juce::File>> made;
@@ -2410,16 +2414,28 @@ TEST_CASE ("SFZ: a bought bank made into user presets, one a patch, each loading
         for (const auto& file : bankcheck::patchesIn (folder))
         {
             const auto name = file.getFileNameWithoutExtension();
-            if (! name.startsWithIgnoreCase (juce::String (kind.prefix) + " "))
+            if (juce::String (kind.prefix).isEmpty())
+            {
+                // The catch-all: only files no other kind takes.
+                bool taken = false;
+                for (const auto& other : kinds)
+                    taken = taken || (juce::String (other.prefix).isNotEmpty() && name.startsWithIgnoreCase (juce::String (other.prefix) + " "));
+                if (taken)
+                    continue;
+            }
+            else if (! name.startsWithIgnoreCase (juce::String (kind.prefix) + " "))
                 continue;
             const auto inst = synth::sfz::load (file);
             REQUIRE (inst != nullptr);
             const auto rmsDb = bankcheck::rmsDbOf (bankcheck::play (inst.get(), kind.prefix));
-            rigbuilder::Builder b (name, ++numbers[kind.bank], { kind.tag, "Sampled", title },
+            // PARAGON_PRESET_BANK (A-E): every preset in that one bank instead (several banks auditioned at once).
+            const auto forced = juce::SystemStats::getEnvironmentVariable ("PARAGON_PRESET_BANK", {}).trim().toUpperCase();
+            const auto bankIndex = forced.length() == 1 && forced[0] >= 'A' && forced[0] <= 'E' ? (int) (forced[0] - 'A') : kind.bank;
+            rigbuilder::Builder b (name, ++numbers[bankIndex], { kind.tag, "Sampled", title },
                                    title + ": the patch \"" + name + "\" as it was sampled, a note every 4 semitones from C1 to C5. "
                                    "No filter; the DELAY and REVERB on. Needs the " + folder.getFileName()
                                    + " folder in PR7-K's Libraries folder (your presets folder's Libraries).");
-            b.rig.bank = kind.bank;
+            b.rig.bank = bankIndex;
             b.osc (0, "Wave", (float) synth::OscWave::sfz).osc (0, "Filter", 0.0f)
              .set (ParamIDs::ampVel, 0.0f).ampEnvelope (0.0f, 300.0f, 1.0f, kind.releaseMs).set (ParamIDs::ampReleaseCurve, -1.0f)
              .set (ParamIDs::voices, 32.0f)
